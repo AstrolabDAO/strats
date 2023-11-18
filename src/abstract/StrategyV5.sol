@@ -287,9 +287,9 @@ abstract contract StrategyV5 is As4626 {
     ) external onlyKeeper returns (uint256 shares) {
         uint256 underlyingAmount = _amount;
         if (_input != address(underlying)) {
-            underlyingAmount = swapper.decodeAndSwap(
+            (underlyingAmount,) = swapper.decodeAndSwap(
                 _input,
-                underlying,
+                address(underlying),
                 _amount,
                 _params
             );

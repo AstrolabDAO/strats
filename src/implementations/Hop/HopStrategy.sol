@@ -73,13 +73,12 @@ contract HopStrategy is StrategyV5 {
         );
         if (pendingRewards == 0) return 0;
         // Swapping the rewards
-        return
-            swapper.decodeAndSwap(
-                IERC20(rewardTokens[0]),
-                underlying,
-                pendingRewards,
-                _params[0]
-            );
+        (assetsReceived,) = swapper.decodeAndSwap(
+            rewardTokens[0],
+            address(underlying),
+            pendingRewards,
+            _params[0]
+        );
     }
 
     /// @notice Invests the underlying asset into the pool
@@ -168,13 +167,14 @@ contract HopStrategy is StrategyV5 {
         uint256 _amount,
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
+
         // Calculate the amount of lp token to unstake
         uint256 LPToUnstake = (_amount * stakedLPBalance()) / _invested();
         // Unstake the lp token
         IStakingRewards(rewardPool).withdraw(LPToUnstake);
         // Calculate the minimum amount of asset to receive
         // Withdraw asset from the pool
-        uint256 unstakedAmount = stableRouter.removeLiquidityOneToken({
+        assetsRecovered = stableRouter.removeLiquidityOneToken({
             tokenAmount: lpToken.balanceOf(address(this)),
             // tokenIndex: tokenIndex,
             tokenIndex: 0,
@@ -184,14 +184,13 @@ contract HopStrategy is StrategyV5 {
 
         // swap the unstaked token for the underlying asset if different
         if (inputs[0] != underlying) {
-            unstakedAmount = swapper.decodeAndSwap(
-                inputs[0],
-                underlying,
-                unstakedAmount,
+            (assetsRecovered,) = swapper.decodeAndSwap(
+                address(inputs[0]),
+                address(underlying),
+                assetsRecovered,
                 _params[0]
             );
         }
-        return unstakedAmount;
     }
 
     // Utils

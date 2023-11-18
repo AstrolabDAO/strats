@@ -67,7 +67,6 @@ abstract contract As4626 is
     // state variables
     ERC20 public immutable underlying;
 
-    uint256 public constant BPS_BASIS = 10000; // 100%
     Fees internal MAX_FEES =
         Fees({perf: 5000, mgmt: 500, entry: 200, exit: 200}); // 50%, 5%, 2%, 2%
     uint256 internal constant MAX_UINT256 = type(uint256).max;
@@ -156,7 +155,7 @@ abstract contract As4626 is
 
         // slice the fee from the amount (gas optimized)
         if (feeCollector != address(0)) {
-            uint256 fee = _amount.mulDiv(fees.entry, BPS_BASIS);
+            uint256 fee = _amount.mulDiv(fees.entry, AsMaths.BP_BASIS);
             claimableUnderlyingFees += fee;
             _amount -= fee;
             _minShareAmount -= convertToShares(fee);
@@ -179,7 +178,7 @@ abstract contract As4626 is
         uint256 _amount
     ) public view returns (uint256 shares) {
         return
-            convertToShares(_amount.mulDiv(BPS_BASIS - fees.entry, BPS_BASIS));
+            convertToShares(_amount.mulDiv(AsMaths.BP_BASIS - fees.entry, AsMaths.BP_BASIS));
     }
 
     // @inheritdoc _deposit
@@ -232,7 +231,7 @@ abstract contract As4626 is
 
         // slice fee from burnt shares
         if (feeCollector != address(0)) {
-            uint256 fee = _shares.mulDiv(fees.exit, BPS_BASIS);
+            uint256 fee = _shares.mulDiv(fees.exit, AsMaths.BP_BASIS);
             _amount -= convertToAssets(fee);
             _update(_owner, address(this), fee);
             _shares -= fee;
@@ -335,7 +334,6 @@ abstract contract As4626 is
         ) = AsAccounting.computeFees(
             totalAssets(),
             sharePrice(),
-            BPS_BASIS,
             fees,
             feeCollectedAt);
 
@@ -524,7 +522,7 @@ abstract contract As4626 is
     /// @return How many shares will be burnt
     function previewWithdraw(uint256 _assets) public view returns (uint256) {
         return
-            convertToShares(_assets.mulDiv(BPS_BASIS, BPS_BASIS - fees.exit));
+            convertToShares(_assets.mulDiv(AsMaths.BP_BASIS, AsMaths.BP_BASIS - fees.exit));
     }
 
     /// @notice Preview how many underlying tokens the caller will get for burning his _shares
@@ -532,8 +530,8 @@ abstract contract As4626 is
     /// @return Preview amount of underlying tokens that the caller will get for his shares
     function previewRedeem(uint256 _shares) public view returns (uint256) {
         uint256 afterFees = convertToAssets(_shares).mulDiv(
-            BPS_BASIS,
-            BPS_BASIS - fees.exit
+            AsMaths.BP_BASIS,
+            AsMaths.BP_BASIS - fees.exit
         );
         return available() >= afterFees ? afterFees : 0;
     }

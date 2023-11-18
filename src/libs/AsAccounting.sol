@@ -14,7 +14,6 @@ library AsAccounting {
     function computeFees(
         uint256 totalAssets,
         uint256 sharePrice,
-        uint256 BPS_BASIS,
         Fees calldata fees,
         Checkpoint calldata feeCollectedAt
     )
@@ -31,9 +30,9 @@ library AsAccounting {
 
         uint256 mgmtFeesRel = sharePrice.mulDiv(
             fees.mgmt * duration,
-            BPS_BASIS * 365 days
+            AsMaths.BP_BASIS * 365 days
         );
-        uint256 perfFeesRel = profit.mulDiv(fees.perf, BPS_BASIS);
+        uint256 perfFeesRel = profit.mulDiv(fees.perf, AsMaths.BP_BASIS);
 
         // Adjust management fee if it exceeds profits after performance fee
         if (mgmtFeesRel + perfFeesRel > profit) {

@@ -85,7 +85,7 @@ contract AaveV3Strategy is StrategyV5 {
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
         // Withdraw asset from the pool
-        uint256 unstakedAmount = pool.withdraw({
+        assetsRecovered = pool.withdraw({
             asset: address(inputs[0]),
             amount: _amount,
             to: address(this)
@@ -93,14 +93,13 @@ contract AaveV3Strategy is StrategyV5 {
 
         // swap the unstaked token for the underlying asset if different
         if (inputs[0] != underlying) {
-            unstakedAmount = decodeAndSwap(
-                inputs[0],
-                underlying,
-                unstakedAmount,
+            (assetsRecovered,) = swapper.decodeAndSwap(
+                address(inputs[0]),
+                address(underlying),
+                assetsRecovered,
                 _params[0]
             );
         }
-        return unstakedAmount;
     }
 
     // Utils

@@ -13,7 +13,6 @@ import "../../abstract/StrategyV5.sol";
 contract SyncswapStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
-    // Tokens used
     // Third-party contracts
     IRouter public immutable router;
     IStablePool public immutable pool;
@@ -29,7 +28,7 @@ contract SyncswapStrategy is StrategyV5 {
         address _pool
     ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
         router = IRouter(_router);
-        pool = IStablePool(pool);
+        pool = IStablePool(_pool);
         _setAllowances(MAX_UINT256);
     }
 
@@ -93,14 +92,15 @@ contract SyncswapStrategy is StrategyV5 {
         uint256 _amount,
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
+
         // Calculate the amount of lp token to unstake
-        uint256 LPToUnstake = (_amount * stakedLPBalance()) / _invested();
+        uint256 lpToUnstake = (_amount * stakedLPBalance()) / _invested();
         // calculate minAmounts
-        uint minAmount = AsMaths.subBp(_amount, STAKE_SLIPPAGE);
+        uint minAmount = AsMaths.subBp(lpToUnstake, STAKE_SLIPPAGE);
         // Withdraw asset from the pool
-        uint256 unstakedAmount = router.burnLiquiditySingle({
+        assetsRecovered = router.burnLiquiditySingle({
             pool: address(pool),
-            liquidity: _amount,
+            liquidity: lpToUnstake,
             data: abi.encodePacked(address(this)),
             minAmount: minAmount,
             callback: address(0x0),
@@ -109,14 +109,13 @@ contract SyncswapStrategy is StrategyV5 {
 
         // swap the unstaked token for the underlying asset if different
         if (inputs[0] != underlying) {
-            unstakedAmount = decodeAndSwap(
-                inputs[0],
-                underlying,
-                unstakedAmount,
+            (assetsRecovered,) = swapper.decodeAndSwap(
+                address(inputs[0]),
+                address(underlying),
+                assetsRecovered,
                 _params[0]
             );
         }
-        return unstakedAmount;
     }
 
     // Utils
@@ -130,7 +129,7 @@ contract SyncswapStrategy is StrategyV5 {
     // Getters
 
     /// @notice Returns the price of a token compared to another.
-    function _getRate(address token) internal view return (uint256) {
+    function _getRate(address token) internal pure returns (uint256) {
         //TODO : Use oracle for exchange rate
         return 1;
     }
@@ -143,15 +142,16 @@ contract SyncswapStrategy is StrategyV5 {
         } else {
                 (uint256 reserve0, uint256 reserve1) = pool.getReserves();
                 uint256 totalLpBalance = pool.totalSupply();
-                uint256 amount0 = (reserve0 * amountLp) / totalLpBalance;
-                uint256 amount1 = (reserve1 * amountLp) / totalLpBalance;
+                uint256 amount0 = (reserve0 * stakedLPBalance()) / totalLpBalance;
+                uint256 amount1 = (reserve1 * stakedLPBalance()) / totalLpBalance;
                 // calculates how much asset (inputs[0]) is to be withdrawn with the lp token balance
                 // not the actual ERC4626 underlying invested balance
-                return (amount0 + (amount1 * getRate(address(inputs[1]))));
+                return (amount0 + (amount1 * _getRate(address(inputs[1]))));
         }
     }
 
     /// @notice Returns the investment in lp token.
     function stakedLPBalance() public view returns (uint256) {
         return pool.balanceOf(address(this));
+    }
 }
