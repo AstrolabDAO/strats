@@ -180,12 +180,12 @@ async function _swap(o: ISwapperParams, a: ChainAddresses) {
       // limit the size of a swap to 10 ETH/BTC
       if (amountWei.gt(maxTopup)) o.amountWei = BigNumber.from(maxTopup);
     }
-    assert(nativeBalance.gt(amountWei));
+    console.assert(nativeBalance.gt(amountWei));
     const wrappedBalanceBefore = await input.balanceOf(o.payer);
     await input.deposit({ value: o.amountWei });
     const wrapped = (await input.balanceOf(o.payer)).sub(wrappedBalanceBefore);
     console.log(`wrapped ${wrapped} ${o.input}`);
-    assert(wrapped.eq(o.amountWei));
+    console.assert(wrapped.eq(o.amountWei));
   } else {
     input = await ethers.getContractAt("IERC20Metadata", o.input);
   }
@@ -237,7 +237,7 @@ async function _swap(o: ISwapperParams, a: ChainAddresses) {
       { gasLimit: Math.max(Number(tr.gasLimit ?? 0), 50_000_000) }
     );
     console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
-    const received = (await output.balanceOf(o.payer)).sub(
+    received = (await output.balanceOf(o.payer)).sub(
       outputBalanceBeforeSwap
     );
     console.log(`received ${received} ${o.output}`);
@@ -267,6 +267,7 @@ export async function fundAccount(
         receiver,
         payer: deployer.address,
         testPayer: a.accounts!.impersonate,
+        maxSlippage: 5000,
       } as ISwapperParams,
       a
     );

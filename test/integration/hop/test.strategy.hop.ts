@@ -22,7 +22,7 @@ import { ChainAddresses } from "src/addresses";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 
 const fee = 180;
-const inputSymbols = ["USDT"/*, "DAI", "USDC"*/];
+const inputSymbols = ["USDT", "DAI", "USDC"];
 const gasUsedForFunding = 1e22; // 1k gas tokens
 const fees = {
   perf: 2000,
