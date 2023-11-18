@@ -7,6 +7,7 @@ import "../../libs/AsMaths.sol";
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
 import "../../abstract/StrategyV5.sol";
+import "hardhat/console.sol";
 
 /// @title Hop Strategy (v5)
 /// @notice This contract is a strategy for Hop
@@ -91,6 +92,7 @@ contract HopStrategy is StrategyV5 {
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
         uint256 assetsToLP = underlying.balanceOf(address(this));
+        console.log("Balance of underlying is ", assetsToLP);
         // The amount we add is capped by _amount
         assetsToLP = assetsToLP > _amount ? _amount : assetsToLP;
         // TODO: Review whole function
@@ -228,6 +230,7 @@ contract HopStrategy is StrategyV5 {
 
     /// @notice Returns the investment in lp token.
     function stakedLPBalance() public view returns (uint256) {
+        console.log(IStakingRewards(rewardPool).balanceOf(address(this)));
         return IStakingRewards(rewardPool).balanceOf(address(this));
     }
 

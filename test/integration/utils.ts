@@ -11,7 +11,7 @@ import {
 import {
   ISwapperParams,
   getAllTransactionRequests,
-  swapperParamsToString
+  swapperParamsToString,
 } from "@astrolabs/swapper";
 import { MaxUint256 } from "@ethersproject/constants";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -44,8 +44,8 @@ export async function deployStrat(
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
   const libNames = ["AsAccounting"]; // no need to add AsMaths as imported and use by AsAccounting
-  const addressByLibPath: {[name: string]: string } = {};
-  const contractByLib: {[name: string]: Contract } = {};
+  const addressByLibPath: { [name: string]: string } = {};
+  const contractByLib: { [name: string]: Contract } = {};
   for (const n of libNames) {
     const path = `src/libs/${n}.sol:${n}`;
     const params = {
@@ -84,7 +84,7 @@ export async function setupStrat(
   inputs: string[],
   inputWeights: Number[],
   maxTotalAsset: BigNumber,
-  allocator?: Contract,
+  allocator?: Contract
 ): Promise<Contract> {
   console.log("In setup strat");
   const strategy = await deployStrat(contract, name, args, allocator);
@@ -105,15 +105,22 @@ export async function setupStrat(
   return strategy;
 }
 
-async function logState(strategy: Contract, step?: string) {
+export async function logState(strategy: Contract, step?: string) {
   try {
-    const [
+    const underlyingAddress = await strategy.underlying();
+    const underlyingToken = new Contract(
       underlyingAddress,
+      erc20Abi,
+      deployer
+    );
+    const stratBalanceOfUl = await underlyingToken.balanceOf(strategy.address);
+    const [
       inputsAddresses,
       rewardTokensAddresses,
       sharePriceAfter,
       totalAssetsAfter,
-      invested
+      invested,
+      // stratBalanceOfUl,
     ] = await Promise.all([
       strategy.underlying(),
       strategy.inputs(0),
@@ -121,6 +128,7 @@ async function logState(strategy: Contract, step?: string) {
       strategy.sharePrice(),
       strategy.totalAssets(),
       strategy.invested(),
+      // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
     console.log(
       `State ${step ? `after ${step}` : ""}:
@@ -129,8 +137,10 @@ async function logState(strategy: Contract, step?: string) {
       rewardTokens: ${rewardTokensAddresses}
       sharePrice: ${sharePriceAfter}
       totalAssets(): ${totalAssetsAfter}
-      invested(): ${invested}`);
-  } catch(e) {
+      invested(): ${invested}
+      stratBalanceOfUl(): ${stratBalanceOfUl}`
+    );
+  } catch (e) {
     console.log(`Error logging state: ${e}`);
   }
 }
@@ -212,9 +222,8 @@ async function _swap(o: ISwapperParams, a: ChainAddresses) {
   const output = await ethers.getContractAt("IERC20Metadata", o.output);
   const outputBalanceBeforeSwap = await output.balanceOf(o.payer);
   await input.approve(swapper.target, MaxUint256.toString());
-  const trs: TransactionRequest[]|undefined = (await getAllTransactionRequests(
-    o
-  )) as TransactionRequest[];
+  const trs: TransactionRequest[] | undefined =
+    (await getAllTransactionRequests(o)) as TransactionRequest[];
   assert(trs?.length);
   let received = BigNumber.from(0);
   for (const tr of trs) {
@@ -236,12 +245,9 @@ async function _swap(o: ISwapperParams, a: ChainAddresses) {
       { gasLimit: Math.max(Number(tr.gasLimit ?? 0), 50_000_000) }
     );
     console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
-    received = (await output.balanceOf(o.payer)).sub(
-      outputBalanceBeforeSwap
-    );
+    received = (await output.balanceOf(o.payer)).sub(outputBalanceBeforeSwap);
     console.log(`received ${received} ${o.output}`);
-    if (received.gt(0))
-      break;
+    if (received.gt(0)) break;
   }
   assert(received.gt(1));
 }
