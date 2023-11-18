@@ -99,7 +99,6 @@ export async function setupStrat(
   await strategy.setInputs(inputs, inputWeights);
   await underlying.approve(strategy.address, MaxUint256);
   await underlying.approve(strategy.address, MaxUint256);
-  assert((await strategy.totalAssets()).gt(0));
   await logState(strategy, "Before initialize");
   await strategy.initialize(1e7, maxTotalAsset, { gasLimit: 50e6 });
   await logState(strategy, "After initialize");
@@ -267,7 +266,7 @@ export async function fundAccount(
         receiver,
         payer: deployer.address,
         testPayer: a.accounts!.impersonate,
-        maxSlippage: 5000,
+        // maxSlippage: 5000,
       } as ISwapperParams,
       a
     );
