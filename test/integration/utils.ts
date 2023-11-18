@@ -1,4 +1,5 @@
 import {
+  IDeploymentUnit,
   TransactionRequest,
   deploy,
   ethers,
@@ -7,19 +8,18 @@ import {
   provider,
   weiToString,
 } from "@astrolabs/hardhat";
-import { BigNumber, Contract, constants } from "ethers";
 import {
   ISwapperParams,
   getAllTransactionRequests,
-  getTransactionRequest,
-  swapperParamsToString,
+  swapperParamsToString
 } from "@astrolabs/swapper";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import addresses, { ChainAddresses } from "../../src/addresses";
-import { erc20Abi, wethAbi } from "abitype/abis";
-import { assert } from "console";
 import { MaxUint256 } from "@ethersproject/constants";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { erc20Abi, wethAbi } from "abitype/abis";
+import { BigNumber, Contract, constants } from "ethers";
 import { IStrategyV5 } from "src/types";
+import { ChainAddresses } from "../../src/addresses";
+import { assert } from "chai";
 
 export const addressZero = constants.AddressZero;
 let maxTopup = BigNumber.from(weiToString(5 * 1e18));
@@ -43,10 +43,26 @@ export async function deployStrat(
   allocator?: Contract
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
+  const libNames = ["AsAccounting"];
+  const addressByLibPath: {[name: string]: string } = {};
+  const contractByLib: {[name: string]: Contract } = {};
+  for (const n of libNames) {
+    const path = `src/libs/${n}.sol:${n}`;
+    const params = {
+      contract: n,
+      name: n,
+      verify: true,
+    } as IDeploymentUnit;
+    // if (n !== "AsMaths")
+    //   params.libraries = { AsMaths: addressByLibPath[path] };
+    contractByLib[n] = await deploy(params);
+    addressByLibPath[path] = contractByLib[n].address;
+  }
   const strat = await deploy({
     contract,
     name,
-    args: Object.values(args), // vectorize [,,,,] [[,,,]]
+    args: Object.values(args),
+    libraries: addressByLibPath,
     verify: true,
   });
   return strat;
