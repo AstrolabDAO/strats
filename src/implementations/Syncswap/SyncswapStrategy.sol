@@ -7,8 +7,8 @@ import "../../libs/AsMaths.sol";
 import "./interfaces/IRouter.sol";
 import "../../abstract/StrategyV5.sol";
 
-/// @title Spark Strategy (v5)
-/// @notice This contract is a strategy for Spark
+/// @title Syncswap Strategy (v5)
+/// @notice This contract is a strategy for Syncswap
 /// @dev Basic implementation
 contract SyncswapStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
