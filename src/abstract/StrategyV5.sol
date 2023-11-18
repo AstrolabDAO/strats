@@ -23,7 +23,7 @@ abstract contract StrategyV5 is As4626 {
     uint256 public lastHarvest;
 
     // inputs are assets being used to farm, asset is swapped into inputs
-    IERC20[16] public inputs;
+    IERC20Metadata[16] public inputs;
     // inputs weight in bps vs underlying asset
     // (eg. 80% USDC, 20% DAI -> [8000, 2000] ->
     // swap 20% USDC->DAI on deposit, swap 20% DAI->USDC on withdraw)
@@ -43,7 +43,7 @@ abstract contract StrategyV5 is As4626 {
     ) As4626(_fees, _underlying, _coreAddresses[0], _erc20Metadata) {
         swapper = Swapper(_coreAddresses[1]);
         allocator = _coreAddresses[2];
-        inputs[0] = IERC20(underlying);
+        inputs[0] = IERC20Metadata(underlying);
     }
 
     modifier onlyInternal() {
@@ -60,7 +60,7 @@ abstract contract StrategyV5 is As4626 {
         address[] memory _rewardTokens
     ) external onlyManager {
         for (uint256 i = 0; i < _rewardTokens.length; i++) {
-            inputs[i] = IERC20(_rewardTokens[i]);
+            inputs[i] = IERC20Metadata(_rewardTokens[i]);
         }
     }
 
@@ -69,7 +69,7 @@ abstract contract StrategyV5 is As4626 {
         uint256[] memory _weights
     ) external onlyManager {
         for (uint256 i = 0; i < _inputs.length; i++) {
-            inputs[i] = IERC20(_inputs[i]);
+            inputs[i] = IERC20Metadata(_inputs[i]);
         }
         inputWeights = _weights;
     }
@@ -245,7 +245,7 @@ abstract contract StrategyV5 is As4626 {
     function _setSwapperAllowance(uint256 _value) internal {
         address swapperAddress = address(swapper);
         for (uint256 i = 0; i < rewardTokens.length; i++) {
-            IERC20(rewardTokens[i]).approve(swapperAddress, _value);
+            IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _value);
         }
         for (uint256 i = 0; i < inputs.length; i++) {
             inputs[i].approve(swapperAddress, _value);
