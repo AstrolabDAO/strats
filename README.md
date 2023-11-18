@@ -25,27 +25,14 @@ This repo holds Radyal's smart contracts
 Astrolab DAO and its core team members will not be held accountable for losses related to the deployment and use of this repository's codebase.
 As per the [licence](./LICENCE) states, the code is provided as-is and is under active development. The codebase, documentation, and other aspects of the project may be subject to changes and improvements over time.
 
-## Integrated Protocols
-- [Spark](https://github.com/marsfoundation/sparklend) `todo`
-- [stUSDT](https://github.com/justlend/justlend-protocol) `todo`
-- [AAVE V3](https://github.com/aave/aave-v3-core) `todo`
-- [Compound V3](https://github.com/compound-finance/compound-protocol) `todo`
-- [Frax](https://github.com/FraxFinance/fraxlend) `todo`
-- [Radiant](https://github.com/radiant-capital) `todo`
-- [Uniswap V3](https://github.com/Uniswap/v3-core) `todo`
-- [Balancer V2](https://github.com/balancer/balancer-v2-monorepo) `todo`
-- [Curve](https://github.com/curvefi/curve-contract) `todo`
-- [PancakeSwap](https://github.com/pancakeswap/pancake-smart-contracts) `todo`
-- [KyberSwap](https://github.com/KyberNetwork/ks-elastic-sc) `todo`
-- [iZUMi/iZiSwap](https://github.com/izumiFinance/iZiSwap-core) `todo`
-- [SyncSwap](https://github.com/syncswap/core-contracts) `todo`
-- [Convex](https://github.com/convex-eth/platform) `todo`
-- [Gamma](https://github.com/GammaStrategies/hypervisor) `todo`
-- [Hop](https://github.com/hop-protocol/contracts-v2) `todo`
-- [Overnight/USD+](https://github.com/ovnstable/ovnstable-core) `todo`
-- [Origin/OUSD](https://github.com/OriginProtocol/origin-dollar) `todo`
-- [Idle](https://github.com/Idle-Finance) `todo`
-- [dHedge/Toros](https://github.com/dhedge/V2-Public) `todo`
+## Strategies
+- iZiSwap [USDC|ETH] [ZkSync Era|Scroll|Mantle|Linea|Base] [IZI]
+- KyberSwap [USDC|ETH] [Scroll|Linea|Arbitrum|ZkSync Era|Base] [KNC]
+- PancakeSwap [USDC|ETH] [Linea|ZkSync Era|Arbitrum|Base] [CAKE]
+- SyncSwap [USDC|ETH] [Scroll|Linea|ZkSync Era] []
+- AAVE [USDC|ETH] [Gnosis|Arbitrum|Base] []
+- Spark [USDC|ETH] [Gnosis] []
+- Curve [USDC|ETH] [Celo|Gnosis|Arbitrum|Base] [CRV]
 
 ## Contributing
 Contributions are welcome, reach out at the DAO to claim rewards based on your work.
