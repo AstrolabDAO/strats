@@ -25,4 +25,6 @@ config.paths = {
   tests: "./test/integration",
 } as any;
 
+config.tenderly!.privateVerification = true;
+
 export default config;

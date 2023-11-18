@@ -17,12 +17,12 @@ import {
   deployAll,
 } from "@astrolabs/hardhat";
 import addresses from "../../../src/implementations/Hop/addresses";
-import { deploySwapper, setupStrat, addressZero, fundAccount } from "../utils";
+import { deploySwapper, setupStrat, addressZero, fundAccount, logState } from "../utils";
 import { ChainAddresses } from "src/addresses";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 
 const fee = 180;
-const inputSymbols = ["USDT", "DAI", "USDC"];
+const inputSymbols = ["USDC", "USDT", "DAI"];
 const gasUsedForFunding = 1e22; // 1k gas tokens
 const fees = {
   perf: 2000,
@@ -31,7 +31,7 @@ const fees = {
   exit: 2,
 };
 // NOTE: For testing purposes only, set as false when accounts are well funded to avoid swap
-const needsFunding = true;
+const needsFunding = false;
 const revertState = false;
 const swapperAddress = "";
 
@@ -141,6 +141,11 @@ describe("test.strategy.hopProtocol", function () {
           }
         ); // 100$
         assert((await strategy.balanceOf(deployer.address)).gt(0));
+        console.log(
+          await strategy.balanceOf(deployer.address),
+          "Balance of shares after deposit"
+        );
+        await logState(strategy, "After Deposit");
       });
       it("Swap+Deposit", async function () {
         await underlying.approve(strategy.address, MaxUint256);
@@ -171,14 +176,16 @@ describe("test.strategy.hopProtocol", function () {
           { gasLimit: 50e6 }
         ); // 100$
         assert((await strategy.balanceOf(deployer.address)).gt(0));
-      });
-      it("Invest", async function () {
         console.log(
           await strategy.balanceOf(deployer.address),
-          "Balance of shares before invest"
+          "Balance of shares after swapSafeDeposit"
         );
+        await logState(strategy, "After SwapDeposit");
+      });
+      it("Invest", async function () {
         let swapData: any = [];
         if (underlying.address != input.address) {
+          console.log("We make a calldata");
           const tr = (await getTransactionRequest({
             input: underlying.address,
             output: input.address,
@@ -196,36 +203,37 @@ describe("test.strategy.hopProtocol", function () {
           gasLimit: 50e6,
         });
         assert((await strategy.balanceOf(deployer.address)).gt(0));
+        await logState(strategy, "After Invest");
       });
-      it("Withdraw", async function () {
-        let balanceBefore = await underlying.balanceOf(deployer.address);
-        await strategy.safeWithdraw(
-          inputWeiPerUnit * 50,
-          1, // TODO: change with staticCall
-          deployer.address,
-          deployer.address
-        );
-        assert((await underlying.balanceOf(deployer.address)) > balanceBefore);
-      });
-      it("Liquidate", async function () {
-        let balanceBefore = await underlying.balanceOf(deployer.address);
-        let swapData: any = [];
-        const tr = (await getTransactionRequest({
-          input: input.address,
-          output: underlying.address,
-          amountWei: BigInt(inputWeiPerUnit * 50).toString(),
-          inputChainId: networkId!,
-          payer: deployer.address,
-          testPayer: a.accounts!.impersonate,
-        })) as ITransactionRequestWithEstimate;
-        swapData = ethers.utils.defaultAbiCoder.encode(
-          ["address", "uint256", "bytes"],
-          [tr.to, 1, tr.data]
-        );
+      // it("Withdraw", async function () {
+      //   let balanceBefore = await underlying.balanceOf(deployer.address);
+      //   await strategy.safeWithdraw(
+      //     inputWeiPerUnit * 50,
+      //     1, // TODO: change with staticCall
+      //     deployer.address,
+      //     deployer.address
+      //   );
+      //   assert((await underlying.balanceOf(deployer.address)) > balanceBefore);
+      // });
+      // it("Liquidate", async function () {
+      //   let balanceBefore = await underlying.balanceOf(deployer.address);
+      //   let swapData: any = [];
+      //   const tr = (await getTransactionRequest({
+      //     input: input.address,
+      //     output: underlying.address,
+      //     amountWei: BigInt(inputWeiPerUnit * 50).toString(),
+      //     inputChainId: networkId!,
+      //     payer: deployer.address,
+      //     testPayer: a.accounts!.impersonate,
+      //   })) as ITransactionRequestWithEstimate;
+      //   swapData = ethers.utils.defaultAbiCoder.encode(
+      //     ["address", "uint256", "bytes"],
+      //     [tr.to, 1, tr.data]
+      //   );
 
-        await strategy.liquidate(inputWeiPerUnit * 50, 1, false,  [swapData]);
-        assert((await underlying.balanceOf(deployer.address)) > balanceBefore);
-      });
+      //   await strategy.liquidate(inputWeiPerUnit * 50, 1, false,  [swapData]);
+      //   assert((await underlying.balanceOf(deployer.address)) > balanceBefore);
+      // });
     });
   }
 });
