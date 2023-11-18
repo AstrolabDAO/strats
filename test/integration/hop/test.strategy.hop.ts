@@ -22,8 +22,8 @@ import { ChainAddresses } from "src/addresses";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 
 const fee = 180;
-const inputSymbols = ["USDC", "USDT", "DAI"];
-const gasUsedForFunding = 1e22; // 1k gas tokens
+const inputSymbols = ["USDT", "DAI", "USDC"];
+const gasUsedForFunding = 1e21; // 1k gas tokens
 const fees = {
   perf: 2000,
   mgmt: 0,
