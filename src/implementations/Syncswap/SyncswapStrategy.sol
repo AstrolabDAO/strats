@@ -14,7 +14,6 @@ contract SyncswapStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Tokens used
-    IERC20 public immutable iouToken;
     // Third-party contracts
     IRouter public immutable router;
     IStablePool public immutable pool;
