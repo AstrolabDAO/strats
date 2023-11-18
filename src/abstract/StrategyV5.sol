@@ -78,47 +78,6 @@ abstract contract StrategyV5 is As4626 {
         allocator = _allocator;
     }
 
-    /// @notice Returns the swap output amount
-    /// @dev we consider this (strat) to be the sole reciever of all swaps
-    /// @param _input asset to be swapped into strategy input
-    /// @param _output asset to invest
-    /// @param _amount of _input to be swapped
-    /// @param _params target router, minimum amount and generic callData (eg. SwapperParams)
-    function decodeAndSwap(
-        IERC20 _input,
-        IERC20 _output,
-        uint256 _amount,
-        bytes memory _params
-    ) internal returns (uint256 received) {
-        (
-            address targetRouter,
-            uint256 minAmountReceived,
-            bytes memory swapData
-        ) = abi.decode(_params, (address, uint256, bytes));
-
-        (uint256 inputBefore, uint256 outputBefore) = (
-            _input.balanceOf(address(this)),
-            _output.balanceOf(address(this))
-        );
-        uint256 outputAmount = swapper.swap({
-            _input: address(_input),
-            _output: address(_output),
-            _amountIn: _amount,
-            _minAmountOut: minAmountReceived,
-            _targetRouter: targetRouter,
-            _callData: swapData
-        });
-
-        // check if balances changed as expected (swapData not corrupted)
-        if (
-            outputBefore <= _output.balanceOf(address(this)) ||
-            inputBefore >= _input.balanceOf(address(this))
-        ) {
-            revert FailedToSwap("Failed to swap: inconsistent balances");
-        }
-        return outputAmount;
-    }
-
     /// @notice Order to unfold the strategy
     /// If we pass "panic", we ignore slippage and withdraw all
     /// @dev The call will revert if the slippage created is too high
@@ -318,7 +277,7 @@ abstract contract StrategyV5 is As4626 {
     /// @param _input asset to be swapped into underlying
     /// @param _amount amount of _input to be swapped
     /// @param _minShareAmount minimum amount of shares to be minted
-    /// @param _params generic callData (eg. SwapperParams)
+    /// @param _params encoded routerAddress+minAmount+callData (from SwapperParams)
     function swapSafeDeposit(
         address _input,
         uint256 _amount,
@@ -328,8 +287,8 @@ abstract contract StrategyV5 is As4626 {
     ) external onlyKeeper returns (uint256 shares) {
         uint256 underlyingAmount = _amount;
         if (_input != address(underlying)) {
-            underlyingAmount = decodeAndSwap(
-                IERC20(_input),
+            underlyingAmount = swapper.decodeAndSwap(
+                _input,
                 underlying,
                 _amount,
                 _params

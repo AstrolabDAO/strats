@@ -1,0 +1,26 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Program",
+      "type": "node-terminal",
+      // "cwd": "${workspaceRoot}/back",
+      "cwd": "${workspaceRoot}",
+      "request": "launch",
+      // "command": "yarn test",
+      "command": "yarn hardhat test --network tenderly --grep 'hopProtocol'"
+      // "command": "yarn test-limiters",
+      // "command": "ts-node --files -r tsconfig-paths/register -r dotenv/config ./scripts/deposit-withdraw.ts -d 25 dotenv_config_path=./.env.local"
+      // "command": "yarn restore-database",
+      // "command": "yarn restore-database --flush --drop --populate --resources jobSpec,jobs,pipelines,pipelineSpecs"
+      // "command": "yarn restore-database -e production --flush --drop --populate --resources users,permissions,configs,brands,audits,networks,tokens,protocols,contracts,allocators,bridges,strategies,swap,crates,insurances,jobSpec,jobs,pipelines,pipelineSpecs",
+      // "command": "yarn generate-data --name 'ETH Crate' --slug eth-crate --denomination arb:weth --symbol asETH --months 3",
+      // "command": "yarn generate-data --name 'USDC Crate' --slug usdc-crate --denomination arb:usdc --symbol asUSDC --months 3",
+      // "command": "ts-node ${workspaceFolder}/back/src/scripts/tmp",
+      // "command": "NODE_ENV=development; ts-node -r tsconfig-paths/register --transpile-only ${workspaceFolder}/back/src/index.ts"
+    }
+  ]
+}

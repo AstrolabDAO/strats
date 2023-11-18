@@ -43,7 +43,7 @@ export async function deployStrat(
   allocator?: Contract
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
-  const libNames = ["AsAccounting"];
+  const libNames = ["AsAccounting"]; // no need to add AsMaths as imported and use by AsAccounting
   const addressByLibPath: {[name: string]: string } = {};
   const contractByLib: {[name: string]: Contract } = {};
   for (const n of libNames) {

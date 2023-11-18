@@ -74,7 +74,7 @@ contract HopStrategy is StrategyV5 {
         if (pendingRewards == 0) return 0;
         // Swapping the rewards
         return
-            decodeAndSwap(
+            swapper.decodeAndSwap(
                 IERC20(rewardTokens[0]),
                 underlying,
                 pendingRewards,
@@ -184,7 +184,7 @@ contract HopStrategy is StrategyV5 {
 
         // swap the unstaked token for the underlying asset if different
         if (inputs[0] != underlying) {
-            unstakedAmount = decodeAndSwap(
+            unstakedAmount = swapper.decodeAndSwap(
                 inputs[0],
                 underlying,
                 unstakedAmount,

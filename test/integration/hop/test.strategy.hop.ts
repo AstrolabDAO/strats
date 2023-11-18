@@ -2,7 +2,6 @@ import { assert } from "chai";
 import { network, ethers } from "hardhat";
 import { BigNumber, Contract, Signer } from "ethers";
 import { erc20Abi } from "abitype/abis";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import swapperAbi from "@astrolabs/registry/abis/Swapper.json";
