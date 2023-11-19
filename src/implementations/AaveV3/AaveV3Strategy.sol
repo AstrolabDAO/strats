@@ -14,22 +14,26 @@ contract AaveV3Strategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Tokens used
-    IERC20 public immutable iouToken;
+    IERC20 public iouToken;
     // Third-party contracts
-    IPool public immutable pool;
+    IPool public pool;
+
+    // constructor(
+    //     Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
+    //     address _underlying, // The asset we are using
+    //     address[] memory _coreAddresses,
+    //     string[] memory _erc20Metadata, // name, symbol of the share and EIP712 version
+    //     address _iouToken,
+    //     address _pool
+    // ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
+    //     iouToken = IERC20(_iouToken);
+    //     pool = IPool(_pool);
+    //     _setAllowances(MAX_UINT256);
+    // }
 
     constructor(
-        Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
-        address _underlying, // The asset we are using
-        address[] memory _coreAddresses,
-        string[] memory _erc20Metadata, // name, symbol of the share and EIP712 version
-        address _iouToken,
-        address _pool
-    ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
-        iouToken = IERC20(_iouToken);
-        pool = IPool(_pool);
-        _setAllowances(MAX_UINT256);
-    }
+        string[] memory _erc20Metadata // name, symbol of the share and EIP712 version
+    ) StrategyV5(_erc20Metadata) {}
 
     // Interactions
 
@@ -42,27 +46,22 @@ contract AaveV3Strategy is StrategyV5 {
         uint256 _minIouReceived,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
-        uint256 assetsToLP = underlying.balanceOf(address(this));
+        uint256 assetsToLP = available();
+
         // The amount we add is capped by _amount
-        assetsToLP = assetsToLP > _amount ? _amount : assetsToLP;
-        if (!((underlying) == (inputs[0]))) {
-            (
-                address targetRouter,
-                uint256 minAmountOut,
-                bytes memory swapData
-            ) = abi.decode(_params[0], (address, uint256, bytes));
-            swapper.swap({
+        assetsToLP = AsMaths.min(assetsToLP, _amount);
+
+        if (underlying != inputs[0]) {
+            swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
-                _amountIn: inputs[0].balanceOf(address(this)),
-                _minAmountOut: minAmountOut,
-                _targetRouter: targetRouter,
-                _callData: swapData
+                _amount: inputs[0].balanceOf(address(this)),
+                _params: _params[0]
             });
         }
 
         if (assetsToLP > 0) {
-            assetsToLP = AsMaths.min({x: assetsToLP, y: _amount});
+            assetsToLP = AsMaths.min(assetsToLP, _amount);
             // Adding liquidity to the pool with the asset balance.
             pool.supply({
                 asset: address(inputs[0]),
@@ -93,7 +92,7 @@ contract AaveV3Strategy is StrategyV5 {
 
         // swap the unstaked token for the underlying asset if different
         if (inputs[0] != underlying) {
-            (assetsRecovered,) = swapper.decodeAndSwap(
+            (assetsRecovered, ) = swapper.decodeAndSwap(
                 address(inputs[0]),
                 address(underlying),
                 assetsRecovered,
@@ -106,8 +105,8 @@ contract AaveV3Strategy is StrategyV5 {
 
     /// @notice Set allowances for third party contracts
     function _setAllowances(uint256 _amount) internal override {
-        underlying.approve({spender: address(swapper), value: _amount});
-        inputs[0].approve({spender: address(pool), value: _amount});
+        underlying.approve(address(swapper), _amount);
+        underlying.approve(address(pool), _amount);
     }
 
     // Getters

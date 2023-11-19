@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 /**
  * @title Math library
@@ -10,7 +9,7 @@ pragma solidity ^0.8.0;
 library AsMaths {
 
     uint256 constant BP_BASIS = 10_000;
-    
+
     function subBp(
         uint256 amount,
         uint256 basisPoints
@@ -417,6 +416,17 @@ library AsMaths {
             result += 1;
         }
         return result;
+    }
+
+    /**
+     * @notice Calculates x * y / denominator with full precision, rounded up
+     */
+    function mulDivRoundUp(
+        uint256 x,
+        uint256 y,
+        uint256 denominator
+    ) internal pure returns (uint256) {
+        return mulDiv(x, y, denominator, Rounding.Ceil);
     }
 
     /**

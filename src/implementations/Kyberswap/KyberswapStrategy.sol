@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "../../libs/AsMaths.sol";
+import "../../libs/AsTickMaths.sol";
+
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-import "../../libs/AsMaths.sol";
-
-import "./interfaces/IRouter.sol";
 import "../../abstract/StrategyV5.sol";
+import "./interfaces/IRouter.sol";
 
-/// @title Syncswap Strategy (v5)
-/// @notice This contract is a strategy for Syncswap
+/// @title Kyberswap Strategy (v5)
+/// @notice This contract is a strategy for Kyberswap
 /// @dev Basic implementation
-contract SyncswapStrategy is StrategyV5 {
+contract KyberswapStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Tokens used
     // Third-party contracts
-    IRouter public immutable KyberRouter;
+    IRouter public kyberRouter;
     KyberSwapElasticLM public lm;
     TicksFeesReader public ticksFeesReader;
     AntiSnipAttackPositionManager public npm;
@@ -31,24 +31,28 @@ contract SyncswapStrategy is StrategyV5 {
 
     uint256 constant STAKE_SLIPPAGE = 10; // 1% slippage
 
+    // constructor(
+    //     Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
+    //     address _underlying, // The asset we are using
+    //     address[] memory _coreAddresses,
+    //     string[] memory _erc20Metadata, // name, symbol of the share and EIP712 version
+    //     address _kyberRouter,
+    //     address _lm,
+    //     address _ticksFeesReader,
+    //     address _npm,
+    //     address _pool
+    // ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
+    //     kyberRouter = IRouter(_kyberRouter);
+    //     lm = KyberSwapElasticLM(_lm);
+    //     ticksFeesReader = TicksFeesReader(_ticksFeesReader);
+    //     npm = AntiSnipAttackPositionManager(_npm);
+    //     pool = Pool(_pool);
+    //     _setAllowances(MAX_UINT256);
+    // }
+
     constructor(
-        Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
-        address _underlying, // The asset we are using
-        address[] memory _coreAddresses,
-        string[] memory _erc20Metadata, // name, symbol of the share and EIP712 version
-        address _kyberRouter,
-        address _lm,
-        address _ticksFeesReader,
-        address _npm,
-        address _pool
-    ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
-        KyberRouter = IRouter(_kyberRouter);
-        lm = KyberSwapElasticLM(_lm);
-        ticksFeesReader = TicksFeesReader(_ticksFeesReader);
-        npm = AntiSnipAttackPositionManager(_npm);
-        pool = Pool(_pool);
-        _setAllowances(MAX_UINT256);
-    }
+        string[] memory _erc20Metadata // name, symbol of the share and EIP712 version
+    ) StrategyV5(_erc20Metadata) {}
 
     // Interactions
 
@@ -61,38 +65,41 @@ contract SyncswapStrategy is StrategyV5 {
         uint256 _minIouReceived,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
-        uint256 assetsToLP = underlying.balanceOf(address(this));
+        uint256 assetsToLP = available();
         // The amount we add is capped by _amount
-        assetsToLP = assetsToLP > _amount ? _amount : assetsToLP;
-        if (!((underlying) == (inputs[0]))) {
-            (
-                address targetRouter,
-                uint256 minAmountOut,
-                bytes memory swapData
-            ) = abi.decode(_params[0], (address, uint256, bytes));
-            swapper.swap({
+
+        assetsToLP = AsMaths.min(assetsToLP, _amount);
+
+        if (underlying != inputs[0]) {
+            swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
-                _amountIn: underlying.balanceOf(address(this)),
-                _minAmountOut: minAmountOut,
-                _targetRouter: targetRouter,
-                _callData: swapData
+                _amount: inputs[0].balanceOf(address(this)),
+                _params: _params[0]
             });
         }
+        // Calculate the value of inputs1 compared to inputs0
+        (uint160 sqrtP, , , ) = pool.getPoolState();
+        (uint128 baseL, , ) = pool.getLiquidityState();
+
+        (uint256 amountLiq0, uint256 amountLiq1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtP,
+                AsTickMath.getSqrtRatioAtTick(lowerTick),
+                AsTickMath.getSqrtRatioAtTick(upperTick),
+                baseL
+            );
+        uint256 needInputs1Value = (_amount * amountLiq1) /
+            (amountLiq0 + amountLiq1);
+        //////////////
+        // TODO: Use NeedInputs1Value to calculate the amount of inputs[0] to swap
 
         // Swapping half inputs[0] to inputs[1]
-        (
-            address targetRouter1,
-            uint256 minAmountOut1,
-            bytes memory swapData1
-        ) = abi.decode(_params[0], (address, uint256, bytes));
-        swapper.swap({
+        swapper.decodeAndSwap({
             _input: address(inputs[0]),
             _output: address(inputs[1]),
-            _amountIn: underlying.balanceOf(address(this)) / 2,
-            _minAmountOut: minAmountOut1,
-            _targetRouter: targetRouter1,
-            _callData: swapData1
+            _amount: underlying.balanceOf(address(this)) / 2,
+            _params: _params[1]
         });
 
         uint256 inputs0Balance = inputs[0].balanceOf(address(this));
@@ -204,8 +211,8 @@ contract SyncswapStrategy is StrategyV5 {
 
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtP,
-            TickMath.getSqrtRatioAtTick(lowerTick),
-            TickMath.getSqrtRatioAtTick(upperTick),
+            AsTickMath.getSqrtRatioAtTick(lowerTick),
+            AsTickMath.getSqrtRatioAtTick(upperTick),
             amountInputs1,
             amountInputs0
         );
@@ -227,31 +234,33 @@ contract SyncswapStrategy is StrategyV5 {
 
     /// @notice Set allowances for third party contracts
     function _setAllowances(uint256 _amount) internal override {
-        underlying.approve({spender: address(swapper), value: _amount});
-        inputs[0].approve({spender: address(swapper), value: _amount});
-        inputs[1].approve({spender: address(swapper), value: _amount});
-        inputs[0].approve({spender: address(npm), value: _amount});
-        inputs[1].approve({spender: address(npm), value: _amount});
-        inputs[0].approve({spender: address(KyberRouter), value: _amount});
-        inputs[1].approve({spender: address(KyberRouter), value: _amount});
-        inputs[0].approve({spender: address(lm), value: _amount});
-        inputs[1].approve({spender: address(lm), value: _amount});
+        underlying.approve(address(swapper), _amount);
+        inputs[0].approve(address(swapper), _amount);
+        inputs[1].approve(address(swapper), _amount);
+        inputs[0].approve(address(npm), _amount);
+        inputs[1].approve(address(npm), _amount);
+        inputs[0].approve(address(kyberRouter), _amount);
+        inputs[1].approve(address(kyberRouter), _amount);
+        inputs[0].approve(address(lm), _amount);
+        inputs[1].approve(address(lm), _amount);
     }
 
-    function _calcUsdcAmountToSwap(uint256 _amount) internal returns (uint256) {
+    function _calcUsdcAmountToSwap(
+        uint256 _amount
+    ) internal view returns (uint256) {
         (uint160 sqrtP, , , ) = pool.getPoolState();
         (uint128 baseL, , ) = pool.getLiquidityState();
 
         (uint256 amountDai, uint256 amountUsdc) = LiquidityAmounts
             .getAmountsForLiquidity(
                 sqrtP,
-                TickMath.getSqrtRatioAtTick(lowerTick),
-                TickMath.getSqrtRatioAtTick(upperTick),
+                AsTickMath.getSqrtRatioAtTick(lowerTick),
+                AsTickMath.getSqrtRatioAtTick(upperTick),
                 baseL
             );
         // uint8 inputs1Decimals = IERC20Metadata(inputs[1]).decimals;
         uint256 needUsdcValue = (_amount * amountDai) /
-            (amountUsdc * uint256(inputs[1].decimals()) /
+            ((amountUsdc * uint256(inputs[1].decimals())) /
                 uint256(inputs[0].decimals()) +
                 amountDai);
         return needUsdcValue;
@@ -259,7 +268,7 @@ contract SyncswapStrategy is StrategyV5 {
 
     // Getters
 
-    function isJoined() internal returns (bool) {
+    function isJoined() internal view returns (bool) {
         uint256[] memory pools = lm.getJoinedPools(tokenId);
         return pools.length > 0;
     }
@@ -315,7 +324,7 @@ contract SyncswapStrategy is StrategyV5 {
     }
 
     /// @notice Returns the price of a token compared to another.
-    function _getRate(address token) internal view returns (uint256) {
+    function _getRate(address token) internal pure returns (uint256) {
         //TODO : Use oracle for exchange rate
         return 1;
     }

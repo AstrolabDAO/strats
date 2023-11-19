@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.0;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -49,23 +49,19 @@ abstract contract As4626 is
     event FeeCollectorUpdated(address indexed feeCollector);
     event FeesUpdated(uint256 perf, uint256 mgmt, uint256 entry, uint256 exit);
     event MaxTotalAssetsSet(uint256 maxTotalAssets);
-
     error LiquidityTooLow(uint256 assets);
-    error AmountZero();
     error SelfMintNotAllowed();
-    error IncorrectShareAmount(uint256 shares);
-    error IncorrectAssetAmount(uint256 assets);
     error FeeError();
     error Unauthorized();
     error TransactionExpired();
     error AmountTooHigh(uint256 amount);
-    error SlippageTooHigh(uint256 amount, uint256 minAmount);
+    error AmountTooLow(uint256 amount);
     error InsufficientFunds(uint256 amount);
     error WrongToken();
     error AddressZero();
 
     // state variables
-    ERC20 public immutable underlying;
+    ERC20 public underlying;
 
     Fees internal MAX_FEES =
         Fees({perf: 5000, mgmt: 500, entry: 200, exit: 200}); // 50%, 5%, 2%, 2%
@@ -83,30 +79,37 @@ abstract contract As4626 is
 
     uint256 public lastUpdate; // Last time the unrealized profit was updated
     Checkpoint public feeCollectedAt; // Used to compute fees
-    uint8 public immutable shareDecimals; // The decimals of the share
-    uint256 public immutable weiPerShare; // The price of the share in wei
+    uint8 public shareDecimals; // The decimals of the share
+    uint256 public weiPerShare; // The price of the share in wei
 
     /**
-     * @dev Set the underlying asset contract. This must be an ERC20-compatible contract (ERC20 or ERC777).
+     * @dev Empty constructor to initialize the contract state and pause the contract.
      */
-    constructor(
-        Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
-        address _underlying, // The asset we are using
-        address _feeCollector,
-        string[] memory _erc20Metadata // name,symbol,version (EIP712)
-    ) ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
+    constructor(string[] memory _erc20Metadata)
+        ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
+        _pause();
+    }
+
+    /**
+     * @dev Initialize the contract after deployment.
+     */
+    function _initialize(
+        Fees memory _fees,
+        address _underlying,
+        address _feeCollector
+    ) internal virtual {
         // check that the fees are not too high
         if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
         fees = _fees;
         underlying = ERC20(_underlying);
         feeCollector = _feeCollector;
 
-        // use same decimals than the underlying
+        // use the same decimals as the underlying
         shareDecimals = ERC20(_underlying).decimals();
-        weiPerShare = 10 ** shareDecimals;
+        weiPerShare = 10**shareDecimals;
         feeCollectedAt = Checkpoint(block.timestamp, weiPerShare);
-        _pause();
     }
+
 
     /// @notice Mints shares to the receiver by depositing underlying tokens
     /// @param _shares Amount of shares minted to the _receiver
@@ -118,7 +121,7 @@ abstract contract As4626 is
     ) public nonReentrant returns (uint256 assets) {
         assets = convertToAssets(_shares);
 
-        if (assets == 0 || _shares == 0) revert AmountZero();
+        if (assets == 0 || _shares == 0) revert AmountTooLow(0);
         if (totalAssets() < minLiquidity) revert LiquidityTooLow(totalAssets());
         if (assets > maxDeposit(_receiver))
             revert AmountTooHigh(maxDeposit(_receiver));
@@ -142,7 +145,7 @@ abstract contract As4626 is
         uint256 _minShareAmount
     ) internal nonReentrant returns (uint256 shares) {
         if (_receiver == address(this)) revert SelfMintNotAllowed();
-        if (_amount == 0) revert AmountZero();
+        if (_amount == 0) revert AmountTooLow(0);
         if (_amount > maxDeposit(address(0)))
             // maxDeposit(address(0) is maxDeposit for anyone
             revert AmountTooHigh(maxDeposit(_receiver));
@@ -166,7 +169,7 @@ abstract contract As4626 is
             : _amount.mulDiv(supply, assetsAvailable);
 
         if (shares == 0 || shares < _minShareAmount) {
-            revert IncorrectShareAmount(shares);
+            revert AmountTooLow(shares);
         }
 
         // mint shares
@@ -214,7 +217,7 @@ abstract contract As4626 is
         address _receiver,
         address _owner
     ) internal nonReentrant whenNotPaused returns (uint256 recovered) {
-        if (_amount == 0 || _shares == 0) revert AmountZero();
+        if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
 
         if (_shares >= totalSupply())
             _shares = totalSupply() - 1; // never redeem all shares
@@ -227,13 +230,13 @@ abstract contract As4626 is
         uint256 assets = convertToAssets(_shares);
 
         // Check for rounding error since we round down in previewRedeem.
-        if (assets == 0) revert IncorrectAssetAmount(assets);
+        if (assets == 0) revert AmountTooLow(assets);
 
         // slice fee from burnt shares
         if (feeCollector != address(0)) {
             uint256 fee = _shares.mulDiv(fees.exit, AsMaths.BP_BASIS);
             _amount -= convertToAssets(fee);
-            _update(_owner, address(this), fee);
+            _transfer(_owner, address(this), fee);
             _shares -= fee;
         }
 
@@ -251,7 +254,7 @@ abstract contract As4626 is
         }
 
         if (_minAmountOut > 0 && recovered < _minAmountOut)
-            revert IncorrectAssetAmount(recovered);
+            revert AmountTooLow(recovered);
 
         emit Withdrawn(msg.sender, _receiver, _owner, _amount, _shares);
     }
@@ -372,19 +375,6 @@ abstract contract As4626 is
         _unpause();
     }
 
-    /// @notice Rescue any ERC20 token that is stuck in the contract
-    function rescueToken(address _token, bool _onlyETH) external onlyAdmin {
-        // send any trapped ETH
-        payable(msg.sender).transfer(address(this).balance);
-
-        if (_onlyETH) return;
-
-        if (_token == address(underlying)) revert();
-        ERC20 tokenToRescue = ERC20(_token);
-        uint256 balance = tokenToRescue.balanceOf(address(this));
-        tokenToRescue.transfer(msg.sender, balance);
-    }
-
     /// @notice Update Fee Recipient address
     function setFeeCollector(address _feeCollector) external onlyAdmin {
         if (_feeCollector == address(0)) revert AddressZero();
@@ -473,12 +463,7 @@ abstract contract As4626 is
     /// @dev We consider each pool as having "debt" to the crate
     /// @return The total amount of assets under management
     function totalAssets() public view returns (uint256) {
-        return available()
-            + invested()
-            - AsAccounting.unrealizedProfits(
-                lastUpdate,
-                expectedProfits,
-                profitCooldown);
+        return available() + invested();
     }
 
     /// @notice The share price equal the amount of assets redeemable for one crate token
@@ -560,7 +545,12 @@ abstract contract As4626 is
     /// @notice amount of assets available and not yet deposited
     /// @return amount of assets available
     function available() public view returns (uint256) {
-        return underlying.balanceOf(address(this)) - claimableUnderlyingFees;
+        return underlying.balanceOf(address(this))
+            - claimableUnderlyingFees
+            - AsAccounting.unrealizedProfits(
+                lastUpdate,
+                expectedProfits,
+                profitCooldown);
     }
 
     /// @notice value of the owner's position in underlying tokens

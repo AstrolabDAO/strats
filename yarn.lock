@@ -23,10 +23,10 @@
   resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.2.tgz#8ef65987be75227fbe57bef9f306f42d619f2cce"
   integrity sha512-lTar3hWInwHbjkZi7lF4o22lTdPurx1pkVRPS8qTiKD8pvVhuGr0RI0HdYb1i2btD8ShuDDJBUvXqSbfpEE8iw==
 
-"@astrolabs/swapper@^1.0.11":
-  version "1.0.11"
-  resolved "https://registry.yarnpkg.com/@astrolabs/swapper/-/swapper-1.0.11.tgz#32aa1f33c369507f00b7309dd02babacb9ed04fb"
-  integrity sha512-Q1Ce8FB9lyl3JY0Ob2a1i9YZtNMZtv3hy3iNaScSwLQVr5aXRQ0qG0MdILlT4HUzbpxMBNN1/kTjoOqx+w72xQ==
+"@astrolabs/swapper@^1.0.13":
+  version "1.0.13"
+  resolved "https://registry.yarnpkg.com/@astrolabs/swapper/-/swapper-1.0.13.tgz#fb63a7c7760d5e7ef745a7bd297936dcafb6bc69"
+  integrity sha512-ERnvqX+y1+JyoWEYnR5gDjTY2guDqjUgpeDrNNy8zj4DW5DW3rzEDplsuG+MIjF2N9BmtsL2eoieRFqT8BjlqA==
   dependencies:
     "@astrolabs/registry" "^1.0.1"
     "@types/qs" "^6.9.9"
@@ -779,10 +779,10 @@
     table "^6.8.0"
     undici "^5.14.0"
 
-"@openzeppelin/contracts@^5.0.0":
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-5.0.0.tgz#ee0e4b4564f101a5c4ee398cd4d73c0bd92b289c"
-  integrity sha512-bv2sdS6LKqVVMLI5+zqnNrNU/CA+6z6CmwFXm/MzmOPBRSO5reEJN7z0Gbzvs0/bv/MZZXNklubpwy3v2+azsw==
+"@openzeppelin/contracts@4.9.3":
+  version "4.9.3"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.9.3.tgz#00d7a8cf35a475b160b3f0293a6403c511099364"
+  integrity sha512-He3LieZ1pP2TNt5JbkPA4PNT9WC3gOTOlDcFGJW4Le4QKqwmiNJCRt44APfxMxvq7OugU/cqYuPcSBzOw38DAg==
 
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"

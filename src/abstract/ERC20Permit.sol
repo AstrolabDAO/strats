@@ -5,13 +5,66 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {Nonces} from "./Nonces.sol";
 
 interface IERC1271 {
     function isValidSignature(
         bytes32,
         bytes memory
     ) external view returns (bytes4);
+}
+
+library NonceLib {
+
+    function isValidSignature(
+        address signer,
+        bytes32 digest,
+        bytes memory signature
+    ) internal view returns (bool) {
+        if (signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            if (signer == ecrecover(digest, v, r, s)) {
+                return true;
+            }
+        }
+
+        (bool success, bytes memory result) = signer.staticcall(
+            abi.encodeWithSelector(
+                IERC1271.isValidSignature.selector,
+                digest,
+                signature
+            )
+        );
+        return (success &&
+            result.length == 32 &&
+            abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector);
+    }
+
+    function calculateDomainSeparator(
+        uint256 chainId,
+        bytes memory name,
+        bytes memory version
+    ) internal view returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    ),
+                    keccak256(name),
+                    keccak256(version),
+                    chainId,
+                    address(this)
+                )
+            );
+    }
 }
 
 abstract contract ERC20Permit is ERC20, EIP712, Nonces {
@@ -44,40 +97,7 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
     {
         VERSION = _version;
         deploymentChainId = block.chainid;
-        _DOMAIN_SEPARATOR = _calculateDomainSeparator(block.chainid);
-    }
-
-    // --- Approve by signature ---
-
-    function _isValidSignature(
-        address signer,
-        bytes32 digest,
-        bytes memory signature
-    ) internal view returns (bool) {
-        if (signature.length == 65) {
-            bytes32 r;
-            bytes32 s;
-            uint8 v;
-            assembly {
-                r := mload(add(signature, 0x20))
-                s := mload(add(signature, 0x40))
-                v := byte(0, mload(add(signature, 0x60)))
-            }
-            if (signer == ecrecover(digest, v, r, s)) {
-                return true;
-            }
-        }
-
-        (bool success, bytes memory result) = signer.staticcall(
-            abi.encodeWithSelector(
-                IERC1271.isValidSignature.selector,
-                digest,
-                signature
-            )
-        );
-        return (success &&
-            result.length == 32 &&
-            abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector);
+        _DOMAIN_SEPARATOR = NonceLib.calculateDomainSeparator(block.chainid, bytes(_name), bytes(VERSION));
     }
 
     function permit(
@@ -96,7 +116,7 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
                 "\x19\x01",
                 block.chainid == deploymentChainId
                     ? _DOMAIN_SEPARATOR
-                    : _calculateDomainSeparator(block.chainid),
+                    : NonceLib.calculateDomainSeparator(block.chainid, bytes(name()), bytes(VERSION)),
                 keccak256(
                     abi.encode(
                         PERMIT_TYPEHASH,
@@ -110,7 +130,7 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
             )
         );
 
-        require(_isValidSignature(owner, digest, signature), "Invalid permit");
+        require(NonceLib.isValidSignature(owner, digest, signature), "Invalid permit");
 
         _approve(owner, spender, value);
         emit Approval(owner, spender, value);
@@ -144,22 +164,5 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
         return _domainSeparatorV4();
-    }
-
-    function _calculateDomainSeparator(
-        uint256 chainId
-    ) private view returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    keccak256(bytes(name())),
-                    keccak256(bytes(VERSION)),
-                    chainId,
-                    address(this)
-                )
-            );
     }
 }

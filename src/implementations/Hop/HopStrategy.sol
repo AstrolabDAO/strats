@@ -16,23 +16,27 @@ contract HopStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Tokens used
-    IERC20 public immutable lpToken;
+    IERC20 public lpToken;
     // Third party contracts
-    IStableRouter public immutable stableRouter; // SaddleSwap
-    IStakingRewards public immutable rewardPool;
+    IStableRouter public stableRouter; // SaddleSwap
+    IStakingRewards public rewardPool;
     // params
-    uint8 immutable tokenIndex;
+    uint8 tokenIndex;
 
     constructor(
+        string[] memory _erc20Metadata // name, symbol of the share and EIP712 version
+    ) StrategyV5(_erc20Metadata) {}
+
+    function initialize(
         Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
         address _underlying, // The asset we are using
         address[] memory _coreAddresses,
-        string[] memory _erc20Metadata, // name, symbol of the share and EIP712 version
         address _lpToken,
         address _rewardPool,
         address _stableRouter,
         uint8 _tokenIndex
-    ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
+    ) external onlyAdmin {
+        StrategyV5._initialize(_fees, _underlying, _coreAddresses);
         lpToken = IERC20(_lpToken);
         rewardPool = IStakingRewards(_rewardPool);
         tokenIndex = _tokenIndex;
@@ -67,14 +71,14 @@ contract HopStrategy is StrategyV5 {
         bytes[] memory _params
     ) internal override returns (uint256 assetsReceived) {
         // Claiming the rewards
-        IStakingRewards(rewardPool).getReward();
+        rewardPool.getReward();
 
         uint256 pendingRewards = IERC20(rewardTokens[0]).balanceOf(
             address(this)
         );
         if (pendingRewards == 0) return 0;
         // Swapping the rewards
-        (assetsReceived,) = swapper.decodeAndSwap(
+        (assetsReceived, ) = swapper.decodeAndSwap(
             rewardTokens[0],
             address(underlying),
             pendingRewards,
@@ -91,38 +95,31 @@ contract HopStrategy is StrategyV5 {
         uint256 _minIouReceived,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
-        uint256 assetsToLP = underlying.balanceOf(address(this));
-        console.log("Balance of underlying is ", assetsToLP);
+
+        uint256 assetsToLp = available();
+        console.log("Balance of underlying is ", assetsToLp);
+
+        investedAmount = AsMaths.min(assetsToLp, _amount);
+
         // The amount we add is capped by _amount
-        assetsToLP = assetsToLP > _amount ? _amount : assetsToLP;
-        // TODO: Review whole function
-        if (!((underlying) == (inputs[0]))) {
-            (
-                address targetRouter,
-                uint256 minAmountOut,
-                bytes memory swapData
-            ) = abi.decode(_params[0], (address, uint256, bytes));
-            swapper.swap({
+        if (underlying != inputs[0]) {
+            (assetsToLp, investedAmount) = swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
-                _amountIn: inputs[0].balanceOf(address(this)),
-                _minAmountOut: minAmountOut,
-                _targetRouter: targetRouter,
-                _callData: swapData
+                _amount: investedAmount,
+                _params: _params[0]
             });
         }
 
-        if (assetsToLP > 0) {
-            assetsToLP = AsMaths.min({x: assetsToLP, y: _amount});
-            // Adding liquidity to the pool with the asset balance.
-            uint256 lpBal = _addLiquidity({
-                _amount: assetsToLP,
-                _minLpAmount: _minIouReceived
-            });
-            // Stake the lp balance in the reward pool.
-            IStakingRewards(rewardPool).stake(lpBal);
-            return (assetsToLP, lpBal);
-        }
+        if (assetsToLp < 1) revert AmountTooLow(assetsToLp);
+
+        // Adding liquidity to the pool with the asset balance.
+        iouReceived = _addLiquidity({
+            _amount: assetsToLp,
+            _minLpAmount: _minIouReceived
+        });
+        // Stake the lp balance in the reward pool.
+        rewardPool.stake(iouReceived);
     }
 
     /// @notice Harvest and compound rewards
@@ -138,20 +135,14 @@ contract HopStrategy is StrategyV5 {
         returns (uint256 iouReceived, uint256 harvestedRewards)
     {
         harvestedRewards = _harvest(_params);
-        // if we don't farm with the underlying asset, we need to swap
-        if (!(underlying == inputs[0])) {
-            (
-                address targetRouter,
-                uint256 minAmountOut,
-                bytes memory swapData
-            ) = abi.decode(_params[0], (address, uint256, bytes));
-            swapper.swap({
+
+        // swap back to the underlying asset if needed
+        if (underlying != inputs[0]) {
+            (harvestedRewards, ) = swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
-                _amountIn: inputs[0].balanceOf(address(this)),
-                _minAmountOut: minAmountOut,
-                _targetRouter: targetRouter,
-                _callData: swapData
+                _amount: inputs[0].balanceOf(address(this)),
+                _params: _params[0]
             });
         }
         (, iouReceived) = _invest({
@@ -173,20 +164,20 @@ contract HopStrategy is StrategyV5 {
         // Calculate the amount of lp token to unstake
         uint256 LPToUnstake = (_amount * stakedLPBalance()) / _invested();
         // Unstake the lp token
-        IStakingRewards(rewardPool).withdraw(LPToUnstake);
+        rewardPool.withdraw(LPToUnstake);
         // Calculate the minimum amount of asset to receive
         // Withdraw asset from the pool
         assetsRecovered = stableRouter.removeLiquidityOneToken({
             tokenAmount: lpToken.balanceOf(address(this)),
-            // tokenIndex: tokenIndex,
-            tokenIndex: 0,
+            // tokenIndex: 0,
+            tokenIndex: tokenIndex,
             minAmount: 1, // checked after receiving
             deadline: block.timestamp
         });
 
         // swap the unstaked token for the underlying asset if different
         if (inputs[0] != underlying) {
-            (assetsRecovered,) = swapper.decodeAndSwap(
+            (assetsRecovered, ) = swapper.decodeAndSwap(
                 address(inputs[0]),
                 address(underlying),
                 assetsRecovered,
@@ -199,16 +190,13 @@ contract HopStrategy is StrategyV5 {
 
     /// @notice Set allowances for third party contracts
     function _setAllowances(uint256 _amount) internal override {
-        underlying.approve({spender: address(swapper), value: _amount});
-        inputs[0].approve({spender: address(stableRouter), value: _amount});
+        underlying.approve(address(swapper), _amount);
+        inputs[0].approve(address(stableRouter), _amount);
         if (rewardTokens[0] != address(0)) {
-            IERC20(rewardTokens[0]).approve({
-                spender: address(swapper),
-                value: _amount
-            });
+            IERC20(rewardTokens[0]).approve(address(swapper), _amount);
         }
-        lpToken.approve({spender: address(rewardPool), value: _amount});
-        lpToken.approve({spender: address(stableRouter), value: _amount});
+        lpToken.approve(address(rewardPool), _amount);
+        lpToken.approve(address(stableRouter), _amount);
     }
 
     // Getters
@@ -230,7 +218,6 @@ contract HopStrategy is StrategyV5 {
 
     /// @notice Returns the investment in lp token.
     function stakedLPBalance() public view returns (uint256) {
-        console.log(IStakingRewards(rewardPool).balanceOf(address(this)));
         return IStakingRewards(rewardPool).balanceOf(address(this));
     }
 

@@ -14,23 +14,27 @@ contract SyncswapStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Third-party contracts
-    IRouter public immutable router;
-    IStablePool public immutable pool;
+    IRouter public router;
+    IStablePool public pool;
 
     uint256 constant STAKE_SLIPPAGE = 10; // 1% slippage
 
+    // constructor(
+    //     Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
+    //     address _underlying, // The asset we are using
+    //     address[] memory _coreAddresses,
+    //     string[] memory _erc20Metadata, // name, symbol of the share and EIP712 version
+    //     address _router,
+    //     address _pool
+    // ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
+    //     router = IRouter(_router);
+    //     pool = IStablePool(_pool);
+    //     _setAllowances(MAX_UINT256);
+    // }
+
     constructor(
-        Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
-        address _underlying, // The asset we are using
-        address[] memory _coreAddresses,
-        string[] memory _erc20Metadata, // name, symbol of the share and EIP712 version
-        address _router,
-        address _pool
-    ) StrategyV5(_fees, _underlying, _coreAddresses, _erc20Metadata) {
-        router = IRouter(_router);
-        pool = IStablePool(_pool);
-        _setAllowances(MAX_UINT256);
-    }
+        string[] memory _erc20Metadata // name, symbol of the share and EIP712 version
+    ) StrategyV5(_erc20Metadata) {}
 
     // Interactions
 
@@ -68,7 +72,7 @@ contract SyncswapStrategy is StrategyV5 {
             );
             tokenInputs[0].token = address(inputs[0]);
             tokenInputs[0].amount = inputs[0].balanceOf(address(this));
-            assetsToLP = AsMaths.min({x: assetsToLP, y: _amount});
+            assetsToLP = AsMaths.min(assetsToLP, _amount);
             // Adding liquidity to the pool with the asset balance.
             router.addLiquidity({
                 pool: address(router),
@@ -92,7 +96,6 @@ contract SyncswapStrategy is StrategyV5 {
         uint256 _amount,
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
-
         // Calculate the amount of lp token to unstake
         uint256 lpToUnstake = (_amount * stakedLPBalance()) / _invested();
         // calculate minAmounts
@@ -109,7 +112,7 @@ contract SyncswapStrategy is StrategyV5 {
 
         // swap the unstaked token for the underlying asset if different
         if (inputs[0] != underlying) {
-            (assetsRecovered,) = swapper.decodeAndSwap(
+            (assetsRecovered, ) = swapper.decodeAndSwap(
                 address(inputs[0]),
                 address(underlying),
                 assetsRecovered,
@@ -122,8 +125,8 @@ contract SyncswapStrategy is StrategyV5 {
 
     /// @notice Set allowances for third party contracts
     function _setAllowances(uint256 _amount) internal override {
-        underlying.approve({spender: address(swapper), value: _amount});
-        inputs[0].approve({spender: address(router), value: _amount});
+        underlying.approve(address(swapper), _amount);
+        inputs[0].approve(address(router), _amount);
     }
 
     // Getters
@@ -140,13 +143,13 @@ contract SyncswapStrategy is StrategyV5 {
         if (stakedLPBalance() == 0) {
             return 0;
         } else {
-                (uint256 reserve0, uint256 reserve1) = pool.getReserves();
-                uint256 totalLpBalance = pool.totalSupply();
-                uint256 amount0 = (reserve0 * stakedLPBalance()) / totalLpBalance;
-                uint256 amount1 = (reserve1 * stakedLPBalance()) / totalLpBalance;
-                // calculates how much asset (inputs[0]) is to be withdrawn with the lp token balance
-                // not the actual ERC4626 underlying invested balance
-                return (amount0 + (amount1 * _getRate(address(inputs[1]))));
+            (uint256 reserve0, uint256 reserve1) = pool.getReserves();
+            uint256 totalLpBalance = pool.totalSupply();
+            uint256 amount0 = (reserve0 * stakedLPBalance()) / totalLpBalance;
+            uint256 amount1 = (reserve1 * stakedLPBalance()) / totalLpBalance;
+            // calculates how much asset (inputs[0]) is to be withdrawn with the lp token balance
+            // not the actual ERC4626 underlying invested balance
+            return (amount0 + (amount1 * _getRate(address(inputs[1]))));
         }
     }
 

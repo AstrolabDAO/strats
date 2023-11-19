@@ -40,6 +40,7 @@ export async function deployStrat(
   contract: string,
   name: string,
   args: IStrategyV5,
+  delegator?: Contract,
   allocator?: Contract
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
@@ -58,13 +59,26 @@ export async function deployStrat(
     contractByLib[n] = await deploy(params);
     addressByLibPath[path] = contractByLib[n].address;
   }
+  if (!delegator) {
+    delegator = await deploy({
+      contract: "StrategyDelegatorV5",
+      name: "StrategyDelegatorV5",
+      args: ["","",""], // erc20 metadata placeholders
+      libraries: addressByLibPath, // same libs as strategy
+      verify: true,
+    });
+  }
+  // coreAddresses[3] is the StrategyDelegatorV5 delegator
+  args.coreAddresses.push(delegator.address);
   const strat = await deploy({
     contract,
     name,
-    args: Object.values(args),
+    args: args.erc20Metadata,
     libraries: addressByLibPath,
     verify: true,
   });
+  delete (args as any).erc20Metadata;
+  const ok = await strat.initialize(args, { gasLimit: 50e6 });
   return strat;
 }
 

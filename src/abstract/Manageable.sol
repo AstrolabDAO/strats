@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract Manageable is AccessControlEnumerable {
@@ -98,8 +98,8 @@ contract Manageable is AccessControlEnumerable {
 		bytes32 role,
 		address callerConfirmation
 	) public override(AccessControl, IAccessControl) {
-		if (callerConfirmation != _msgSender())
-			revert AccessControlBadConfirmation();
+
+		require (callerConfirmation == _msgSender(), "Forbidden");
 		if (role == DEFAULT_ADMIN_ROLE) revert AdminCantRenounce();
 
 		_revokeRole(role, callerConfirmation);
