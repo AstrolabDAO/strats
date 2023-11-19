@@ -40,8 +40,8 @@ export async function deployStrat(
   contract: string,
   name: string,
   args: IStrategyV5,
-  delegator?: Contract,
-  allocator?: Contract
+  allocatorAddress?: string,
+  delegatorAddress?: string
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
   const libNames = ["AsAccounting"]; // no need to add AsMaths as imported and use by AsAccounting
@@ -59,21 +59,24 @@ export async function deployStrat(
     contractByLib[n] = await deploy(params);
     addressByLibPath[path] = contractByLib[n].address;
   }
-  if (!delegator) {
-    delegator = await deploy({
+  if (!delegatorAddress) {
+    const delegator = await deploy({
       contract: "StrategyDelegatorV5",
       name: "StrategyDelegatorV5",
-      args: ["","",""], // erc20 metadata placeholders
+      args: [["","",""]], // erc20 metadata placeholders
       libraries: addressByLibPath, // same libs as strategy
       verify: true,
     });
+    delegatorAddress = delegator.address;
   }
+  if (delegatorAddress)
+    args.coreAddresses.push(delegatorAddress);
+
   // coreAddresses[3] is the StrategyDelegatorV5 delegator
-  args.coreAddresses.push(delegator.address);
   const strat = await deploy({
     contract,
     name,
-    args: args.erc20Metadata,
+    args: [args.erc20Metadata],
     libraries: addressByLibPath,
     verify: true,
   });
@@ -98,10 +101,11 @@ export async function setupStrat(
   inputs: string[],
   inputWeights: Number[],
   maxTotalAsset: BigNumber,
-  allocator?: Contract
+  allocator?: string,
+  delegator?: string
 ): Promise<Contract> {
   console.log("In setup strat");
-  const strategy = await deployStrat(contract, name, args, allocator);
+  const strategy = await deployStrat(contract, name, args, allocator, delegator);
   console.log("Strat deployed");
   await grantRoleStrat(strategy);
   if (allocator) {

@@ -22,7 +22,7 @@ import { ChainAddresses } from "src/addresses";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 
 const fee = 180;
-const inputSymbols = ["USDT", "DAI", "USDC"];
+const inputSymbols = ["USDC", "WETH"]; // "DAI"
 const gasUsedForFunding = 1e21; // 1k gas tokens
 const fees = {
   perf: 2000,
@@ -33,7 +33,8 @@ const fees = {
 // NOTE: For testing purposes only, set as false when accounts are well funded to avoid swap
 const needsFunding = false;
 const revertState = false;
-const swapperAddress = "";
+const swapperAddress = "0x11656b8f95613b1617a5862d089873ed67e43128";
+const delegatorAddress = "0xd549AFD017cf14306433D403f1D81197B7eb3AFc";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 let networkSlug;
@@ -125,7 +126,9 @@ describe("test.strategy.hopProtocol", function () {
           underlying,
           [underlying.address],
           [100],
-          MaxUint256
+          MaxUint256,
+          undefined,
+          delegatorAddress
         );
         assert(strategy.address && strategy.address !== addressZero);
         console.log("End of 2nd BeforeAll");
