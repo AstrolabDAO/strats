@@ -4,7 +4,8 @@ import { BigNumber, Contract, Signer } from "ethers";
 import { erc20Abi } from "abitype/abis";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import swapperAbi from "@astrolabs/registry/abis/Swapper.json";
+import swapperBuild from "@astrolabs/registry/abis/Swapper.json";
+
 import {
   ITransactionRequestWithEstimate,
   getTransactionRequest,
@@ -33,16 +34,16 @@ const fees = {
 // NOTE: For testing purposes only, set as false when accounts are well funded to avoid swap
 const needsFunding = false;
 const revertState = false;
-const swapperAddress = "0x11656b8f95613b1617a5862d089873ed67e43128";
-const delegatorAddress = "0xd549AFD017cf14306433D403f1D81197B7eb3AFc";
+const swapperAddress = "";
+const agentAddress = "";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 let networkSlug;
 let networkId;
 let deployer: SignerWithAddress;
 let provider = ethers.provider;
-let strategy: Contract;
 let swapper: Contract;
+let strategy: Contract;
 let input: Contract;
 let inputDecimals: number;
 let inputWeiPerUnit: number;
@@ -71,9 +72,8 @@ describe("test.strategy.hopProtocol", function () {
 
     // deploy pre-requisites
     swapper = swapperAddress
-      ? new Contract(swapperAddress, swapperAbi.abi, deployer)
+      ? new Contract(swapperAddress, swapperBuild.abi, deployer)
       : await deploySwapper();
-
     underlying = new Contract(a.tokens.USDC, erc20Abi, deployer);
     underlyingDecimals = await underlying.decimals();
     underlyingWeiPerUnit = 10 ** underlyingDecimals;
@@ -128,7 +128,7 @@ describe("test.strategy.hopProtocol", function () {
           [100],
           MaxUint256,
           undefined,
-          delegatorAddress
+          agentAddress
         );
         assert(strategy.address && strategy.address !== addressZero);
         console.log("End of 2nd BeforeAll");

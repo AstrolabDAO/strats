@@ -29,10 +29,9 @@ let swapper: Contract;
 
 export async function deploySwapper(): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
-  const blockNumber = await provider.getBlockNumber();
   swapper = await deploy({ contract: "Swapper", verify: true });
   console.log(
-    `Connected to ${network.name} (id ${network.config.chainId}), block ${blockNumber}`
+    `Connected to ${network.name} (id ${network.config.chainId}), block ${await provider.getBlockNumber()}`
   );
   return swapper;
 }
@@ -42,7 +41,7 @@ export async function deployStrat(
   name: string,
   args: IStrategyV5,
   allocatorAddress?: string,
-  delegatorAddress?: string
+  agentAddress?: string
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
   const libNames = ["AsAccounting"]; // no need to add AsMaths as imported and use by AsAccounting
@@ -60,18 +59,19 @@ export async function deployStrat(
     contractByLib[n] = await deploy(params);
     addressByLibPath[path] = contractByLib[n].address;
   }
-  if (!delegatorAddress) {
-    const delegator = await deploy({
+  if (!agentAddress) {
+    const agent = await deploy({
       contract: "StrategyAgentV5",
       name: "StrategyAgentV5",
       args: [["","",""]], // erc20 metadata placeholders
       libraries: addressByLibPath, // same libs as strategy
       verify: true,
     });
-    delegatorAddress = delegator.address;
+    agentAddress = agent.address;
   }
-  if (delegatorAddress)
-    args.coreAddresses.push(delegatorAddress);
+  assert(!agentAddress, "StrategyAgentV5 seems missing from the deployment");
+
+  args.coreAddresses.push(agentAddress);
 
   // coreAddresses[3] is the StrategyAgentV5 delegator
   const strat = await deploy({

@@ -115,7 +115,7 @@ abstract contract As4626Abstract is
                 profitCooldown);
     }
 
-    function invested() public view virtual returns (uint256) {
+    function invested() public view returns (uint256) {
         return _invested();
     }
 
