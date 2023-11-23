@@ -6,7 +6,7 @@ export default merge(addresses, {
   // op
   10: {
     hop: {
-      ETH: {
+      WETH: {
         lp: '0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849', // l2SaddleLpToken
         swap: '0xaa30D6bba6285d0585722e2440Ff89E23EF68864', // l2SaddleSwap
         rewardPools: ['0x95d6A95BECfd98a7032Ed0c7d950ff6e0Fa8d697'], // rewardsContracts
@@ -35,7 +35,7 @@ export default merge(addresses, {
   // xdai
   100: {
     hop: {
-      ETH: {
+      WETH: {
         lp: '0xb9cca4Ed3f082a459c0851058D9FBA0B78dD6C7d', // l2SaddleLpToken
         swap: '0x4014DC015641c08788F15bD6eB20dA4c47D936d8', // l2SaddleSwap
         rewardPools: ['0xC61bA16e864eFbd06a9fe30Aab39D18B8F63710a', '0x712F0cf37Bdb8299D0666727F73a5cAbA7c1c24c'], // rewardsContracts
@@ -64,7 +64,7 @@ export default merge(addresses, {
   // matic
   137: {
     hop: {
-      ETH: {
+      WETH: {
         lp: '0x971039bF0A49c8d8A675f839739eE7a42511eC91', // l2SaddleLpToken
         swap: '0x266e2dc3C4c59E42AA07afeE5B09E964cFFe6778', // l2SaddleSwap
         rewardPools: ['0x7bCeDA1Db99D64F25eFA279BB11CE48E15Fda427', '0xAA7b3a4A084e6461D486E53a03CF45004F0963b7'], // rewardsContracts
@@ -93,7 +93,7 @@ export default merge(addresses, {
   // base
   8453: {
     hop: {
-      ETH: {
+      WETH: {
         lp: '0xe9605BEc1c5C3E81F974F80b8dA9fBEFF4845d4D', // l2SaddleLpToken
         swap: '0x0ce6c85cF43553DE10FC56cecA0aef6Ff0DD444d', // l2SaddleSwap
         rewardPools: ['0x12e59C59D282D2C00f3166915BED6DC2F5e2B5C7'], // rewardsContracts
@@ -110,7 +110,7 @@ export default merge(addresses, {
   // arbitrum
   42161: {
     hop: {
-      ETH: {
+      WETH: {
         lp: '0x59745774Ed5EfF903e615F5A2282Cae03484985a', // l2SaddleLpToken
         swap: '0x652d27c0F72771Ce5C76fd400edD61B406Ac6D97', // l2SaddleSwap
         rewardPools: ['0x755569159598f3702bdD7DFF6233A317C156d3Dd'], // rewardsContracts
@@ -139,7 +139,7 @@ export default merge(addresses, {
   // linea
   59144: {
     hop: {
-      ETH: {
+      WETH: {
         lp: '0x7689674c3EcEC55086b08A3cEA785de2848d8C87', // l2SaddleLpToken
         swap: '0x2935173357c010F8B56c8719a44f9FbdDa90f67c', // l2SaddleSwap
         rewardPools: ['0xa50395bdEaca7062255109fedE012eFE63d6D402'], // rewardsContracts

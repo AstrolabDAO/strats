@@ -11,7 +11,7 @@
       "cwd": "${workspaceRoot}",
       "request": "launch",
       // "command": "yarn test",
-      "command": "yarn hardhat test --network tenderly --grep 'hopProtocol'"
+      "command": "yarn hardhat test --network tenderly --grep 'test.strategy.hopProtocol'"
       // "command": "yarn test-limiters",
       // "command": "ts-node --files -r tsconfig-paths/register -r dotenv/config ./scripts/deposit-withdraw.ts -d 25 dotenv_config_path=./.env.local"
       // "command": "yarn restore-database",

@@ -1,99 +1,22 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.0;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Permit} from "./ERC20Permit.sol";
-import {Manageable} from "./Manageable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./As4626Abstract.sol";
+import "./AsTypes.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
 
-abstract contract As4626 is
-    IERC4626,
-    ERC20Permit,
-    Manageable,
-    Pausable,
-    ReentrancyGuard
-{
+abstract contract As4626 is As4626Abstract {
+
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for ERC20;
 
-    // 1 slot for fees
-    event Deposited(
-        address indexed sender, // Who sent the USDC
-        address indexed owner, // who received the shares
-        uint256 assets, // ex: amount of USDC sent
-        uint256 shares // amount of shares minted
-    );
-    event Withdrawn(
-        address indexed sender,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
-    );
-    event SharePriceUpdated(uint256 shareprice, uint256 timestamp);
-    event FeesCollected(
-        uint256 profit,
-        uint256 totalAssets,
-        uint256 perfFeesAmount,
-        uint256 mgmtFeesAmount,
-        uint256 sharesToMint,
-        address indexed receiver
-    );
-    event FeeCollectorUpdated(address indexed feeCollector);
-    event FeesUpdated(uint256 perf, uint256 mgmt, uint256 entry, uint256 exit);
-    event MaxTotalAssetsSet(uint256 maxTotalAssets);
-    error LiquidityTooLow(uint256 assets);
-    error SelfMintNotAllowed();
-    error FeeError();
-    error Unauthorized();
-    error TransactionExpired();
-    error AmountTooHigh(uint256 amount);
-    error AmountTooLow(uint256 amount);
-    error InsufficientFunds(uint256 amount);
-    error WrongToken();
-    error AddressZero();
-
-    // state variables
-    ERC20 public underlying;
-
-    Fees internal MAX_FEES =
-        Fees({perf: 5000, mgmt: 500, entry: 200, exit: 200}); // 50%, 5%, 2%, 2%
-    uint256 internal constant MAX_UINT256 = type(uint256).max;
-    uint256 internal constant ZERO = 0;
-
-    uint256 public minLiquidity = 1e7; // The minimum amount of assets to seed the vault (10 USDC or .1Gwei ETH)
-    uint256 public profitCooldown = 2 days; // The cooldown period for realizating profits
-    uint256 public claimableUnderlyingFees = 0;
-
-    uint256 public maxTotalAssets; // Max amount of assets in the vault
-    address public feeCollector;
-    Fees public fees; // Fees are in BPS (10000 = 100%)
-    uint256 public expectedProfits; // The yield trickling down
-
-    uint256 public lastUpdate; // Last time the unrealized profit was updated
-    Checkpoint public feeCollectedAt; // Used to compute fees
-    uint8 public shareDecimals; // The decimals of the share
-    uint256 public weiPerShare; // The price of the share in wei
-
-    /**
-     * @dev Empty constructor to initialize the contract state and pause the contract.
-     */
-    constructor(string[] memory _erc20Metadata)
-        ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
-        _pause();
-    }
-
     /**
      * @dev Initialize the contract after deployment.
      */
-    function _initialize(
+    function _init(
         Fees memory _fees,
         address _underlying,
         address _feeCollector
@@ -109,7 +32,6 @@ abstract contract As4626 is
         weiPerShare = 10**shareDecimals;
         feeCollectedAt = Checkpoint(block.timestamp, weiPerShare);
     }
-
 
     /// @notice Mints shares to the receiver by depositing underlying tokens
     /// @param _shares Amount of shares minted to the _receiver
@@ -435,46 +357,6 @@ abstract contract As4626 is
         profitCooldown = _profitCooldown;
     }
 
-    /// @return The address of the underlying asset
-    function asset() public view override(IERC4626) returns (address) {
-        return address(underlying);
-    }
-
-    /// @return The decimals of the share
-    function decimals()
-        public
-        view
-        override(ERC20, IERC20Metadata)
-        returns (uint8)
-    {
-        return shareDecimals;
-    }
-
-    /// @notice amount of assets in the protocol farmed by the strategy
-    /// @dev underlying abstract function to be implemented by the strategy
-    /// @return amount of assets in the pool
-    function _invested() internal view virtual returns (uint256) {}
-
-    function invested() public view virtual returns (uint256) {
-        return _invested();
-    }
-
-    /// @notice Amount of assets under management
-    /// @dev We consider each pool as having "debt" to the crate
-    /// @return The total amount of assets under management
-    function totalAssets() public view returns (uint256) {
-        return available() + invested();
-    }
-
-    /// @notice The share price equal the amount of assets redeemable for one crate token
-    /// @return The virtual price of the crate token
-    function sharePrice() public view returns (uint256) {
-        uint256 supply = totalSupply();
-        return
-            supply == 0
-                ? weiPerShare
-                : totalAssets().mulDiv(weiPerShare, supply);
-    }
 
     /// @notice Convert how much shares you can get for your assets
     /// @param _assets Amount of assets to convert
@@ -540,24 +422,6 @@ abstract contract As4626 is
     /// @return The maximum amount of shares that can be redeemed
     function maxRedeem(address _owner) external view returns (uint256) {
         return paused() ? 0 : balanceOf(_owner);
-    }
-
-    /// @notice amount of assets available and not yet deposited
-    /// @return amount of assets available
-    function available() public view returns (uint256) {
-        return underlying.balanceOf(address(this))
-            - claimableUnderlyingFees
-            - AsAccounting.unrealizedProfits(
-                lastUpdate,
-                expectedProfits,
-                profitCooldown);
-    }
-
-    /// @notice value of the owner's position in underlying tokens
-    /// @param _owner shares owner
-    /// @return value of the position in underlying tokens
-    function assetsOf(address _owner) public view returns (uint256) {
-        return balanceOf(_owner) * sharePrice();
     }
 
     receive() external payable {}

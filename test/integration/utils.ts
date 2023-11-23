@@ -16,6 +16,7 @@ import {
 import { MaxUint256 } from "@ethersproject/constants";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi, wethAbi } from "abitype/abis";
+// import HopStrategyAbi from "../../../registry/abis/HopStrategy.json";
 import { BigNumber, Contract, constants } from "ethers";
 import { IStrategyV5 } from "src/types";
 import { ChainAddresses } from "../../src/addresses";
@@ -61,8 +62,8 @@ export async function deployStrat(
   }
   if (!delegatorAddress) {
     const delegator = await deploy({
-      contract: "StrategyDelegatorV5",
-      name: "StrategyDelegatorV5",
+      contract: "StrategyAgentV5",
+      name: "StrategyAgentV5",
       args: [["","",""]], // erc20 metadata placeholders
       libraries: addressByLibPath, // same libs as strategy
       verify: true,
@@ -72,7 +73,7 @@ export async function deployStrat(
   if (delegatorAddress)
     args.coreAddresses.push(delegatorAddress);
 
-  // coreAddresses[3] is the StrategyDelegatorV5 delegator
+  // coreAddresses[3] is the StrategyAgentV5 delegator
   const strat = await deploy({
     contract,
     name,
@@ -81,7 +82,9 @@ export async function deployStrat(
     verify: true,
   });
   delete (args as any).erc20Metadata;
-  const ok = await strat.initialize(args, { gasLimit: 50e6 });
+  const argsList = Object.values(args);
+  // const strat2 = new Contract(strat.address, HopStrategyAbi.abi, deployer);
+  const ok = await strat.init(...argsList);
   return strat;
 }
 
@@ -110,9 +113,9 @@ export async function setupStrat(
   await grantRoleStrat(strategy);
   if (allocator) {
     // Add new strategy to allocator
-    await allocator.addNewStrategy(strategy.address, MaxUint256, name, {
-      from: deployer.address,
-    });
+    // await allocator.addNewStrategy(strategy.address, MaxUint256, name, {
+    //   from: deployer.address,
+    // });
   }
   await strategy.setInputs(inputs, inputWeights);
   await underlying.approve(strategy.address, MaxUint256);

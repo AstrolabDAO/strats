@@ -3,16 +3,16 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
+import "../../abstract/StrategyV5.sol";
 
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
-import "../../abstract/StrategyV5.sol";
-import "hardhat/console.sol";
 
 /// @title Hop Strategy (v5)
 /// @notice This contract is a strategy for Hop
 /// @dev Generic implementation
 contract HopStrategy is StrategyV5 {
+
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -24,10 +24,10 @@ contract HopStrategy is StrategyV5 {
     uint8 tokenIndex;
 
     constructor(
-        string[] memory _erc20Metadata // name, symbol of the share and EIP712 version
+        string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
     ) StrategyV5(_erc20Metadata) {}
 
-    function initialize(
+    function init(
         Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
         address _underlying, // The asset we are using
         address[] memory _coreAddresses,
@@ -36,7 +36,9 @@ contract HopStrategy is StrategyV5 {
         address _stableRouter,
         uint8 _tokenIndex
     ) external onlyAdmin {
-        StrategyV5._initialize(_fees, _underlying, _coreAddresses);
+        // init StrategyV5+StrategyAgentV5+As4626
+        _init(_fees, _underlying, _coreAddresses);
+        // strategy specific initialization
         lpToken = IERC20(_lpToken);
         rewardPool = IStakingRewards(_rewardPool);
         tokenIndex = _tokenIndex;
@@ -97,7 +99,6 @@ contract HopStrategy is StrategyV5 {
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
 
         uint256 assetsToLp = available();
-        console.log("Balance of underlying is ", assetsToLp);
 
         investedAmount = AsMaths.min(assetsToLp, _amount);
 

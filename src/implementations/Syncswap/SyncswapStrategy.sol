@@ -33,7 +33,7 @@ contract SyncswapStrategy is StrategyV5 {
     // }
 
     constructor(
-        string[] memory _erc20Metadata // name, symbol of the share and EIP712 version
+        string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
     ) StrategyV5(_erc20Metadata) {}
 
     // Interactions
