@@ -29,7 +29,7 @@ let swapper: Contract;
 
 export async function deploySwapper(): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
-  swapper = await deploy({ contract: "Swapper", verify: true });
+  swapper = await deploy({ contract: "Swapper", name: "Swapper", verify: true });
   console.log(
     `Connected to ${network.name} (id ${network.config.chainId}), block ${await provider.getBlockNumber()}`
   );
@@ -41,44 +41,49 @@ export async function deployStrat(
   name: string,
   args: IStrategyV5,
   allocatorAddress?: string,
-  agentAddress?: string
+  agentAddress?: string,
+  libAddresses?: { [name: string]: string }
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
   const libNames = ["AsAccounting"]; // no need to add AsMaths as imported and use by AsAccounting
-  const addressByLibPath: { [name: string]: string } = {};
+  libAddresses ??= {};
   const contractByLib: { [name: string]: Contract } = {};
   for (const n of libNames) {
     const path = `src/libs/${n}.sol:${n}`;
-    const params = {
-      contract: n,
-      name: n,
-      verify: true,
-    } as IDeploymentUnit;
-    // if (n !== "AsMaths")
-    //   params.libraries = { AsMaths: addressByLibPath[path] };
-    contractByLib[n] = await deploy(params);
-    addressByLibPath[path] = contractByLib[n].address;
+    if (!libAddresses[path]) {
+      const params = {
+        contract: n,
+        name: n,
+        verify: true,
+      } as IDeploymentUnit;
+      // if (n !== "AsMaths")
+      //   params.libraries = { AsMaths: libAddresses[path] };
+      contractByLib[n] = await deploy(params);
+      libAddresses[path] = contractByLib[n].address;
+    } else {
+      console.log(`Using existing ${n} at ${libAddresses[path]}`);
+      contractByLib[n] = new Contract(libAddresses[path], [], deployer);
+    }
   }
   if (!agentAddress) {
     const agent = await deploy({
       contract: "StrategyAgentV5",
       name: "StrategyAgentV5",
-      args: [["","",""]], // erc20 metadata placeholders
-      libraries: addressByLibPath, // same libs as strategy
+      libraries: libAddresses, // same libs as strategy
       verify: true,
     });
     agentAddress = agent.address;
   }
-  assert(!agentAddress, "StrategyAgentV5 seems missing from the deployment");
+  assert(agentAddress, "StrategyAgentV5 seems missing from the deployment");
 
   args.coreAddresses.push(agentAddress);
 
   // coreAddresses[3] is the StrategyAgentV5 delegator
   const strat = await deploy({
     contract,
-    name,
+    name: contract,
     args: [args.erc20Metadata],
-    libraries: addressByLibPath,
+    libraries: libAddresses,
     verify: true,
   });
   delete (args as any).erc20Metadata;
@@ -105,10 +110,11 @@ export async function setupStrat(
   inputWeights: Number[],
   maxTotalAsset: BigNumber,
   allocator?: string,
-  delegator?: string
+  delegator?: string,
+  libAddresses?: { [name: string]: string }
 ): Promise<Contract> {
   console.log("In setup strat");
-  const strategy = await deployStrat(contract, name, args, allocator, delegator);
+  const strategy = await deployStrat(contract, name, args, allocator, delegator, libAddresses);
   console.log("Strat deployed");
   await grantRoleStrat(strategy);
   if (allocator) {

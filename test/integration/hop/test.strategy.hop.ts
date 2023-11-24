@@ -34,8 +34,11 @@ const fees = {
 // NOTE: For testing purposes only, set as false when accounts are well funded to avoid swap
 const needsFunding = false;
 const revertState = false;
-const swapperAddress = "";
-const agentAddress = "";
+const swapperAddress = "0xb677be2adc8ea776d08054b308172a128c2dab51";
+const libAddresses = {
+  "src/libs/AsAccounting.sol:AsAccounting": "0x769589d9eafbc7dba2ffae7988882e3610d66cf7",
+};
+const agentAddress = "0x8675de4288516e50a2c73d8cf641c852f320bf8c";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 let networkSlug;
@@ -128,7 +131,8 @@ describe("test.strategy.hopProtocol", function () {
           [100],
           MaxUint256,
           undefined,
-          agentAddress
+          agentAddress,
+          libAddresses
         );
         assert(strategy.address && strategy.address !== addressZero);
         console.log("End of 2nd BeforeAll");

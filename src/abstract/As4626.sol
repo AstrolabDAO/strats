@@ -6,6 +6,7 @@ import "./As4626Abstract.sol";
 import "./AsTypes.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
+import "hardhat/console.sol";
 
 abstract contract As4626 is As4626Abstract {
 
@@ -21,6 +22,7 @@ abstract contract As4626 is As4626Abstract {
         address _underlying,
         address _feeCollector
     ) internal virtual {
+        console.log("As4626.init");
         // check that the fees are not too high
         if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
         fees = _fees;

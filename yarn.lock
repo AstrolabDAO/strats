@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@aashutoshrathi/word-wrap/-/word-wrap-1.2.6.tgz#bd9154aec9983f77b3a034ecaa015c2e4201f6cf"
   integrity sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==
 
-"@astrolabs/hardhat@^1.0.68":
-  version "1.0.68"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.68.tgz#17a454ced89c6bbc116a63b5572c8e2094fd573e"
-  integrity sha512-pUZNhgKyG7h7ZawUCufiglgsAjvmymsX7mRA+9/lp81vK8kErV5HHgbDWqjqb/bWNKswrrmus7atP8x8PB7Sfg==
+"@astrolabs/hardhat@^1.0.70":
+  version "1.0.70"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.70.tgz#d3f8cdd8cac6ef010a87eea3884ac3b4bc95fa4c"
+  integrity sha512-F1L75Ko0LzkP5/CO1mjHIkHmUoRU9pBV585yMWAi7RVnoIZ21nZDPltNABiWzC/MruM3B557d9r0Rsu3ey9pdw==
   dependencies:
     "@nomiclabs/hardhat-ethers" "^2.1.0"
     "@tenderly/hardhat-tenderly" "^1.7.7"

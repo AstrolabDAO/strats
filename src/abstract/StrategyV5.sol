@@ -6,6 +6,7 @@ import "@astrolabs/swapper/contracts/Swapper.sol";
 import "./interfaces/IAllocator.sol";
 import "./StrategyAbstractV5.sol";
 import "./As4626.sol";
+import "hardhat/console.sol";
 
 abstract contract StrategyV5 is StrategyAbstractV5, Proxy {
 
@@ -30,6 +31,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, Proxy {
         address _underlying,
         address[] memory _coreAddresses
     ) internal {
+        console.log("Strategy.init");
         swapper = Swapper(_coreAddresses[1]);
         allocator = _coreAddresses[2];
         agent = _coreAddresses[3];

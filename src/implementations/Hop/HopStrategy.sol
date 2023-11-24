@@ -7,6 +7,7 @@ import "../../abstract/StrategyV5.sol";
 
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
+import "hardhat/console.sol";
 
 /// @title Hop Strategy (v5)
 /// @notice This contract is a strategy for Hop
@@ -37,6 +38,7 @@ contract HopStrategy is StrategyV5 {
         uint8 _tokenIndex
     ) external onlyAdmin {
         // init StrategyV5+StrategyAgentV5+As4626
+        console.log("HopStrategy.init");
         _init(_fees, _underlying, _coreAddresses);
         // strategy specific initialization
         lpToken = IERC20(_lpToken);

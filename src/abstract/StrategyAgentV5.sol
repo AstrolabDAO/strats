@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@astrolabs/swapper/contracts/Swapper.sol";
 import "./interfaces/IAllocator.sol";
 import "./StrategyV5.sol";
+import "hardhat/console.sol";
 
 contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
 
@@ -23,6 +24,7 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
         address _underlying,
         address _feeCollector
     ) external onlyAdmin {
+        console.log("StrategyAgentV5.init");
         _init(_fees, _underlying, _feeCollector);
     }
 
