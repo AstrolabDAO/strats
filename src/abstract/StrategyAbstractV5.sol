@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@astrolabs/swapper/contracts/Swapper.sol";
-import "./interfaces/IAllocator.sol";
 import "./As4626Abstract.sol";
 
 abstract contract StrategyAbstractV5 is As4626Abstract {

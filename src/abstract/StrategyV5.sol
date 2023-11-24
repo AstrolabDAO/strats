@@ -3,9 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@astrolabs/swapper/contracts/Swapper.sol";
-import "./interfaces/IAllocator.sol";
 import "./StrategyAbstractV5.sol";
-import "./As4626.sol";
 import "hardhat/console.sol";
 
 abstract contract StrategyV5 is StrategyAbstractV5, Proxy {

@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@astrolabs/swapper/contracts/Swapper.sol";
 import "./interfaces/IAllocator.sol";
-import "./StrategyV5.sol";
+import "./StrategyAbstractV5.sol";
+import "./As4626.sol";
 import "hardhat/console.sol";
 
 contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
