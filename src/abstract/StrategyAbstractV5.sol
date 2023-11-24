@@ -22,7 +22,7 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     // inputs are assets being used to farm, asset is swapped into inputs
     IERC20Metadata[16] public inputs;
     // inputs weight in bps vs underlying asset
-    uint256[] public inputWeights;
+    uint256[16] public inputWeights;
 
     // reward tokens are the tokens harvested at compound and liquidate times
     address[16] public rewardTokens;

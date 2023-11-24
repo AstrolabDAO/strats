@@ -1,3 +1,5 @@
+import { BigNumber } from "ethers";
+
 export interface Fees {
     perf: number;
     mgmt: number;
@@ -18,4 +20,7 @@ export interface IStrategyV5 extends IAs4626 {
     feeCollector: string;
     coreAddresses: string[], // feeCollector,swapper,allocator
     erc20Metadata: string[],
+    inputs: string[],
+    inputWeights: number[],
+    rewardTokens: string[]
 }

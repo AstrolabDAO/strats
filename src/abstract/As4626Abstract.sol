@@ -62,7 +62,7 @@ abstract contract As4626Abstract is
     // Variables
     ERC20 public underlying;
 
-    Fees internal MAX_FEES;
+    Fees internal MAX_FEES = Fees(5_000, 200, 100, 100); // 50%, 2%, 1%, 1%
     uint256 internal constant MAX_UINT256 = type(uint256).max;
     uint256 internal constant ZERO = 0;
 

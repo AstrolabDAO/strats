@@ -9,7 +9,6 @@ import "../libs/AsAccounting.sol";
 import "hardhat/console.sol";
 
 abstract contract As4626 is As4626Abstract {
-
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for ERC20;
@@ -17,11 +16,11 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @dev Initialize the contract after deployment.
      */
-    function _init(
+    function init(
         Fees memory _fees,
         address _underlying,
         address _feeCollector
-    ) internal virtual {
+    ) public virtual onlyAdmin {
         console.log("As4626.init");
         // check that the fees are not too high
         if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
@@ -31,7 +30,7 @@ abstract contract As4626 is As4626Abstract {
 
         // use the same decimals as the underlying
         shareDecimals = ERC20(_underlying).decimals();
-        weiPerShare = 10**shareDecimals;
+        weiPerShare = 10 ** shareDecimals;
         feeCollectedAt = Checkpoint(block.timestamp, weiPerShare);
     }
 
@@ -105,7 +104,9 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount
     ) public view returns (uint256 shares) {
         return
-            convertToShares(_amount.mulDiv(AsMaths.BP_BASIS - fees.entry, AsMaths.BP_BASIS));
+            convertToShares(
+                _amount.mulDiv(AsMaths.BP_BASIS - fees.entry, AsMaths.BP_BASIS)
+            );
     }
 
     // @inheritdoc _deposit
@@ -143,8 +144,7 @@ abstract contract As4626 is As4626Abstract {
     ) internal nonReentrant whenNotPaused returns (uint256 recovered) {
         if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
 
-        if (_shares >= totalSupply())
-            _shares = totalSupply() - 1; // never redeem all shares
+        if (_shares >= totalSupply()) _shares = totalSupply() - 1; // never redeem all shares
 
         // spend the allowance if the msg.sender isn't the receiver
         if (msg.sender != _owner) {
@@ -259,10 +259,11 @@ abstract contract As4626 is As4626Abstract {
             uint256 mgmtFeesAmount,
             uint256 profit
         ) = AsAccounting.computeFees(
-            totalAssets(),
-            sharePrice(),
-            fees,
-            feeCollectedAt);
+                totalAssets(),
+                sharePrice(),
+                fees,
+                feeCollectedAt
+            );
 
         if (feeCollector == address(0)) revert AddressZero();
         if (profit == 0) return;
@@ -317,8 +318,10 @@ abstract contract As4626 is As4626Abstract {
     /// @dev Deposits are disabled when the assets reach this limit
     /// @param _seedDeposit amount of assets to seed the vault
     /// @param _maxTotalAssets max amount of assets
-    function initialize(uint256 _seedDeposit, uint256 _maxTotalAssets) external onlyManager {
-
+    function initialize(
+        uint256 _seedDeposit,
+        uint256 _maxTotalAssets
+    ) external onlyManager {
         if (_seedDeposit < (minLiquidity - totalAssets()))
             revert LiquidityTooLow(_seedDeposit);
         // seed the vault with some assets if it's empty
@@ -359,7 +362,6 @@ abstract contract As4626 is As4626Abstract {
         profitCooldown = _profitCooldown;
     }
 
-
     /// @notice Convert how much shares you can get for your assets
     /// @param _assets Amount of assets to convert
     /// @return The amount of shares you can get for your assets
@@ -391,7 +393,9 @@ abstract contract As4626 is As4626Abstract {
     /// @return How many shares will be burnt
     function previewWithdraw(uint256 _assets) public view returns (uint256) {
         return
-            convertToShares(_assets.mulDiv(AsMaths.BP_BASIS, AsMaths.BP_BASIS - fees.exit));
+            convertToShares(
+                _assets.mulDiv(AsMaths.BP_BASIS, AsMaths.BP_BASIS - fees.exit)
+            );
     }
 
     /// @notice Preview how many underlying tokens the caller will get for burning his _shares
@@ -408,7 +412,8 @@ abstract contract As4626 is As4626Abstract {
     /// @return The maximum amount of assets that can be deposited
     function maxDeposit(address) public view returns (uint256) {
         uint256 _totalAssets = totalAssets();
-        return _totalAssets > maxTotalAssets ? 0 : maxTotalAssets - _totalAssets;
+        return
+            _totalAssets > maxTotalAssets ? 0 : maxTotalAssets - _totalAssets;
     }
 
     /// @return The maximum amount of shares that can be minted

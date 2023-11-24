@@ -29,25 +29,42 @@ let swapper: Contract;
 
 export async function deploySwapper(): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
-  swapper = await deploy({ contract: "Swapper", name: "Swapper", verify: true });
+  swapper = await deploy({
+    contract: "Swapper",
+    name: "Swapper",
+    verify: true,
+  });
   console.log(
-    `Connected to ${network.name} (id ${network.config.chainId}), block ${await provider.getBlockNumber()}`
+    `Connected to ${network.name} (id ${
+      network.config.chainId
+    }), block ${await provider.getBlockNumber()}`
   );
   return swapper;
 }
 
-export async function deployStrat(
+export async function grantStratRoles(strat: Contract) {
+  const keeperRole = await strat.KEEPER_ROLE();
+  const managerRole = await strat.MANAGER_ROLE();
+
+  await strat.grantRole(keeperRole, deployer.address);
+  await strat.grantRole(managerRole, deployer.address);
+}
+
+export async function setupStrat(
   contract: string,
   name: string,
   args: IStrategyV5,
-  allocatorAddress?: string,
+  allocator?: string,
   agentAddress?: string,
   libAddresses?: { [name: string]: string }
 ): Promise<Contract> {
   deployer ??= (await getDeployer()) as SignerWithAddress;
-  const libNames = ["AsAccounting"]; // no need to add AsMaths as imported and use by AsAccounting
+
+  // strategy dependencies
+  const libNames = new Set(["AsAccounting"]); // no need to add AsMaths as imported and use by AsAccounting
   libAddresses ??= {};
   const contractByLib: { [name: string]: Contract } = {};
+
   for (const n of libNames) {
     const path = `src/libs/${n}.sol:${n}`;
     if (!libAddresses[path]) {
@@ -65,6 +82,8 @@ export async function deployStrat(
       contractByLib[n] = new Contract(libAddresses[path], [], deployer);
     }
   }
+
+  // if StrategyAgent implementation is not available on the current blockchain, deploy it
   if (!agentAddress) {
     const agent = await deploy({
       contract: "StrategyAgentV5",
@@ -73,12 +92,13 @@ export async function deployStrat(
       verify: true,
     });
     agentAddress = agent.address;
+  } else {
+    console.log(`Using existing StrategyAgent at ${agentAddress}`);
   }
   assert(agentAddress, "StrategyAgentV5 seems missing from the deployment");
-
   args.coreAddresses.push(agentAddress);
 
-  // coreAddresses[3] is the StrategyAgentV5 delegator
+  // deploy the strategy implementation (specific strategy implementation + StrategyAgent transparent proxy)
   const strat = await deploy({
     contract,
     name: contract,
@@ -86,61 +106,32 @@ export async function deployStrat(
     libraries: libAddresses,
     verify: true,
   });
+
+  // remove the constructed erc20Metadata from the init args
   delete (args as any).erc20Metadata;
+
   const argsList = Object.values(args);
-  // const strat2 = new Contract(strat.address, HopStrategyAbi.abi, deployer);
-  const ok = await strat.init(...argsList);
-  return strat;
-}
-
-export async function grantRoleStrat(strategy: Contract) {
-  const keeperRole = await strategy.KEEPER_ROLE();
-  const managerRole = await strategy.MANAGER_ROLE();
-
-  await strategy.grantRole(keeperRole, deployer.address);
-  await strategy.grantRole(managerRole, deployer.address);
-}
-
-export async function setupStrat(
-  contract: string,
-  name: string,
-  args: IStrategyV5,
-  underlying: Contract,
-  inputs: string[],
-  inputWeights: Number[],
-  maxTotalAsset: BigNumber,
-  allocator?: string,
-  delegator?: string,
-  libAddresses?: { [name: string]: string }
-): Promise<Contract> {
-  console.log("In setup strat");
-  const strategy = await deployStrat(contract, name, args, allocator, delegator, libAddresses);
-  console.log("Strat deployed");
-  await grantRoleStrat(strategy);
+  await grantStratRoles(strat);
+  const ok = await strat[
+    "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,uint8)"
+  ](...argsList, { gasLimit: 5e7 });
+  await logState(strat, "After initialize");
   if (allocator) {
     // Add new strategy to allocator
     // await allocator.addNewStrategy(strategy.address, MaxUint256, name, {
     //   from: deployer.address,
     // });
   }
-  await strategy.setInputs(inputs, inputWeights);
-  await underlying.approve(strategy.address, MaxUint256);
-  await underlying.approve(strategy.address, MaxUint256);
-  await logState(strategy, "Before initialize");
-  await strategy.initialize(1e7, maxTotalAsset, { gasLimit: 50e6 });
-  await logState(strategy, "After initialize");
-  return strategy;
+  const asset = new Contract(args.underlying, erc20Abi, deployer);
+  await asset.approve(strat.address, MaxUint256);
+  return strat;
 }
 
-export async function logState(strategy: Contract, step?: string) {
+export async function logState(strat: Contract, step?: string) {
   try {
-    const underlyingAddress = await strategy.underlying();
-    const underlyingToken = new Contract(
-      underlyingAddress,
-      erc20Abi,
-      deployer
-    );
-    const stratBalanceOfUl = await underlyingToken.balanceOf(strategy.address);
+    const underlyingAddress = await strat.underlying();
+    const underlyingToken = new Contract(underlyingAddress, erc20Abi, deployer);
+    const stratBalanceOfUl = await underlyingToken.balanceOf(strat.address);
     const [
       inputsAddresses,
       rewardTokensAddresses,
@@ -149,12 +140,12 @@ export async function logState(strategy: Contract, step?: string) {
       invested,
       // stratBalanceOfUl,
     ] = await Promise.all([
-      strategy.underlying(),
-      strategy.inputs(0),
-      strategy.rewardTokens(0),
-      strategy.sharePrice(),
-      strategy.totalAssets(),
-      strategy.invested(),
+      strat.underlying(),
+      strat.inputs(0),
+      strat.rewardTokens(0),
+      strat.sharePrice(),
+      strat.totalAssets(),
+      strat.invested(),
       // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
     console.log(
@@ -168,7 +159,7 @@ export async function logState(strategy: Contract, step?: string) {
       stratBalanceOfUl(): ${stratBalanceOfUl}`
     );
   } catch (e) {
-    console.log(`Error logging state: ${e}`);
+    console.log(`Error logging state ${step ?? ""}: ${e}`);
   }
 }
 

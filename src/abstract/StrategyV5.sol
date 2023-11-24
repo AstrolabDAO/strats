@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@astrolabs/swapper/contracts/Swapper.sol";
 import "./StrategyAbstractV5.sol";
+import "./AsProxy.sol";
 import "hardhat/console.sol";
 
-abstract contract StrategyV5 is StrategyAbstractV5, Proxy {
+abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
 
     using AsMaths for uint256;
     using AsMaths for int256;
@@ -24,19 +24,16 @@ abstract contract StrategyV5 is StrategyAbstractV5, Proxy {
 
     constructor(string[3] memory _erc20Metadata) StrategyAbstractV5(_erc20Metadata) {}
 
-    function _init(
+    function init(
         Fees memory _fees,
         address _underlying,
-        address[] memory _coreAddresses
-    ) internal {
-        console.log("Strategy.init");
-        swapper = Swapper(_coreAddresses[1]);
+        address[4] memory _coreAddresses
+    ) public onlyAdmin {
+        updateSwapper(_coreAddresses[1]);
         allocator = _coreAddresses[2];
         agent = _coreAddresses[3];
-        inputs[0] = IERC20Metadata(_underlying);
-        // delegatecall to
-        // As4626.init(_fees, _underlying, _coreAddresses[0]);
-        _delegate(agent);
+        // StrategyAgentV5.init
+        _delegateWithSignature(agent, "init((uint64,uint64,uint64,uint64),address,address)");
     }
 
     function _implementation() internal view override returns (address) {
@@ -45,20 +42,25 @@ abstract contract StrategyV5 is StrategyAbstractV5, Proxy {
 
     function setRewardTokens(
         address[] memory _rewardTokens
-    ) external onlyManager {
-        for (uint256 i = 0; i < _rewardTokens.length; i++) {
-            inputs[i] = IERC20Metadata(_rewardTokens[i]);
-        }
+    ) public onlyManager {
+        for (uint256 i = 0; i < _rewardTokens.length; i++)
+            rewardTokens[i] = _rewardTokens[i];
+        for (uint256 i = _rewardTokens.length; i < 16; i++)
+            rewardTokens[i] = address(0);
     }
 
     function setInputs(
         address[] memory _inputs,
         uint256[] memory _weights
-    ) external onlyManager {
+    ) public onlyManager {
         for (uint256 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
+            inputWeights[i] = _weights[i];
         }
-        inputWeights = _weights;
+        for (uint256 i = _inputs.length; i < 16; i++) {
+            inputs[i] = IERC20Metadata(address(0));
+            inputWeights[i] = 0;
+        }
     }
 
     function updateAllocator(address _allocator) external onlyManager {
@@ -75,9 +77,11 @@ abstract contract StrategyV5 is StrategyAbstractV5, Proxy {
     function setSwapperAllowance(uint256 _amount) public onlyAdmin {
         address swapperAddress = address(swapper);
         for (uint256 i = 0; i < rewardTokens.length; i++) {
+            if (rewardTokens[i] == address(0)) break;
             IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
         }
         for (uint256 i = 0; i < inputs.length; i++) {
+            if (address(inputs[i]) == address(0)) break;
             inputs[i].approve(swapperAddress, _amount);
         }
         underlying.approve(swapperAddress, _amount);
@@ -87,10 +91,10 @@ abstract contract StrategyV5 is StrategyAbstractV5, Proxy {
     /// @notice Change the Swapper address, remove allowances and give new ones
     function updateSwapper(
         address _swapper
-    ) external onlyAdmin {
+    ) public onlyAdmin {
         if (_swapper == address(0)) revert AddressZero();
-        setSwapperAllowance(0); // delegate
-        // Set new swapper
+        if (address(swapper) != address(0))
+            setSwapperAllowance(0);
         swapper = Swapper(_swapper);
         setSwapperAllowance(MAX_UINT256);
         emit SwapperUpdated(_swapper);

@@ -23,7 +23,7 @@ import { ChainAddresses } from "src/addresses";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 
 const fee = 180;
-const inputSymbols = ["USDC", "WETH"]; // "DAI"
+const inputSymbols = ["USDC"]; // , "WETH", "DAI"];
 const gasUsedForFunding = 1e21; // 1k gas tokens
 const fees = {
   perf: 2000,
@@ -34,11 +34,12 @@ const fees = {
 // NOTE: For testing purposes only, set as false when accounts are well funded to avoid swap
 const needsFunding = false;
 const revertState = false;
-const swapperAddress = "0xb677be2adc8ea776d08054b308172a128c2dab51";
+// TODO: move to addresses.ts
+const swapperAddress = "0xdfe11c1beb360820a6aa9ada899243de459b3894";
 const libAddresses = {
-  "src/libs/AsAccounting.sol:AsAccounting": "0x769589d9eafbc7dba2ffae7988882e3610d66cf7",
+  "src/libs/AsAccounting.sol:AsAccounting": "0x503301eb7cfc64162b5ce95cc67b84fbf6df5255",
 };
-const agentAddress = "0x8675de4288516e50a2c73d8cf641c852f320bf8c";
+const agentAddress = "0x8e8da0a2f93997c90373d4f61843355244cb378e";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 let networkSlug;
@@ -46,7 +47,7 @@ let networkId;
 let deployer: SignerWithAddress;
 let provider = ethers.provider;
 let swapper: Contract;
-let strategy: Contract;
+let strat: Contract;
 let input: Contract;
 let inputDecimals: number;
 let inputWeiPerUnit: number;
@@ -113,7 +114,7 @@ describe("test.strategy.hopProtocol", function () {
 
         const name = `Astrolab Hop h${inputSymbol}`;
         // Deploy strategy, grant roles to deployer and set maxTotalAsset
-        strategy = await setupStrat(
+        strat = await setupStrat(
           "HopStrategy",
           name,
           {
@@ -121,42 +122,52 @@ describe("test.strategy.hopProtocol", function () {
             underlying: underlying.address,
             coreAddresses: [deployer.address, swapper.address, addressZero],
             erc20Metadata: [name, `as.h${inputSymbol}`, "1"],
+            inputs: [input.address],
+            inputWeights: [100_000],
+            rewardTokens: [a.tokens.HOP],
             lpToken: a.hop[inputSymbol].lp,
             rewardPool: a.hop[inputSymbol].rewardPools[0],
             stableRouter: a.hop[inputSymbol].swap,
             tokenIndex: 0,
           } as IHopStrategyV5,
-          underlying,
-          [underlying.address],
-          [100],
-          MaxUint256,
           undefined,
           agentAddress,
           libAddresses
         );
-        assert(strategy.address && strategy.address !== addressZero);
+        assert(strat.address && strat.address !== addressZero);
         console.log("End of 2nd BeforeAll");
       });
+      it("Seed Liquidity", async function () {
+        await logState(strat, "Before SeedLiquidity");
+        await underlying.approve(strat.address, MaxUint256);
+        await strat.seedLiquidity(MaxUint256);
+        assert((await strat.balanceOf(deployer.address)).gt(0));
+        console.log(
+          await strat.balanceOf(deployer.address),
+          "Balance of shares after seedLiquidity"
+        );
+        await logState(strat, "After SeedLiquidity");
+      });
       it("Deposit", async function () {
-        await underlying.approve(strategy.address, MaxUint256);
-        await strategy.safeDeposit(
+        await underlying.approve(strat.address, MaxUint256);
+        await strat.safeDeposit(
           inputWeiPerUnit * 100,
           deployer.address,
           inputWeiPerUnit * 90,
           {
-            gasLimit: 50e6,
+            gasLimit: 5e7,
           }
         ); // 100$
-        assert((await strategy.balanceOf(deployer.address)).gt(0));
+        assert((await strat.balanceOf(deployer.address)).gt(0));
         console.log(
-          await strategy.balanceOf(deployer.address),
+          await strat.balanceOf(deployer.address),
           "Balance of shares after deposit"
         );
-        await logState(strategy, "After Deposit");
+        await logState(strat, "After Deposit");
       });
       it("Swap+Deposit", async function () {
-        await underlying.approve(strategy.address, MaxUint256);
-        await input.approve(strategy.address, MaxUint256);
+        await underlying.approve(strat.address, MaxUint256);
+        await input.approve(strat.address, MaxUint256);
 
         let swapData: any = [];
         if (underlying.address != input.address) {
@@ -165,7 +176,7 @@ describe("test.strategy.hopProtocol", function () {
             output: underlying.address,
             amountWei: BigInt(inputWeiPerUnit * 100).toString(),
             inputChainId: networkId!,
-            payer: strategy.address,
+            payer: strat.address,
             testPayer: a.accounts!.impersonate,
           })) as ITransactionRequestWithEstimate;
           swapData = ethers.utils.defaultAbiCoder.encode(
@@ -174,20 +185,20 @@ describe("test.strategy.hopProtocol", function () {
           );
         }
 
-        await strategy.swapSafeDeposit(
+        await strat.swapSafeDeposit(
           input.address,
           inputWeiPerUnit * 100,
           deployer.address,
           inputWeiPerUnit * 90,
           swapData,
-          { gasLimit: 50e6 }
+          { gasLimit: 5e7 }
         ); // 100$
-        assert((await strategy.balanceOf(deployer.address)).gt(0));
+        assert((await strat.balanceOf(deployer.address)).gt(0));
         console.log(
-          await strategy.balanceOf(deployer.address),
+          await strat.balanceOf(deployer.address),
           "Balance of shares after swapSafeDeposit"
         );
-        await logState(strategy, "After SwapDeposit");
+        await logState(strat, "After SwapDeposit");
       });
       it("Invest", async function () {
         let swapData: any = [];
@@ -198,7 +209,7 @@ describe("test.strategy.hopProtocol", function () {
             output: input.address,
             amountWei: BigInt(inputWeiPerUnit * 100).toString(),
             inputChainId: networkId!,
-            payer: strategy.address,
+            payer: strat.address,
             testPayer: a.accounts!.impersonate,
           })) as ITransactionRequestWithEstimate;
           swapData = ethers.utils.defaultAbiCoder.encode(
@@ -206,11 +217,11 @@ describe("test.strategy.hopProtocol", function () {
             [tr.to, 1, tr.data]
           );
         }
-        await strategy.invest(inputWeiPerUnit * 100, 1, [swapData], {
-          gasLimit: 50e6,
+        await strat.invest(inputWeiPerUnit * 100, 1, [swapData], {
+          gasLimit: 5e7,
         });
-        assert((await strategy.balanceOf(deployer.address)).gt(0));
-        await logState(strategy, "After Invest");
+        assert((await strat.balanceOf(deployer.address)).gt(0));
+        await logState(strat, "After Invest");
       });
       // it("Withdraw", async function () {
       //   let balanceBefore = await underlying.balanceOf(deployer.address);

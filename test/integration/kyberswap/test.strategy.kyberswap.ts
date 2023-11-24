@@ -138,7 +138,7 @@ describe("test.strategy.kyberswapProtocol", function () {
           deployer.address,
           inputWeiPerUnit * 90,
           {
-            gasLimit: 50e6,
+            gasLimit: 5e7,
           }
         ); // 100$
         assert((await strategy.balanceOf(deployer.address)).gt(0));
@@ -174,7 +174,7 @@ describe("test.strategy.kyberswapProtocol", function () {
           deployer.address,
           inputWeiPerUnit * 90,
           swapData,
-          { gasLimit: 50e6 }
+          { gasLimit: 5e7 }
         ); // 100$
         assert((await strategy.balanceOf(deployer.address)).gt(0));
         console.log(
@@ -201,7 +201,7 @@ describe("test.strategy.kyberswapProtocol", function () {
           );
         }
         await strategy.invest(inputWeiPerUnit * 100, 1, [swapData], {
-          gasLimit: 50e6,
+          gasLimit: 5e7,
         });
         assert((await strategy.balanceOf(deployer.address)).gt(0));
         await logState(strategy, "After Invest");

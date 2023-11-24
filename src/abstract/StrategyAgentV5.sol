@@ -24,9 +24,9 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
         Fees memory _fees,
         address _underlying,
         address _feeCollector
-    ) external onlyAdmin {
+    ) public override onlyAdmin {
         console.log("StrategyAgentV5.init");
-        _init(_fees, _underlying, _feeCollector);
+        As4626.init(_fees, _underlying, _feeCollector);
     }
 
     function seedLiquidity(uint256 _seedDeposit, uint256 _maxTotalAssets) external onlyAdmin {

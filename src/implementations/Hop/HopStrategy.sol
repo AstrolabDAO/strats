@@ -31,21 +31,27 @@ contract HopStrategy is StrategyV5 {
     function init(
         Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
         address _underlying, // The asset we are using
-        address[] memory _coreAddresses,
+        address[4] memory _coreAddresses,
+        address[] memory _inputs,
+        uint256[] memory _inputWeights,
+        address[] memory _rewardTokens,
         address _lpToken,
         address _rewardPool,
         address _stableRouter,
         uint8 _tokenIndex
     ) external onlyAdmin {
-        // init StrategyV5+StrategyAgentV5+As4626
-        console.log("HopStrategy.init");
-        _init(_fees, _underlying, _coreAddresses);
+
         // strategy specific initialization
+        setInputs(_inputs, _inputWeights);
+        setRewardTokens(_rewardTokens);
+
         lpToken = IERC20(_lpToken);
         rewardPool = IStakingRewards(_rewardPool);
         tokenIndex = _tokenIndex;
         stableRouter = IStableRouter(_stableRouter);
+
         _setAllowances(MAX_UINT256);
+        StrategyV5.init(_fees, _underlying, _coreAddresses);
     }
 
     // Interactions
@@ -191,13 +197,9 @@ contract HopStrategy is StrategyV5 {
 
     // Utils
 
-    /// @notice Set allowances for third party contracts
+    /// @notice Set allowances for third party contracts (except rewardTokens)
     function _setAllowances(uint256 _amount) internal override {
-        underlying.approve(address(swapper), _amount);
         inputs[0].approve(address(stableRouter), _amount);
-        if (rewardTokens[0] != address(0)) {
-            IERC20(rewardTokens[0]).approve(address(swapper), _amount);
-        }
         lpToken.approve(address(rewardPool), _amount);
         lpToken.approve(address(stableRouter), _amount);
     }
