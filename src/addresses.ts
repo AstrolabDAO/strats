@@ -177,6 +177,11 @@ export const addresses = {
     },
     accounts : {
       impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"
+    },
+    libs: {
+      AsAccounting: "0xd372c04ade024beae6eea87c1416a16264c9648b",
+      // StrategyAgentV5: "",
+      // Swapper: ""
     }
   },
   // matic

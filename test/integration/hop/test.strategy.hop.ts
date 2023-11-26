@@ -1,4 +1,4 @@
-import { ethers, revertNetwork } from "@astrolabs/hardhat";
+import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 import { IStrategyDeploymentEnv } from "src/types";
@@ -22,28 +22,31 @@ describe("test.strategy.hop", function () {
 
   let i = 0;
   for (const inputSymbol of inputSymbols) {
-    const hopAddresses = env.addresses[`Hop.${inputSymbol}`];
-    if (!hopAddresses) {
-      console.error(`Hop.${inputSymbol} addresses not found for network ${env.network.name} (${env.network.config.chainId})`);
+    const addr = addresses[network.config.chainId!][`Hop.${inputSymbol}`];
+    const name = `Astrolab Hop h${inputSymbol}`;
+    const symbol = `as.h${inputSymbol}`;
+
+    if (!addr) {
+      console.error(`Hop.${inputSymbol} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
     }
-    describe(`Test ${++i}: Hop ${inputSymbol}`, function () {
+    describe(`Test ${++i}: ${name}`, function () {
       this.beforeAll("Deploy and setup strat", async function () {
 
-        // load environment+deploy+verify the strategy stack
         env = await getEnv({}, addresses) as IStrategyDeploymentEnv;
+        // load environment+deploy+verify the strategy stack
         env = await setupStrat(
           "HopStrategy",
-          `Astrolab Hop h${inputSymbol}`,
+          name,
           "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,uint8)",
           {
             underlying: env.addresses.tokens[underlyingSymbol],
-            erc20Metadata: [name, `as.h${inputSymbol}`, "1"],
+            erc20Metadata: [name, symbol, "1"],
             inputs: [env.addresses.tokens[inputSymbol]],
-            rewardTokens: [env.addresses.tokens.HOP],
-            lpToken: hopAddresses.lp,
-            rewardPool: hopAddresses.rewardPools[0],
-            stableRouter: hopAddresses.swap,
+            rewardTokens: addr.rewardTokens,
+            lpToken: addr.lp,
+            rewardPool: addr.rewardPools[0],
+            stableRouter: addr.swap,
             tokenIndex: 0,
           } as IHopStrategyV5,
           env

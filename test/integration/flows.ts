@@ -34,13 +34,15 @@ export const deployStrat = async (
         contract: n,
         name: n,
         verify: true,
-        deployed: env.addresses!.libs![n] ? true : false,
-        address: env.addresses!.libs![n] ?? "",
+        deployed: env.addresses?.libs?.[n] ? true : false,
+        address: env.addresses?.libs?.[n] ?? "",
       } as IDeploymentUnit;
       console.log(`Deploying missing library ${n}`);
+      // deployment will be automatically skipped if address is already set
       lib = await deploy(params);
     } else {
       console.log(`Using existing ${n} at ${lib.address}`);
+      lib = new Contract(libraries[path], loadAbi(n) ?? [], env.deployer);
     }
     libraries[path] = lib.address;
   }
@@ -175,7 +177,7 @@ export async function setupStrat(
   addressesOverride?: any
 ): Promise<IStrategyDeploymentEnv> {
   env = await getEnv(env, addressesOverride);
-  const d = await deployStrat(name, contract, params, addressesOverride);
+  const d = await deployStrat(name, contract, params, env);
 
   await grantAdminRole(d.strat, d.deployer!.address);
 

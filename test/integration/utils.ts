@@ -75,7 +75,7 @@ export const getEnv = async (
         decimals: await wgas.decimals(),
         weiPerUnit: 10 ** (await wgas.decimals()),
       },
-      addresses: addressesOverride ?? addresses[network.config.chainId!],
+      addresses: addr,
       deployer: (await getDeployer()) as SignerWithAddress,
       provider: ethers.provider,
       needsFunding: false,

@@ -1,4 +1,4 @@
-import { ethers, revertNetwork } from "@astrolabs/hardhat";
+import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 import { IStrategyDeploymentEnv } from "src/types";
@@ -24,9 +24,9 @@ describe("test.strategy.kyberswap", function () {
   let i = 0;
   for (const pair of inputSymbols) {
 
-    const ksAddresses = env.addresses[`KyberSwap.${pair.join("-")}`];
-    if (!ksAddresses) {
-      console.error(`KyberSwap.${pair.join("-")} addresses not found for network ${env.network.name} (${env.network.config.chainId})`);
+    const addr = addresses[network.config.chainId!][`KyberSwap.${pair.join("-")}`];
+    if (!addr) {
+      console.error(`KyberSwap.${pair.join("-")} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
     }
     describe(`Test ${++i}: KyberSwap ${pair}`, function () {
@@ -43,11 +43,11 @@ describe("test.strategy.kyberswap", function () {
             erc20Metadata: [name, `as.ks${pair.join("")}`, "1"],
             inputs: pair.map(s => env.addresses.tokens[s]) as string[],
             rewardTokens: [env.addresses.tokens.KNC],
-            router: ksAddresses.router,
-            elasticLM: ksAddresses.elasticLM,
-            tickfeesreader: ksAddresses.tickfeesreader,
-            antisnip: ksAddresses.antisnip,
-            pool: ksAddresses.pool,
+            router: addr.router,
+            elasticLM: addr.elasticLM,
+            tickfeesreader: addr.tickfeesreader,
+            antisnip: addr.antisnip,
+            pool: addr.pool,
           } as IKyberSwapStrategyV5,
           env
         );

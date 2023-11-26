@@ -1,4 +1,4 @@
-import { ethers, revertNetwork } from "@astrolabs/hardhat";
+import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { ISparkStrategyV5 } from "src/implementations/Spark/types";
 import { IStrategyDeploymentEnv } from "src/types";
@@ -22,9 +22,9 @@ describe("test.strategy.spark", function () {
 
   let i = 0;
   for (const inputSymbol of inputSymbols) {
-    const sparkAddresses = env.addresses[`Spark.${inputSymbol}`];
-    if (!sparkAddresses) {
-      console.error(`Spark.${inputSymbol} addresses not found for network ${env.network.name} (${env.network.config.chainId})`);
+    const addr = addresses[network.config.chainId!][`Spark.${inputSymbol}`];
+    if (!addr) {
+      console.error(`Spark.${inputSymbol} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
     }
     describe(`Test ${++i}: Spark ${inputSymbol}`, function () {
@@ -41,8 +41,8 @@ describe("test.strategy.spark", function () {
             erc20Metadata: [name, `as.sp${inputSymbol}`, "1"],
             inputs: [env.addresses.tokens[inputSymbol]],
             rewardTokens: [env.addresses.tokens.HOP],
-            iouToken: sparkAddresses.iou,
-            pool: sparkAddresses.pool,
+            iouToken: addr.iou,
+            pool: addr.pool,
           } as ISparkStrategyV5,
           env
         );

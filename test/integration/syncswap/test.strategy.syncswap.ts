@@ -1,4 +1,4 @@
-import { ethers, revertNetwork } from "@astrolabs/hardhat";
+import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { IHopStrategyV5 } from "src/implementations/Hop/types";
 import { IStrategyDeploymentEnv } from "src/types";
@@ -24,9 +24,9 @@ describe("test.strategy.syncswap", function () {
   let i = 0;
   for (const pair of inputSymbols) {
 
-    const ssAddresses = env.addresses[`SyncSwap.${pair.join("-")}`];
-    if (!ssAddresses) {
-      console.error(`SyncSwap.${pair.join("-")} addresses not found for network ${env.network.name} (${env.network.config.chainId})`);
+    const addr = addresses[network.config.chainId!][`SyncSwap.${pair.join("-")}`];
+    if (!addr) {
+      console.error(`SyncSwap.${pair.join("-")} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
     }
     describe(`Test ${++i}: SyncSwap ${pair}`, function () {
@@ -43,8 +43,8 @@ describe("test.strategy.syncswap", function () {
             erc20Metadata: [name, `as.ss${pair.join("")}`, "1"],
             inputs: pair.map(s => env.addresses.tokens[s]) as string[],
             rewardTokens: [env.addresses.tokens.KNC],
-            router: ssAddresses.router,
-            pool: ssAddresses.pool,
+            router: addr.router,
+            pool: addr.pool,
           } as ISyncSwapStrategyV5,
           env
         );
