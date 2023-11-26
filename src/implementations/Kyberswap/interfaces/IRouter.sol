@@ -433,7 +433,7 @@ interface IRouter {
     returns (uint256 amountIn);
 }
 
-library KyberswapLibrary {
+library KyberSwapLibrary {
 
     function singleSwap(
         IRouter router,

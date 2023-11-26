@@ -29,25 +29,6 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
         As4626.init(_fees, _underlying, _feeCollector);
     }
 
-    function seedLiquidity(uint256 _seedDeposit, uint256 _maxTotalAssets) external onlyAdmin {
-
-        if (_seedDeposit < (minLiquidity - totalAssets()))
-            revert LiquidityTooLow(_seedDeposit);
-        // seed the vault with some assets if it's empty
-        setMaxTotalAssets(_maxTotalAssets);
-        // 1e8 is the minimum amount of assets to seed the vault (1 USDC or .1Gwei ETH)
-        // allowance should be given to the vault before calling this function
-        uint256 seedDeposit = minLiquidity;
-        if (totalSupply() == 0) {
-            _deposit(
-                seedDeposit,
-                msg.sender,
-                (seedDeposit * sharePrice()) / weiPerShare
-            );
-        }
-        _unpause();
-    }
-
     /// @notice Rescue any ERC20 token that is stuck in the contract
     function rescueToken(address _token, bool _onlyETH) external onlyAdmin {
 

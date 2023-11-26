@@ -1,6 +1,6 @@
-import { IStrategyV5 } from "../../types";
+import { IStrategyV5Params } from "../../types";
 
-export interface IKyberswapStrategyV5 extends IStrategyV5 {
+export interface IKyberSwapStrategyV5 extends IStrategyV5Params {
     router: string;
     elasticLM: string;
     tickfeesreader: string;

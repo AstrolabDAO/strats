@@ -1,6 +1,6 @@
-import { IStrategyV5 } from "../../types";
+import { IStrategyV5Params } from "../../types";
 
-export interface IAaveV3StrategyV5 extends IStrategyV5 {
+export interface IAaveV3StrategyV5 extends IStrategyV5Params {
     iouToken: string;
     pool: string;
 }

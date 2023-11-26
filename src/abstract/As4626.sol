@@ -9,6 +9,7 @@ import "../libs/AsAccounting.sol";
 import "hardhat/console.sol";
 
 abstract contract As4626 is As4626Abstract {
+
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for ERC20;
@@ -21,6 +22,7 @@ abstract contract As4626 is As4626Abstract {
         address _underlying,
         address _feeCollector
     ) public virtual onlyAdmin {
+
         console.log("As4626.init");
         // check that the fees are not too high
         if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
@@ -318,22 +320,24 @@ abstract contract As4626 is As4626Abstract {
     /// @dev Deposits are disabled when the assets reach this limit
     /// @param _seedDeposit amount of assets to seed the vault
     /// @param _maxTotalAssets max amount of assets
-    function initialize(
+    function seedLiquidity(
         uint256 _seedDeposit,
         uint256 _maxTotalAssets
     ) external onlyManager {
+
+        // 1e8 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
+        // allowance should be given to the vault before calling this function
         if (_seedDeposit < (minLiquidity - totalAssets()))
             revert LiquidityTooLow(_seedDeposit);
+
         // seed the vault with some assets if it's empty
         setMaxTotalAssets(_maxTotalAssets);
-        // 1e8 is the minimum amount of assets to seed the vault (1 USDC or .1Gwei ETH)
-        // allowance should be given to the vault before calling this function
-        uint256 seedDeposit = minLiquidity;
+
         if (totalSupply() == 0) {
             _deposit(
-                seedDeposit,
+                _seedDeposit,
                 msg.sender,
-                (seedDeposit * sharePrice()) / weiPerShare
+                (_seedDeposit * sharePrice()) / weiPerShare
             );
         }
         _unpause();

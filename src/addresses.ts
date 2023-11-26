@@ -1,8 +1,21 @@
 import { networkBySlug } from "@astrolabs/hardhat";
 
-export type ChainAddresses = {
+export type NetworkAddresses = {
+  // common addresses
   accounts?: { [token: string]: string };
   tokens: { [name: string]: string };
+  libs?: { [name: string]: string };
+  // protocol specific addresses
+  [protocol: string]: { [name: string]: string } | undefined;
+  astrolab?: {
+    [contract: string]: string;
+    Swapper: string;
+    StrategyAgentV5: string;
+  };
+};
+
+export type Addresses = {
+  [networkId: number]: NetworkAddresses;
 };
 
 export const addresses = {
@@ -156,7 +169,7 @@ export const addresses = {
       USDC: "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83",
       WBTC: "0x8e5bBbb09Ed1ebdE8674Cda39A0c169401db4252",
       GNO: "0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb",
-      HOP: "0x881296Edcb252080bd476c464cEB521d08df7631",
+      HOP: "0xc5102fE9359FD9a28f877a67E36B0F050d81a3CC",
       AGVE: "0x3a97704a1b25F08aa230ae53B352e2e72ef52843",
       stETH: "0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6",
       WETH: "0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1",
@@ -493,6 +506,7 @@ export const addresses = {
       CRV: "0xB755039eDc7910C1F1BD985D48322E55A31AC0bF",
       CAKE: "0x1b896893dfc86bb67Cf57767298b9073D2c1bA2c",
       BAL: "0x6a28e90582c583fcd3347931c544819C31e9D0e0",
+      KNC: "0x608ef9a3bffe206b86c3108218003b3cfbf99c84"
     },
     accounts: {
       impersonate: "0xeFaAE8E0381bD4e23CE9A662cfA833Fb4ED916e5",
@@ -514,7 +528,7 @@ export const addresses = {
       impersonate: "0xef117c0b7b2512c812a64d2ce9bfe767cbb4c1f8",
     },
   },
-} as { [chainId: number]: ChainAddresses };
+} as { [chainId: number]: NetworkAddresses };
 
 // addresses[42161] == byNetwork("arbitrum-mainnet-one")
 export const byNetwork = (id: string | number) =>

@@ -7,10 +7,10 @@ import "../../libs/AsMaths.sol";
 import "./interfaces/IRouter.sol";
 import "../../abstract/StrategyV5.sol";
 
-/// @title Syncswap Strategy (v5)
-/// @notice This contract is a strategy for Syncswap
+/// @title SyncSwap Strategy (v5)
+/// @notice This contract is a strategy for SyncSwap
 /// @dev Basic implementation
-contract SyncswapStrategy is StrategyV5 {
+contract SyncSwapStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Third-party contracts

@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@aashutoshrathi/word-wrap/-/word-wrap-1.2.6.tgz#bd9154aec9983f77b3a034ecaa015c2e4201f6cf"
   integrity sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==
 
-"@astrolabs/hardhat@^1.0.70":
-  version "1.0.70"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.70.tgz#d3f8cdd8cac6ef010a87eea3884ac3b4bc95fa4c"
-  integrity sha512-F1L75Ko0LzkP5/CO1mjHIkHmUoRU9pBV585yMWAi7RVnoIZ21nZDPltNABiWzC/MruM3B557d9r0Rsu3ey9pdw==
+"@astrolabs/hardhat@^1.0.74":
+  version "1.0.74"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.74.tgz#fa6849be93080180c044127a98e458559740c9ed"
+  integrity sha512-MCaeT7JPWG7MzeRq19AajurofiIuJoVC1hO2t24wO5dsxFzcX1NJ7xvTIeUkZLLBeZepql5Cn37jYYPI/Y92Eg==
   dependencies:
     "@nomiclabs/hardhat-ethers" "^2.1.0"
     "@tenderly/hardhat-tenderly" "^1.7.7"
@@ -18,10 +18,15 @@
     ethers "^5.7.0"
     hardhat "^2.10.2"
 
-"@astrolabs/registry@^1.0.1", "@astrolabs/registry@^1.0.2":
+"@astrolabs/registry@^1.0.1":
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.2.tgz#8ef65987be75227fbe57bef9f306f42d619f2cce"
   integrity sha512-lTar3hWInwHbjkZi7lF4o22lTdPurx1pkVRPS8qTiKD8pvVhuGr0RI0HdYb1i2btD8ShuDDJBUvXqSbfpEE8iw==
+
+"@astrolabs/registry@^1.0.6":
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.6.tgz#25a2b22bdc0d9aa01daff4abcba9a4ac0e1576df"
+  integrity sha512-Gxi5iVe8gg5bhEK3/IImUgeg+zauD8+dshyf7tSoVhQCvGe0DFNrXL89zCyBvja2lz1halK4+jYBU7cvhi2pDw==
 
 "@astrolabs/swapper@^1.0.13":
   version "1.0.13"

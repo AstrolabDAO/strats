@@ -1,6 +1,6 @@
-import { IStrategyV5 } from "../../types";
+import { IStrategyV5Params } from "../../types";
 
-export interface ISyncswapStrategyV5 extends IStrategyV5 {
+export interface ISyncSwapStrategyV5 extends IStrategyV5Params {
     router: string;
     pool: string;
 }

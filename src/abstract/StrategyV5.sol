@@ -29,6 +29,9 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         address _underlying,
         address[4] memory _coreAddresses
     ) public onlyAdmin {
+
+        // done in As4626 but required for swapper
+        underlying = ERC20(_underlying);
         updateSwapper(_coreAddresses[1]);
         allocator = _coreAddresses[2];
         agent = _coreAddresses[3];
@@ -75,7 +78,9 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     function setSwapperAllowance(uint256 _amount) public onlyAdmin {
+
         address swapperAddress = address(swapper);
+
         for (uint256 i = 0; i < rewardTokens.length; i++) {
             if (rewardTokens[i] == address(0)) break;
             IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
