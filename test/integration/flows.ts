@@ -1,22 +1,23 @@
-import { provider, network, ethers, weiToString, TransactionRequest, IDeploymentUnit, deploy, deployAll, loadAbi } from "@astrolabs/hardhat";
+import { provider, network, weiToString, TransactionRequest, IDeploymentUnit, deploy, deployAll, loadAbi } from "@astrolabs/hardhat";
 import { ISwapperParams, swapperParamsToString, getAllTransactionRequests, getTransactionRequest, ITransactionRequestWithEstimate } from "@astrolabs/swapper";
 import { wethAbi, erc20Abi } from "abitype/abis";
-import { BigNumber, Contract } from "ethers";
+import { BigNumber, Contract, utils, constants } from "ethers";
 import { assert } from "chai";
 import { merge } from "lodash";
-import { IStrategyDeployment, IStrategyDeploymentEnv, IStrategyV5Params, IToken } from "../../src/types";
-import { addressZero, getEnv, logState } from "./utils";
+import { IStrategyDeployment, IStrategyDeploymentEnv, StrategyV5InitParams, IToken, Erc20Metadata } from "../../src/types";
+import { addressZero, getEnv, getTokenInfo, logState } from "./utils";
 
-const MaxUint256 = ethers.constants.MaxUint256;
+const MaxUint256 = constants.MaxUint256;
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
 
 
 export const deployStrat = async (
+  env: Partial<IStrategyDeploymentEnv>,
   name: string,
   contract: string,
-  params: Partial<IStrategyV5Params>,
-  env: Partial<IStrategyDeploymentEnv> = {}
-): Promise<IStrategyDeployment> => {
+  constructorParams: [Erc20Metadata],
+  initParams: StrategyV5InitParams,
+): Promise<IStrategyDeploymentEnv> => {
   let [swapper, agent] = [{}, {}] as Contract[];
 
   // strategy dependencies
@@ -30,16 +31,16 @@ export const deployStrat = async (
     let lib = {} as Contract;
     const path = `src/libs/${n}.sol:${n}`;
     if (!libraries[path]) {
-      const params = {
+      const libParams = {
         contract: n,
         name: n,
         verify: true,
         deployed: env.addresses?.libs?.[n] ? true : false,
         address: env.addresses?.libs?.[n] ?? "",
       } as IDeploymentUnit;
-      console.log(`Deploying missing library ${n}`);
+      // console.log(`Deploying missing library ${n}`);
       // deployment will be automatically skipped if address is already set
-      lib = await deploy(params);
+      lib = await deploy(libParams);
     } else {
       console.log(`Using existing ${n} at ${lib.address}`);
       lib = new Contract(libraries[path], loadAbi(n) ?? [], env.deployer);
@@ -52,90 +53,96 @@ export const deployStrat = async (
       contract: "Swapper",
       name: "Swapper",
       verify: true,
-      deployed: env.addresses!.astrolab!.Swapper ? true : false,
-      address: env.addresses!.astrolab!.Swapper ?? "",
+      deployed: env.addresses!.astrolab?.Swapper ? true : false,
+      address: env.addresses!.astrolab?.Swapper ?? "",
     },
     StrategyAgentV5: {
       contract: "StrategyAgentV5",
       name: "StrategyAgentV5",
       libraries,
       verify: true,
-      deployed: env.addresses!.astrolab!.StrategyAgentV5 ? true : false,
-      address: env.addresses!.astrolab!.StrategyAgentV5,
+      deployed: env.addresses!.astrolab?.StrategyAgentV5 ? true : false,
+      address: env.addresses!.astrolab?.StrategyAgentV5,
     },
     [contract]: {
       contract,
       name: contract,
       verify: true,
       proxied: ["StrategyAgentV5"],
-      args: [params.erc20Metadata],
+      args: constructorParams,
       libraries,
     },
   };
 
-  for (const [libName, libAddress] of Object.entries(libraries)) {
+  for (const libName of libNames) {
     units[libName] = {
       contract: libName,
       name: libName,
       verify: true,
       deployed: true,
-      address: libAddress,
+      address: libraries[libName] ?? libraries[`src/libs/${libName}.sol:${libName}`],
     };
   }
 
-  if (!env.addresses!.astrolab!.Swapper) {
+  if (!env.addresses!.astrolab?.Swapper) {
     console.log(`Deploying missing Swapper`);
     swapper = await deploy(units.Swapper);
   } else {
     console.log(
-      `Using existing Swapper at ${env.addresses!.astrolab!.Swapper}`
+      `Using existing Swapper at ${env.addresses!.astrolab?.Swapper}`
     );
     swapper = new Contract(
-      env.addresses!.astrolab!.Swapper!,
+      env.addresses!.astrolab?.Swapper!,
       loadAbi("Swapper")!,
       env.deployer
     );
   }
 
-  if (!env.addresses!.astrolab!.StrategyAgentV5) {
+  if (!env.addresses!.astrolab?.StrategyAgentV5) {
     console.log(`Deploying missing StrategyAgentV5`);
     agent = await deploy(units.StrategyAgentV5);
   } else {
     console.log(
       `Using existing StrategyAgentV5 at ${
-        env.addresses!.astrolab!.StrategyAgentV5
+        env.addresses!.astrolab?.StrategyAgentV5
       }`
     );
     agent = new Contract(
-      env.addresses!.astrolab!.StrategyAgentV5,
+      env.addresses!.astrolab?.StrategyAgentV5,
       loadAbi("StrategyAgentV5")!,
       env.deployer
     );
   }
 
-  params.fees = merge(
+  // default fees
+  initParams[0] = merge(
     {
       perf: 1_000, // 10%
       mgmt: 20, // .2%
       entry: 2, // .02%
       exit: 2, // .02%
     },
-    params.fees
+    initParams[0]
   );
 
-  params.coreAddresses = [
+  // coreAddresses
+  initParams[2] = [
     env.deployer!.address, // feeCollector
     swapper.address, // Swapper
     addressZero, // Allocator
     agent.address, // StrategyAgentV5
   ];
 
-  if (params.inputs?.length == 1) params.inputWeights = [100_000]; // 100%
+  // inputs
+  if (initParams[3].length == 1)
+    // default input weight == 100%
+    initParams[4] = [100_000];
 
   const deployment = {
-    name: "",
+    name: `${name} Stack`,
     contract: "",
-    params,
+    constructorParams,
+    initParams,
     verify: true,
     libraries,
     swapper,
@@ -156,7 +163,8 @@ export const deployStrat = async (
     loadAbi("StrategyV5")!,
     deployment.deployer
   );
-  return deployment;
+  env.deployment = deployment;
+  return env as IStrategyDeploymentEnv;
 };
 
 export async function grantAdminRole(strat: Contract, address: string) {
@@ -171,67 +179,40 @@ export async function setupStrat(
   contract: string,
   name: string,
   // below we use hop strategy signature as placeholder
+  constructorParams: [Erc20Metadata],
+  initParams: StrategyV5InitParams,
   initSignature = "init",
-  params: Partial<IStrategyV5Params>,
   env: Partial<IStrategyDeploymentEnv> = {},
   addressesOverride?: any
 ): Promise<IStrategyDeploymentEnv> {
+
   env = await getEnv(env, addressesOverride);
-  const d = await deployStrat(name, contract, params, env);
+  env = await deployStrat(env, name, contract, constructorParams, initParams);
 
-  await grantAdminRole(d.strat, d.deployer!.address);
+  const { strat } = env.deployment!;
 
-  // exclude erc20Metadata from init args as already passed to constructor
-  const initArgs = params as any;
-  delete initArgs.erc20Metadata;
+  await grantAdminRole(strat, env.deployer!.address);
 
   // load the implementation abi, containing the overriding init() (missing from d.strat)
-  const proxy = new Contract(contract, loadAbi(contract)!, d.deployer);
-  const ok = await proxy[initSignature](...Object.values(initArgs), {
+  // init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,uint8)'
+  const proxy = new Contract(strat.address, loadAbi(contract)!, env.deployer);
+  const ok = await proxy[initSignature](...initParams, {
     gasLimit: 5e7,
   });
 
+  const underlying = new Contract(initParams[1], erc20Abi, env.deployer);
+  const inputs = initParams[3]!.map(
+    (input) => new Contract(input, erc20Abi, env.deployer)
+  );
+  const rewardTokens = initParams[5]!.map(
+    (rewardToken) => new Contract(rewardToken, erc20Abi, env.deployer)
+  );
+
+  env.deployment!.underlying = await getTokenInfo(underlying);
+  env.deployment!.inputs = await Promise.all(inputs.map(getTokenInfo));
+  env.deployment!.rewardTokens = await Promise.all(rewardTokens.map(getTokenInfo));
+
   await logState(env, "After init");
-
-  const underlying = new Contract(params.underlying!, erc20Abi, d.deployer);
-  const inputs = params.inputs!.map(
-    (input) => new Contract(input, erc20Abi, d.deployer)
-  );
-  const rewardTokens = params.rewardTokens!.map(
-    (rewardToken) => new Contract(rewardToken, erc20Abi, d.deployer)
-  );
-
-  env.deployment!.underlying = {
-    contract: underlying,
-    symbol: await underlying.symbol(),
-    decimals: await underlying.decimals(),
-    weiPerUnit: 10 ** (await underlying.decimals()),
-  } as IToken;
-
-  env.deployment!.inputs = await Promise.all(
-    inputs.map(
-      async (input) =>
-        ({
-          contract: input,
-          symbol: await input.symbol(),
-          decimals: await input.decimals(),
-          weiPerUnit: 10 ** (await input.decimals()),
-        }) as IToken
-    )
-  );
-
-  env.deployment!.rewardTokens = await Promise.all(
-    rewardTokens.map(
-      async (rewardToken) =>
-        ({
-          contract: rewardToken,
-          symbol: await rewardToken.symbol(),
-          decimals: await rewardToken.decimals(),
-          weiPerUnit: 10 ** (await rewardToken.decimals()),
-        }) as IToken
-    )
-  );
-
   return env as IStrategyDeploymentEnv;
 }
 
@@ -417,10 +398,10 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
 export async function seedLiquidity(
   env: IStrategyDeploymentEnv,
-  amount?: number
+  amount=50
 ) {
   const { strat, underlying } = env.deployment!;
-  amount ||= underlying.weiPerUnit * 100;
+  amount *= underlying.weiPerUnit;
   await underlying.contract.approve(strat.address, MaxUint256);
   await logState(env, "Before SeedLiquidity");
   await strat.seedLiquidity(amount, MaxUint256, { gasLimit: 5e7 });
@@ -429,9 +410,9 @@ export async function seedLiquidity(
   return await strat.available();
 }
 
-export async function deposit(env: IStrategyDeploymentEnv, amount?: number) {
+export async function deposit(env: IStrategyDeploymentEnv, amount=100) {
   const { strat, underlying } = env.deployment!;
-  amount ||= underlying.weiPerUnit * 100; // 100$ or equivalent
+  amount *= underlying.weiPerUnit; // 100$ or equivalent
   await underlying.contract.approve(strat.address, MaxUint256);
   await logState(env, "Before Deposit");
   const received = await strat.safeDeposit(amount, env.deployer.address, 1, {
@@ -446,10 +427,10 @@ export async function deposit(env: IStrategyDeploymentEnv, amount?: number) {
 export async function swapDeposit(
   env: IStrategyDeploymentEnv,
   inputAddress?: string,
-  amount?: number
+  amount=100
 ) {
   const { strat, underlying } = env.deployment!;
-  amount ||= underlying.weiPerUnit * 100; // 100$ or equivalent
+  amount *= underlying.weiPerUnit; // 100$ or equivalent
 
   const input = new Contract(inputAddress!, erc20Abi, env.deployer);
   await underlying.contract.approve(strat.address, MaxUint256);
@@ -465,7 +446,7 @@ export async function swapDeposit(
       payer: strat.address,
       testPayer: env.addresses!.accounts!.impersonate,
     })) as ITransactionRequestWithEstimate;
-    swapData = ethers.utils.defaultAbiCoder.encode(
+    swapData = utils.defaultAbiCoder.encode(
       ["address", "uint256", "bytes"],
       [tr.to, 1, tr.data]
     );
@@ -485,9 +466,9 @@ export async function swapDeposit(
 
 // TODO: add support for multiple inputs
 // input prices are required to weight out the swaps and create the SwapData array
-export async function invest(env: IStrategyDeploymentEnv, amount?: number) {
+export async function invest(env: IStrategyDeploymentEnv, amount=100) {
   const { underlying, inputs, strat } = env.deployment!;
-  amount ||= inputs[0].weiPerUnit * 100; // 100$ or equivalent
+  amount *= inputs[0].weiPerUnit; // 100$ or equivalent
   let swapData: any = [];
   if (underlying.contract.address != inputs[0].contract.address) {
     console.log("SwapData required by invest() as underlying != input");
@@ -527,24 +508,31 @@ export async function withdraw(env: IStrategyDeploymentEnv, amount?: number) {
 
 // TODO: add support for multiple inputs
 // input prices are required to weight out the swaps and create the SwapData array
-export async function liquidate(env: IStrategyDeploymentEnv, amount?: number) {
+export async function liquidate(env: IStrategyDeploymentEnv, amount=50) {
   const { underlying, inputs, strat } = env.deployment!;
-  amount ||= inputs[0].weiPerUnit * 10; // 10$ or equivalent
+  amount *= inputs[0].weiPerUnit; // 10$ or equivalent
   let balanceBefore = await underlying.contract.balanceOf(env.deployer.address);
   let swapData: any = [];
-  const tr = (await getTransactionRequest({
-    input: inputs[0].contract.address,
-    output: underlying.contract.address,
-    amountWei: BigInt(amount).toString(),
-    inputChainId: network.config.chainId!,
-    payer: env.deployer.address,
-    testPayer: env.addresses.accounts!.impersonate,
-  })) as ITransactionRequestWithEstimate;
-  swapData = ethers.utils.defaultAbiCoder.encode(
+
+  const input = inputs[0].contract.address;
+  const output = underlying.contract.address;
+
+  let tr = { to: "", data: "" } as ITransactionRequestWithEstimate;
+  if (input != output) {
+    tr = (await getTransactionRequest({
+      input,
+      output,
+      amountWei: BigInt(amount).toString(),
+      inputChainId: network.config.chainId!,
+      payer: env.deployer.address,
+      testPayer: env.addresses.accounts!.impersonate,
+    })) as ITransactionRequestWithEstimate;
+  }
+  swapData = utils.defaultAbiCoder.encode(
     ["address", "uint256", "bytes"],
     [tr.to, 1, tr.data]
   );
-  const [liquidity, totalAssets] = await strat.liquidate(amount, 1, false,  [swapData]);
+  const [liquidity, totalAssets] = await strat.liquidate(amount, 1, false, [swapData]);
   const liquidated = balanceBefore.sub(await underlying.contract.balanceOf(env.deployer.address));
   // assert(liquidated.gt(0));
   return liquidated;

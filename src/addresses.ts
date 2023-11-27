@@ -178,11 +178,15 @@ export const addresses = {
     accounts : {
       impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"
     },
+    // the below contracts are required by each of StrategyV5 deployments
+    // they will be redeployed automatically if left empty
     libs: {
-      AsAccounting: "0xd372c04ade024beae6eea87c1416a16264c9648b",
-      // StrategyAgentV5: "",
-      // Swapper: ""
-    }
+      AsAccounting: "0xb3fb30d2271b0096d87c8b3efc10a8701ce3afb0",
+    },
+    astrolab: {
+      Swapper: "0x08b8a44fdf81207f636ca698f3755e025570d5e1",
+      StrategyAgentV5: "0x1780ea62499b87ae76c466c956f0e641e7172e56",
+    },
   },
   // matic
   137: {

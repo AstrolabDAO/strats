@@ -30,7 +30,9 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         address[4] memory _coreAddresses
     ) public onlyAdmin {
 
+        setExemption(msg.sender, true);
         // done in As4626 but required for swapper
+        stratProxy = address(this);
         underlying = ERC20(_underlying);
         updateSwapper(_coreAddresses[1]);
         allocator = _coreAddresses[2];
@@ -134,6 +136,12 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         uint256 allocated = _invested();
         newTotalAssets = liquidityAvailable + allocated;
 
+        uint256 newRedemptionRequests = totalRedemptionRequest - totalClaimableRedemption;
+        _amount += newRedemptionRequests;
+
+        if (_amount > allocated)
+            _amount = allocated;
+
         // panic or less assets than requested >> liquidate all
         if (_panic || allocated < _amount) _amount = allocated;
 
@@ -152,14 +160,6 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         }
         return (liquidityAvailable, newTotalAssets);
     }
-
-    // function safeDeposit(
-    //     uint256 _amount,
-    //     address _receiver,
-    //     uint256 _minShareAmount
-    // ) public returns (uint256 shares) {
-    //     _delegate(agent);
-    // }
 
     // function safeDepositInvest(
     //     uint256 _amount,
@@ -216,6 +216,13 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     /// @return amount of underlying assets received (after swap)
     function harvest(bytes[] memory _params) public returns (uint256 amount) {
         amount = _harvest(_params);
+        // reset expected profits to updated value + amount
+        expectedProfits = AsAccounting.unrealizedProfits(
+            lastUpdate,
+            expectedProfits,
+            profitCooldown
+        ) + amount;
+        lastUpdate = block.timestamp;
         emit Harvested(amount, block.timestamp);
     }
 

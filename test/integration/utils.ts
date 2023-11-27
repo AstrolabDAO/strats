@@ -10,8 +10,9 @@ import { Contract, constants } from "ethers";
 import { merge } from "lodash";
 import {
   IStrategyDeploymentEnv,
-  ITestEnv
-} from "src/types";
+  ITestEnv,
+  IToken
+} from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
 
 export const addressZero = constants.AddressZero;
@@ -30,26 +31,35 @@ export async function logState(
       inputsAddresses,
       rewardTokensAddresses,
       sharePrice,
-      totalAssetsAfter,
+      totalSuply,
+      totalAssets,
       invested,
+      available,
+      deployerBalance,
       // stratUnderlyingBalance,
     ] = await Promise.all([
       strat.inputs(0),
       strat.rewardTokens(0),
       strat.sharePrice(),
+      strat.totalSupply(),
       strat.totalAssets(),
       strat.invested(),
+      strat.available(),
+      strat.balanceOf(env.deployer!.address),
       // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
     console.log(
-      `State ${step ? `after ${step}` : ""}:
+      `State ${step ?? ""}:
       underlying: ${underlying.contract.address}
-      inputs: ${inputsAddresses}
-      rewardTokens: ${rewardTokensAddresses}
-      sharePrice: ${sharePrice}
-      totalAssets(): ${totalAssetsAfter}
+      inputs[0]: ${inputsAddresses}
+      rewardTokens[0]: ${rewardTokensAddresses}
+      sharePrice(): ${sharePrice}
+      totalSuply(): ${totalSuply}
+      totalAssets(): ${totalAssets}
       invested(): ${invested}
-      stratUnderlyingBalance(): ${stratUnderlyingBalance}`
+      available(): ${available}
+      stratUnderlyingBalance(): ${stratUnderlyingBalance}
+      deployerBalance(): ${deployerBalance}`
     );
   } catch (e) {
     console.log(`Error logging state ${step ?? ""}: ${e}`);
@@ -84,3 +94,10 @@ export const getEnv = async (
     env
   );
 };
+
+export const getTokenInfo = async (contract: Contract): Promise<IToken> => ({
+  contract,
+  symbol: await contract.symbol(),
+  decimals: await contract.decimals(),
+  weiPerUnit: 10 ** (await contract.decimals()),
+});

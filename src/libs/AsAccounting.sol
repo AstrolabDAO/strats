@@ -32,7 +32,7 @@ library AsAccounting {
             fees.mgmt * duration,
             AsMaths.BP_BASIS * 365 days
         );
-        uint256 perfFeesRel = profit.mulDiv(fees.perf, AsMaths.BP_BASIS);
+        uint256 perfFeesRel = profit.bp(fees.perf);
 
         // Adjust management fee if it exceeds profits after performance fee
         if (mgmtFeesRel + perfFeesRel > profit) {

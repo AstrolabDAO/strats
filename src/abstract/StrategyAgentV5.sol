@@ -29,6 +29,16 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
         As4626.init(_fees, _underlying, _feeCollector);
     }
 
+    // hits the proxy from implementation
+    function sharePrice() public view override returns (uint256) {
+        return IAs4626(stratProxy).sharePrice();
+    }
+
+    // hits the proxy from implementation
+    function totalAssets() public view override returns (uint256) {
+        return IAs4626(stratProxy).totalAssets();
+    }
+
     /// @notice Rescue any ERC20 token that is stuck in the contract
     function rescueToken(address _token, bool _onlyETH) external onlyAdmin {
 

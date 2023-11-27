@@ -190,7 +190,7 @@ interface IKyberSapElasticLM {
         uint256[] memory rewardUnclaimeds
     );
 
-    function getDepositedNFTs(address user) external view returns (uint256[] memory listNFTs);
+    function getDepositNFTs(address user) external view returns (uint256[] memory listNFTs);
 
     function getRewardCalculationData(uint256 nftId, uint256 pId)
     external

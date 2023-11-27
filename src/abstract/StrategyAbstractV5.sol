@@ -16,6 +16,7 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
 
     Swapper public swapper;
     address public agent;
+    address public stratProxy;
     address public allocator;
     uint256 public lastHarvest;
 

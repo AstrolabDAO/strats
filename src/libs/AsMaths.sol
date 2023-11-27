@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 /**
  * @title Math library
  * @notice A library to be used in conjunction with SafeMath. Contains functions for calculating
- * differences between two uint256.
+ * diffs between two uint256.
  */
 library AsMaths {
 
@@ -22,6 +22,13 @@ library AsMaths {
         uint256 basisPoints
     ) internal pure returns (uint256) {
         return (amount * (BP_BASIS + basisPoints)) / BP_BASIS;
+    }
+
+    function bp(
+        uint256 amount,
+        uint256 basisPoints
+    ) internal pure returns (uint256) {
+        return (amount * basisPoints) / BP_BASIS;
     }
 
     function revAddBp(
@@ -43,14 +50,14 @@ library AsMaths {
         uint256 b,
         uint256 val
     ) internal pure returns (bool) {
-        return (difference(a, b) <= val);
+        return (diff(a, b) <= val);
     }
 
     function within1(uint256 a, uint256 b) internal pure returns (bool) {
         return within(a, b, 1);
     }
 
-    function difference(uint256 a, uint256 b) internal pure returns (uint256) {
+    function diff(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a > b) {
             return a - b;
         }

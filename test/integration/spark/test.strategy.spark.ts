@@ -1,7 +1,6 @@
 import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { ISparkStrategyV5 } from "src/implementations/Spark/types";
-import { IStrategyDeploymentEnv } from "src/types";
+import { Fees, IStrategyDeploymentEnv } from "../../../src/types";
 import addresses from "../../../src/implementations/Spark/addresses";
 import { deposit, ensureFunding, invest, liquidate, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
 import { addressZero, getEnv } from "../utils";
@@ -22,7 +21,11 @@ describe("test.strategy.spark", function () {
 
   let i = 0;
   for (const inputSymbol of inputSymbols) {
+
     const addr = addresses[network.config.chainId!][`Spark.${inputSymbol}`];
+    const name = `Astrolab KyberSwap ${inputSymbol}`;
+    const symbol = `as.h${inputSymbol}`;
+
     if (!addr) {
       console.error(`Spark.${inputSymbol} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
@@ -34,16 +37,19 @@ describe("test.strategy.spark", function () {
         env = await getEnv({}, addresses) as IStrategyDeploymentEnv;
         env = await setupStrat(
           "SparkStrategy",
-          `Astrolab Spark h${inputSymbol}`,
+          name,
+          [[name, symbol, "1"]],
+          [
+            {} as Fees, // fees (use default)
+            env.addresses.tokens[underlyingSymbol], // underlying
+            [], // coreAddresses (use default)
+            [env.addresses.tokens[inputSymbol]], // inputs
+            [100_000], // inputWeights (100% on input[0])
+            [env.addresses.tokens.HOP], // rewardTokens
+            addr.iou, // spark iou token
+            addr.pool, // spark pool
+          ],
           "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address)",
-          {
-            underlying: env.addresses.tokens[underlyingSymbol],
-            erc20Metadata: [name, `as.sp${inputSymbol}`, "1"],
-            inputs: [env.addresses.tokens[inputSymbol]],
-            rewardTokens: [env.addresses.tokens.HOP],
-            iouToken: addr.iou,
-            pool: addr.pool,
-          } as ISparkStrategyV5,
           env
         );
         assert(env.deployment.strat.address && env.deployment.strat.address !== addressZero, "Strat not deployed");

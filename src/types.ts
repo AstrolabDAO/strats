@@ -11,26 +11,19 @@ export interface Fees {
     exit: number;
 }
 
-export interface IAs4626Params {
-    fees: Fees;
-    underlying: string;
-    feeCollector: string;
-    erc20Metadata: string[];
-}
+// name, symbol, version
+export type Erc20Metadata = [string, string, string];
 
-export interface IStrategyV5Params {
-    fees: Fees;
-    underlying: string;
-    coreAddresses: string[], // feeCollector,swapper,allocator,agent
-    erc20Metadata: string[],
-    inputs: string[],
-    inputWeights: number[],
-    rewardTokens: string[]
-}
+// fees, underlying, feeCollector
+export type As4626InitParams = [Fees, string, string];
+
+// fees, underlying, coreAddresses, inputs, inputWeights, rewardTokens, ...strategyParams
+export type StrategyV5InitParams = [Fees, string, string[], string[], number[], string[], ...any[]];
 
 export interface IStrategyDeployment extends IDeployment {
     // constructor/init params
-    params: IStrategyV5Params;
+    constructorParams: [Erc20Metadata];
+    initParams: StrategyV5InitParams;
     // compilation/verification dependencies
     swapper: Contract;
     agent: Contract;

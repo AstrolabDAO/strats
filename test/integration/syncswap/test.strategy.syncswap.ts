@@ -1,11 +1,9 @@
 import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { IHopStrategyV5 } from "src/implementations/Hop/types";
-import { IStrategyDeploymentEnv } from "src/types";
+import { Fees, IStrategyDeploymentEnv } from "../../../src/types";
 import addresses from "../../../src/implementations/SyncSwap/addresses";
 import { deposit, ensureFunding, invest, liquidate, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
 import { addressZero, getEnv } from "../utils";
-import { ISyncSwapStrategyV5 } from "src/implementations/SyncSwap/types";
 
 const inputSymbols: string[][] = [["USDC", "USDT"]];
 const underlyingSymbol = "USDC";
@@ -25,6 +23,9 @@ describe("test.strategy.syncswap", function () {
   for (const pair of inputSymbols) {
 
     const addr = addresses[network.config.chainId!][`SyncSwap.${pair.join("-")}`];
+    const name = `Astrolab SyncSwap ${pair.join("-")}`;
+    const symbol = `as.ss${pair.join("")}`;
+
     if (!addr) {
       console.error(`SyncSwap.${pair.join("-")} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
@@ -36,16 +37,19 @@ describe("test.strategy.syncswap", function () {
         env = await getEnv({}, addresses) as IStrategyDeploymentEnv;
         env = await setupStrat(
           "SyncSwapStrategy",
-          `Astrolab SyncSwap ${pair.join("-")}`,
+          name,
+          [[name, symbol, "1"]],
+          [
+            {} as Fees, // fees (use default)
+            env.addresses.tokens[underlyingSymbol], // underlying
+            [], // coreAddresses (use default)
+            pair.map(s => env.addresses.tokens[s]) as string[], // inputs
+            [50_000, 50_000], // inputWeights (50% on each) TODO: use proper estimates
+            [env.addresses.tokens.KNC], // rewardTokens
+            addr.router, // syncswap router
+            addr.pool, // syncswap pool
+          ],
           "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,address,address)",
-          {
-            underlying: env.addresses.tokens[underlyingSymbol],
-            erc20Metadata: [name, `as.ss${pair.join("")}`, "1"],
-            inputs: pair.map(s => env.addresses.tokens[s]) as string[],
-            rewardTokens: [env.addresses.tokens.KNC],
-            router: addr.router,
-            pool: addr.pool,
-          } as ISyncSwapStrategyV5,
           env
         );
         assert(env.deployment.strat.address && env.deployment.strat.address !== addressZero, "Strat not deployed");
