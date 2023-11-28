@@ -1,8 +1,8 @@
-import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
+import { ethers, network, provider, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { Fees, IStrategyDeploymentEnv } from "../../../src/types";
 import addresses from "../../../src/implementations/Hop/addresses";
-import { deposit, invest, liquidate, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
+import { deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
 import { addressZero, ensureFunding, getEnv } from "../utils";
 
 const inputSymbols: string[] = ["USDC"]; // "DAI", "USDT"];
@@ -70,10 +70,24 @@ describe("test.strategy.hop", function () {
       it("Invest", async function () {
         assert((await invest(env, 100)).gt(0), "Failed to invest");
       });
-      it("Liquidate", async function () {
-        assert((await liquidate(env, 51)).gt(0), "Failed to liquidate");
+      it("Liquidate (just enough for normal withdraw)", async function () {
+        assert((await liquidate(env, 11)).gt(0), "Failed to liquidate");
       });
       it("Withdraw", async function () {
+        assert((await withdraw(env, 10)).gt(0), "Failed to withdraw");
+      });
+      it("Request Withdraw", async function () {
+        assert((await requestWithdraw(env, 50)).gt(0), "Failed to request withdraw");
+      });
+      it("Liquidate (0+pending requests)", async function () {
+        assert((await liquidate(env, 0)).gt(0), "Failed to request withdraw");
+      });
+      it("Withdraw", async function () {
+        // jump to a new block (1 week later)
+        const params = [
+          ethers.utils.hexValue(7 * 24 * 60 * 60) // hex encoded number of seconds
+        ];
+        await provider.send('evm_increaseTime', params)
         assert((await withdraw(env, 50)).gt(0), "Failed to withdraw");
       });
     });

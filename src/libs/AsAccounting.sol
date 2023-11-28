@@ -10,28 +10,29 @@ library AsAccounting {
     /// @notice Calculates performance and management fees based on vault profits and elapsed time.
     /// @return perfFeesAmount The calculated performance fee.
     /// @return mgmtFeesAmount The calculated management fee.
-    /// @return profit The vault profit since the last feeCollectedAt.
+    /// @return profit The vault profit since the last feeCollection.
     function computeFees(
         uint256 totalAssets,
         uint256 sharePrice,
         Fees calldata fees,
-        Checkpoint calldata feeCollectedAt
+        Checkpoint calldata last
     )
         public
         view
         returns (uint256 perfFeesAmount, uint256 mgmtFeesAmount, uint256 profit)
     {
-        uint256 duration = block.timestamp - feeCollectedAt.timestamp;
+        uint256 duration = block.timestamp - last.feeCollection;
         if (duration == 0) return (0, 0, 0); // No fees if called within the same block
         profit =
-            AsMaths.max(feeCollectedAt.sharePrice, sharePrice)
-            - feeCollectedAt.sharePrice;
+            AsMaths.max(last.accountedSharePrice, sharePrice)
+            - last.accountedSharePrice;
         if (profit == 0) return (0, 0, 0); // No fees for no profits
 
         uint256 mgmtFeesRel = sharePrice.mulDiv(
             fees.mgmt * duration,
             AsMaths.BP_BASIS * 365 days
         );
+
         uint256 perfFeesRel = profit.bp(fees.perf);
 
         // Adjust management fee if it exceeds profits after performance fee
@@ -50,15 +51,15 @@ library AsAccounting {
     /// @dev This is used to calculate the total assets under management
     /// @return The amount of profits that are not yet realized
     function unrealizedProfits(
-        uint256 lastUpdate,
+        uint256 lastHarvest,
         uint256 expectedProfits,
         uint256 profitCooldown
     ) public view returns (uint256) {
-        if (lastUpdate + profitCooldown < block.timestamp) {
+        if (lastHarvest + profitCooldown < block.timestamp) {
             return 0; // Gains are realized if cooldown is over
         }
         // Calculate unrealized pnl during cooldown using mulDiv for precision
-        uint256 elapsedTime = block.timestamp - lastUpdate;
+        uint256 elapsedTime = block.timestamp - lastHarvest;
         uint256 realizedProfits = expectedProfits.mulDiv(
             elapsedTime,
             profitCooldown

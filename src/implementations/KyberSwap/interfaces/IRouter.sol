@@ -3,7 +3,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import '@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol';
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 interface IKyberSapElasticLM {
     struct RewardData {
@@ -307,11 +307,11 @@ interface ReinvestmentToken is IERC20 {
     function getFeeGrowthGlobal() external view returns (uint256);
 
     /// @return secondsPerLiquidityGlobal All-time seconds per unit of liquidity of the pool
-    /// @return lastUpdateTime The timestamp in which secondsPerLiquidityGlobal was last updated
+    /// @return lastHarvestTime The timestamp in which secondsPerLiquidityGlobal was last updated
     function getSecondsPerLiquidityData()
     external
     view
-    returns (uint128 secondsPerLiquidityGlobal, uint32 lastUpdateTime);
+    returns (uint128 secondsPerLiquidityGlobal, uint32 lastHarvestTime);
 
     /// @notice Calculates and returns the active time per unit of liquidity until current block.timestamp
     /// @param tickLower The lower tick (of a position)

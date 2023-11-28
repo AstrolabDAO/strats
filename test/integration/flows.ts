@@ -223,7 +223,7 @@ export async function deposit(env: IStrategyDeploymentEnv, amount = 100) {
     gasLimit: 5e7,
   }).then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Deposit");
-  return getTxLogData(receipt, ["address", "address", "uint256", "uint256"])[2];
+  return getTxLogData(receipt, ["uint256", "uint256"])[0];
 }
 
 export async function swapDeposit(
@@ -263,7 +263,7 @@ export async function swapDeposit(
     { gasLimit: 5e7 }
   ).then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SwapDeposit");
-  return getTxLogData(receipt, ["address", "address", "uint256", "uint256"])[2];
+  return getTxLogData(receipt, ["uint256", "uint256"])[0];
 }
 
 export async function seedLiquidity(
@@ -277,7 +277,7 @@ export async function seedLiquidity(
   const receipt = await strat.seedLiquidity(amount, MaxUint256, { gasLimit: 5e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity");
-  return getTxLogData(receipt, ["address", "address", "uint256", "uint256"], -2)[2]; // seeded amount
+  return getTxLogData(receipt, ["uint256", "uint256"], -2)[0]; // seeded amount
 }
 
 // TODO: add support for multiple inputs
@@ -341,9 +341,9 @@ export async function liquidate(env: IStrategyDeploymentEnv, amount = 50) {
   return getTxLogData(receipt, ["uint256", "uint256", "uint256"])[2]; // liquidityAvailable
 }
 
-export async function withdraw(env: IStrategyDeploymentEnv, amount?: number) {
+export async function withdraw(env: IStrategyDeploymentEnv, amount = 50) {
   const { underlying, inputs, strat } = env.deployment!;
-  amount ||= underlying.weiPerUnit * 10; // 10$ or equivalent
+  amount *= underlying.weiPerUnit; // 10$ or equivalent
   const minAmount = 1; // TODO: change with staticCall
   await logState(env, "Before Withdraw");
   const receipt = await strat.safeWithdraw(
@@ -352,5 +352,19 @@ export async function withdraw(env: IStrategyDeploymentEnv, amount?: number) {
     { gasLimit: 5e7 }
   ).then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw");
-  return getTxLogData(receipt, ["address", "address", "address", "uint256", "uint256"])[3]; // recovered
+  return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered
+}
+
+export async function requestWithdraw(env: IStrategyDeploymentEnv, amount = 50) {
+  const { underlying, inputs, strat } = env.deployment!;
+  amount *= underlying.weiPerUnit; // 10$ or equivalent
+  const minAmount = 1; // TODO: change with staticCall
+  await logState(env, "Before RequestWithdraw");
+  const receipt = await strat.requestWithdraw(
+    amount,
+    env.deployer.address, env.deployer.address,
+    { gasLimit: 5e7 }
+  ).then((tx: TransactionResponse) => tx.wait());
+  await logState(env, "After RequestWithdraw");
+  return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered
 }

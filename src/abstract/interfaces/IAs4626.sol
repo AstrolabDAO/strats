@@ -87,8 +87,7 @@ interface IAs4626 {
     function feeCollector() external view returns (address);
     function fees() external view returns (Fees memory);
     function expectedProfits() external view returns (uint256);
-    function lastUpdate() external view returns (uint256);
-    function feeCollectedAt() external view returns (Checkpoint memory);
+    function last() external view returns (Checkpoint memory);
     function asset() external view returns (address);
     function decimals() external view returns (uint8);
     function available() external view returns (uint256);

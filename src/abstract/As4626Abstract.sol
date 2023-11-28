@@ -102,7 +102,8 @@ abstract contract As4626Abstract is
 
     // custom
     uint256 public minLiquidity;
-    uint256 public profitCooldown;
+    uint256 public profitCooldown = 7 days; // profit linearization period
+    uint256 public redemptionRequestLocktime = 2 days;
     uint256 public claimableUnderlyingFees;
 
     uint256 public maxTotalAssets;
@@ -110,8 +111,7 @@ abstract contract As4626Abstract is
     Fees public fees;
     uint256 public expectedProfits;
 
-    uint256 public lastUpdate;
-    Checkpoint public feeCollectedAt;
+    Checkpoint public last;
     uint8 public shareDecimals;
     uint256 public weiPerShare;
 
@@ -138,6 +138,13 @@ abstract contract As4626Abstract is
         return shareDecimals;
     }
 
+    /// @notice Exempt an account from entry/exit fees or remove its exemption
+    /// @param _account The account to exempt
+    /// @param _isExempt Whether to exempt or not
+    function setExemption(address _account, bool _isExempt) public onlyAdmin {
+        exemptionList[_account] = _isExempt;
+    }
+
     /// @notice amount of assets in the protocol farmed by the strategy
     /// @dev underlying abstract function to be implemented by the strategy
     /// @return amount of assets in the pool
@@ -150,7 +157,7 @@ abstract contract As4626Abstract is
             - claimableUnderlyingFees
             - totalClaimableRedemption
             - AsAccounting.unrealizedProfits(
-                lastUpdate,
+                last.harvest,
                 expectedProfits,
                 profitCooldown);
     }
@@ -184,10 +191,18 @@ abstract contract As4626Abstract is
         return balanceOf(_owner) * sharePrice();
     }
 
-    /// @notice Exempt an account from entry/exit fees or remove its exemption
-    /// @param _account The account to exempt
-    /// @param _isExempt Whether to exempt or not
-    function setExemption(address _account, bool _isExempt) public onlyAdmin {
-        exemptionList[_account] = _isExempt;
+    /// @notice Convert how much shares you can get for your assets
+    /// @param _assets Amount of assets to convert
+    /// @return The amount of shares you can get for your assets
+    function convertToShares(uint256 _assets) public view returns (uint256) {
+        return _assets.mulDiv(weiPerShare, sharePrice());
+    }
+
+    /// @notice Convert how much asset tokens you can get for your shares
+    /// @dev Bear in mind that some negative slippage may happen
+    /// @param _shares amount of shares to covert
+    /// @return The amount of asset tokens you can get for your shares
+    function convertToAssets(uint256 _shares) public view returns (uint256) {
+        return _shares.mulDiv(sharePrice(), weiPerShare);
     }
 }

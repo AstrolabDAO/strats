@@ -7,7 +7,6 @@ import "./As4626Abstract.sol";
 import "./AsTypes.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
-import "hardhat/console.sol";
 
 abstract contract As4626 is As4626Abstract {
 
@@ -23,8 +22,6 @@ abstract contract As4626 is As4626Abstract {
         address _underlying,
         address _feeCollector
     ) public virtual onlyAdmin {
-
-        console.log("As4626.init");
         // check that the fees are not too high
         if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
         fees = _fees;
@@ -34,7 +31,7 @@ abstract contract As4626 is As4626Abstract {
         // use the same decimals as the underlying
         shareDecimals = ERC20(_underlying).decimals();
         weiPerShare = 10 ** shareDecimals;
-        feeCollectedAt = Checkpoint(block.timestamp, weiPerShare);
+        last.accountedSharePrice = weiPerShare;
     }
 
     /// @notice Mints shares to the receiver by depositing underlying tokens
@@ -45,6 +42,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver
     ) public nonReentrant returns (uint256 assets) {
+
         assets = convertToAssets(_shares);
 
         if (assets == 0 || _shares == 0) revert AmountTooLow(0);
@@ -150,9 +148,17 @@ abstract contract As4626 is As4626Abstract {
             _spendAllowance(_owner, msg.sender, _shares);
         }
 
-        uint256 claimable = AsMaths.min(
-            requestByOperator[_receiver].redeemAmount,
-            totalClaimableRedemption);
+        uint256 claimable = 0;
+
+        if (totalClaimableRedemption > 0 &&
+            requestByOperator[_receiver].timestamp <
+                AsMaths.min(
+                    last.liquidate,
+                    requestByOperator[_receiver].timestamp + redemptionRequestLocktime)) {
+            AsMaths.min(
+                requestByOperator[_receiver].redeemAmount,
+                totalClaimableRedemption);
+        }
 
         // if (claimable < _shares && available() < assets)
         //     revert InsufficientFunds(assets);
@@ -179,7 +185,7 @@ abstract contract As4626 is As4626Abstract {
         if (recovered <= _minAmountOut)
             revert AmountTooLow(recovered);
 
-        // burn the shares
+        // burn the shares (reverts if the owner doesn't have enough)
         _burn(_owner, _shares);
 
         underlying.safeTransfer(_receiver, recovered);
@@ -265,7 +271,7 @@ abstract contract As4626 is As4626Abstract {
                 totalAssets(),
                 sharePrice(),
                 fees,
-                feeCollectedAt
+                last
             );
 
         if (feeCollector == address(0)) revert AddressZero();
@@ -279,7 +285,8 @@ abstract contract As4626 is As4626Abstract {
         _mint(feeCollector, sharesToMint);
         claimableUnderlyingFees = 0;
 
-        feeCollectedAt = Checkpoint(block.timestamp, sharePrice());
+        last.feeCollection = block.timestamp;
+        last.accountedSharePrice = sharePrice();
 
         emit FeesCollected(
             profit,
@@ -367,19 +374,8 @@ abstract contract As4626 is As4626Abstract {
         profitCooldown = _profitCooldown;
     }
 
-    /// @notice Convert how much shares you can get for your assets
-    /// @param _assets Amount of assets to convert
-    /// @return The amount of shares you can get for your assets
-    function convertToShares(uint256 _assets) public view returns (uint256) {
-        return _assets.mulDiv(weiPerShare, sharePrice());
-    }
-
-    /// @notice Convert how much asset tokens you can get for your shares
-    /// @dev Bear in mind that some negative slippage may happen
-    /// @param _shares amount of shares to covert
-    /// @return The amount of asset tokens you can get for your shares
-    function convertToAssets(uint256 _shares) public view returns (uint256) {
-        return _shares.mulDiv(sharePrice(), weiPerShare);
+    function setRedemptionRequestLocktime(uint256 _redemptionRequestLocktime) external onlyAdmin {
+        redemptionRequestLocktime = _redemptionRequestLocktime;
     }
 
     /// @notice Preview how much asset tokens the caller has to pay to acquire x shares
@@ -432,7 +428,7 @@ abstract contract As4626 is As4626Abstract {
 
     function requestDeposit(uint256 assets, address operator) virtual external {}
 
-    function requestRedeem(uint256 shares, address operator, address owner) external {
+    function requestRedeem(uint256 shares, address operator, address owner) public nonReentrant {
         if (owner != msg.sender)
             revert WrongRequest(msg.sender, shares);
         if (shares == 0)
@@ -445,7 +441,11 @@ abstract contract As4626 is As4626Abstract {
         request.timestamp = block.timestamp;
         request.sharePrice = sharePrice();
         totalRedemptionRequest += shares;
-        emit RedeemRequestCanceled(owner, shares);
+        emit RedeemRequest(owner, operator, owner, shares);
+    }
+
+    function requestWithdraw(uint256 _amount, address operator, address owner) external {
+        return requestRedeem(convertToShares(_amount), operator, owner);
     }
 
     function cancelDepositRequest(address operator, address owner) virtual external {}

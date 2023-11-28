@@ -19,7 +19,6 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     address public agent;
     address public stratProxy;
     address public allocator;
-    uint256 public lastHarvest;
 
     // inputs are assets being used to farm, asset is swapped into inputs
     IERC20Metadata[16] public inputs;

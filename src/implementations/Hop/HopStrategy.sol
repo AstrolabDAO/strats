@@ -7,7 +7,6 @@ import "../../abstract/StrategyV5.sol";
 
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
-import "hardhat/console.sol";
 
 /// @title Hop Strategy (v5)
 /// @notice This contract is a strategy for Hop

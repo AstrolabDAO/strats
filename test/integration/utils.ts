@@ -1,3 +1,4 @@
+import { assert } from "chai";
 import {
   Log,
   TransactionReceipt,
@@ -20,7 +21,6 @@ import {
 } from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
 import { ISwapperParams, swapperParamsToString, getAllTransactionRequests } from "@astrolabs/swapper";
-import { assert } from "chai";
 
 export const addressZero = constants.AddressZero;
 const MaxUint256 = ethers.constants.MaxUint256;
@@ -44,6 +44,9 @@ export async function logState(
       invested,
       available,
       deployerBalance,
+      totalDepositRequest,
+      totalRedemptionRequest,
+      totalClaimableRedemption,
       // stratUnderlyingBalance,
     ] = await Promise.all([
       strat.inputs(0),
@@ -54,6 +57,9 @@ export async function logState(
       strat.invested(),
       strat.available(),
       strat.balanceOf(env.deployer!.address),
+      strat.totalDepositRequest(),
+      strat.totalRedemptionRequest(),
+      strat.totalClaimableRedemption(),
       // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
     console.log(
@@ -67,7 +73,11 @@ export async function logState(
       invested(): ${invested}
       available(): ${available}
       stratUnderlyingBalance(): ${stratUnderlyingBalance}
-      deployerBalance(): ${deployerBalance}`
+      deployerBalance(): ${deployerBalance}
+      totalDepositRequest(): ${totalDepositRequest}
+      totalRedemptionRequest(): ${totalRedemptionRequest}
+      totalClaimableRedemption(): ${totalClaimableRedemption}
+      `
     );
   } catch (e) {
     console.log(`Error logging state ${step ?? ""}: ${e}`);
@@ -302,7 +312,5 @@ export function getTxLogData(tx: TransactionReceipt, types=["uint256"], logIndex
     log = logs[logIndex];
   }
   if (!log) throw new Error(`No log ${logIndex} found on tx ${tx.transactionHash}`);
-  const decoded = ethersUtils.defaultAbiCoder.decode(types, log.data);
-  console.log(JSON.stringify(decoded, null, 2));
-  return decoded;
+  return ethersUtils.defaultAbiCoder.decode(types, log.data);
 }

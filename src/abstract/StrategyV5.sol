@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "@astrolabs/swapper/contracts/Swapper.sol";
 import "./StrategyAbstractV5.sol";
 import "./AsProxy.sol";
-import "hardhat/console.sol";
 
 abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
+
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for IERC20;
@@ -127,13 +127,14 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         bool _panic,
         bytes[] memory _params
     ) external onlyInternal returns (uint256 liquidityAvailable, uint256) {
+
         liquidityAvailable = available();
         uint256 allocated = _invested();
 
         uint256 newRedemptionRequests = totalRedemptionRequest -
             totalClaimableRedemption;
 
-        _amount += newRedemptionRequests;
+        _amount += convertToAssets(newRedemptionRequests);
 
         // pani or less assets than requested >> liquidate all
         if (_panic || _amount > allocated) _amount = allocated;
@@ -150,6 +151,8 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             if ((liquidityAvailable < _minLiquidity) && !_panic)
                 revert AmountTooLow(liquidityAvailable);
         }
+
+        last.liquidate = block.timestamp;
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
         return (liquidityAvailable, totalAssets());
     }
@@ -200,12 +203,12 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         // reset expected profits to updated value + amount
         expectedProfits =
             AsAccounting.unrealizedProfits(
-                lastUpdate,
+                last.harvest,
                 expectedProfits,
                 profitCooldown
             ) +
             amount;
-        lastUpdate = block.timestamp;
+        last.harvest = block.timestamp;
         emit Harvest(amount, block.timestamp);
     }
 

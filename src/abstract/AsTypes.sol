@@ -9,8 +9,10 @@ struct Fees {
 }
 
 struct Checkpoint {
-    uint256 timestamp;
-    uint256 sharePrice;
+    uint256 accountedSharePrice;
+    uint256 feeCollection;
+    uint256 liquidate;
+    uint256 harvest;
 }
 
 struct Erc7540Request {
