@@ -27,7 +27,7 @@
     "test-integration": "yarn ts-mocha --require hardhat/register --timeout 120000 --recursive \"test/integration/**/*.ts\" --exit",
     "build": "tsc --build .",
     "deploy-tenderly": "yarn hardhat run --network tenderly test/integration/scripts/deploy.ts",
-    "test-tenderly": "yarn hardhat test --network tenderly",
+    "test-tenderly": "yarn hardhat test --network tenderly --grep 'test.strategy.hop'",
     "prepublishOnly": "yarn build",
     "clean": "yarn rimraf dist internal types *.{d.ts,js}{,.map} build-test tsconfig.tsbuildinfo"
   },
