@@ -73,13 +73,13 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
 
     function updateAllocator(address _allocator) external onlyManager {
         allocator = _allocator;
-        emit AllocatorUpdated(_allocator);
+        emit AllocatorUpdate(_allocator);
     }
 
     function updateAgent(address _agent) external onlyAdmin {
         if (_agent == address(0)) revert AddressZero();
         agent = _agent;
-        emit AgentUpdated(_agent);
+        emit AgentUpdate(_agent);
     }
 
     function setSwapperAllowance(uint256 _amount) public onlyAdmin {
@@ -94,7 +94,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             inputs[i].approve(swapperAddress, _amount);
         }
         underlying.approve(swapperAddress, _amount);
-        emit SwapperAllowanceSet(_amount);
+        emit SetSwapperAllowance(_amount);
     }
 
     /// @notice Change the Swapper address, remove allowances and give new ones
@@ -103,7 +103,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         if (address(swapper) != address(0)) setSwapperAllowance(0);
         swapper = Swapper(_swapper);
         setSwapperAllowance(MAX_UINT256);
-        emit SwapperUpdated(_swapper);
+        emit SwapperUpdate(_swapper);
     }
 
     // implemented by strategies
@@ -126,47 +126,33 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         uint256 _minLiquidity,
         bool _panic,
         bytes[] memory _params
-    )
-        external
-        onlyInternal
-        returns (uint256 liquidityAvailable, uint256)
-    {
+    ) external onlyInternal returns (uint256 liquidityAvailable, uint256) {
         liquidityAvailable = available();
         uint256 allocated = _invested();
 
         uint256 newRedemptionRequests = totalRedemptionRequest -
             totalClaimableRedemption;
+
         _amount += newRedemptionRequests;
 
-        if (_amount > allocated) _amount = allocated;
+        // pani or less assets than requested >> liquidate all
+        if (_panic || _amount > allocated) _amount = allocated;
 
-        // panic or less assets than requested >> liquidate all
-        if (_panic || allocated < _amount) _amount = allocated;
+        uint256 liquidated = 0;
 
         // if enough cash, withdraw from the protocol
         if (liquidityAvailable < _amount) {
             // liquidate protocol positions
-            uint256 liquidated = _liquidate(_amount, _params);
+            liquidated = _liquidate(_amount, _params);
             liquidityAvailable += liquidated;
 
             // Check that we have enough assets to return
             if ((liquidityAvailable < _minLiquidity) && !_panic)
-                revert AmountTooLow(liquidityAvailable);         
+                revert AmountTooLow(liquidityAvailable);
         }
+        emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
         return (liquidityAvailable, totalAssets());
     }
-
-    // function safeDepositInvest(
-    //     uint256 _amount,
-    //     address _receiver,
-    //     uint256 _minShareAmount,
-    //     bytes[] memory _params
-    // ) external onlyAdmin
-    //     returns (uint256 investedAmount, uint256 iouReceived)
-    // {
-    //     safeDeposit(_amount, _receiver, _minShareAmount);
-    //     return invest(_amount, _minShareAmount, _params);
-    // }
 
     // implemented by strategies
     function _rewardsAvailable()
@@ -188,17 +174,17 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     // implemented by strategies
-    function _withdrawRequest(
+    function _liquidateRequest(
         uint256 _amount
     ) internal virtual returns (uint256) {}
 
     /// @notice Order the withdraw request in strategies with lock
     /// @param _amount Amount of debt to unfold
     /// @return assetsRecovered Amount of assets recovered
-    function withdrawRequest(
+    function liquidateRequest(
         uint256 _amount
     ) public onlyInternal returns (uint256) {
-        return _withdrawRequest(_amount);
+        return _liquidateRequest(_amount);
     }
 
     // implemented by strategies
@@ -220,7 +206,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             ) +
             amount;
         lastUpdate = block.timestamp;
-        emit Harvested(amount, block.timestamp);
+        emit Harvest(amount, block.timestamp);
     }
 
     // implemented by strategies
@@ -249,7 +235,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             _params
         );
 
-        emit Invested(_amount, block.timestamp);
+        emit Invest(_amount, block.timestamp);
         return (investedAmount, iouReceived);
     }
 
@@ -278,7 +264,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             _minIouReceived,
             _params
         );
-        emit Compounded(_amount, block.timestamp);
+        emit Compound(_amount, block.timestamp);
     }
 
     function _setAllowances(uint256 _amount) internal virtual {}

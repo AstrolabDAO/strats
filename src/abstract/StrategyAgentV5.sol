@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@astrolabs/swapper/contracts/Swapper.sol";
 import "./interfaces/IAllocator.sol";
+import "./interfaces/IStrategyV5.sol";
 import "./StrategyAbstractV5.sol";
 import "./As4626.sol";
-import "hardhat/console.sol";
+
 
 contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
 
@@ -25,18 +26,25 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
         address _underlying,
         address _feeCollector
     ) public override onlyAdmin {
-        console.log("StrategyAgentV5.init");
         As4626.init(_fees, _underlying, _feeCollector);
     }
 
     // hits the proxy from implementation
     function sharePrice() public view override returns (uint256) {
-        return IAs4626(stratProxy).sharePrice();
+        return IStrategyV5(stratProxy).sharePrice();
     }
 
     // hits the proxy from implementation
     function totalAssets() public view override returns (uint256) {
-        return IAs4626(stratProxy).totalAssets();
+        return IStrategyV5(stratProxy).totalAssets();
+    }
+
+    function invest(
+        uint256 _amount,
+        uint256 _minIouReceived,
+        bytes[] memory _params
+    ) public returns (uint256 investedAmount, uint256 iouReceived) {
+        return IStrategyV5(stratProxy).invest(_amount, _minIouReceived, _params);
     }
 
     /// @notice Rescue any ERC20 token that is stuck in the contract
@@ -101,5 +109,17 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
             );
         }
         return safeDeposit(underlyingAmount, _receiver, _minShareAmount);
+    }
+
+    function safeDepositInvest(
+        uint256 _amount,
+        address _receiver,
+        uint256 _minShareAmount,
+        bytes[] memory _params
+    ) external onlyAdmin
+        returns (uint256 investedAmount, uint256 iouReceived)
+    {
+        safeDeposit(_amount, _receiver, _minShareAmount);
+        return invest(_amount, _minShareAmount, _params);
     }
 }

@@ -6,13 +6,14 @@ import "./As4626Abstract.sol";
 
 abstract contract StrategyAbstractV5 is As4626Abstract {
 
-    event Harvested(uint256 amount, uint256 timestamp);
-    event Compounded(uint256 amount, uint256 timestamp);
-    event Invested(uint256 amount, uint256 timestamp);
-    event AgentUpdated(address indexed addr);
-    event SwapperUpdated(address indexed addr);
-    event AllocatorUpdated(address indexed addr);
-    event SwapperAllowanceSet(uint256 amount);
+    event Harvest(uint256 amount, uint256 timestamp);
+    event Compound(uint256 amount, uint256 timestamp);
+    event Invest(uint256 amount, uint256 timestamp);
+    event Liquidate(uint256 amount, uint256 liquidityAvailable, uint256 timestamp);
+    event AgentUpdate(address indexed addr);
+    event SwapperUpdate(address indexed addr);
+    event AllocatorUpdate(address indexed addr);
+    event SetSwapperAllowance(uint256 amount);
 
     Swapper public swapper;
     address public agent;

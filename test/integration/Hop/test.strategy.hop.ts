@@ -2,8 +2,8 @@ import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { Fees, IStrategyDeploymentEnv } from "../../../src/types";
 import addresses from "../../../src/implementations/Hop/addresses";
-import { deposit, ensureFunding, invest, liquidate, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
-import { addressZero, getEnv } from "../utils";
+import { deposit, invest, liquidate, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
+import { addressZero, ensureFunding, getEnv } from "../utils";
 
 const inputSymbols: string[] = ["USDC"]; // "DAI", "USDT"];
 const underlyingSymbol = "USDC";

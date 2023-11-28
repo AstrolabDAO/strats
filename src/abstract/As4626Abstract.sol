@@ -14,7 +14,6 @@ import "../libs/AsAccounting.sol";
  * @dev Abstract contract containing variables, structs, errors, and events for As4626.
  */
 abstract contract As4626Abstract is
-    IERC165,
     ERC20Permit,
     Manageable,
     Pausable,
