@@ -1,14 +1,14 @@
-import { provider, network, weiToString, TransactionRequest, IDeploymentUnit, deploy, deployAll, loadAbi } from "@astrolabs/hardhat";
+import { provider, network, weiToString, TransactionRequest, IDeploymentUnit, deploy, deployAll, loadAbi, ethers } from "@astrolabs/hardhat";
 import { ISwapperParams, swapperParamsToString, getAllTransactionRequests, getTransactionRequest, ITransactionRequestWithEstimate } from "@astrolabs/swapper";
 import { wethAbi, erc20Abi } from "abitype/abis";
-import { BigNumber, Contract, utils, constants } from "ethers";
+import { Contract, BigNumber, utils as ethersUtils } from "ethers";
 import { assert } from "chai";
 import { merge } from "lodash";
 import { IStrategyDeployment, IStrategyDeploymentEnv, StrategyV5InitParams, IToken, Erc20Metadata } from "../../src/types";
 import { addressZero, getEnv, getTokenInfo, logState } from "./utils";
 
-const MaxUint256 = constants.MaxUint256;
-const maxTopup = BigNumber.from(weiToString(5 * 1e18));
+const MaxUint256 = ethers.constants.MaxUint256;
+const maxTopup = ethers.BigNumber.from(weiToString(5 * 1e18));
 
 
 export const deployStrat = async (
@@ -446,7 +446,7 @@ export async function swapDeposit(
       payer: strat.address,
       testPayer: env.addresses!.accounts!.impersonate,
     })) as ITransactionRequestWithEstimate;
-    swapData = utils.defaultAbiCoder.encode(
+    swapData = ethers.utils.defaultAbiCoder.encode(
       ["address", "uint256", "bytes"],
       [tr.to, 1, tr.data]
     );
@@ -528,7 +528,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, amount=50) {
       testPayer: env.addresses.accounts!.impersonate,
     })) as ITransactionRequestWithEstimate;
   }
-  swapData = utils.defaultAbiCoder.encode(
+  swapData = ethersUtils.defaultAbiCoder.encode(
     ["address", "uint256", "bytes"],
     [tr.to, 1, tr.data]
   );

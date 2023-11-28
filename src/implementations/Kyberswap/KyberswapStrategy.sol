@@ -9,10 +9,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../../abstract/StrategyV5.sol";
 import "./interfaces/IRouter.sol";
 
-/// @title Kyberswap Strategy (v5)
-/// @notice This contract is a strategy for Kyberswap
+/// @title KyberSwap Strategy (v5)
+/// @notice This contract is a strategy for KyberSwap
 /// @dev Basic implementation
-contract KyberswapStrategy is StrategyV5 {
+contract KyberSwapStrategy is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Tokens used
