@@ -155,7 +155,7 @@ abstract contract As4626Abstract is
     function available() public view returns (uint256) {
         return underlying.balanceOf(address(this))
             - claimableUnderlyingFees
-            - totalClaimableRedemption
+            - convertToAssets(totalClaimableRedemption)
             - AsAccounting.unrealizedProfits(
                 last.harvest,
                 expectedProfits,

@@ -155,13 +155,10 @@ abstract contract As4626 is As4626Abstract {
                 AsMaths.min(
                     last.liquidate,
                     requestByOperator[_receiver].timestamp + redemptionRequestLocktime)) {
-            AsMaths.min(
+            claimable = AsMaths.min(
                 requestByOperator[_receiver].redeemAmount,
                 totalClaimableRedemption);
         }
-
-        // if (claimable < _shares && available() < assets)
-        //     revert InsufficientFunds(assets);
 
         uint256 price = sharePrice();
 
@@ -450,6 +447,8 @@ abstract contract As4626 is As4626Abstract {
 
     function cancelDepositRequest(address operator, address owner) virtual external {}
 
+    // TODO: the potential loss incur while not farming with the idle funds should be taken away from the user
+    // as he re-enters at the current sharePrice
     function cancelRedeemRequest(address operator, address owner) external {
         require(owner == msg.sender || operator == msg.sender, "Caller is not owner or operator");
         Erc7540Request storage request = requestByOperator[operator];
@@ -469,4 +468,3 @@ abstract contract As4626 is As4626Abstract {
 
     receive() external payable {}
 }
-

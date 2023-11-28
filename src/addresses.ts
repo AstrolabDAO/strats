@@ -185,7 +185,7 @@ export const addresses = {
     },
     astrolab: {
       Swapper: "0x33b2dc2d8cc204377e5b3b20f84d5d73646d3a9c",
-      StrategyAgentV5: "0xd1d26fda890622be9932db0e22e26c75dc46136f",
+      StrategyAgentV5: "0xbb77f1d920f968070c61c7df85ef762b72f3e94d",
     },
   },
   // matic

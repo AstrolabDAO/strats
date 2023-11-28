@@ -32,9 +32,6 @@ export async function logState(
 ) {
   const { strat, underlying } = env.deployment!;
   try {
-    const stratUnderlyingBalance = await underlying.contract.balanceOf(
-      strat.address
-    );
     const [
       inputsAddresses,
       rewardTokensAddresses,
@@ -43,11 +40,12 @@ export async function logState(
       totalAssets,
       invested,
       available,
-      deployerBalance,
       totalDepositRequest,
       totalRedemptionRequest,
       totalClaimableRedemption,
-      // stratUnderlyingBalance,
+      stratUnderlyingBalance,
+      deployerUnderlyingBalance,
+      deployerSharesBalance
     ] = await Promise.all([
       strat.inputs(0),
       strat.rewardTokens(0),
@@ -56,10 +54,12 @@ export async function logState(
       strat.totalAssets(),
       strat.invested(),
       strat.available(),
-      strat.balanceOf(env.deployer!.address),
       strat.totalDepositRequest(),
       strat.totalRedemptionRequest(),
       strat.totalClaimableRedemption(),
+      underlying.contract.balanceOf(strat.address),
+      underlying.contract.balanceOf(env.deployer!.address),
+      strat.balanceOf(env.deployer!.address),
       // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
     console.log(
@@ -67,16 +67,15 @@ export async function logState(
       underlying: ${underlying.contract.address}
       inputs[0]: ${inputsAddresses}
       rewardTokens[0]: ${rewardTokensAddresses}
-      sharePrice(): ${sharePrice}
-      totalSuply(): ${totalSuply}
-      totalAssets(): ${totalAssets}
-      invested(): ${invested}
-      available(): ${available}
-      stratUnderlyingBalance(): ${stratUnderlyingBalance}
-      deployerBalance(): ${deployerBalance}
-      totalDepositRequest(): ${totalDepositRequest}
-      totalRedemptionRequest(): ${totalRedemptionRequest}
-      totalClaimableRedemption(): ${totalClaimableRedemption}
+      sharePrice(): ${sharePrice/underlying.weiPerUnit} (${sharePrice}wei)
+      totalSuply(): ${totalSuply/underlying.weiPerUnit} (${totalSuply}wei)
+      totalAssets(): ${totalAssets/underlying.weiPerUnit} (${totalAssets}wei)
+      invested(): ${invested/underlying.weiPerUnit} (${invested}wei)
+      available(): ${available/underlying.weiPerUnit} (${available}wei) (${Math.round(available*100/totalAssets)/100}%)
+      stratUnderlyingBalance(): ${stratUnderlyingBalance/underlying.weiPerUnit} (${stratUnderlyingBalance}wei)
+      deployerBalances(shares, underlying): [${deployerSharesBalance/underlying.weiPerUnit},${deployerUnderlyingBalance/underlying.weiPerUnit}]
+      totalRedemptionRequest(): ${totalRedemptionRequest/underlying.weiPerUnit} (${totalRedemptionRequest}wei)
+      totalClaimableRedemption(): ${totalClaimableRedemption/underlying.weiPerUnit} (${totalClaimableRedemption}wei) (${Math.round(totalClaimableRedemption*100/totalRedemptionRequest)/100}%)
       `
     );
   } catch (e) {

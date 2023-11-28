@@ -125,6 +125,7 @@ interface IAs4626 {
     function maxRedeem(address _owner) external view returns (uint256);
     function requestDeposit(uint256 assets, address operator) external;
     function requestRedeem(uint256 shares, address operator, address owner) external;
+    function requestWithdraw(uint256 assets, address operator, address owner) external;
     function cancelDepositRequest(address operator, address owner) external;
     function cancelRedeemRequest(address operator, address owner) external;
     function pendingDepositRequest(address operator) external view returns (uint256);

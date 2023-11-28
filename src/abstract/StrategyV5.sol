@@ -131,13 +131,15 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         liquidityAvailable = available();
         uint256 allocated = _invested();
 
-        uint256 newRedemptionRequests = totalRedemptionRequest -
-            totalClaimableRedemption;
+        uint256 newRedemptionRequests =
+            totalRedemptionRequest - totalClaimableRedemption;
 
         _amount += convertToAssets(newRedemptionRequests);
 
         // pani or less assets than requested >> liquidate all
-        if (_panic || _amount > allocated) _amount = allocated;
+        if (_panic || _amount > allocated) {
+            _amount = allocated;
+        }
 
         uint256 liquidated = 0;
 
@@ -153,6 +155,16 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         }
 
         last.liquidate = block.timestamp;
+        totalClaimableRedemption = AsMaths.min(
+            totalRedemptionRequest,
+            // cash available to all redemptions
+            underlying.balanceOf(address(this))
+                - claimableUnderlyingFees
+                - AsAccounting.unrealizedProfits(
+                    last.harvest,
+                    expectedProfits,
+                    profitCooldown)
+        );
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
         return (liquidityAvailable, totalAssets());
     }
