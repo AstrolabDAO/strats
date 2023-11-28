@@ -517,7 +517,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, amount=50) {
   const input = inputs[0].contract.address;
   const output = underlying.contract.address;
 
-  let tr = { to: "", data: "" } as ITransactionRequestWithEstimate;
+  let tr = { to: addressZero, data: "0x00" } as ITransactionRequestWithEstimate;
   if (input != output) {
     tr = (await getTransactionRequest({
       input,
@@ -532,7 +532,10 @@ export async function liquidate(env: IStrategyDeploymentEnv, amount=50) {
     ["address", "uint256", "bytes"],
     [tr.to, 1, tr.data]
   );
-  const [liquidity, totalAssets] = await strat.liquidate(amount, 1, false, [swapData]);
+  await logState(env, "Before Liquidate");
+  // const [liquidity, totalAssets] = await strat.liquidate(amount, 1, false, [swapData], { gasLimit: 5e7 });
+  const receipt = await strat.liquidate(amount, 1, false, [swapData], { gasLimit: 5e7 });
+  await logState(env, "After Liquidate");
   const liquidated = balanceBefore.sub(await underlying.contract.balanceOf(env.deployer.address));
   // assert(liquidated.gt(0));
   return liquidated;

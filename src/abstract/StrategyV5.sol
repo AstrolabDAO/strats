@@ -7,7 +7,6 @@ import "./AsProxy.sol";
 import "hardhat/console.sol";
 
 abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
-
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for IERC20;
@@ -22,14 +21,15 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             revert Unauthorized();
     }
 
-    constructor(string[3] memory _erc20Metadata) StrategyAbstractV5(_erc20Metadata) {}
+    constructor(
+        string[3] memory _erc20Metadata
+    ) StrategyAbstractV5(_erc20Metadata) {}
 
     function init(
         Fees memory _fees,
         address _underlying,
         address[4] memory _coreAddresses
     ) public onlyAdmin {
-
         setExemption(msg.sender, true);
         // done in As4626 but required for swapper
         stratProxy = address(this);
@@ -38,7 +38,10 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         allocator = _coreAddresses[2];
         agent = _coreAddresses[3];
         // StrategyAgentV5.init
-        _delegateWithSignature(agent, "init((uint64,uint64,uint64,uint64),address,address)");
+        _delegateWithSignature(
+            agent,
+            "init((uint64,uint64,uint64,uint64),address,address)"
+        );
     }
 
     function _implementation() internal view override returns (address) {
@@ -80,7 +83,6 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     function setSwapperAllowance(uint256 _amount) public onlyAdmin {
-
         address swapperAddress = address(swapper);
 
         for (uint256 i = 0; i < rewardTokens.length; i++) {
@@ -96,12 +98,9 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     /// @notice Change the Swapper address, remove allowances and give new ones
-    function updateSwapper(
-        address _swapper
-    ) public onlyAdmin {
+    function updateSwapper(address _swapper) public onlyAdmin {
         if (_swapper == address(0)) revert AddressZero();
-        if (address(swapper) != address(0))
-            setSwapperAllowance(0);
+        if (address(swapper) != address(0)) setSwapperAllowance(0);
         swapper = Swapper(_swapper);
         setSwapperAllowance(MAX_UINT256);
         emit SwapperUpdated(_swapper);
@@ -121,7 +120,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     /// @param _panic ignore slippage when unfolding
     /// @param _params generic callData (eg. SwapperParams)
     /// @return liquidityAvailable Amount of assets available to unfold
-    /// @return newTotalAssets Total assets in the strategy after unfolding
+    /// @return Total assets in the strategy after unfolding
     function liquidate(
         uint256 _amount,
         uint256 _minLiquidity,
@@ -130,17 +129,16 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     )
         external
         onlyInternal
-        returns (uint256 liquidityAvailable, uint256 newTotalAssets)
+        returns (uint256 liquidityAvailable, uint256)
     {
         liquidityAvailable = available();
         uint256 allocated = _invested();
-        newTotalAssets = liquidityAvailable + allocated;
 
-        uint256 newRedemptionRequests = totalRedemptionRequest - totalClaimableRedemption;
+        uint256 newRedemptionRequests = totalRedemptionRequest -
+            totalClaimableRedemption;
         _amount += newRedemptionRequests;
 
-        if (_amount > allocated)
-            _amount = allocated;
+        if (_amount > allocated) _amount = allocated;
 
         // panic or less assets than requested >> liquidate all
         if (_panic || allocated < _amount) _amount = allocated;
@@ -153,12 +151,9 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
 
             // Check that we have enough assets to return
             if ((liquidityAvailable < _minLiquidity) && !_panic)
-                revert AmountTooLow(liquidityAvailable);
-
-            // consider lost the delta (probably due to slippage or exit fees)
-            newTotalAssets -= (_amount - liquidated);
+                revert AmountTooLow(liquidityAvailable);         
         }
-        return (liquidityAvailable, newTotalAssets);
+        return (liquidityAvailable, totalAssets());
     }
 
     // function safeDepositInvest(
@@ -217,11 +212,13 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     function harvest(bytes[] memory _params) public returns (uint256 amount) {
         amount = _harvest(_params);
         // reset expected profits to updated value + amount
-        expectedProfits = AsAccounting.unrealizedProfits(
-            lastUpdate,
-            expectedProfits,
-            profitCooldown
-        ) + amount;
+        expectedProfits =
+            AsAccounting.unrealizedProfits(
+                lastUpdate,
+                expectedProfits,
+                profitCooldown
+            ) +
+            amount;
         lastUpdate = block.timestamp;
         emit Harvested(amount, block.timestamp);
     }
@@ -271,7 +268,11 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         uint256 _amount,
         uint _minIouReceived,
         bytes[] memory _params
-    ) external onlyKeeper returns (uint256 iouReceived, uint256 harvestedRewards) {
+    )
+        external
+        onlyKeeper
+        returns (uint256 iouReceived, uint256 harvestedRewards)
+    {
         (iouReceived, harvestedRewards) = _compound(
             _amount,
             _minIouReceived,
@@ -287,5 +288,4 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         uint256[] memory _minAmountsOut,
         bytes memory _params
     ) internal virtual returns (uint256 amountsOut) {}
-
 }
