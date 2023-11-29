@@ -8,25 +8,36 @@ import "./AsProxy.sol";
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
 
-
-/// @title StrategyV5 Abstract - inherited by all strategies
-/// @author Astrolabs Ltd.
-/// @notice All As4626 calls are delegated to the agent (StrategyAgentV5)
-/// @dev Ensure memory slots compliance between the agent and StrategyV5 implementations (proxy)
+/**            _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *
+ * @title StrategyV5 Abstract - implemented by all strategies
+ * @author Astrolab DAO
+ * @notice All StrategyV5 calls are delegated to the agent (StrategyAgentV5)
+ * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
+ */
 abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     using AsMaths for uint256;
     using AsMaths for int256;
     using AsArrays for bytes[];
     using SafeERC20 for IERC20;
 
+    /**
+     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
+     */
     constructor(
         string[3] memory _erc20Metadata
     ) StrategyAbstractV5(_erc20Metadata) {}
 
-    /// @notice Initialize the strategy
-    /// @param _fees fees structure
-    /// @param _underlying address of the underlying asset
-    /// @param _coreAddresses array of core addresses: feeCollector, swapper, allocator, agent
+    /**
+     * @notice Initialize the strategy
+     * @param _fees fees structure
+     * @param _underlying address of the underlying asset
+     * @param _coreAddresses array of core addresses: feeCollector, swapper, allocator, agent
+     */
     function init(
         Fees memory _fees,
         address _underlying,
@@ -46,13 +57,17 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         );
     }
 
-    /// @notice Returns the address of the implementation
+    /**
+     * @notice Returns the address of the implementation
+     */
     function _implementation() internal view override returns (address) {
         return agent;
     }
 
-    /// @notice Sets the reward tokens
-    /// @param _rewardTokens array of reward tokens
+    /**
+     * @notice Sets the reward tokens
+     * @param _rewardTokens array of reward tokens
+     */
     function setRewardTokens(
         address[] memory _rewardTokens
     ) public onlyManager {
@@ -62,9 +77,11 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             rewardTokens[i] = address(0);
     }
 
-    /// @notice Sets the input tokens (strategy internals)
-    /// @param _inputs array of input tokens
-    /// @param _weights array of input weights
+    /**
+     * @notice Sets the input tokens (strategy internals)
+     * @param _inputs array of input tokens
+     * @param _weights array of input weights
+     */
     function setInputs(
         address[] memory _inputs,
         uint256[] memory _weights
@@ -79,21 +96,29 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         }
     }
 
-    /// @notice Sets the allocator
+    /**
+     * @notice Sets the allocator
+     * @param _allocator The new allocator address
+     */
     function updateAllocator(address _allocator) external onlyManager {
         allocator = _allocator;
         emit AllocatorUpdate(_allocator);
     }
 
-    /// @notice Sets the agent (StrategyAgentV5 implementation)
+    /**
+     * @notice Sets the agent (StrategyAgentV5 implementation)
+     * @param _agent The new agent address
+     */
     function updateAgent(address _agent) external onlyAdmin {
         if (_agent == address(0)) revert AddressZero();
         agent = _agent;
         emit AgentUpdate(_agent);
     }
 
-    /// @notice Sets the swapper allowance
-    /// @param _amount amount of allowance to set
+    /**
+     * @notice Sets the swapper allowance
+     * @param _amount Amount of allowance to set
+     */
     function setSwapperAllowance(uint256 _amount) public onlyAdmin {
         address swapperAddress = address(swapper);
 
@@ -109,8 +134,10 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         emit SetSwapperAllowance(_amount);
     }
 
-    /// @notice Change the Swapper address, remove allowances and give new ones
-    /// @param _swapper address of the new swapper
+    /**
+     * @notice Change the Swapper address, remove allowances and give new ones
+     * @param _swapper Address of the new swapper
+     */
     function updateSwapper(address _swapper) public onlyAdmin {
         if (_swapper == address(0)) revert AddressZero();
         if (address(swapper) != address(0)) setSwapperAllowance(0);
@@ -119,37 +146,47 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         emit SwapperUpdate(_swapper);
     }
 
-    /// @notice Strategy liquidation (unfolding mechanism)
-    /// @dev abstract function to be implemented by the strategy
-    /// @param _amount Amount of underlyings to liquidate
-    /// @param _params generic callData (eg. SwapperParams)
+    /**
+     * @notice Strategy liquidation (unfolding mechanism)
+     * @dev Abstract function to be implemented by the strategy
+     * @param _amount Amount of underlyings to liquidate
+     * @param _params Generic callData (e.g., SwapperParams)
+     * @return assetsRecovered Amount of assets recovered from the liquidation
+     */
     function _liquidate(
         uint256 _amount,
         bytes[] memory _params
     ) internal virtual returns (uint256 assetsRecovered) {}
 
-    // @inheritdoc _liquidate
-    /// @dev Reverts if slippage is too high unless panic is true
-    /// @param _amount Amount of underlyings to liquidate
-    /// @param _minLiquidity Minimum amount of assets to receive
-    /// @param _panic ignore slippage when unfolding
-    /// @param _params generic callData (eg. SwapperParams)
-    /// @return liquidityAvailable Amount of assets available to unfold
-    /// @return Total assets in the strategy after unfolding
+    /**
+     * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function.
+     * @param _amount Amount of underlyings to liquidate
+     * @param _minLiquidity Minimum amount of assets to receive
+     * @param _panic Set to true to ignore slippage when unfolding
+     * @param _params Generic callData (e.g., SwapperParams)
+     * @return liquidityAvailable Amount of assets available to unfold
+     * @return Total assets in the strategy after unfolding
+     */
     function liquidate(
         uint256 _amount,
         uint256 _minLiquidity,
         bool _panic,
         bytes[] memory _params
-    ) external onlyKeeper nonReentrant returns (uint256 liquidityAvailable, uint256) {
-
+    )
+        external
+        onlyKeeper
+        nonReentrant
+        returns (uint256 liquidityAvailable, uint256)
+    {
         liquidityAvailable = available();
         uint256 allocated = _invested();
 
         uint256 newRedemptionRequests = totalPendingRedemptionRequest();
 
-        if (_amount < AsMaths.max(minLiquidity, convertToAssets(newRedemptionRequests)))
-            revert AmountTooLow(_amount);
+        if (
+            _amount <
+            AsMaths.max(minLiquidity, convertToAssets(newRedemptionRequests))
+        ) revert AmountTooLow(_amount);
 
         // pani or less assets than requested >> liquidate all
         if (_panic || _amount > allocated) {
@@ -174,7 +211,10 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         totalClaimableRedemption = maxClaimableRedemption();
         // convertToAssets can't be used here as it requires totalClaimableUnderlying to be set
         // to compute the new sharePrice (circular dependency)
-        totalClaimableUnderlying = totalClaimableRedemption.mulDiv(price, weiPerShare);
+        totalClaimableUnderlying = totalClaimableRedemption.mulDiv(
+            price,
+            weiPerShare
+        );
 
         last.liquidate = block.timestamp;
 
@@ -182,9 +222,11 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         return (liquidityAvailable, totalAssets());
     }
 
-    /// @notice Amount of rewards available to harvest
-    /// @dev abstract function to be implemented by the strategy
-    /// @return rewardAmounts amount of reward tokens available
+    /**
+     * @notice Amount of rewards available to harvest
+     * @dev Abstract function to be implemented by the strategy
+     * @return rewardAmounts Amount of reward tokens available
+     */
     function _rewardsAvailable()
         public
         view
@@ -192,28 +234,40 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         returns (uint256[] memory rewardAmounts)
     {}
 
-    // implemented by strategies
+    /**
+     * @dev Internal function to liquidate a specified amount, to be implemented by strategies
+     * @param _amount Amount to be liquidated
+     * @return Amount that was liquidated
+     */
     function _liquidateRequest(
         uint256 _amount
     ) internal virtual returns (uint256) {}
 
-    /// @notice Order the withdraw request in strategies with lock
-    /// @param _amount Amount of debt to unfold
-    /// @return assetsRecovered Amount of assets recovered
+    /**
+     * @notice Order the withdrawal request in strategies with lock
+     * @param _amount Amount of debt to unfold
+     * @return assetsRecovered Amount of assets recovered
+     */
     function liquidateRequest(
         uint256 _amount
     ) external onlyKeeper returns (uint256) {
         return _liquidateRequest(_amount);
     }
 
-    // implemented by strategies
+    /**
+     * @dev Internal function to harvest rewards, to be implemented by strategies
+     * @param _params Generic callData (e.g., SwapperParams)
+     * @return amount Amount of underlying assets received (after swap)
+     */
     function _harvest(
         bytes[] memory _params
     ) internal virtual returns (uint256 amount) {}
 
-    /// @notice Harvest rewards from the protocol
-    /// @param _params generic callData (eg. SwapperParams)
-    /// @return amount of underlying assets received (after swap)
+    /**
+     * @notice Harvest rewards from the protocol
+     * @param _params Generic callData (e.g., SwapperParams)
+     * @return amount Amount of underlying assets received (after swap)
+     */
     function harvest(bytes[] memory _params) public returns (uint256 amount) {
         amount = _harvest(_params);
         // reset expected profits to updated value + amount
@@ -228,25 +282,35 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         emit Harvest(amount, block.timestamp);
     }
 
-    // implemented by strategies
+    /**
+     * @dev Internal function for investment, to be implemented by specific strategies
+     * @param _amount Amount to be invested
+     * @param _minIouReceived The minimum IOU (I owe you) to be received from the investment
+     * @param _params Additional parameters for the investment, typically passed as generic callData
+     * @return investedAmount Actual amount that was invested
+     * @return iouReceived The IOU received from the investment
+     */
     function _invest(
         uint256 _amount,
         uint256 _minIouReceived,
         bytes[] memory _params
     ) internal virtual returns (uint256 investedAmount, uint256 iouReceived) {}
 
-    /// @notice Inputs prices fetched from price aggregator (eg. 1inch)
-    /// @dev abstract function to be implemented by the strategy
-    /// @param _amount amount of inputs to be invested
-    /// @param _minIouReceived prices of inputs in underlying
-    /// @param _params generic callData (eg. SwapperParams)
+    /**
+     * @notice Inputs prices fetched from price aggregator (e.g., 1inch)
+     * @dev Abstract function to be implemented by the strategy
+     * @param _amount Amount of inputs to be invested
+     * @param _minIouReceived Prices of inputs in underlying
+     * @param _params Generic callData (e.g., SwapperParams)
+     * @return investedAmount Amount invested in the strategy
+     * @return iouReceived IOUs received from the investment
+     */
     function invest(
         uint256 _amount,
         uint256 _minIouReceived,
         bytes[] memory _params
     ) public returns (uint256 investedAmount, uint256 iouReceived) {
         if (_amount == 0) _amount = available();
-        // TODO: check balances before and generic swap
         // generic swap execution
         (investedAmount, iouReceived) = _invest(
             _amount,
@@ -260,21 +324,19 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
 
     /**
      * @notice Compounds the strategy using SwapData for both harvest and invest
-     * @dev Pass a conservative _amount (eg. available() + 90% of rewards valued in underlying)
-     * in order to ensure the underlying->inputs swaps
-     * @param _amount amount of underlying to be invested (after harvest)
-     * @param _minIouReceived minimum amount of iou to be received (after invest)
-     * @param _params generic callData (harvest+invest SwapperParams)
+     * @dev Pass a conservative _amount (e.g., available() + 90% of rewards valued in underlying)
+     * to ensure the underlying->inputs swaps
+     * @param _amount Amount of underlying to be invested (after harvest)
+     * @param _minIouReceived Minimum amount of IOU to be received (after invest)
+     * @param _params Generic callData (harvest+invest SwapperParams)
+     * @return iouReceived IOUs received from the compound operation
+     * @return harvestedRewards Amount of rewards harvested
      */
     function _compound(
         uint256 _amount,
         uint256 _minIouReceived,
         bytes[] memory _params // rewardTokens(0...n)->underling() / underlying()->inputs(0...n) with underlyingWeights(0...n)
-    )
-        internal
-        virtual
-        returns (uint256 iouReceived, uint256 harvestedRewards)
-    {
+    ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
         // we expect the SwapData to cover harvesting + investing
         if (_params.length != (rewardTokens.length + inputs.length))
             revert InvalidCalldata();
@@ -293,6 +355,14 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         return (iouReceived, harvestedRewards);
     }
 
+    /**
+     * @notice Executes the compound operation in the strategy
+     * @param _amount Amount to compound in the strategy
+     * @param _minIouReceived Minimum IOU to be received
+     * @param _params Generic callData for the compound operation
+     * @return iouReceived IOUs received from the compound operation
+     * @return harvestedRewards Amount of rewards harvested
+     */
     function compound(
         uint256 _amount,
         uint _minIouReceived,
@@ -310,9 +380,18 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         emit Compound(_amount, block.timestamp);
     }
 
+    /**
+     * @dev Internal virtual function to set allowances, to be implemented by specific strategies
+     * @param _amount Amount for which to set the allowances
+     */
     function _setAllowances(uint256 _amount) internal virtual {}
 
-    // implemented by strategies
+    /**
+     * @dev Internal virtual function to swap rewards, to be implemented by specific strategies
+     * @param _minAmountsOut Minimum amounts out expected from the swap
+     * @param _params Additional parameters for the swap operation, typically passed as generic callData
+     * @return amountsOut The total amounts out received from the swap
+     */
     function _swapRewards(
         uint256[] memory _minAmountsOut,
         bytes memory _params

@@ -7,7 +7,6 @@ import {
   ethers,
   getDeployer,
   network,
-  network,
   provider,
   weiToString
 } from "@astrolabs/hardhat";

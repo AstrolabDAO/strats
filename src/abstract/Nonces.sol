@@ -2,8 +2,16 @@
 // OpenZeppelin Contracts (last updated v5.0.0) (utils/Nonces.sol)
 pragma solidity ^0.8.0;
 
-/**
- * @dev Provides tracking nonces for addresses. Nonces will only increment.
+/**            _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *
+ * @title Nonces Abstract
+ * @author Astrolab DAO
+ * @notice Permittable ERC20 as defined by the ERC2612
+ * @dev Compatible with Permit2
  */
 abstract contract Nonces {
     /**

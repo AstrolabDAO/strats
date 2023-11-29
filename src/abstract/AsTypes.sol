@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.0;
 
+// As4626 fee structure
 struct Fees {
-    uint64 perf;
-    uint64 mgmt;
-    uint64 entry;
-    uint64 exit;
+    uint64 perf; // Performance fee
+    uint64 mgmt; // Management fee
+    uint64 entry; // Entry fee
+    uint64 exit; // Exit fee
 }
 
+// Checkpoint used to keep track of latest events
 struct Checkpoint {
-    uint256 accountedSharePrice;
-    uint256 feeCollection;
-    uint256 liquidate;
-    uint256 harvest;
+    uint256 accountedSharePrice; // Last accounted share price from the checkpoint
+    uint256 feeCollection; // Last fee collection timestamp from the checkpoint
+    uint256 liquidate; // Last liquidation timestamp from the checkpoint
+    uint256 harvest; // Last harvest timestamp from the checkpoint
 }
 
+// ERC7540 Request
 struct Erc7540Request {
-    uint256 shares;
-    address operator; // receiver/claimer
-    uint256 timestamp;
-    uint256 sharePrice;
+    uint256 shares; // Amount of shares in the request
+    address operator; // Request owner (can claim the owner's request)
+    uint256 timestamp; // Timestamp of the request
+    uint256 sharePrice; // Share price at request time
 }
