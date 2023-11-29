@@ -14,6 +14,7 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     event SwapperUpdate(address indexed addr);
     event AllocatorUpdate(address indexed addr);
     event SetSwapperAllowance(uint256 amount);
+    error InvalidCalldata();
 
     Swapper public swapper;
     address public agent;

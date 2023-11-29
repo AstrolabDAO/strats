@@ -50,19 +50,12 @@ contract SyncSwapStrategy is StrategyV5 {
         uint256 assetsToLP = underlying.balanceOf(address(this));
         // The amount we add is capped by _amount
         assetsToLP = assetsToLP > _amount ? _amount : assetsToLP;
-        if (!((underlying) == (inputs[0]))) {
-            (
-                address targetRouter,
-                uint256 minAmountOut,
-                bytes memory swapData
-            ) = abi.decode(_params[0], (address, uint256, bytes));
-            swapper.swap({
+        if (underlying != inputs[0]) {
+            swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
-                _amountIn: underlying.balanceOf(address(this)),
-                _minAmountOut: minAmountOut,
-                _targetRouter: targetRouter,
-                _callData: swapData
+                _amount: inputs[0].balanceOf(address(this)),
+                _params: _params[0]
             });
         }
 

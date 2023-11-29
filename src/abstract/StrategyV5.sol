@@ -4,27 +4,28 @@ pragma solidity ^0.8.0;
 import "@astrolabs/swapper/contracts/Swapper.sol";
 import "./StrategyAbstractV5.sol";
 import "./AsProxy.sol";
+import "../libs/AsArrays.sol";
+import "../libs/AsMaths.sol";
 
+
+/// @title StrategyV5 Abstract - inherited by all strategies
+/// @author Astrolabs Ltd.
+/// @notice All As4626 calls are delegated to the agent (StrategyAgentV5)
+/// @dev Ensure memory slots compliance between the agent and StrategyV5 implementations (proxy)
 abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
-
     using AsMaths for uint256;
     using AsMaths for int256;
+    using AsArrays for bytes[];
     using SafeERC20 for IERC20;
-
-    modifier onlyInternal() {
-        internalCheck();
-        _;
-    }
-
-    function internalCheck() internal view {
-        if (!(hasRole(KEEPER_ROLE, msg.sender) || msg.sender == allocator))
-            revert Unauthorized();
-    }
 
     constructor(
         string[3] memory _erc20Metadata
     ) StrategyAbstractV5(_erc20Metadata) {}
 
+    /// @notice Initialize the strategy
+    /// @param _fees fees structure
+    /// @param _underlying address of the underlying asset
+    /// @param _coreAddresses array of core addresses: feeCollector, swapper, allocator, agent
     function init(
         Fees memory _fees,
         address _underlying,
@@ -44,10 +45,13 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         );
     }
 
+    /// @notice Returns the address of the implementation
     function _implementation() internal view override returns (address) {
         return agent;
     }
 
+    /// @notice Sets the reward tokens
+    /// @param _rewardTokens array of reward tokens
     function setRewardTokens(
         address[] memory _rewardTokens
     ) public onlyManager {
@@ -57,6 +61,9 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             rewardTokens[i] = address(0);
     }
 
+    /// @notice Sets the input tokens (strategy internals)
+    /// @param _inputs array of input tokens
+    /// @param _weights array of input weights
     function setInputs(
         address[] memory _inputs,
         uint256[] memory _weights
@@ -71,17 +78,21 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         }
     }
 
+    /// @notice Sets the allocator
     function updateAllocator(address _allocator) external onlyManager {
         allocator = _allocator;
         emit AllocatorUpdate(_allocator);
     }
 
+    /// @notice Sets the agent (StrategyAgentV5 implementation)
     function updateAgent(address _agent) external onlyAdmin {
         if (_agent == address(0)) revert AddressZero();
         agent = _agent;
         emit AgentUpdate(_agent);
     }
 
+    /// @notice Sets the swapper allowance
+    /// @param _amount amount of allowance to set
     function setSwapperAllowance(uint256 _amount) public onlyAdmin {
         address swapperAddress = address(swapper);
 
@@ -98,6 +109,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     /// @notice Change the Swapper address, remove allowances and give new ones
+    /// @param _swapper address of the new swapper
     function updateSwapper(address _swapper) public onlyAdmin {
         if (_swapper == address(0)) revert AddressZero();
         if (address(swapper) != address(0)) setSwapperAllowance(0);
@@ -106,15 +118,17 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         emit SwapperUpdate(_swapper);
     }
 
-    // implemented by strategies
+    /// @notice Strategy liquidation (unfolding mechanism)
+    /// @dev abstract function to be implemented by the strategy
+    /// @param _amount Amount of underlyings to liquidate
+    /// @param _params generic callData (eg. SwapperParams)
     function _liquidate(
         uint256 _amount,
         bytes[] memory _params
     ) internal virtual returns (uint256 assetsRecovered) {}
 
-    /// @notice Order to unfold the strategy
-    /// If we pass "panic", we ignore slippage and withdraw all
-    /// @dev The call will revert if the slippage created is too high
+    // @inheritdoc _liquidate
+    /// @dev Reverts if slippage is too high unless panic is true
     /// @param _amount Amount of underlyings to liquidate
     /// @param _minLiquidity Minimum amount of assets to receive
     /// @param _panic ignore slippage when unfolding
@@ -126,13 +140,13 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         uint256 _minLiquidity,
         bool _panic,
         bytes[] memory _params
-    ) external onlyInternal returns (uint256 liquidityAvailable, uint256) {
+    ) external onlyKeeper returns (uint256 liquidityAvailable, uint256) {
 
         liquidityAvailable = available();
         uint256 allocated = _invested();
 
-        uint256 newRedemptionRequests =
-            totalRedemptionRequest - totalClaimableRedemption;
+        uint256 newRedemptionRequests = totalRedemptionRequest -
+            totalClaimableRedemption;
 
         _amount += convertToAssets(newRedemptionRequests);
 
@@ -154,39 +168,22 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
                 revert AmountTooLow(liquidityAvailable);
         }
 
+        totalClaimableRedemption = maxClaimableRedemption();
         last.liquidate = block.timestamp;
-        totalClaimableRedemption = AsMaths.min(
-            totalRedemptionRequest,
-            // cash available to all redemptions
-            underlying.balanceOf(address(this))
-                - claimableUnderlyingFees
-                - AsAccounting.unrealizedProfits(
-                    last.harvest,
-                    expectedProfits,
-                    profitCooldown)
-        );
+
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
         return (liquidityAvailable, totalAssets());
     }
 
-    // implemented by strategies
-    function _rewardsAvailable()
-        internal
+    /// @notice Amount of rewards available to harvest
+    /// @dev abstract function to be implemented by the strategy
+    /// @return rewardAmounts amount of reward tokens available
+    function rewardsAvailable()
+        public
         view
         virtual
         returns (uint256[] memory rewardAmounts)
     {}
-
-    /// @notice amount of reward tokens available and not yet harvested
-    /// @dev abstract function to be implemented by the strategy
-    /// @return rewardAmounts amount of reward tokens available
-    function rewardsAvailable()
-        external
-        view
-        returns (uint256[] memory rewardAmounts)
-    {
-        return _rewardsAvailable();
-    }
 
     // implemented by strategies
     function _liquidateRequest(
@@ -198,7 +195,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     /// @return assetsRecovered Amount of assets recovered
     function liquidateRequest(
         uint256 _amount
-    ) public onlyInternal returns (uint256) {
+    ) external onlyKeeper returns (uint256) {
         return _liquidateRequest(_amount);
     }
 
@@ -254,16 +251,41 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         return (investedAmount, iouReceived);
     }
 
-    // implemented by strategies
+    /**
+     * @notice Compounds the strategy using SwapData for both harvest and invest
+     * @dev Pass a conservative _amount (eg. available() + 90% of rewards valued in underlying)
+     * in order to ensure the underlying->inputs swaps
+     * @param _amount amount of underlying to be invested (after harvest)
+     * @param _minIouReceived minimum amount of iou to be received (after invest)
+     * @param _params generic callData (harvest+invest SwapperParams)
+     */
     function _compound(
         uint256 _amount,
-        uint256 minIouReceived,
-        bytes[] memory _params
+        uint256 _minIouReceived,
+        bytes[] memory _params // rewardTokens(0...n)->underling() / underlying()->inputs(0...n) with underlyingWeights(0...n)
     )
         internal
         virtual
         returns (uint256 iouReceived, uint256 harvestedRewards)
-    {}
+    {
+        // we expect the SwapData to cover harvesting + investing
+        if (_params.length != (rewardTokens.length + inputs.length))
+            revert InvalidCalldata();
+
+        // harvest using the first calldata bytes (swap rewards->underlying)
+        harvestedRewards = harvest(_params.slice(0, rewardTokens.length));
+
+        // NB: if the underlying balance is < 
+        _amount = AsMaths.min(_amount, available());
+
+        (, iouReceived) = _invest({
+            _amount: _amount,
+            _minIouReceived: _minIouReceived, // 1 by default
+            // invest using the second calldata bytes (swap underlying->inputs)
+            _params: _params.slice(rewardTokens.length, _params.length) // new bytes[](0) // no swap data needed
+        });
+        return (iouReceived, harvestedRewards);
+    }
 
     function compound(
         uint256 _amount,

@@ -151,10 +151,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 claimable = 0;
 
         if (totalClaimableRedemption > 0 &&
-            requestByOperator[_receiver].timestamp <
-                AsMaths.min(
-                    last.liquidate,
-                    requestByOperator[_receiver].timestamp + redemptionRequestLocktime)) {
+            isRedemptionRequestRedeemable(requestByOperator[_receiver].timestamp)) {
             claimable = AsMaths.min(
                 requestByOperator[_receiver].redeemAmount,
                 totalClaimableRedemption);
@@ -333,17 +330,13 @@ abstract contract As4626 is As4626Abstract {
         // 1e8 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
         // allowance should be given to the vault before calling this function
         if (_seedDeposit < (minLiquidity - totalAssets()))
-            revert LiquidityTooLow(_seedDeposit);
+            revert AmountTooLow(_seedDeposit);
 
         // seed the vault with some assets if it's empty
         setMaxTotalAssets(_maxTotalAssets);
 
-        if (totalSupply() == 0) {
-            _deposit(
-                _seedDeposit,
-                msg.sender,
-                (_seedDeposit * sharePrice()) / weiPerShare
-            );
+        if (totalSupply() < minLiquidity) {
+            _deposit(_seedDeposit, msg.sender, 1);
         }
         _unpause();
     }
@@ -447,23 +440,20 @@ abstract contract As4626 is As4626Abstract {
 
     function cancelDepositRequest(address operator, address owner) virtual external {}
 
-    // TODO: the potential loss incur while not farming with the idle funds should be taken away from the user
-    // as he re-enters at the current sharePrice
     function cancelRedeemRequest(address operator, address owner) external {
         require(owner == msg.sender || operator == msg.sender, "Caller is not owner or operator");
         Erc7540Request storage request = requestByOperator[operator];
         uint256 amount = request.redeemAmount;
+        uint256 price = sharePrice();
+        if (price > request.sharePrice) {
+            // burn the excess shares from the loss incurred while not farming
+            // with the idle funds (opportunity cost)
+            uint256 opportunityCost = amount.mulDiv(price - request.sharePrice, weiPerShare);
+            _burn(owner, opportunityCost);
+        }
         totalRedemptionRequest -= amount;
         request.redeemAmount = 0;
         emit RedeemRequestCanceled(owner, amount);
-    }
-
-    function pendingDepositRequest(address operator) external view returns (uint256) {
-        return requestByOperator[operator].depositAmount;
-    }
-
-    function pendingRedeemRequest(address operator) external view returns (uint256) {
-        return requestByOperator[operator].redeemAmount;
     }
 
     receive() external payable {}

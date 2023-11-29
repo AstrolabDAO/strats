@@ -8,7 +8,8 @@ pragma solidity ^0.8.0;
  */
 library AsMaths {
 
-    uint256 constant BP_BASIS = 10_000;
+    // Constants
+    uint256 constant BP_BASIS = 10_000; // 50% == 5000
 
     function subBp(
         uint256 amount,
@@ -71,7 +72,7 @@ library AsMaths {
     }
 
     function subNoNeg(int256 a, int256 b) internal pure returns (int256) {
-        require(a >= b, "negative");
+        require(a >= b);
         return a - b; // no unchecked since if b is very negative, a - b might overflow
     }
 
@@ -135,10 +136,6 @@ library AsMaths {
         return (x < y ? x : y);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                               SIGNED CASTS
-    //////////////////////////////////////////////////////////////*/
-
     function Int(uint256 x) internal pure returns (int256) {
         require(x <= uint256(type(int256).max));
         return int256(x);
@@ -152,10 +149,6 @@ library AsMaths {
     function Int128(uint256 x) internal pure returns (int128) {
         return Int128(Int(x));
     }
-
-    /*///////////////////////////////////////////////////////////////
-                               UNSIGNED CASTS
-    //////////////////////////////////////////////////////////////*/
 
     function Uint(int256 x) internal pure returns (uint256) {
         require(x >= 0);
@@ -206,13 +199,6 @@ library AsMaths {
         return a <= b && a >= mulDown(b, 1e18 - eps);
     }
 
-    /*///////////////////////////////////////////////////////////////
-                               OPEN ZEPPELIN
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @dev Muldiv operation overflow.
-     */
     error MathOverflowedMulDiv();
 
     enum Rounding {
@@ -349,9 +335,7 @@ library AsMaths {
             }
 
             // Make sure the result is less than 2^256. Also prevents denominator == 0.
-            if (denominator <= prod1) {
-                revert MathOverflowedMulDiv();
-            }
+            require (denominator > prod1);
 
             ///////////////////////////////////////////////
             // 512 by 256 division.

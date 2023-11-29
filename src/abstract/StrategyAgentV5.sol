@@ -101,6 +101,7 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
     ) external returns (uint256 shares) {
         uint256 underlyingAmount = _amount;
         if (_input != address(underlying)) {
+            // TODO: make params calldata in Swapper.sol
             (underlyingAmount,) = swapper.decodeAndSwap(
                 _input,
                 address(underlying),

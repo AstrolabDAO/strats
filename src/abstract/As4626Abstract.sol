@@ -205,4 +205,29 @@ abstract contract As4626Abstract is
     function convertToAssets(uint256 _shares) public view returns (uint256) {
         return _shares.mulDiv(sharePrice(), weiPerShare);
     }
+
+    function pendingDepositRequest(address operator) external view returns (uint256) {
+        return requestByOperator[operator].depositAmount;
+    }
+
+    function pendingRedeemRequest(address operator) external view returns (uint256) {
+        return requestByOperator[operator].redeemAmount;
+    }
+
+    function isRedemptionRequestRedeemable(uint256 requestTimestamp) public view returns (bool) {
+        return requestTimestamp < AsMaths.max(block.timestamp - redemptionRequestLocktime, last.liquidate);
+    }
+
+    function maxClaimableRedemption() public view returns (uint256) {
+        return AsMaths.min(
+            totalRedemptionRequest,
+            // cash available to all redemptions
+            underlying.balanceOf(address(this))
+                - claimableUnderlyingFees
+                - AsAccounting.unrealizedProfits(
+                    last.harvest,
+                    expectedProfits,
+                    profitCooldown)
+        );
+    }
 }
