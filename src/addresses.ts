@@ -161,6 +161,16 @@ export const addresses = {
   },
   // xdai
   100: {
+    libs: {
+      AsAccounting: "0x21212ac7a57e223ea27994f62ffded6835094726",
+    },
+    astrolab: {
+      Swapper: "0x1bca59ef28f7a52ab5fb6b742963ff11e2a0dbf8",
+      StrategyAgentV5: "",
+    },
+    accounts : {
+      impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"
+    },
     tokens: {
       WXDAI: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
       WGAS: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
@@ -174,18 +184,6 @@ export const addresses = {
       stETH: "0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6",
       WETH: "0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1",
       sDAI: "0xaf204776c7245bF4147c2612BF6e5972Ee483701",
-    },
-    accounts : {
-      impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"
-    },
-    // the below contracts are required by each of StrategyV5 deployments
-    // they will be redeployed automatically if left empty
-    libs: {
-      AsAccounting: "0x21212ac7a57e223ea27994f62ffded6835094726",
-    },
-    astrolab: {
-      Swapper: "0x1bca59ef28f7a52ab5fb6b742963ff11e2a0dbf8",
-      StrategyAgentV5: "0xd2537a66747c93d814ab9e71bf1ab312cea95a67",
     },
   },
   // matic
@@ -361,11 +359,17 @@ export const addresses = {
   },
   // base
   8453: {
+    libs: {
+      AsAccounting: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
+    },
+    astrolab: {
+      Swapper: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
+      StrategyAgentV5: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+    },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
       WGAS: "0x4200000000000000000000000000000000000006",
       tBTC: "0x236aa50979D5f3De3Bd1Eeb40E81137F22ab794b",
-
       USDbC: "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
       USDC: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
       DAI: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
@@ -385,6 +389,13 @@ export const addresses = {
   },
   // arb
   42161: {
+    libs: {
+      AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
+    },
+    astrolab: {
+      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      StrategyAgentV5: "0x453043535DaB7d03d9F231Ff06ED08E8c27aF75d",
+    },
     accounts: {
       impersonate: "0x489ee077994B6658eAfA855C308275EAd8097C4A",
     },

@@ -4,8 +4,8 @@ import { wethAbi, erc20Abi } from "abitype/abis";
 import { Contract, BigNumber, utils as ethersUtils } from "ethers";
 import { assert } from "chai";
 import { merge } from "lodash";
-import { IStrategyDeployment, IStrategyDeploymentEnv, StrategyV5InitParams, IToken, Erc20Metadata } from "../../src/types";
-import { addressZero, getEnv, getTokenInfo, getTxLogData, logState } from "./utils";
+import { IStrategyDeployment, IStrategyDeploymentEnv, StrategyV5InitParams, IToken, Erc20Metadata, ITestEnv } from "../../src/types";
+import { addressZero, getEnv, getTokenInfo, getTxLogData, isLive, logState } from "./utils";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 
@@ -153,15 +153,23 @@ export const deployStrat = async (
   } as IStrategyDeployment;
 
   await deployAll(deployment);
+
+  if (isLive(env)) {
+    console.log(`Sleeping 20s to allow for deployed contracts to be minted/indexed`);
+    await new Promise((resolve) => setTimeout(resolve, 20_000));
+  }
+
   if (!deployment.units![contract].address) {
     throw new Error(`Could not deploy ${contract}`);
   }
+
   const stratProxyAbi = loadAbi("StrategyV5") as any;
   const strat = new Contract(
     deployment.units![contract].address!,
     stratProxyAbi,
     deployment.deployer
   );
+
   deployment.strat = await getTokenInfo(strat, stratProxyAbi);
   env.deployment = deployment;
   return env as IStrategyDeploymentEnv;
@@ -170,9 +178,10 @@ export const deployStrat = async (
 export async function grantAdminRole(strat: Contract, address: string) {
   const keeperRole = await strat.KEEPER_ROLE();
   const managerRole = await strat.MANAGER_ROLE();
-
-  await strat.grantRole(keeperRole, address);
-  await strat.grantRole(managerRole, address);
+  await Promise.all([
+    strat.grantRole(keeperRole, address).then((tx: TransactionResponse) => tx.wait()),
+    strat.grantRole(managerRole, address).then((tx: TransactionResponse) => tx.wait()),
+  ]);
 }
 
 export async function setupStrat(
@@ -246,7 +255,7 @@ export async function swapDeposit(
     const tr = (await getTransactionRequest({
       input: input.address,
       output: underlying.contract.address,
-      amountWei: weiToString(amount),
+      amountWei: BigInt(amount).toString(),
       inputChainId: network.config.chainId!,
       payer: strat.contract.address,
       testPayer: env.addresses!.accounts!.impersonate,
@@ -316,6 +325,13 @@ export async function invest(env: IStrategyDeploymentEnv, amount = 100) {
 export async function liquidate(env: IStrategyDeploymentEnv, amount = 50) {
   const { underlying, inputs, strat } = env.deployment!;
   amount *= inputs[0].weiPerUnit; // 10$ or equivalent
+
+  const pendingWithdrawalRequest = await strat.contract.totalPendingUnderlyingRequest();
+  if (amount < pendingWithdrawalRequest) {
+    console.log(`Using pendingWithdrawalRequest ${pendingWithdrawalRequest} (> amount ${amount})`);
+    amount = pendingWithdrawalRequest;
+  }
+
   let swapData: any = [];
 
   const input = inputs[0].contract.address;
@@ -328,7 +344,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, amount = 50) {
       output,
       amountWei: BigInt(amount).toString(),
       inputChainId: network.config.chainId!,
-      payer: env.deployer.address,
+      payer: strat.contract.address, // env.deployer.address
       testPayer: env.addresses.accounts!.impersonate,
     })) as ITransactionRequestWithEstimate;
   }

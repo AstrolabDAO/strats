@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@astrolabs/swapper/contracts/Swapper.sol";
+import "@astrolabs/registry/interfaces/ISwapper.sol";
 import "./As4626Abstract.sol";
 
 abstract contract StrategyAbstractV5 is As4626Abstract {
@@ -16,7 +16,7 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     event SetSwapperAllowance(uint256 amount);
     error InvalidCalldata();
 
-    Swapper public swapper;
+    ISwapper public swapper;
     address public agent;
     address public stratProxy;
     address public allocator;
@@ -30,4 +30,13 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     address[16] public rewardTokens;
 
     constructor(string[3] memory _erc20Metadata) As4626Abstract(_erc20Metadata) {}
+
+    function totalPendingRedemptionRequest() public view returns (uint256) {
+        return totalRedemptionRequest - totalClaimableRedemption;
+    }
+
+    function totalPendingUnderlyingRequest() public view returns (uint256) {
+        // return totalUnderlyingRequest - totalClaimableUnderlying;
+        return convertToAssets(totalPendingRedemptionRequest());
+    }
 }

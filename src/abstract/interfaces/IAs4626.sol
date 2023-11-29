@@ -78,6 +78,7 @@ interface IAs4626 {
     function requestByOperator(address _operator) external view returns (Erc7540Request memory);
     function requests(uint256 _index) external view returns (Erc7540Request memory);
     function totalClaimableRedemption() external view returns (uint256);
+    function totalUnderlyingRequest() external view returns (uint256);
     function totalRedemptionRequest() external view returns (uint256);
     function totalDepositRequest() external view returns (uint256);
     function minLiquidity() external view returns (uint256);

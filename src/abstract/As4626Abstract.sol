@@ -9,6 +9,7 @@ import "./ERC20Permit.sol";
 import "./Manageable.sol";
 import "./AsTypes.sol";
 import "../libs/AsAccounting.sol";
+import "hardhat/console.sol";
 
 /**
  * @dev Abstract contract containing variables, structs, errors, and events for As4626.
@@ -96,12 +97,15 @@ abstract contract As4626Abstract is
     mapping(address => Erc7540Request) internal requestByOperator;
     Erc7540Request[] internal requests;
 
-    uint256 public totalClaimableRedemption;
     uint256 public totalRedemptionRequest;
+    uint256 public totalUnderlyingRequest;
     uint256 public totalDepositRequest;
 
+    uint256 public totalClaimableRedemption;
+    uint256 public totalClaimableUnderlying;
+
     // custom
-    uint256 public minLiquidity = 1e7; // minimum to seed liquidity is 10 underlying 
+    uint256 public minLiquidity = 1e7; // minimum to seed liquidity is 1e7 wei (eg. 10USDC)
     uint256 public profitCooldown = 7 days; // profit linearization period
     uint256 public redemptionRequestLocktime = 2 days;
     uint256 public claimableUnderlyingFees;
@@ -155,7 +159,7 @@ abstract contract As4626Abstract is
     function available() public view returns (uint256) {
         return underlying.balanceOf(address(this))
             - claimableUnderlyingFees
-            - convertToAssets(totalClaimableRedemption)
+            - totalClaimableUnderlying // convertToAssets(totalClaimableRedemption) <-- this would be more precise but recursive
             - AsAccounting.unrealizedProfits(
                 last.harvest,
                 expectedProfits,
@@ -188,7 +192,7 @@ abstract contract As4626Abstract is
     /// @param _owner shares owner
     /// @return value of the position in underlying tokens
     function assetsOf(address _owner) public view returns (uint256) {
-        return balanceOf(_owner) * sharePrice();
+        return convertToAssets(balanceOf(_owner));
     }
 
     /// @notice Convert how much shares you can get for your assets
@@ -206,15 +210,11 @@ abstract contract As4626Abstract is
         return _shares.mulDiv(sharePrice(), weiPerShare);
     }
 
-    function pendingDepositRequest(address operator) external view returns (uint256) {
-        return requestByOperator[operator].depositAmount;
-    }
-
     function pendingRedeemRequest(address operator) external view returns (uint256) {
-        return requestByOperator[operator].redeemAmount;
+        return requestByOperator[operator].shares;
     }
 
-    function isRedemptionRequestRedeemable(uint256 requestTimestamp) public view returns (bool) {
+    function isRequestClaimable(uint256 requestTimestamp) public view returns (bool) {
         return requestTimestamp < AsMaths.max(block.timestamp - redemptionRequestLocktime, last.liquidate);
     }
 
@@ -229,5 +229,11 @@ abstract contract As4626Abstract is
                     expectedProfits,
                     profitCooldown)
         );
+    }
+
+    function maxRedemptionClaim(address _owner) public view returns (uint256) {
+        Erc7540Request memory request = requestByOperator[_owner];
+        return isRequestClaimable(request.timestamp) ?
+            AsMaths.min(request.shares, totalClaimableRedemption) : 0;
     }
 }

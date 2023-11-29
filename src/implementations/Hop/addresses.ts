@@ -107,7 +107,7 @@ export default merge(addresses, {
       rewardPools: ['0x755569159598f3702bdD7DFF6233A317C156d3Dd'], // rewardsContracts
       rewardTokens: [addresses[42161].tokens.HOP],
     },
-    "Hop.USDC": {
+    "Hop.USDCE": {
       lp: '0xB67c014FA700E69681a673876eb8BAFAA36BFf71', // l2SaddleLpToken
       swap: '0x10541b07d8Ad2647Dc6cD67abd4c03575dade261', // l2SaddleSwap
       rewardPools: ['0xb0CabFE930642AD3E7DECdc741884d8C3F7EbC70'], // rewardsContracts

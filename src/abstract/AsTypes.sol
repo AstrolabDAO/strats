@@ -16,8 +16,7 @@ struct Checkpoint {
 }
 
 struct Erc7540Request {
-    uint256 depositAmount;
-    uint256 redeemAmount;
+    uint256 shares;
     address operator; // receiver/claimer
     uint256 timestamp;
     uint256 sharePrice;

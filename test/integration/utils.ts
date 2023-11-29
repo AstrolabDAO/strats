@@ -7,6 +7,7 @@ import {
   ethers,
   getDeployer,
   network,
+  network,
   provider,
   weiToString
 } from "@astrolabs/hardhat";
@@ -90,15 +91,18 @@ export const getEnv = async (
   env: Partial<ITestEnv> = {},
   addressesOverride?: Addresses
 ): Promise<ITestEnv> => {
+
   const addr = (addressesOverride ?? addresses)[network.config.chainId!];
   const wgas = new Contract(addr.tokens.WGAS, erc20Abi, await getDeployer());
   const deployer = await getDeployer();
+  const multicallProvider = new MulticallProvider();
+  await multicallProvider.init(provider);
 
   return merge(
     {
       network,
       blockNumber: await provider.getBlockNumber(),
-      snapshotId: await provider.send("evm_snapshot", []),
+      snapshotId: isLive(env) ? 0 : await provider.send("evm_snapshot", []),
       revertState: false,
       wgas: {
         contract: wgas,
@@ -109,8 +113,7 @@ export const getEnv = async (
       addresses: addr,
       deployer: deployer as SignerWithAddress,
       provider: ethers.provider,
-      // @ts-ignore
-      multicallProvider: new MulticallProvider(network.config.chainId!, deployer),
+      multicallProvider,
       needsFunding: false,
       gasUsedForFunding: 1e21,
     },
@@ -269,11 +272,7 @@ async function ensureWhitelisted(contract: Contract|any, addresses: string[]) {
 }
 
 export async function ensureFunding(env: IStrategyDeploymentEnv) {
-  if (
-    !["tenderly", "localhost", "hardhat"].some((s) =>
-      env.network.name.includes(s)
-    )
-  ) {
+  if (isLive(env)) {
     console.log(
       `Funding is only applicable to test forks and testnets, not ${env.network.name}`
     );
@@ -323,4 +322,9 @@ export function getTxLogData(tx: TransactionReceipt, types=["uint256"], logIndex
   }
   if (!log) throw new Error(`No log ${logIndex} found on tx ${tx.transactionHash}`);
   return ethersUtils.defaultAbiCoder.decode(types, log.data);
+}
+
+export function isLive(env: any) {
+  const n = env.network ?? network;
+  return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
 }

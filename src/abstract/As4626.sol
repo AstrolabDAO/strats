@@ -138,7 +138,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minAmountOut,
         address _receiver,
         address _owner
-    ) internal nonReentrant whenNotPaused returns (uint256 recovered) {
+    ) internal nonReentrant whenNotPaused returns (uint256) {
 
         if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
         if (_shares >= totalSupply()) _shares = totalSupply() - 1; // never redeem all shares
@@ -149,26 +149,39 @@ abstract contract As4626 is As4626Abstract {
         }
 
         uint256 claimable = 0;
+        Erc7540Request memory request = requestByOperator[_receiver];
 
         if (totalClaimableRedemption > 0 &&
-            isRedemptionRequestRedeemable(requestByOperator[_receiver].timestamp)) {
+            isRequestClaimable(request.timestamp)) {
             claimable = AsMaths.min(
-                requestByOperator[_receiver].redeemAmount,
+                request.shares,
                 totalClaimableRedemption);
         }
 
         uint256 price = sharePrice();
 
-        if (claimable > _shares) {
-            totalClaimableRedemption -= _shares;
-            totalRedemptionRequest -= _shares;
-            requestByOperator[_receiver].redeemAmount -= _shares;
-            price = AsMaths.min(price, requestByOperator[_receiver].sharePrice);
+        if (claimable >= _shares) {
+            // positive slippage (request.sharePrice - price > 0)
+            price = AsMaths.min(price, request.sharePrice);
         }
 
-        recovered = _shares.mulDiv(price, weiPerShare);
+        // expected - recovered == strategy profit (exit fee + slippage)
+        (uint256 expected, uint256 recovered) = (
+            _shares.mulDiv(request.sharePrice, weiPerShare),
+            _shares.mulDiv(price, weiPerShare));
 
-        // slice fee from burnt shares
+        // the request claim cannot be partial: the receiver either claim all shares from its pending request or none
+        if (claimable >= _shares) {
+            request.shares -= _shares;
+
+            totalRedemptionRequest -= _shares;
+            totalUnderlyingRequest -= AsMaths.min(expected, totalUnderlyingRequest);
+
+            totalClaimableRedemption -= _shares;
+            totalClaimableUnderlying -= AsMaths.min(recovered, totalClaimableUnderlying);
+        }
+
+        // slice fee from burnt shares if not exempted
         if (!exemptionList[_owner]) {
             uint256 fee = _shares.bp(fees.exit);
             recovered -= fee.mulDiv(price, weiPerShare);
@@ -176,14 +189,15 @@ abstract contract As4626 is As4626Abstract {
             _shares -= fee;
         }
 
+        // check slippage
         if (recovered <= _minAmountOut)
             revert AmountTooLow(recovered);
 
         // burn the shares (reverts if the owner doesn't have enough)
         _burn(_owner, _shares);
-
         underlying.safeTransfer(_receiver, recovered);
         emit Withdraw(msg.sender, _receiver, _owner, recovered, _shares);
+        return recovered;
     }
 
     // @inheritdoc _withdraw
@@ -196,7 +210,7 @@ abstract contract As4626 is As4626Abstract {
     ) external virtual returns (uint256 shares) {
         // This represents the amount of shares that we're about to burn
         shares = convertToShares(_amount);
-        _withdraw(_amount, shares, 0, _receiver, _owner);
+        return _withdraw(_amount, shares, 0, _receiver, _owner);
     }
 
     // @inheritdoc withdraw
@@ -389,7 +403,7 @@ abstract contract As4626 is As4626Abstract {
     function previewRedeem(uint256 _shares) public view returns (uint256) {
         uint256 afterFees = convertToAssets(_shares).subBp(fees.exit);
         uint256 claimable = AsMaths.min(
-            requestByOperator[msg.sender].redeemAmount,
+            requestByOperator[msg.sender].shares,
             totalClaimableRedemption);
         return AsMaths.max(available(), claimable) >= afterFees ? afterFees : 0;
     }
@@ -407,13 +421,13 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /// @return The maximum amount of assets that can be withdrawn
-    function maxWithdraw(address _owner) external view returns (uint256) {
-        return paused() ? 0 : convertToAssets(balanceOf(_owner));
+    function maxWithdraw(address _owner) public view returns (uint256) {
+        return convertToAssets(maxRedeem(_owner));
     }
 
-    /// @return The maximum amount of shares that can be redeemed
-    function maxRedeem(address _owner) external view returns (uint256) {
-        return paused() ? 0 : balanceOf(_owner);
+    /// @return The maximum amount of shares that can be redeemed by the owner 
+    function maxRedeem(address _owner) public view returns (uint256) {
+        return paused() ? 0 : AsMaths.max(maxRedemptionClaim(_owner), available());
     }
 
     function requestDeposit(uint256 assets, address operator) virtual external {}
@@ -426,11 +440,26 @@ abstract contract As4626 is As4626Abstract {
         if (balanceOf(owner) < shares)
             revert InsufficientFunds(shares);
         Erc7540Request storage request = requestByOperator[operator];
-        totalRedemptionRequest -= request.redeemAmount;
-        request.redeemAmount = shares;
+        uint256 price = sharePrice();
+        // if a request is already pending, only accept increase requests
+        if (request.shares > 0) {
+            if (request.shares < shares)
+                revert WrongRequest(owner, shares);
+            // temporary clear the request
+            totalRedemptionRequest -= request.shares;
+            totalUnderlyingRequest -= AsMaths.min(request.shares.mulDiv(request.sharePrice, weiPerShare), totalUnderlyingRequest);
+            // volume weighted average price for the request
+            uint256 increase = request.shares - shares;
+            // the new request sharePrice is the two requests vwap (can overflow for extreme values when weiPerShare == 1e18)
+            request.sharePrice = ((price * increase) + (request.sharePrice * request.shares)) / shares;
+        } else {
+            request.sharePrice = price;
+        }
+        request.shares = shares;
+        // throttle the request to avoid claimable overdraft
         request.timestamp = block.timestamp;
-        request.sharePrice = sharePrice();
         totalRedemptionRequest += shares;
+        totalUnderlyingRequest += request.sharePrice.mulDiv(request.shares, weiPerShare);
         emit RedeemRequest(owner, operator, owner, shares);
     }
 
@@ -443,7 +472,7 @@ abstract contract As4626 is As4626Abstract {
     function cancelRedeemRequest(address operator, address owner) external {
         require(owner == msg.sender || operator == msg.sender, "Caller is not owner or operator");
         Erc7540Request storage request = requestByOperator[operator];
-        uint256 amount = request.redeemAmount;
+        uint256 amount = request.shares;
         uint256 price = sharePrice();
         if (price > request.sharePrice) {
             // burn the excess shares from the loss incurred while not farming
@@ -452,7 +481,7 @@ abstract contract As4626 is As4626Abstract {
             _burn(owner, opportunityCost);
         }
         totalRedemptionRequest -= amount;
-        request.redeemAmount = 0;
+        request.shares = 0;
         emit RedeemRequestCanceled(owner, amount);
     }
 

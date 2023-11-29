@@ -3,7 +3,7 @@ import { assert } from "chai";
 import { Fees, IStrategyDeploymentEnv } from "../../../src/types";
 import addresses from "../../../src/implementations/Hop/addresses";
 import { deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
-import { addressZero, ensureFunding, getEnv } from "../utils";
+import { addressZero, ensureFunding, getEnv, isLive } from "../utils";
 
 const inputSymbols: string[] = ["USDC"]; // "DAI", "USDT"];
 const underlyingSymbol = "USDC";
@@ -14,7 +14,7 @@ describe("test.strategy.hop", function () {
   this.beforeAll(async function () {});
   this.afterAll(async function () {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
-    if (env.revertState) await revertNetwork(env.snapshotId);
+    if (env?.revertState) await revertNetwork(env.snapshotId);
   });
 
   beforeEach(async function () {});
@@ -33,6 +33,7 @@ describe("test.strategy.hop", function () {
       this.beforeAll("Deploy and setup strat", async function () {
 
         env = await getEnv({}, addresses) as IStrategyDeploymentEnv;
+
         // load environment+deploy+verify the strategy stack
         env = await setupStrat(
           "HopStrategy",
@@ -59,19 +60,19 @@ describe("test.strategy.hop", function () {
       });
 
       it("Seed Liquidity", async function () {
-        assert((await seedLiquidity(env, 50)).gt(0), "Failed to seed liquidity");
+        assert((await seedLiquidity(env, 10)).gt(0), "Failed to seed liquidity");
       });
       it("Deposit", async function () {
-        assert((await deposit(env, 100)).gt(0), "Failed to deposit");
+        assert((await deposit(env, 1)).gt(0), "Failed to deposit");
       });
       // it("Swap+Deposit", async function () {
       //   assert((await swapDeposit(env)).gt(0), "Failed to swap+deposit");
       // });
       it("Invest", async function () {
-        assert((await invest(env, 100)).gt(0), "Failed to invest");
+        assert((await invest(env, 10)).gt(0), "Failed to invest");
       });
       it("Liquidate (just enough for normal withdraw)", async function () {
-        assert((await liquidate(env, 11)).gt(0), "Failed to liquidate");
+        assert((await liquidate(env, 10)).gt(0), "Failed to liquidate");
       });
       it("Withdraw", async function () {
         assert((await withdraw(env, 10)).gt(0), "Failed to withdraw");
@@ -84,10 +85,9 @@ describe("test.strategy.hop", function () {
       });
       it("Withdraw", async function () {
         // jump to a new block (1 week later)
-        const params = [
-          ethers.utils.hexValue(7 * 24 * 60 * 60) // hex encoded number of seconds
-        ];
-        await provider.send('evm_increaseTime', params)
+        const params = [ethers.utils.hexValue(7 * 24 * 60 * 60)];
+        if (!isLive(env))
+          await provider.send('evm_increaseTime', params)
         assert((await withdraw(env, 50)).gt(0), "Failed to withdraw");
       });
     });

@@ -55,7 +55,7 @@ describe("test.strategy.kyberswap", function () {
           "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,address,address)",
           env
         );
-        assert(env.deployment.strat.address && env.deployment.strat.address !== addressZero, "Strat not deployed");
+        assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
         await ensureFunding(env);
       });
 

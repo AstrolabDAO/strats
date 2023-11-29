@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@astrolabs/swapper/contracts/Swapper.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@astrolabs/registry/interfaces/ISwapper.sol";
 import "./StrategyAbstractV5.sol";
 import "./AsProxy.sol";
 import "../libs/AsArrays.sol";
@@ -113,7 +114,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     function updateSwapper(address _swapper) public onlyAdmin {
         if (_swapper == address(0)) revert AddressZero();
         if (address(swapper) != address(0)) setSwapperAllowance(0);
-        swapper = Swapper(_swapper);
+        swapper = ISwapper(_swapper);
         setSwapperAllowance(MAX_UINT256);
         emit SwapperUpdate(_swapper);
     }
@@ -140,15 +141,15 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         uint256 _minLiquidity,
         bool _panic,
         bytes[] memory _params
-    ) external onlyKeeper returns (uint256 liquidityAvailable, uint256) {
+    ) external onlyKeeper nonReentrant returns (uint256 liquidityAvailable, uint256) {
 
         liquidityAvailable = available();
         uint256 allocated = _invested();
 
-        uint256 newRedemptionRequests = totalRedemptionRequest -
-            totalClaimableRedemption;
+        uint256 newRedemptionRequests = totalPendingRedemptionRequest();
 
-        _amount += convertToAssets(newRedemptionRequests);
+        if (_amount < AsMaths.max(minLiquidity, convertToAssets(newRedemptionRequests)))
+            revert AmountTooLow(_amount);
 
         // pani or less assets than requested >> liquidate all
         if (_panic || _amount > allocated) {
@@ -156,6 +157,8 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         }
 
         uint256 liquidated = 0;
+        // pre-liquidation sharePrice
+        uint256 price = sharePrice();
 
         // if enough cash, withdraw from the protocol
         if (liquidityAvailable < _amount) {
@@ -169,6 +172,10 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         }
 
         totalClaimableRedemption = maxClaimableRedemption();
+        // convertToAssets can't be used here as it requires totalClaimableUnderlying to be set
+        // to compute the new sharePrice (circular dependency)
+        totalClaimableUnderlying = totalClaimableRedemption.mulDiv(price, weiPerShare);
+
         last.liquidate = block.timestamp;
 
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
@@ -275,7 +282,6 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         // harvest using the first calldata bytes (swap rewards->underlying)
         harvestedRewards = harvest(_params.slice(0, rewardTokens.length));
 
-        // NB: if the underlying balance is < 
         _amount = AsMaths.min(_amount, available());
 
         (, iouReceived) = _invest({
