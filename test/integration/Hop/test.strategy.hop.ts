@@ -54,7 +54,7 @@ describe("test.strategy.hop", function () {
           "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,uint8)",
           env
         );
-        assert(env.deployment.strat.address && env.deployment.strat.address !== addressZero, "Strat not deployed");
+        assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
         await ensureFunding(env);
       });
 

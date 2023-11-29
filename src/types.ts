@@ -3,6 +3,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, Contract, providers } from "ethers";
 import { Network } from "hardhat/types";
 import { NetworkAddresses } from "./addresses";
+import { Provider as MulticallProvider, Contract as MulticallContract} from "ethcall";
 
 export interface Fees {
     perf: number;
@@ -29,7 +30,7 @@ export interface IStrategyDeployment extends IDeployment {
     agent: Contract;
     libraries: { [name: string]: string };
     // product of deployment
-    strat: Contract;
+    strat: IToken;
     underlying: IToken;
     inputs: IToken[];
     rewardTokens: IToken[];
@@ -37,6 +38,7 @@ export interface IStrategyDeployment extends IDeployment {
 
 export interface IToken {
     contract: Contract;
+    multicallContract: MulticallContract;
     symbol: string;
     decimals: number;
     weiPerUnit: number;
@@ -53,6 +55,7 @@ export interface ITestEnv {
     // deployer
     deployer: SignerWithAddress; // provided by hardhat
     provider: providers.JsonRpcProvider;
+    multicallProvider: MulticallProvider;
     // funding
     needsFunding: boolean;
     gasUsedForFunding: number;

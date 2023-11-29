@@ -101,7 +101,7 @@ abstract contract As4626Abstract is
     uint256 public totalDepositRequest;
 
     // custom
-    uint256 public minLiquidity;
+    uint256 public minLiquidity = 1e7; // minimum to seed liquidity is 10 underlying 
     uint256 public profitCooldown = 7 days; // profit linearization period
     uint256 public redemptionRequestLocktime = 2 days;
     uint256 public claimableUnderlyingFees;

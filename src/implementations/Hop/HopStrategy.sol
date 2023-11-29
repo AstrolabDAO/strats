@@ -229,7 +229,7 @@ contract HopStrategy is StrategyV5 {
     /// @return rewardsAmounts is an array of rewards available for each reward token.
     /// NOTE: HOP address: 0xc5102fE9359FD9a28f877a67E36B0F050d81a3CC
     function _rewardsAvailable()
-        internal
+        public
         view
         override
         returns (uint256[] memory rewardsAmounts)

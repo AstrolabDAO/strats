@@ -181,11 +181,11 @@ export const addresses = {
     // the below contracts are required by each of StrategyV5 deployments
     // they will be redeployed automatically if left empty
     libs: {
-      AsAccounting: "0xb56b486d4d6c97179de7f4c83b42faaa5d18213b",
+      AsAccounting: "0x21212ac7a57e223ea27994f62ffded6835094726",
     },
     astrolab: {
-      Swapper: "0x33b2dc2d8cc204377e5b3b20f84d5d73646d3a9c",
-      StrategyAgentV5: "0xbb77f1d920f968070c61c7df85ef762b72f3e94d",
+      Swapper: "0x1bca59ef28f7a52ab5fb6b742963ff11e2a0dbf8",
+      StrategyAgentV5: "0xd2537a66747c93d814ab9e71bf1ab312cea95a67",
     },
   },
   // matic

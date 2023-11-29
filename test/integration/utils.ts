@@ -21,6 +21,8 @@ import {
 } from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
 import { ISwapperParams, swapperParamsToString, getAllTransactionRequests } from "@astrolabs/swapper";
+import { Provider as MulticallProvider, Contract as MulticallContract, Call } from "ethcall";
+
 
 export const addressZero = constants.AddressZero;
 const MaxUint256 = ethers.constants.MaxUint256;
@@ -36,7 +38,7 @@ export async function logState(
       inputsAddresses,
       rewardTokensAddresses,
       sharePrice,
-      totalSuply,
+      totalSupply,
       totalAssets,
       invested,
       available,
@@ -46,29 +48,30 @@ export async function logState(
       stratUnderlyingBalance,
       deployerUnderlyingBalance,
       deployerSharesBalance
-    ] = await Promise.all([
-      strat.inputs(0),
-      strat.rewardTokens(0),
-      strat.sharePrice(),
-      strat.totalSupply(),
-      strat.totalAssets(),
-      strat.invested(),
-      strat.available(),
-      strat.totalDepositRequest(),
-      strat.totalRedemptionRequest(),
-      strat.totalClaimableRedemption(),
-      underlying.contract.balanceOf(strat.address),
-      underlying.contract.balanceOf(env.deployer!.address),
-      strat.balanceOf(env.deployer!.address),
+    ]: any[] = await env.multicallProvider!.all([
+      strat.multicallContract.inputs(0),
+      strat.multicallContract.rewardTokens(0),
+      strat.multicallContract.sharePrice(),
+      strat.multicallContract.totalSupply(),
+      strat.multicallContract.totalAssets(),
+      strat.multicallContract.invested(),
+      strat.multicallContract.available(),
+      strat.multicallContract.totalDepositRequest(),
+      strat.multicallContract.totalRedemptionRequest(),
+      strat.multicallContract.totalClaimableRedemption(),
+      underlying.multicallContract.balanceOf(strat.contract.address),
+      underlying.multicallContract.balanceOf(env.deployer!.address),
+      strat.multicallContract.balanceOf(env.deployer!.address),
       // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
+
     console.log(
       `State ${step ?? ""}:
       underlying: ${underlying.contract.address}
       inputs[0]: ${inputsAddresses}
       rewardTokens[0]: ${rewardTokensAddresses}
       sharePrice(): ${sharePrice/underlying.weiPerUnit} (${sharePrice}wei)
-      totalSuply(): ${totalSuply/underlying.weiPerUnit} (${totalSuply}wei)
+      totalSuply(): ${totalSupply/underlying.weiPerUnit} (${totalSupply}wei)
       totalAssets(): ${totalAssets/underlying.weiPerUnit} (${totalAssets}wei)
       invested(): ${invested/underlying.weiPerUnit} (${invested}wei)
       available(): ${available/underlying.weiPerUnit} (${available}wei) (${Math.round(available*100/totalAssets)/100}%)
@@ -89,6 +92,7 @@ export const getEnv = async (
 ): Promise<ITestEnv> => {
   const addr = (addressesOverride ?? addresses)[network.config.chainId!];
   const wgas = new Contract(addr.tokens.WGAS, erc20Abi, await getDeployer());
+  const deployer = await getDeployer();
 
   return merge(
     {
@@ -103,8 +107,10 @@ export const getEnv = async (
         weiPerUnit: 10 ** (await wgas.decimals()),
       },
       addresses: addr,
-      deployer: (await getDeployer()) as SignerWithAddress,
+      deployer: deployer as SignerWithAddress,
       provider: ethers.provider,
+      // @ts-ignore
+      multicallProvider: new MulticallProvider(network.config.chainId!, deployer),
       needsFunding: false,
       gasUsedForFunding: 1e21,
     },
@@ -112,12 +118,17 @@ export const getEnv = async (
   );
 };
 
-export const getTokenInfo = async (contract: Contract): Promise<IToken> => ({
-  contract,
-  symbol: await contract.symbol(),
-  decimals: await contract.decimals(),
-  weiPerUnit: 10 ** (await contract.decimals()),
-});
+export const getTokenInfo = async (contract: Contract, abi=erc20Abi): Promise<IToken> => {
+  if (!Array.isArray(abi) || !abi.filter)
+    throw new Error(`ABI must be an array`);
+  return {
+    contract,
+    multicallContract: new MulticallContract(contract.address, abi as any),
+    symbol: await contract.symbol(),
+    decimals: await contract.decimals(),
+    weiPerUnit: 10 ** (await contract.decimals()),
+  }
+};
 
 
 async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {

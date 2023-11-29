@@ -70,6 +70,7 @@
     "@astrolabs/registry": "^1.0.6",
     "@astrolabs/swapper": "^1.0.13",
     "dotenv": "^16.3.1",
+    "ethcall": "4.8.13",
     "lodash": "^4.17.21"
   }
 }

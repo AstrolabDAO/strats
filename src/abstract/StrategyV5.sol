@@ -178,7 +178,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     /// @notice Amount of rewards available to harvest
     /// @dev abstract function to be implemented by the strategy
     /// @return rewardAmounts amount of reward tokens available
-    function rewardsAvailable()
+    function _rewardsAvailable()
         public
         view
         virtual
