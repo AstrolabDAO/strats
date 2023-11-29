@@ -4,32 +4,53 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
 import "../../abstract/StrategyV5.sol";
-
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
 
-/// @title Hop Strategy (v5)
-/// @notice This contract is a strategy for Hop
-/// @dev Generic implementation
+/**            _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *
+ * @title HopStrategy - Liquidity providing on Hop
+ * @author Astrolab DAO
+ * @notice Basic liquidity providing strategy for Hop protocol (https://hop.exchange/)
+ * @dev Underlying->input[0]->LP->rewardPool->LP->input[0]->underlying
+ */
 contract HopStrategy is StrategyV5 {
 
     using SafeERC20 for IERC20;
 
-    // Tokens used
-    IERC20 public lpToken;
     // Third party contracts
+    IERC20 public lpToken; // LP token of the pool
     IStableRouter public stableRouter; // SaddleSwap
-    IStakingRewards public rewardPool;
-    // params
+    IStakingRewards public rewardPool; // Reward pool
     uint8 tokenIndex;
 
+    /**
+     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
+     */
     constructor(
         string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
     ) StrategyV5(_erc20Metadata) {}
 
+    /**
+     * @dev Initializes the strategy with the specified parameters.
+     * @param _fees Struct containing perfFee, mgmtFee, entryFee, exitFee in basis points (bps) where 100% = 10000
+     * @param _underlying The asset we are using
+     * @param _coreAddresses Array of core contract addresses
+     * @param _inputs Array of input addresses for the strategy
+     * @param _inputWeights Array of weights corresponding to the inputs
+     * @param _rewardTokens Array of reward token addresses
+     * @param _lpToken Address of the LP token
+     * @param _rewardPool Address of the reward pool contract
+     * @param _stableRouter Address of the stable router contract
+     * @param _tokenIndex Index of the token in the stable router
+     */
     function init(
-        Fees memory _fees, // perfFee, mgmtFee, entryFee, exitFee in bps 100% = 10000
-        address _underlying, // The asset we are using
+        Fees memory _fees,
+        address _underlying,
         address[4] memory _coreAddresses,
         address[] memory _inputs,
         uint256[] memory _inputWeights,
@@ -53,11 +74,12 @@ contract HopStrategy is StrategyV5 {
         StrategyV5.init(_fees, _underlying, _coreAddresses);
     }
 
-    // Interactions
-
-    /// @notice Adds liquidity to AMM and gets more LP tokens.
-    /// @param _amount Amount of underlying to invest
-    /// @return amount of LP token user minted and received
+    /**
+     * @notice Adds liquidity to AMM and gets more LP tokens.
+     * @param _amount Amount of underlying to invest
+     * @param _minLpAmount Minimum amount of LP tokens to receive
+     * @return amount of LP token user minted and received
+     */
     function _addLiquidity(
         uint256 _amount,
         uint256 _minLpAmount
@@ -74,8 +96,11 @@ contract HopStrategy is StrategyV5 {
             });
     }
 
-    /// @notice Claim rewards from the reward pool and swap them for underlying
-    /// @param _params params[0] = minAmountOut
+    /**
+     * @notice Claim rewards from the reward pool and swap them for underlying
+     * @param _params Params array, where _params[0] is minAmountOut
+     * @return assetsReceived Amount of assets received
+     */
     function _harvest(
         bytes[] memory _params
     ) internal override returns (uint256 assetsReceived) {
@@ -95,10 +120,14 @@ contract HopStrategy is StrategyV5 {
         );
     }
 
-    /// @notice Invests the underlying asset into the pool
-    /// @param _amount Max amount of underlying to invest
-    /// @param _minIouReceived Min amount of LP tokens to receive
-    /// @param _params Calldata for swap if input != underlying
+    /**
+     * @notice Invests the underlying asset into the pool
+     * @param _amount Max amount of underlying to invest
+     * @param _minIouReceived Min amount of LP tokens to receive
+     * @param _params Calldata for swap if input != underlying
+     * @return investedAmount Amount invested
+     * @return iouReceived Amount of LP tokens received
+     */
     function _invest(
         uint256 _amount,
         uint256 _minIouReceived,
@@ -130,40 +159,12 @@ contract HopStrategy is StrategyV5 {
         rewardPool.stake(iouReceived);
     }
 
-    /// @notice Harvest and compound rewards
-    /// @param _amount Max amount of underlying to invest
-    /// @param _params Calldatas for the rewards swap and the invest if needed
-    function _compound(
-        uint256 _amount,
-        uint256 _minIouReceived,
-        bytes[] memory _params
-    )
-        internal
-        override
-        returns (uint256 iouReceived, uint256 harvestedRewards)
-    {
-        harvestedRewards = _harvest(_params);
-
-        // swap back to the underlying asset if needed
-        if (underlying != inputs[0]) {
-            (harvestedRewards, ) = swapper.decodeAndSwap({
-                _input: address(underlying),
-                _output: address(inputs[0]),
-                _amount: inputs[0].balanceOf(address(this)),
-                _params: _params[0]
-            });
-        }
-        (, iouReceived) = _invest({
-            _amount: _amount,
-            _minIouReceived: _minIouReceived,
-            _params: new bytes[](0) // no swap data needed
-        });
-        return (iouReceived, harvestedRewards);
-    }
-
-    /// @notice Withdraw asset function, can remove all funds in case of emergency
-    /// @param _amount The amount of asset to withdraw
-    /// @return assetsRecovered amount of asset withdrawn
+    /**
+     * @notice Withdraw asset function, can remove all funds in case of emergency
+     * @param _amount The amount of asset to withdraw
+     * @param _params Calldata for the asset swap if needed
+     * @return assetsRecovered Amount of asset withdrawn
+     */
     function _liquidate(
         uint256 _amount,
         bytes[] memory _params
@@ -194,18 +195,20 @@ contract HopStrategy is StrategyV5 {
         }
     }
 
-    // Utils
-
-    /// @notice Set allowances for third party contracts (except rewardTokens)
+    /**
+     * @notice Set allowances for third party contracts (except rewardTokens)
+     * @param _amount The allowance amount
+     */
     function _setAllowances(uint256 _amount) internal override {
         inputs[0].approve(address(stableRouter), _amount);
         lpToken.approve(address(rewardPool), _amount);
         lpToken.approve(address(stableRouter), _amount);
     }
 
-    // Getters
-
-    /// @notice Returns the investment in asset.
+    /**
+     * @notice Returns the investment in asset.
+     * @return The amount invested
+     */
     function _invested() internal view override returns (uint256) {
         // Should return 0 if no lp token is staked
         if (stakedLPBalance() == 0) {
@@ -220,14 +223,18 @@ contract HopStrategy is StrategyV5 {
         }
     }
 
-    /// @notice Returns the investment in lp token.
+    /**
+     * @notice Returns the investment in lp token.
+     * @return The staked LP balance
+     */
     function stakedLPBalance() public view returns (uint256) {
         return IStakingRewards(rewardPool).balanceOf(address(this));
     }
 
-    /// @notice Returns the available HOP rewards
-    /// @return rewardsAmounts is an array of rewards available for each reward token.
-    /// NOTE: HOP address: 0xc5102fE9359FD9a28f877a67E36B0F050d81a3CC
+    /**
+     * @notice Returns the available HOP rewards
+     * @return rewardsAmounts Array of rewards available for each reward token
+     */
     function _rewardsAvailable()
         public
         view
