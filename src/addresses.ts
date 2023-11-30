@@ -162,12 +162,12 @@ export const addresses = {
   // xdai
   100: {
     libs: {
-      AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
+      AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4", // PROD
     },
     astrolab: {
-      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
-      StrategyAgentV5: "0x1761ff905292548ff2254620166eabd988e48718",
-      "HopStrategy.USDC": "0x7221ebdd4176b1a21c3c014fd70bab46e697e272"
+      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb", // PROD
+      StrategyAgentV5: "0x1761ff905292548ff2254620166eabd988e48718", // PROD
+      "HopStrategy.USDC": "0x7221ebdd4176b1a21c3c014fd70bab46e697e272" // PROD
     },
     accounts : {
       impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"
@@ -361,11 +361,11 @@ export const addresses = {
   // base
   8453: {
     libs: {
-      AsAccounting: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
+      AsAccounting: "",
     },
     astrolab: {
-      Swapper: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
-      StrategyAgentV5: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      Swapper: "",
+      StrategyAgentV5: "",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -391,11 +391,11 @@ export const addresses = {
   // arb
   42161: {
     libs: {
-      AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
+      AsAccounting: "",
     },
     astrolab: {
-      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
-      StrategyAgentV5: "0x453043535DaB7d03d9F231Ff06ED08E8c27aF75d",
+      Swapper: "",
+      StrategyAgentV5: "",
     },
     accounts: {
       impersonate: "0x489ee077994B6658eAfA855C308275EAd8097C4A",

@@ -5,7 +5,9 @@ import addresses from "../../../src/implementations/Hop/addresses";
 import { deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
 import { addressZero, ensureFunding, getEnv, isLive } from "../utils";
 
+// Strategy input
 const inputSymbols: string[] = ["USDC"]; // "DAI", "USDT"];
+// Strategy underlying 
 const underlyingSymbol = "USDC";
 
 let env: IStrategyDeploymentEnv;
@@ -21,6 +23,7 @@ describe("test.strategy.hop", function () {
 
   let i = 0;
   for (const inputSymbol of inputSymbols) {
+    // Naming strat
     const addr = addresses[network.config.chainId!][`Hop.${inputSymbol}`];
     const name = `Astrolab Hop h${inputSymbol}`;
     const symbol = `as.h${inputSymbol}`;
