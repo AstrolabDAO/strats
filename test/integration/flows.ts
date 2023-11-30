@@ -157,11 +157,6 @@ export const deployStrat = async (
 
   await deployAll(env.deployment!);
 
-  if (isLive(env)) {
-    console.log(`Sleeping 5s to allow for deployed contracts to be minted/indexed`);
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
-  }
-
   if (!env.deployment!.units![contract].address) {
     throw new Error(`Could not deploy ${contract}`);
   }
@@ -219,8 +214,11 @@ export async function setupStrat(
   const proxy = new Contract(strat.contract.address, loadAbi(contract)!, env.deployer);
 
   // TODO: use await proxy.initialized?.() in next deployments
-  const initialized = (await proxy.agent()) != addressZero;
-  const ok = initialized || await proxy[initSignature](...initParams, getOverrides(env));
+  if ((await proxy.agent()) != addressZero) {
+    console.log(`Skipping init() as already initialized`);
+  } else {
+    await proxy[initSignature](...initParams, getOverrides(env));
+  }
 
   await logState(env, "After init");
   return env as IStrategyDeploymentEnv;
