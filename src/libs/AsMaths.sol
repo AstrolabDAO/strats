@@ -1,16 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/**
- * @title Math library
- * @notice A library to be used in conjunction with SafeMath. Contains functions for calculating
- * diffs between two uint256.
+/**            _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *
+ * @title AsMaths Library
+ * @author Astrolab DAO
+ * @notice Astrolab's Maths library inspired by many (oz, prb, uniswap...)
+ * @dev This library helps with high level maths
  */
 library AsMaths {
-
     // Constants
     uint256 constant BP_BASIS = 10_000; // 50% == 5000
 
+    /**
+     * @notice Subtract a certain percentage from a given amount.
+     * @param amount The initial amount.
+     * @param basisPoints The percentage to subtract.
+     * @return The result of subtracting the percentage.
+     */
     function subBp(
         uint256 amount,
         uint256 basisPoints
@@ -18,6 +29,12 @@ library AsMaths {
         return (amount * (BP_BASIS - basisPoints)) / BP_BASIS;
     }
 
+    /**
+     * @notice Add a certain percentage to a given amount.
+     * @param amount The initial amount.
+     * @param basisPoints The percentage to add.
+     * @return The result of adding the percentage.
+     */
     function addBp(
         uint256 amount,
         uint256 basisPoints
@@ -25,6 +42,12 @@ library AsMaths {
         return (amount * (BP_BASIS + basisPoints)) / BP_BASIS;
     }
 
+    /**
+     * @notice Calculate the percentage of a given amount.
+     * @param amount The initial amount.
+     * @param basisPoints The percentage to calculate.
+     * @return The calculated percentage of the amount.
+     */
     function bp(
         uint256 amount,
         uint256 basisPoints
@@ -32,6 +55,12 @@ library AsMaths {
         return (amount * basisPoints) / BP_BASIS;
     }
 
+    /**
+     * @notice Calculate the reverse of adding a certain percentage to a given amount.
+     * @param amount The initial amount.
+     * @param basisPoints The percentage to reverse add.
+     * @return The result of reverse adding the percentage.
+     */
     function revAddBp(
         uint256 amount,
         uint256 basisPoints
@@ -39,6 +68,12 @@ library AsMaths {
         return (amount * BP_BASIS) / (BP_BASIS + basisPoints);
     }
 
+    /**
+     * @notice Calculate the reverse of subtracting a certain percentage from a given amount.
+     * @param amount The initial amount.
+     * @param basisPoints The percentage to reverse subtract.
+     * @return The result of reverse subtracting the percentage.
+     */
     function revSubBp(
         uint256 amount,
         uint256 basisPoints
@@ -46,6 +81,13 @@ library AsMaths {
         return (amount * BP_BASIS) / (BP_BASIS - basisPoints);
     }
 
+    /**
+     * @notice Check if the difference between two values is within a specified range.
+     * @param a The first value.
+     * @param b The second value.
+     * @param val The allowable difference.
+     * @return A boolean indicating if the difference is within the specified range.
+     */
     function within(
         uint256 a,
         uint256 b,
@@ -54,10 +96,22 @@ library AsMaths {
         return (diff(a, b) <= val);
     }
 
+    /**
+     * @notice Check if the difference between two values is within 1.
+     * @param a The first value.
+     * @param b The second value.
+     * @return A boolean indicating if the difference is within 1.
+     */
     function within1(uint256 a, uint256 b) internal pure returns (bool) {
         return within(a, b, 1);
     }
 
+    /**
+     * @notice Calculate the absolute difference between two values.
+     * @param a The first value.
+     * @param b The second value.
+     * @return The absolute difference between the two values.
+     */
     function diff(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a > b) {
             return a - b;
@@ -65,17 +119,36 @@ library AsMaths {
         return b - a;
     }
 
+    /**
+     * @notice Subtract a value from another with a minimum of 0.
+     * @param a The initial value.
+     * @param b The value to subtract.
+     * @return The result of subtracting the value, with a minimum of 0.
+     */
     function subMax0(uint256 a, uint256 b) internal pure returns (uint256) {
         unchecked {
             return (a >= b ? a - b : 0);
         }
     }
 
+    /**
+     * @notice Subtract one integer from another with a requirement that the result is non-negative.
+     * @param a The initial integer.
+     * @param b The integer to subtract.
+     * @return The result of subtracting the integer, with a requirement that the result is non-negative.
+     */
     function subNoNeg(int256 a, int256 b) internal pure returns (int256) {
         require(a >= b);
         return a - b; // no unchecked since if b is very negative, a - b might overflow
     }
 
+    /**
+     * @notice Multiply two unsigned integers and round down to the nearest whole number.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The first unsigned integer.
+     * @param b The second unsigned integer.
+     * @return The result of multiplying and rounding down.
+     */
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 product = a * b;
         unchecked {
@@ -83,6 +156,13 @@ library AsMaths {
         }
     }
 
+    /**
+     * @notice Multiply two signed integers and round down to the nearest whole number.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The first signed integer.
+     * @param b The second signed integer.
+     * @return The result of multiplying and rounding down.
+     */
     function mulDown(int256 a, int256 b) internal pure returns (int256) {
         int256 product = a * b;
         unchecked {
@@ -90,6 +170,13 @@ library AsMaths {
         }
     }
 
+    /**
+     * @notice Divide one unsigned integer by another and round down to the nearest whole number.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The numerator.
+     * @param b The denominator.
+     * @return The result of dividing and rounding down.
+     */
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 aInflated = a * 1e18;
         unchecked {
@@ -97,6 +184,13 @@ library AsMaths {
         }
     }
 
+    /**
+     * @notice Divide one signed integer by another and round down to the nearest whole number.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The numerator.
+     * @param b The denominator.
+     * @return The result of dividing and rounding down.
+     */
     function divDown(int256 a, int256 b) internal pure returns (int256) {
         int256 aInflated = a * 1e18;
         unchecked {
@@ -104,78 +198,186 @@ library AsMaths {
         }
     }
 
+    /**
+     * @notice Divide one unsigned integer by another and round up to the nearest whole number.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The numerator.
+     * @param b The denominator.
+     * @return The result of dividing and rounding up.
+     */
     function rawDivUp(uint256 a, uint256 b) internal pure returns (uint256) {
         return (a + b - 1) / b;
     }
 
+    /**
+     * @notice Get the absolute value of a signed integer.
+     * @param x The input signed integer.
+     * @return The absolute value of the input.
+     */
     function abs(int256 x) internal pure returns (uint256) {
         return uint256(x > 0 ? x : -x);
     }
 
+    /**
+     * @notice Negate a signed integer.
+     * @param x The input signed integer.
+     * @return The negated value of the input.
+     */
     function neg(int256 x) internal pure returns (int256) {
         return x * (-1);
     }
 
+    /**
+     * @notice Negate an unsigned integer.
+     * @param x The input unsigned integer.
+     * @return The negated value of the input as a signed integer.
+     */
     function neg(uint256 x) internal pure returns (int256) {
-        return Int(x) * (-1);
+        return toInt(x) * (-1);
     }
 
+    /**
+     * @notice Get the maximum of two unsigned integers.
+     * @param x The first unsigned integer.
+     * @param y The second unsigned integer.
+     * @return The greater of the two input values.
+     */
     function max(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x > y ? x : y);
     }
 
+    /**
+     * @notice Get the maximum of two signed integers.
+     * @param x The first signed integer.
+     * @param y The second signed integer.
+     * @return The greater of the two input values.
+     */
     function max(int256 x, int256 y) internal pure returns (int256) {
         return (x > y ? x : y);
     }
 
+    /**
+     * @notice Get the minimum of two unsigned integers.
+     * @param x The first unsigned integer.
+     * @param y The second unsigned integer.
+     * @return The smaller of the two input values.
+     */
     function min(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x < y ? x : y);
     }
 
+    /**
+     * @notice Get the minimum of two signed integers.
+     * @param x The first signed integer.
+     * @param y The second signed integer.
+     * @return The smaller of the two input values.
+     */
     function min(int256 x, int256 y) internal pure returns (int256) {
         return (x < y ? x : y);
     }
 
-    function Int(uint256 x) internal pure returns (int256) {
-        require(x <= uint256(type(int256).max));
+    /**
+     * @notice Convert an unsigned integer to a signed integer.
+     * @dev Requires the input to be within the valid range for a signed integer.
+     * @param x The input unsigned integer.
+     * @return The input value as a signed integer.
+     */
+    function toInt(uint256 x) internal pure returns (int256) {
+        require(
+            x <= uint256(type(int256).max),
+            "Value out of range for int256"
+        );
         return int256(x);
     }
 
-    function Int128(int256 x) internal pure returns (int128) {
-        require(type(int128).min <= x && x <= type(int128).max);
+    /**
+     * @notice Convert a signed integer to a signed 128-bit integer.
+     * @dev Requires the input to be within the valid range for a signed 128-bit integer.
+     * @param x The input signed integer.
+     * @return The input value as a signed 128-bit integer.
+     */
+    function toInt128(int256 x) internal pure returns (int128) {
+        require(
+            type(int128).min <= x && x <= type(int128).max,
+            "Value out of range for int128"
+        );
         return int128(x);
     }
 
-    function Int128(uint256 x) internal pure returns (int128) {
-        return Int128(Int(x));
+    /**
+     * @notice Convert an unsigned integer to a signed 128-bit integer.
+     * @dev Calls `toInt` to perform the conversion.
+     * @param x The input unsigned integer.
+     * @return The input value as a signed 128-bit integer.
+     */
+    function toInt128(uint256 x) internal pure returns (int128) {
+        return toInt128(toInt(x));
     }
 
-    function Uint(int256 x) internal pure returns (uint256) {
-        require(x >= 0);
+    /**
+     * @notice Convert a signed integer to an unsigned integer.
+     * @dev Requires the input to be non-negative.
+     * @param x The input signed integer.
+     * @return The input value as an unsigned integer.
+     */
+    function toUint(int256 x) internal pure returns (uint256) {
+        require(x >= 0, "Negative value cannot be converted to uint256");
         return uint256(x);
     }
 
-    function Uint32(uint256 x) internal pure returns (uint32) {
-        require(x <= type(uint32).max);
+    /**
+     * @notice Convert an unsigned integer to a 32-bit unsigned integer.
+     * @dev Requires the input to be within the valid range for a 32-bit unsigned integer.
+     * @param x The input unsigned integer.
+     * @return The input value as a 32-bit unsigned integer.
+     */
+    function toUint32(uint256 x) internal pure returns (uint32) {
+        require(x <= type(uint32).max, "Value out of range for uint32");
         return uint32(x);
     }
 
-    function Uint112(uint256 x) internal pure returns (uint112) {
-        require(x <= type(uint112).max);
+    /**
+     * @notice Convert an unsigned integer to a 112-bit unsigned integer.
+     * @dev Requires the input to be within the valid range for a 112-bit unsigned integer.
+     * @param x The input unsigned integer.
+     * @return The input value as a 112-bit unsigned integer.
+     */
+    function toUint112(uint256 x) internal pure returns (uint112) {
+        require(x <= type(uint112).max, "Value out of range for uint112");
         return uint112(x);
     }
 
-    function Uint96(uint256 x) internal pure returns (uint96) {
-        require(x <= type(uint96).max);
+    /**
+     * @notice Convert an unsigned integer to a 96-bit unsigned integer.
+     * @dev Requires the input to be within the valid range for a 96-bit unsigned integer.
+     * @param x The input unsigned integer.
+     * @return The input value as a 96-bit unsigned integer.
+     */
+    function toUint96(uint256 x) internal pure returns (uint96) {
+        require(x <= type(uint96).max, "Value out of range for uint96");
         return uint96(x);
     }
 
-    function Uint128(uint256 x) internal pure returns (uint128) {
-        require(x <= type(uint128).max);
+    /**
+     * @notice Convert an unsigned integer to a 128-bit unsigned integer.
+     * @dev Requires the input to be within the valid range for a 128-bit unsigned integer.
+     * @param x The input unsigned integer.
+     * @return The input value as a 128-bit unsigned integer.
+     */
+    function toUint128(uint256 x) internal pure returns (uint128) {
+        require(x <= type(uint128).max, "Value out of range for uint128");
         return uint128(x);
     }
 
-    function isAApproxB(
+    /**
+     * @notice Check if two unsigned integers are approximately equal within a specified tolerance.
+     * @dev Uses `mulDown` for the comparison to handle precision loss.
+     * @param a The first unsigned integer.
+     * @param b The second unsigned integer.
+     * @param eps The maximum allowable difference between `a` and `b`.
+     * @return A boolean indicating whether the two values are approximately equal.
+     */
+    function approxEq(
         uint256 a,
         uint256 b,
         uint256 eps
@@ -183,7 +385,15 @@ library AsMaths {
         return mulDown(b, 1e18 - eps) <= a && a <= mulDown(b, 1e18 + eps);
     }
 
-    function isAGreaterApproxB(
+    /**
+     * @notice Check if one unsigned integer is approximately greater than another within a specified tolerance.
+     * @dev Uses `mulDown` for the comparison to handle precision loss.
+     * @param a The first unsigned integer.
+     * @param b The second unsigned integer.
+     * @param eps The maximum allowable difference between `a` and `b`.
+     * @return A boolean indicating whether `a` is approximately greater than `b`.
+     */
+    function approxGt(
         uint256 a,
         uint256 b,
         uint256 eps
@@ -191,7 +401,15 @@ library AsMaths {
         return a >= b && a <= mulDown(b, 1e18 + eps);
     }
 
-    function isASmallerApproxB(
+    /**
+     * @notice Check if one unsigned integer is approximately less than another within a specified tolerance.
+     * @dev Uses `mulDown` for the comparison to handle precision loss.
+     * @param a The first unsigned integer.
+     * @param b The second unsigned integer.
+     * @param eps The maximum allowable difference between `a` and `b`.
+     * @return A boolean indicating whether `a` is approximately less than `b`.
+     */
+    function approxLt(
         uint256 a,
         uint256 b,
         uint256 eps
@@ -199,8 +417,15 @@ library AsMaths {
         return a <= b && a >= mulDown(b, 1e18 - eps);
     }
 
+    /**
+     * @notice Custom error for math overflow during multiplication or division.
+     */
     error MathOverflowedMulDiv();
 
+    /**
+     * @notice Enumeration for rounding modes.
+     * @dev Four rounding modes: Floor, Ceil, Trunc, Expand.
+     */
     enum Rounding {
         Floor, // Toward negative infinity
         Ceil, // Toward positive infinity
@@ -209,7 +434,11 @@ library AsMaths {
     }
 
     /**
-     * @dev Returns the addition of two unsigned integers, with an overflow flag.
+     * @notice Attempt to add two unsigned integers with overflow protection.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The first unsigned integer.
+     * @param b The second unsigned integer.
+     * @return A tuple with a boolean indicating success and the result of the addition.
      */
     function tryAdd(
         uint256 a,
@@ -217,26 +446,40 @@ library AsMaths {
     ) internal pure returns (bool, uint256) {
         unchecked {
             uint256 c = a + b;
-            if (c < a) return (false, 0);
+            if (c < a) {
+                // Overflow occurred
+                return (false, 0);
+            }
             return (true, c);
         }
     }
 
     /**
-     * @dev Returns the subtraction of two unsigned integers, with an overflow flag.
+     * @notice Attempt to subtract one unsigned integer from another with overflow protection.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The first unsigned integer.
+     * @param b The second unsigned integer.
+     * @return A tuple with a boolean indicating success and the result of the subtraction.
      */
     function trySub(
         uint256 a,
         uint256 b
     ) internal pure returns (bool, uint256) {
         unchecked {
-            if (b > a) return (false, 0);
+            if (b > a) {
+                // Underflow occurred
+                return (false, 0);
+            }
             return (true, a - b);
         }
     }
 
     /**
-     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.
+     * @notice Attempt to multiply two unsigned integers with overflow protection.
+     * @dev Uses unchecked to handle potential overflow situations.
+     * @param a The first unsigned integer.
+     * @param b The second unsigned integer.
+     * @return A tuple with a boolean indicating success and the result of the multiplication.
      */
     function tryMul(
         uint256 a,
@@ -246,15 +489,23 @@ library AsMaths {
             // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
             // benefit is lost if 'b' is also tested.
             // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-            if (a == 0) return (true, 0);
+            if (a == 0) {
+                return (true, 0);
+            }
             uint256 c = a * b;
-            if (c / a != b) return (false, 0);
+            if (c / a != b) {
+                // Overflow occurred
+                return (false, 0);
+            }
             return (true, c);
         }
     }
 
     /**
      * @dev Returns the division of two unsigned integers, with a division by zero flag.
+     * @param a The numerator.
+     * @param b The denominator.
+     * @return A tuple with a boolean indicating success and the result of the division.
      */
     function tryDiv(
         uint256 a,
@@ -268,6 +519,9 @@ library AsMaths {
 
     /**
      * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.
+     * @param a The numerator.
+     * @param b The denominator.
+     * @return A tuple with a boolean indicating success and the result of the remainder.
      */
     function tryMod(
         uint256 a,
@@ -280,8 +534,10 @@ library AsMaths {
     }
 
     /**
-     * @dev Returns the average of two numbers. The result is rounded towards
-     * zero.
+     * @dev Returns the average of two numbers. The result is rounded towards zero.
+     * @param a The first number.
+     * @param b The second number.
+     * @return The average of the two numbers.
      */
     function average(uint256 a, uint256 b) internal pure returns (uint256) {
         // (a + b) / 2 can overflow.
@@ -293,6 +549,9 @@ library AsMaths {
      *
      * This differs from standard division with `/` in that it rounds towards infinity instead
      * of rounding towards zero.
+     * @param a The numerator.
+     * @param b The denominator.
+     * @return The ceiling of the division.
      */
     function ceilDiv(uint256 a, uint256 b) internal pure returns (uint256) {
         if (b == 0) {
@@ -309,6 +568,10 @@ library AsMaths {
      * denominator == 0.
      * @dev Original credit to Remco Bloemen under MIT license (https://xn--2-umb.com/21/muldiv) with further edits by
      * Uniswap Labs also under MIT license.
+     * @param x The numerator.
+     * @param y The numerator.
+     * @param denominator The denominator.
+     * @return result The result of floor(x * y / denominator).
      */
     function mulDiv(
         uint256 x,
@@ -317,7 +580,7 @@ library AsMaths {
     ) internal pure returns (uint256 result) {
         unchecked {
             // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
-            // use the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
+            // the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
             // variables such that product = prod1 * 2^256 + prod0.
             uint256 prod0 = x * y; // Least significant 256 bits of the product
             uint256 prod1; // Most significant 256 bits of the product
@@ -335,12 +598,9 @@ library AsMaths {
             }
 
             // Make sure the result is less than 2^256. Also prevents denominator == 0.
-            require (denominator > prod1);
+            require(denominator > prod1);
 
-            ///////////////////////////////////////////////
-            // 512 by 256 division.
-            ///////////////////////////////////////////////
-
+            // 512 by 256 division
             // Make division exact by subtracting the remainder from [prod1 prod0].
             uint256 remainder;
             assembly {
@@ -352,7 +612,7 @@ library AsMaths {
                 prod0 := sub(prod0, remainder)
             }
 
-            // Factor powers of two out of denominator and compute largest power of two divisor of denominator.
+            // Factor powers of two out of denominator and compute the largest power of two divisor of denominator.
             // Always >= 1. See https://cs.stackexchange.com/q/138556/92363.
 
             uint256 twos = denominator & (0 - denominator);
@@ -395,6 +655,11 @@ library AsMaths {
 
     /**
      * @notice Calculates x * y / denominator with full precision, following the selected rounding direction.
+     * @param x The numerator.
+     * @param y The numerator.
+     * @param denominator The denominator.
+     * @param rounding The rounding direction.
+     * @return The result of x * y / denominator with the specified rounding.
      */
     function mulDiv(
         uint256 x,
@@ -411,6 +676,10 @@ library AsMaths {
 
     /**
      * @notice Calculates x * y / denominator with full precision, rounded up
+     * @param x The numerator.
+     * @param y The numerator.
+     * @param denominator The denominator.
+     * @return The result of x * y / denominator rounded up.
      */
     function mulDivRoundUp(
         uint256 x,
@@ -423,8 +692,8 @@ library AsMaths {
     /**
      * @dev Returns the square root of a number. If the number is not a perfect square, the value is rounded
      * towards zero.
-     *
-     * Inspired by Henry S. Warren, Jr.'s "Hacker's Delight" (Chapter 11).
+     * @param a The input value.
+     * @return The square root of the input value.
      */
     function sqrt(uint256 a) internal pure returns (uint256) {
         if (a == 0) {
@@ -461,6 +730,9 @@ library AsMaths {
 
     /**
      * @notice Calculates sqrt(a), following the selected rounding direction.
+     * @param a The input value.
+     * @param rounding The rounding direction.
+     * @return The square root of the input value with the specified rounding.
      */
     function sqrt(
         uint256 a,
@@ -477,6 +749,8 @@ library AsMaths {
     /**
      * @dev Return the log in base 2 of a positive value rounded towards zero.
      * Returns 0 if given 0.
+     * @param value The input value.
+     * @return The log in base 2 of the input value.
      */
     function log2(uint256 value) internal pure returns (uint256) {
         uint256 result = 0;
@@ -519,6 +793,9 @@ library AsMaths {
     /**
      * @dev Return the log in base 2, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
+     * @param value The input value.
+     * @param rounding The rounding direction.
+     * @return The log in base 2 of the input value with the specified rounding.
      */
     function log2(
         uint256 value,
@@ -535,6 +812,8 @@ library AsMaths {
     /**
      * @dev Return the log in base 10 of a positive value rounded towards zero.
      * Returns 0 if given 0.
+     * @param value The input value.
+     * @return The log in base 10 of the input value.
      */
     function log10(uint256 value) internal pure returns (uint256) {
         uint256 result = 0;
@@ -573,6 +852,9 @@ library AsMaths {
     /**
      * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
+     * @param value The input value.
+     * @param rounding The rounding direction.
+     * @return The log in base 10 of the input value with the specified rounding.
      */
     function log10(
         uint256 value,
@@ -589,8 +871,9 @@ library AsMaths {
     /**
      * @dev Return the log in base 256 of a positive value rounded towards zero.
      * Returns 0 if given 0.
-     *
      * Adding one to the result gives the number of pairs of hex symbols needed to represent `value` as a hex string.
+     * @param value The input value.
+     * @return The log in base 256 of the input value.
      */
     function log256(uint256 value) internal pure returns (uint256) {
         uint256 result = 0;
@@ -621,6 +904,9 @@ library AsMaths {
     /**
      * @dev Return the log in base 256, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
+     * @param value The input value.
+     * @param rounding The rounding direction.
+     * @return The log in base 256 of the input value with the specified rounding.
      */
     function log256(
         uint256 value,
@@ -640,6 +926,8 @@ library AsMaths {
 
     /**
      * @dev Returns whether a provided rounding mode is considered rounding up for unsigned integers.
+     * @param rounding The rounding direction.
+     * @return Whether the provided rounding mode is considered rounding up for unsigned integers.
      */
     function unsignedRoundsUp(Rounding rounding) internal pure returns (bool) {
         return uint8(rounding) % 2 == 1;

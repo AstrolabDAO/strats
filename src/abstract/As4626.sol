@@ -207,17 +207,11 @@ abstract contract As4626 is As4626Abstract {
         if (claimable >= _shares) {
             request.shares -= _shares;
 
-            totalRedemptionRequest -= _shares;
-            totalUnderlyingRequest -= AsMaths.min(
-                expected,
-                totalUnderlyingRequest
-            );
+            totalRedemptionRequest.subMax0(_shares);
+            totalUnderlyingRequest.subMax0(expected);
 
-            totalClaimableRedemption -= _shares;
-            totalClaimableUnderlying -= AsMaths.min(
-                recovered,
-                totalClaimableUnderlying
-            );
+            totalClaimableRedemption.subMax0(_shares);
+            totalClaimableUnderlying.subMax0(recovered);
         }
 
         // slice fee from burnt shares if not exempted
@@ -550,10 +544,9 @@ abstract contract As4626 is As4626Abstract {
             if (request.shares < shares) revert WrongRequest(owner, shares);
 
             // temporary clear the request
-            totalRedemptionRequest -= request.shares;
-            totalUnderlyingRequest -= AsMaths.min(
-                request.shares.mulDiv(request.sharePrice, weiPerShare),
-                totalUnderlyingRequest
+            totalRedemptionRequest.subMax0(request.shares);
+            totalUnderlyingRequest.subMax0(
+                request.shares.mulDiv(request.sharePrice, weiPerShare)
             );
 
             // volume weighted average price for the request

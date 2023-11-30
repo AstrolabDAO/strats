@@ -82,7 +82,7 @@ contract KyberSwapStrategy is StrategyV5 {
         (uint160 sqrtP, , , ) = pool.getPoolState();
         (uint128 baseL, , ) = pool.getLiquidityState();
 
-        (uint256 amountLiq0, uint256 amountLiq1) = LiquidityAmounts
+        (uint256 amountLiq0, uint256 amountLiq1) = AsPoolMaths
             .getAmountsForLiquidity(
                 sqrtP,
                 AsTickMath.getSqrtRatioAtTick(lowerTick),
@@ -209,7 +209,7 @@ contract KyberSwapStrategy is StrategyV5 {
 
         (uint160 sqrtP, , , ) = pool.getPoolState();
 
-        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+        uint128 liquidity = AsPoolMaths.getLiquidityForAmounts(
             sqrtP,
             AsTickMath.getSqrtRatioAtTick(lowerTick),
             AsTickMath.getSqrtRatioAtTick(upperTick),
@@ -251,7 +251,7 @@ contract KyberSwapStrategy is StrategyV5 {
         (uint160 sqrtP, , , ) = pool.getPoolState();
         (uint128 baseL, , ) = pool.getLiquidityState();
 
-        (uint256 amountDai, uint256 amountUsdc) = LiquidityAmounts
+        (uint256 amountDai, uint256 amountUsdc) = AsPoolMaths
             .getAmountsForLiquidity(
                 sqrtP,
                 AsTickMath.getSqrtRatioAtTick(lowerTick),

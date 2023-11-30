@@ -15,7 +15,6 @@ interface IERC1271 {
 }
 
 library NonceLib {
-
     /**
      * @notice Validates the signature for a given signer, digest, and signature
      * @param signer The address of the signer
@@ -28,7 +27,30 @@ library NonceLib {
         bytes32 digest,
         bytes memory signature
     ) internal view returns (bool) {
-        // Implementation of signature validation logic...
+        if (signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            if (signer == ecrecover(digest, v, r, s)) {
+                return true;
+            }
+        }
+
+        (bool success, bytes memory result) = signer.staticcall(
+            abi.encodeWithSelector(
+                IERC1271.isValidSignature.selector,
+                digest,
+                signature
+            )
+        );
+        return (success &&
+            result.length == 32 &&
+            abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector);
     }
 
     /**
@@ -43,7 +65,18 @@ library NonceLib {
         bytes memory name,
         bytes memory version
     ) internal view returns (bytes32) {
-        // Implementation of domain separator calculation...
+        return
+            keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                    ),
+                    keccak256(name),
+                    keccak256(version),
+                    chainId,
+                    address(this)
+                )
+            );
     }
 }
 
@@ -60,12 +93,15 @@ library NonceLib {
  */
 abstract contract ERC20Permit is ERC20, EIP712, Nonces {
 
-    // EIP712 domain separator
+    // EIP712 niceties
+    uint256 public immutable deploymentChainId;
     bytes32 private immutable _DOMAIN_SEPARATOR;
 
     // EIP712 type hash for permit function
     bytes32 public constant PERMIT_TYPEHASH =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        keccak256(
+            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+        );
 
     // Contract version
     string public VERSION;
@@ -89,12 +125,18 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
      * @param _symbol The symbol of the ERC20 token
      * @param _version The version of the contract
      */
-    constructor(string memory _name, string memory _symbol, string memory _version)
-        ERC20(_name, _symbol)
-        EIP712(_name, _version)
-    {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        string memory _version
+    ) ERC20(_name, _symbol) EIP712(_name, _version) {
         VERSION = _version;
-        _DOMAIN_SEPARATOR = NonceLib.calculateDomainSeparator(block.chainid, bytes(_name), bytes(VERSION));
+        deploymentChainId = block.chainid;
+        _DOMAIN_SEPARATOR = NonceLib.calculateDomainSeparator(
+            deploymentChainId,
+            bytes(_name),
+            bytes(VERSION)
+        );
     }
 
     /**
@@ -112,7 +154,34 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
         uint256 deadline,
         bytes memory signature
     ) public {
-        // Permit function implementation...
+
+        require(block.timestamp <= deadline, "Permit expired");
+        require(owner != address(0), "Invalid owner");
+
+        uint256 nonce = _useNonce(owner);
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                block.chainid == deploymentChainId
+                    ? _DOMAIN_SEPARATOR
+                    : NonceLib.calculateDomainSeparator(block.chainid, bytes(name()), bytes(VERSION)),
+                keccak256(
+                    abi.encode(
+                        PERMIT_TYPEHASH,
+                        owner,
+                        spender,
+                        value,
+                        nonce,
+                        deadline
+                    )
+                )
+            )
+        );
+
+        require(NonceLib.isValidSignature(owner, digest, signature), "Invalid permit");
+
+        _approve(owner, spender, value);
+        emit Approval(owner, spender, value);
     }
 
     /**
@@ -134,7 +203,7 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
         bytes32 r,
         bytes32 s
     ) external {
-        // Overloaded permit function implementation...
+        permit(owner, spender, value, deadline, abi.encodePacked(r, s, v));
     }
 
     /**
@@ -145,7 +214,7 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
     function nonces(
         address owner
     ) public view virtual override(Nonces) returns (uint256) {
-        // Nonces function implementation...
+        return super.nonces(owner);
     }
 
     /**

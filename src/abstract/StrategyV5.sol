@@ -181,11 +181,20 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         liquidityAvailable = available();
         uint256 allocated = _invested();
 
-        uint256 newRedemptionRequests = totalPendingRedemptionRequest();
+        // pre-liquidation sharePrice
+        uint256 price = sharePrice();
 
-        if (
-            _amount <
-            AsMaths.max(minLiquidity, convertToAssets(newRedemptionRequests))
+        uint256 underlyingRequests = totalPendingRedemptionRequest().muldiv(
+            weiPerShare,
+            price
+        );
+
+        // if not in panic, liquidate must fulfill minLiquidity+withdrawal requests
+        if (!panic && _amount <
+            AsMaths.max(
+                minLiquidity.subMax0(liquidityAvailable),
+                underlyingRequests // pending underlying requests
+            )
         ) revert AmountTooLow(_amount);
 
         // pani or less assets than requested >> liquidate all
@@ -194,8 +203,6 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
         }
 
         uint256 liquidated = 0;
-        // pre-liquidation sharePrice
-        uint256 price = sharePrice();
 
         // if enough cash, withdraw from the protocol
         if (liquidityAvailable < _amount) {
@@ -208,12 +215,14 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
                 revert AmountTooLow(liquidityAvailable);
         }
 
-        totalClaimableRedemption = maxClaimableRedemption();
-        // convertToAssets can't be used here as it requires totalClaimableUnderlying to be set
-        // to compute the new sharePrice (circular dependency)
-        totalClaimableUnderlying = totalClaimableRedemption.mulDiv(
-            price,
-            weiPerShare
+        totalClaimableUnderlying = AsMaths.min(
+            totalUnderlyingRequest,
+            totalClaimableUnderlying + liquidated
+        );
+
+        totalClaimableRedemption = AsMaths.min(
+            totalRedemptionRequest,
+            totalClaimableUnderlying.mulDiv(weiPerShare, price)
         );
 
         last.liquidate = block.timestamp;

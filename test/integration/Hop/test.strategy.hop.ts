@@ -63,7 +63,7 @@ describe("test.strategy.hop", function () {
         assert((await seedLiquidity(env, 10)).gt(0), "Failed to seed liquidity");
       });
       it("Deposit", async function () {
-        assert((await deposit(env, 1)).gt(0), "Failed to deposit");
+        assert((await deposit(env, 5)).gt(0), "Failed to deposit");
       });
       // it("Swap+Deposit", async function () {
       //   assert((await swapDeposit(env)).gt(0), "Failed to swap+deposit");
@@ -72,13 +72,13 @@ describe("test.strategy.hop", function () {
         assert((await invest(env, 10)).gt(0), "Failed to invest");
       });
       it("Liquidate (just enough for normal withdraw)", async function () {
-        assert((await liquidate(env, 10)).gt(0), "Failed to liquidate");
+        assert((await liquidate(env, 2.1)).gt(0), "Failed to liquidate");
       });
       it("Withdraw", async function () {
-        assert((await withdraw(env, 10)).gt(0), "Failed to withdraw");
+        assert((await withdraw(env, 2)).gt(0), "Failed to withdraw");
       });
       it("Request Withdraw", async function () {
-        assert((await requestWithdraw(env, 50)).gt(0), "Failed to request withdraw");
+        assert((await requestWithdraw(env, 5)).gt(0), "Failed to request withdraw");
       });
       it("Liquidate (0+pending requests)", async function () {
         assert((await liquidate(env, 0)).gt(0), "Failed to request withdraw");
@@ -88,7 +88,7 @@ describe("test.strategy.hop", function () {
         const params = [ethers.utils.hexValue(7 * 24 * 60 * 60)];
         if (!isLive(env))
           await provider.send('evm_increaseTime', params)
-        assert((await withdraw(env, 50)).gt(0), "Failed to withdraw");
+        assert((await withdraw(env, 5)).gt(0), "Failed to withdraw");
       });
     });
   }

@@ -268,10 +268,10 @@ abstract contract As4626Abstract is
      * @notice Get the maximum claimable redemption amount
      * @return The maximum claimable redemption amount
      */
-    function maxClaimableRedemption() public view returns (uint256) {
+    function maxClaimableUnderlying() public view returns (uint256) {
         return
             AsMaths.min(
-                totalRedemptionRequest,
+                totalUnderlyingRequest,
                 underlying.balanceOf(address(this)) -
                     claimableUnderlyingFees -
                     AsAccounting.unrealizedProfits(
