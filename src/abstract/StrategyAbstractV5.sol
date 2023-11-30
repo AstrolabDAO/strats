@@ -27,7 +27,6 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     );
     event AgentUpdate(address indexed addr);
     event SwapperUpdate(address indexed addr);
-    event AllocatorUpdate(address indexed addr);
     event SetSwapperAllowance(uint256 amount);
     error InvalidCalldata();
 
@@ -35,7 +34,6 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     ISwapper public swapper; // Interface for swapping assets
     address public agent; // Address of the agent
     address public stratProxy; // Address of the strategy proxy
-    address public allocator; // Address of the allocator
 
     IERC20Metadata[16] public inputs; // Array of ERC20 tokens used as inputs
     uint256[16] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)

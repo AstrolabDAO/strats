@@ -162,11 +162,12 @@ export const addresses = {
   // xdai
   100: {
     libs: {
-      AsAccounting: "0x7e9a3f62104d945c245771302e0e048200ef0a3d",
+      AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
     },
     astrolab: {
-      Swapper: "0x1bca59ef28f7a52ab5fb6b742963ff11e2a0dbf8",
-      StrategyAgentV5: "",
+      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      StrategyAgentV5: "0x1761ff905292548ff2254620166eabd988e48718",
+      "HopStrategy.USDC": "0x7221ebdd4176b1a21c3c014fd70bab46e697e272"
     },
     accounts : {
       impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"

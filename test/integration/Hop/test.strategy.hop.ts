@@ -52,7 +52,7 @@ describe("test.strategy.hop", function () {
             0, // hop tokenIndex
           ],
           // the above arguments should match the below contract init() signature
-          "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,uint8)",
+          "init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)",
           env
         );
         assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");

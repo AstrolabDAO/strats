@@ -3,8 +3,21 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-contract Manageable is AccessControlEnumerable {
+/**            _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *
+ * @title Manageable Abstract - OZ AccessControlEnumerable+Pausable extension
+ * @author Astrolab DAO
+ * @notice Abstract contract to manage roles and contract pausing
+ * @dev keeper (routine operator/bot), manager (elevated 1) and admin (elevated 2-multisig)
+  * roles are defined by default
+ */
+abstract contract Manageable is AccessControlEnumerable, Pausable {
 	struct Pending {
 		address oldAdmin;
 		address newAdmin;

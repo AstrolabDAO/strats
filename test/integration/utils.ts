@@ -120,9 +120,10 @@ export const getEnv = async (
   );
 };
 
-export const getTokenInfo = async (contract: Contract, abi=erc20Abi): Promise<IToken> => {
+export const getTokenInfo = async (address: string, abi=erc20Abi, deployer?: SignerWithAddress): Promise<IToken> => {
   if (!Array.isArray(abi) || !abi.filter)
     throw new Error(`ABI must be an array`);
+  const contract = new Contract(address, abi, await getDeployer());
   return {
     contract,
     multicallContract: new MulticallContract(contract.address, abi as any),

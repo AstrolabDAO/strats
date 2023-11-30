@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@astrolabs/swapper/contracts/Swapper.sol";
-import "./interfaces/IAllocator.sol";
 import "./interfaces/IStrategyV5.sol";
 import "./StrategyAbstractV5.sol";
 import "./As4626.sol";
@@ -112,8 +110,6 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
         // This represents the amount of shares that we're about to burn
         shares = convertToShares(_amount);
         _withdraw(_amount, shares, 0, _receiver, _owner);
-        if (_receiver == address(allocator))
-            IAllocator(allocator).updateStrategyDebt(assetsOf(_receiver));
     }
 
     /**
@@ -133,8 +129,6 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
         // This represents the amount of shares that we're about to burn
         shares = convertToShares(_amount); // We take fees here
         _withdraw(_amount, shares, _minAmount, _receiver, _owner);
-        if (_receiver == address(allocator))
-            IAllocator(allocator).updateStrategyDebt(assetsOf(_receiver));
     }
 
     /**

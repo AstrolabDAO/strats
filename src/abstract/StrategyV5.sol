@@ -36,20 +36,19 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
      * @notice Initialize the strategy
      * @param _fees fees structure
      * @param _underlying address of the underlying asset
-     * @param _coreAddresses array of core addresses: feeCollector, swapper, allocator, agent
+     * @param _coreAddresses array of core addresses: feeCollector, swapper, agent
      */
     function init(
         Fees memory _fees,
         address _underlying,
-        address[4] memory _coreAddresses
+        address[3] memory _coreAddresses
     ) public onlyAdmin {
         setExemption(msg.sender, true);
         // done in As4626 but required for swapper
         stratProxy = address(this);
         underlying = ERC20(_underlying);
         updateSwapper(_coreAddresses[1]);
-        allocator = _coreAddresses[2];
-        agent = _coreAddresses[3];
+        agent = _coreAddresses[2];
         // StrategyAgentV5.init
         _delegateWithSignature(
             agent,
@@ -94,15 +93,6 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
             inputs[i] = IERC20Metadata(address(0));
             inputWeights[i] = 0;
         }
-    }
-
-    /**
-     * @notice Sets the allocator
-     * @param _allocator The new allocator address
-     */
-    function updateAllocator(address _allocator) external onlyManager {
-        allocator = _allocator;
-        emit AllocatorUpdate(_allocator);
     }
 
     /**

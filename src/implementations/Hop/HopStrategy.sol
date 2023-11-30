@@ -51,7 +51,7 @@ contract HopStrategy is StrategyV5 {
     function init(
         Fees memory _fees,
         address _underlying,
-        address[4] memory _coreAddresses,
+        address[3] memory _coreAddresses,
         address[] memory _inputs,
         uint256[] memory _inputWeights,
         address[] memory _rewardTokens,

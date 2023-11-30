@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "./ERC20Permit.sol";
@@ -24,7 +23,6 @@ import "../libs/AsAccounting.sol";
 abstract contract As4626Abstract is
     ERC20Permit,
     Manageable,
-    Pausable,
     ReentrancyGuard
 {
     using AsMaths for uint256;
@@ -166,14 +164,21 @@ abstract contract As4626Abstract is
     function _invested() internal view virtual returns (uint256) {}
 
     /**
-     * @notice Amount of assets available and not yet deposited
-     * @return Amount of assets available
+     * @notice Amount of assets available to non-requested withdrawals
+     * @return Amount denominated in underlying
      */
     function available() public view returns (uint256) {
+        return availableClaimable() - totalClaimableUnderlying;
+    }
+
+    /**
+     * @notice Total amount of assets available to withdraw
+     * @return Amount denominated in underlying
+     */
+    function availableClaimable() public view returns (uint256) {
         return
             underlying.balanceOf(address(this)) -
             claimableUnderlyingFees -
-            totalClaimableUnderlying -
             AsAccounting.unrealizedProfits(
                 last.harvest,
                 expectedProfits,
@@ -190,11 +195,35 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @notice Amount of assets under management (excluding claimable redemptions)
-     * @return Total amount of assets under management
+     * @notice Amount of assets under management (including claimable redemptions)
+     * @return Amount denominated in underlying
      */
     function totalAssets() public view virtual returns (uint256) {
-        return available() + invested();
+        return availableClaimable() + invested();
+    }
+
+    /**
+     * @notice Amount of assets under management used for sharePrice accounting (excluding claimable redemptions)
+     * @return Amount denominated in underlying
+     */
+    function totalAccountedAssets() public view returns (uint256) {
+        return totalAssets() - totalClaimableUnderlying;
+    }
+
+    /**
+     * @notice Amount of shares used for sharePrice accounting (excluding claimable redemptions)
+     * @return Amount of shares
+     */
+    function totalAccountedSupply() public view returns (uint256) {
+        return totalSupply() - totalClaimableRedemption;
+    }
+
+    /**
+     * @notice totalAssets alias
+     * @return Amount denominated in underlying
+     */
+    function tvl() external view returns (uint256) {
+        return totalAssets();
     }
 
     /**
@@ -202,11 +231,11 @@ abstract contract As4626Abstract is
      * @return The virtual price of the crate token
      */
     function sharePrice() public view virtual returns (uint256) {
-        uint256 supply = totalSupply() - totalClaimableRedemption;
+        uint256 supply = totalAccountedSupply();
         return
             supply == 0
                 ? weiPerShare
-                : totalAssets().mulDiv(weiPerShare, supply);
+                : totalAccountedAssets().mulDiv(weiPerShare, supply);
     }
 
     /**

@@ -17,6 +17,7 @@ export const deployStrat = async (
   constructorParams: [Erc20Metadata],
   initParams: StrategyV5InitParams,
 ): Promise<IStrategyDeploymentEnv> => {
+
   let [swapper, agent] = [{}, {}] as Contract[];
 
   // strategy dependencies
@@ -25,6 +26,7 @@ export const deployStrat = async (
     "AsAccounting",
   ]);
   const libraries: { [name: string]: string } = {};
+  const contractUniqueName = `${contract}.${env.deployment?.inputs?.map(i => i.symbol).join("-")}`; // StrategyV5.[inputAddresses.join("-")]
 
   for (const n of libNames) {
     let lib = {} as Contract;
@@ -67,9 +69,11 @@ export const deployStrat = async (
       contract,
       name: contract,
       verify: true,
+      deployed: env.addresses!.astrolab?.[contractUniqueName] ? true : false,
+      address: env.addresses!.astrolab?.[contractUniqueName],
       proxied: ["StrategyAgentV5"],
       args: constructorParams,
-      libraries,
+      // libraries, // External libraries are only used in StrategyAgentV5
     },
   };
 
@@ -127,7 +131,6 @@ export const deployStrat = async (
   initParams[2] = [
     env.deployer!.address, // feeCollector
     swapper.address, // Swapper
-    addressZero, // Allocator
     agent.address, // StrategyAgentV5
   ];
 
@@ -136,7 +139,7 @@ export const deployStrat = async (
     // default input weight == 100%
     initParams[4] = [100_000];
 
-  const deployment = {
+  merge(env.deployment, {
     name: `${name} Stack`,
     contract: "",
     constructorParams,
@@ -150,38 +153,41 @@ export const deployStrat = async (
     provider: env.provider,
     // deployment units
     units,
-  } as IStrategyDeployment;
+  } as IStrategyDeployment);
 
-  await deployAll(deployment);
+  await deployAll(env.deployment!);
 
   if (isLive(env)) {
-    console.log(`Sleeping 20s to allow for deployed contracts to be minted/indexed`);
-    await new Promise((resolve) => setTimeout(resolve, 20_000));
+    console.log(`Sleeping 5s to allow for deployed contracts to be minted/indexed`);
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
   }
 
-  if (!deployment.units![contract].address) {
+  if (!env.deployment!.units![contract].address) {
     throw new Error(`Could not deploy ${contract}`);
   }
 
   const stratProxyAbi = loadAbi("StrategyV5") as any;
-  const strat = new Contract(
-    deployment.units![contract].address!,
-    stratProxyAbi,
-    deployment.deployer
-  );
-
-  deployment.strat = await getTokenInfo(strat, stratProxyAbi);
-  env.deployment = deployment;
+  env.deployment!.strat = await getTokenInfo(
+    env.deployment!.units![contract].address!,
+    stratProxyAbi);
+  env.deployment = env.deployment;
   return env as IStrategyDeploymentEnv;
 };
 
-export async function grantAdminRole(strat: Contract, address: string) {
-  const keeperRole = await strat.KEEPER_ROLE();
-  const managerRole = await strat.MANAGER_ROLE();
-  await Promise.all([
-    strat.grantRole(keeperRole, address).then((tx: TransactionResponse) => tx.wait()),
-    strat.grantRole(managerRole, address).then((tx: TransactionResponse) => tx.wait()),
+export async function grantAdminRole(env: IStrategyDeploymentEnv, address: string) {
+  const { strat } = env.deployment!;
+  const [keeperRole, managerRole] = await Promise.all([
+    strat.contract.KEEPER_ROLE(),
+    strat.contract.MANAGER_ROLE()
   ]);
+  // await env.multicallProvider!.all([
+  //   strat.multicallContract.grantRole(keeperRole, address),
+  //   strat.multicallContract.grantRole(managerRole, address),
+  // ]);
+  for (const role of [keeperRole, managerRole]) {
+    if (!(await strat.contract.hasRole(role, address)))
+      await strat.contract.grantRole(role, address).then((tx: TransactionResponse) => tx.wait());
+  }
 }
 
 export async function setupStrat(
@@ -196,6 +202,12 @@ export async function setupStrat(
 ): Promise<IStrategyDeploymentEnv> {
 
   env = await getEnv(env, addressesOverride);
+  env.deployment = {
+    underlying: await getTokenInfo(initParams[1]),
+    inputs: await Promise.all(initParams[3]!.map((input) => getTokenInfo(input))),
+    rewardTokens: await Promise.all(initParams[5]!.map((rewardToken) => getTokenInfo(rewardToken))),
+  } as any;
+
   env = await deployStrat(env, name, contract, constructorParams, initParams);
 
   const { strat } = env.deployment!;
@@ -203,23 +215,11 @@ export async function setupStrat(
   await grantAdminRole(strat.contract, env.deployer!.address);
 
   // load the implementation abi, containing the overriding init() (missing from d.strat)
-  // init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,uint8)'
+  // init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)'
   const proxy = new Contract(strat.contract.address, loadAbi(contract)!, env.deployer);
   const ok = await proxy[initSignature](...initParams, {
     gasLimit: 5e7,
   });
-
-  const underlying = new Contract(initParams[1], erc20Abi, env.deployer);
-  const inputs = initParams[3]!.map(
-    (input) => new Contract(input, erc20Abi, env.deployer)
-  );
-  const rewardTokens = initParams[5]!.map(
-    (rewardToken) => new Contract(rewardToken, erc20Abi, env.deployer)
-  );
-
-  env.deployment!.underlying = await getTokenInfo(underlying);
-  env.deployment!.inputs = await Promise.all(inputs.map(i => getTokenInfo(i)));
-  env.deployment!.rewardTokens = await Promise.all(rewardTokens.map(t => getTokenInfo(t)));
 
   await logState(env, "After init");
   return env as IStrategyDeploymentEnv;

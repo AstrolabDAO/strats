@@ -2,8 +2,8 @@ import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { Fees, IStrategyDeploymentEnv } from "../../../src/types";
 import addresses from "../../../src/implementations/SyncSwap/addresses";
-import { deposit, ensureFunding, invest, liquidate, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
-import { addressZero, getEnv } from "../utils";
+import { deposit, invest, liquidate, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
+import { addressZero, ensureFunding, getEnv } from "../utils";
 
 const inputSymbols: string[][] = [["USDC", "USDT"]];
 const underlyingSymbol = "USDC";
@@ -49,10 +49,10 @@ describe("test.strategy.syncswap", function () {
             addr.router, // syncswap router
             addr.pool, // syncswap pool
           ],
-          "init((uint64,uint64,uint64,uint64),address,address[4],address[],uint256[],address[],address,address,address,address,address)",
+          "init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,address,address)",
           env
         );
-        assert(env.deployment.strat.address && env.deployment.strat.address !== addressZero, "Strat not deployed");
+        assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
         await ensureFunding(env);
       });
 
