@@ -272,6 +272,7 @@ async function ensureWhitelisted(contract: Contract|any, addresses: string[]) {
 }
 
 export async function ensureFunding(env: IStrategyDeploymentEnv) {
+
   if (isLive(env)) {
     console.log(
       `Funding is only applicable to test forks and testnets, not ${env.network.name}`
@@ -328,3 +329,16 @@ export function isLive(env: any) {
   const n = env.network ?? network;
   return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
 }
+
+const networkOverrides: { [name: string]: any } = {
+  "gnosis-mainnet": {
+    gasLimit: 1e7,
+    maxPriorityFeePerGas: 2e9,
+    maxFeePerGas: 4e9
+  },
+  "tenderly": {
+    gasLimit: 1e7,
+  }
+}
+
+export const getOverrides = (env: Partial<ITestEnv>) => isLive(env) ? {} : networkOverrides[network.name] ?? {};

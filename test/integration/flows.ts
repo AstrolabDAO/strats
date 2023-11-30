@@ -1,14 +1,12 @@
-import { provider, network, weiToString, TransactionRequest, IDeploymentUnit, deploy, deployAll, loadAbi, ethers, TransactionResponse } from "@astrolabs/hardhat";
-import { ISwapperParams, swapperParamsToString, getAllTransactionRequests, getTransactionRequest, ITransactionRequestWithEstimate } from "@astrolabs/swapper";
-import { wethAbi, erc20Abi } from "abitype/abis";
+import { IDeploymentUnit, TransactionResponse, deploy, deployAll, ethers, loadAbi, network } from "@astrolabs/hardhat";
+import { ITransactionRequestWithEstimate, getTransactionRequest } from "@astrolabs/swapper";
+import { erc20Abi } from "abitype/abis";
 import { Contract, BigNumber, utils as ethersUtils } from "ethers";
-import { assert } from "chai";
-import { merge } from "lodash";
-import { IStrategyDeployment, IStrategyDeploymentEnv, StrategyV5InitParams, IToken, Erc20Metadata, ITestEnv } from "../../src/types";
-import { addressZero, getEnv, getTokenInfo, getTxLogData, isLive, logState } from "./utils";
+import { get, merge } from "lodash";
+import { Erc20Metadata, IStrategyDeployment, IStrategyDeploymentEnv, ITestEnv, StrategyV5InitParams } from "../../src/types";
+import { addressZero, getEnv, getOverrides, getTokenInfo, getTxLogData, isLive, logState } from "./utils";
 
 const MaxUint256 = ethers.constants.MaxUint256;
-
 
 export const deployStrat = async (
   env: Partial<IStrategyDeploymentEnv>,
@@ -64,6 +62,7 @@ export const deployStrat = async (
       verify: true,
       deployed: env.addresses!.astrolab?.StrategyAgentV5 ? true : false,
       address: env.addresses!.astrolab?.StrategyAgentV5,
+      overrides: getOverrides(env),
     },
     [contract]: {
       contract,
@@ -73,7 +72,8 @@ export const deployStrat = async (
       address: env.addresses!.astrolab?.[contractUniqueName],
       proxied: ["StrategyAgentV5"],
       args: constructorParams,
-      // libraries, // External libraries are only used in StrategyAgentV5
+      overrides: getOverrides(env),
+      libraries, // External libraries are only used in StrategyAgentV5
     },
   };
 
@@ -137,7 +137,7 @@ export const deployStrat = async (
   // inputs
   if (initParams[3].length == 1)
     // default input weight == 100%
-    initParams[4] = [100_000];
+    initParams[4] = [10_000];
 
   merge(env.deployment, {
     name: `${name} Stack`,
@@ -174,7 +174,7 @@ export const deployStrat = async (
   return env as IStrategyDeploymentEnv;
 };
 
-export async function grantAdminRole(env: IStrategyDeploymentEnv, address: string) {
+export async function grantManagerRole(env: Partial<IStrategyDeploymentEnv>, address: string) {
   const { strat } = env.deployment!;
   const [keeperRole, managerRole] = await Promise.all([
     strat.contract.KEEPER_ROLE(),
@@ -186,7 +186,7 @@ export async function grantAdminRole(env: IStrategyDeploymentEnv, address: strin
   // ]);
   for (const role of [keeperRole, managerRole]) {
     if (!(await strat.contract.hasRole(role, address)))
-      await strat.contract.grantRole(role, address).then((tx: TransactionResponse) => tx.wait());
+      await strat.contract.grantRole(role, address, getOverrides(env)).then((tx: TransactionResponse) => tx.wait());
   }
 }
 
@@ -212,14 +212,15 @@ export async function setupStrat(
 
   const { strat } = env.deployment!;
 
-  await grantAdminRole(strat.contract, env.deployer!.address);
+  await grantManagerRole(env, env.deployer!.address);
 
   // load the implementation abi, containing the overriding init() (missing from d.strat)
   // init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)'
   const proxy = new Contract(strat.contract.address, loadAbi(contract)!, env.deployer);
-  const ok = await proxy[initSignature](...initParams, {
-    gasLimit: 5e7,
-  });
+
+  // TODO: use await proxy.initialized?.() in next deployments
+  const initialized = (await proxy.agent()) != addressZero;
+  const ok = initialized || await proxy[initSignature](...initParams, getOverrides(env));
 
   await logState(env, "After init");
   return env as IStrategyDeploymentEnv;
@@ -230,9 +231,9 @@ export async function deposit(env: IStrategyDeploymentEnv, amount = 100) {
   amount *= underlying.weiPerUnit; // 100$ or equivalent
   await underlying.contract.approve(strat.contract.address, MaxUint256);
   await logState(env, "Before Deposit");
-  const receipt = await strat.contract.safeDeposit(amount, env.deployer.address, 1, {
-    gasLimit: 5e7,
-  }).then((tx: TransactionResponse) => tx.wait());
+  const receipt = await strat.contract.safeDeposit(
+    amount, env.deployer.address, 1, getOverrides(env))
+      .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Deposit");
   return getTxLogData(receipt, ["uint256", "uint256"])[0];
 }
@@ -247,7 +248,7 @@ export async function swapDeposit(
   amount *= underlying.weiPerUnit; // 100$ or equivalent
 
   const input = new Contract(inputAddress!, erc20Abi, env.deployer);
-  await underlying.contract.approve(strat.contract.address, MaxUint256);
+  await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env));
   await input.approve(strat.contract.address, MaxUint256);
 
   let swapData: any = [];
@@ -272,7 +273,7 @@ export async function swapDeposit(
     env.deployer.address, // receiver
     1, // minShareAmount in wei
     swapData, // swapData
-    { gasLimit: 5e7 }
+    getOverrides(env)
   ).then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SwapDeposit");
   return getTxLogData(receipt, ["uint256", "uint256"])[0];
@@ -283,10 +284,14 @@ export async function seedLiquidity(
   amount = 50
 ) {
   const { strat, underlying } = env.deployment!;
+  if (await strat.contract.totalAssets() > await strat.contract.minLiquidity()) {
+    console.log(`Skipping seedLiquidity as totalAssets > minLiquidity`);
+    return BigNumber.from(0);
+  }
   amount *= underlying.weiPerUnit;
-  await underlying.contract.approve(strat.contract.address, MaxUint256);
+  await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env));
   await logState(env, "Before SeedLiquidity");
-  const receipt = await strat.contract.seedLiquidity(amount, MaxUint256, { gasLimit: 5e7 })
+  const receipt = await strat.contract.seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity");
   return getTxLogData(receipt, ["uint256", "uint256"], -2)[0]; // seeded amount
@@ -314,7 +319,7 @@ export async function invest(env: IStrategyDeploymentEnv, amount = 100) {
     );
   }
   await logState(env, "Before Invest");
-  const receipt = await strat.contract.invest(amount, 1, [swapData], { gasLimit: 5e7 })
+  const receipt = await strat.contract.invest(amount, 1, [swapData], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest");
   return getTxLogData(receipt, ["uint256", "uint256"])[0];
@@ -353,8 +358,8 @@ export async function liquidate(env: IStrategyDeploymentEnv, amount = 50) {
     [tr.to, 1, tr.data]
   );
   await logState(env, "Before Liquidate");
-  // const [liquidity, totalAssets] = await strat.liquidate(amount, 1, false, [swapData], { gasLimit: 5e7 });
-  const receipt = await strat.contract.liquidate(amount, 1, false, [swapData], { gasLimit: 5e7 })
+  // const [liquidity, totalAssets] = await strat.liquidate(amount, 1, false, [swapData], { 2e6 });
+  const receipt = await strat.contract.liquidate(amount, 1, false, [swapData], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Liquidate");
   return getTxLogData(receipt, ["uint256", "uint256", "uint256"])[2]; // liquidityAvailable
@@ -368,7 +373,7 @@ export async function withdraw(env: IStrategyDeploymentEnv, amount = 50) {
   const receipt = await strat.contract.safeWithdraw(
     amount, minAmount,
     env.deployer.address, env.deployer.address,
-    { gasLimit: 5e7 }
+    getOverrides(env)
   ).then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw");
   return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered
@@ -377,12 +382,17 @@ export async function withdraw(env: IStrategyDeploymentEnv, amount = 50) {
 export async function requestWithdraw(env: IStrategyDeploymentEnv, amount = 50) {
   const { underlying, inputs, strat } = env.deployment!;
   amount *= underlying.weiPerUnit; // 10$ or equivalent
-  const minAmount = 1; // TODO: change with staticCall
+  // TODO: use await strat.contract.pendingUnderlyingRequest (not available atm but next deployments)
+  const request = (await strat.contract.pendingUnderlyingRequest(env.deployer.address)).mul(
+    await strat.contract.sharePrice()).div(strat.weiPerUnit);
+  if (request.gte(BigNumber.from(amount).mul(underlying.weiPerUnit))) {
+    console.log(`Skipping requestWithdraw as pendingRedeemRequest > amount`);
+    return BigNumber.from(0);
+  }
   await logState(env, "Before RequestWithdraw");
   const receipt = await strat.contract.requestWithdraw(
     amount,
-    env.deployer.address, env.deployer.address,
-    { gasLimit: 5e7 }
+    env.deployer.address, env.deployer.address, getOverrides(env)
   ).then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After RequestWithdraw");
   return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered

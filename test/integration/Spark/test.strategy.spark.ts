@@ -44,7 +44,7 @@ describe("test.strategy.spark", function () {
             env.addresses.tokens[underlyingSymbol], // underlying
             [], // coreAddresses (use default)
             [env.addresses.tokens[inputSymbol]], // inputs
-            [100_000], // inputWeights (100% on input[0])
+            [10_000], // inputWeights (100% on input[0])
             [env.addresses.tokens.HOP], // rewardTokens
             addr.iou, // spark iou token
             addr.pool, // spark pool

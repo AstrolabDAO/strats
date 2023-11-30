@@ -50,4 +50,11 @@ abstract contract AsProxy is Proxy {
             }
         }
     }
+
+    /**
+     * @notice Returns the proxy initialization state
+     */
+    function initialized() public view virtual returns (bool) {
+        return _implementation() != address(0);
+    }
 }

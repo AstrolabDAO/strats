@@ -250,7 +250,7 @@ abstract contract As4626Abstract is
     /**
      * @notice Convert how many shares you can get for your assets
      * @param _assets Amount of assets to convert
-     * @return The amount of shares you can get for your assets
+     * @return Amount of shares you can get for your assets
      */
     function convertToShares(uint256 _assets) public view returns (uint256) {
         return _assets.mulDiv(weiPerShare, sharePrice());
@@ -260,7 +260,7 @@ abstract contract As4626Abstract is
      * @notice Convert how much asset tokens you can get for your shares
      * @dev Bear in mind that some negative slippage may happen
      * @param _shares Amount of shares to convert
-     * @return The amount of asset tokens you can get for your shares
+     * @return Amount of asset tokens you can get for your shares
      */
     function convertToAssets(uint256 _shares) public view returns (uint256) {
         return _shares.mulDiv(sharePrice(), weiPerShare);
@@ -269,12 +269,25 @@ abstract contract As4626Abstract is
     /**
      * @notice Get the pending redeem request for a specific operator
      * @param operator The operator's address
-     * @return The amount of shares pending redemption
+     * @return Amount of shares pending redemption
      */
     function pendingRedeemRequest(
         address operator
     ) external view returns (uint256) {
         return requestByOperator[operator].shares;
+    }
+
+    /**
+     * @notice Get the pending redeem request in underlying for a specific operator
+     * @param operator The operator's address
+     * @return Amount of assets pending redemption
+     */
+    function pendingUnderlyingRequest(
+        address operator
+    ) external view returns (uint256) {
+        Erc7540Request memory request = requestByOperator[operator];
+        uint256 price = AsMaths.min(request.sharePrice, sharePrice());
+        return request.shares.mulDiv(price, weiPerShare);
     }
 
     /**

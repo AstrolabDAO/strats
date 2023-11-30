@@ -57,6 +57,13 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     /**
+     * @notice Returns the StrategyAgentV5 proxy initialization state
+     */
+    function initialized() public view override returns (bool) {
+        return agent != address(0) && address(underlying) != address(0);
+    }
+
+    /**
      * @notice Returns the address of the implementation
      */
     function _implementation() internal view override returns (address) {

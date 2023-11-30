@@ -165,9 +165,9 @@ export const addresses = {
       AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4", // PROD
     },
     astrolab: {
-      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb", // PROD
-      StrategyAgentV5: "0x1761ff905292548ff2254620166eabd988e48718", // PROD
-      "HopStrategy.USDC": "0x7221ebdd4176b1a21c3c014fd70bab46e697e272" // PROD
+      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      StrategyAgentV5: "0x7EfF26E486D1c6DDCE1a88672393D64185d4C428",
+      "HopStrategy.USDC": "0x11c8f790d252f4a49cfbff5766310873898bf5d3"
     },
     accounts : {
       impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"

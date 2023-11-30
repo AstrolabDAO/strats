@@ -47,7 +47,7 @@ describe("test.strategy.hop", function () {
             env.addresses.tokens[underlyingSymbol], // underlying
             [], // coreAddresses (use default)
             [env.addresses.tokens[inputSymbol]], // inputs
-            [100_000], // inputWeights (100% on input[0])
+            [10_000], // inputWeights in bps (100% on input[0])
             addr.rewardTokens, // rewardTokens
             addr.lp, // hop lp token
             addr.rewardPools[0], // hop reward pool
@@ -58,10 +58,10 @@ describe("test.strategy.hop", function () {
           "init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)",
           env
         );
-        assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
+
+      assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
         await ensureFunding(env);
       });
-
       it("Seed Liquidity", async function () {
         assert((await seedLiquidity(env, 10)).gt(0), "Failed to seed liquidity");
       });
@@ -69,29 +69,32 @@ describe("test.strategy.hop", function () {
         assert((await deposit(env, 5)).gt(0), "Failed to deposit");
       });
       // it("Swap+Deposit", async function () {
-      //   assert((await swapDeposit(env)).gt(0), "Failed to swap+deposit");
+      //   assert((await swapDeposit(env, 1)).gt(0), "Failed to swap+deposit");
       // });
       it("Invest", async function () {
-        assert((await invest(env, 10)).gt(0), "Failed to invest");
+        assert((await invest(env, 18)).gt(0), "Failed to invest");
       });
       it("Liquidate (just enough for normal withdraw)", async function () {
-        assert((await liquidate(env, 2.1)).gt(0), "Failed to liquidate");
+        assert((await liquidate(env, 10)).gt(0), "Failed to liquidate");
       });
-      it("Withdraw", async function () {
-        assert((await withdraw(env, 2)).gt(0), "Failed to withdraw");
+      // test erc4626 (synchronous withdrawals)
+      it("Withdraw (erc4626 without request)", async function () {
+        assert((await withdraw(env, 9.9)).gt(0), "Failed to withdraw");
       });
-      it("Request Withdraw", async function () {
+      // test erc7540 (asynchronous withdrawals)
+      it("Request Withdraw (if no pending request)", async function () {
         assert((await requestWithdraw(env, 5)).gt(0), "Failed to request withdraw");
       });
       it("Liquidate (0+pending requests)", async function () {
-        assert((await liquidate(env, 0)).gt(0), "Failed to request withdraw");
+        assert((await liquidate(env, 10)).gt(0), "Failed to liquidate");
       });
-      it("Withdraw", async function () {
+      it("Withdraw (using erc7540 claimable request)", async function () {
         // jump to a new block (1 week later)
-        const params = [ethers.utils.hexValue(7 * 24 * 60 * 60)];
-        if (!isLive(env))
-          await provider.send('evm_increaseTime', params)
-        assert((await withdraw(env, 5)).gt(0), "Failed to withdraw");
+        if (!isLive(env)) {
+          const params = [ethers.utils.hexValue(7 * 24 * 60 * 60)];
+          await provider.send('evm_increaseTime', params);
+        }
+        assert((await withdraw(env, 9.9)).gt(0), "Failed to withdraw");
       });
     });
   }
