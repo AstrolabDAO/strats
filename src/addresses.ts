@@ -162,7 +162,7 @@ export const addresses = {
   // xdai
   100: {
     libs: {
-      AsAccounting: "0x21212ac7a57e223ea27994f62ffded6835094726",
+      AsAccounting: "0x7e9a3f62104d945c245771302e0e048200ef0a3d",
     },
     astrolab: {
       Swapper: "0x1bca59ef28f7a52ab5fb6b742963ff11e2a0dbf8",

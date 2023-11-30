@@ -183,16 +183,15 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
 
         // pre-liquidation sharePrice
         uint256 price = sharePrice();
-
-        uint256 underlyingRequests = totalPendingRedemptionRequest().muldiv(
-            weiPerShare,
-            price
+        uint256 underlyingRequests = totalPendingRedemptionRequest().mulDiv(
+            price,
+            weiPerShare
         );
 
         // if not in panic, liquidate must fulfill minLiquidity+withdrawal requests
-        if (!panic && _amount <
+        if (!_panic && _amount <
             AsMaths.max(
-                minLiquidity.subMax0(liquidityAvailable),
+                minLiquidity.subMax0(liquidityAvailable + allocated),
                 underlyingRequests // pending underlying requests
             )
         ) revert AmountTooLow(_amount);
