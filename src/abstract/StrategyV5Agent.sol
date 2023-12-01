@@ -24,7 +24,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
 
     string[3] DEFAULT_CONSTRUCT = ["", "", ""];
 
-    constructor() StrategyV5Abstract(DEFAULT_CONSTRUCT) {}
+    constructor() StrategyV5Abstract() {}
 
     /**
      * @notice Initialize the strategy

@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
 
 import "./interfaces/IRouter.sol";
-import "../../abstract/StrategyV5.sol";
+import "../../abstract/StrategyV5Pyth.sol";
 
 /// @title SyncSwap Strategy (v5)
 /// @notice This contract is a strategy for SyncSwap
 /// @dev Basic implementation
-contract SyncSwapStrategy is StrategyV5 {
+contract SyncSwapStrategy is StrategyV5Pyth {
     using SafeERC20 for IERC20;
 
     // Third-party contracts
@@ -34,7 +34,7 @@ contract SyncSwapStrategy is StrategyV5 {
 
     constructor(
         string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
-    ) StrategyV5(_erc20Metadata) {}
+    ) As4626Abstract(_erc20Metadata) {}
 
     // Interactions
 

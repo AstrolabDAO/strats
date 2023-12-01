@@ -6,13 +6,13 @@ import "../../libs/AsTickMaths.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../../abstract/StrategyV5.sol";
+import "../../abstract/StrategyV5Pyth.sol";
 import "./interfaces/IRouter.sol";
 
 /// @title KyberSwap Strategy (v5)
 /// @notice This contract is a strategy for KyberSwap
 /// @dev Basic implementation
-contract KyberSwapStrategy is StrategyV5 {
+contract KyberSwapStrategy is StrategyV5Pyth {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -52,7 +52,7 @@ contract KyberSwapStrategy is StrategyV5 {
 
     constructor(
         string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
-    ) StrategyV5(_erc20Metadata) {}
+    ) As4626Abstract(_erc20Metadata) {}
 
     // Interactions
 
