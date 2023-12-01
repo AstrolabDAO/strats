@@ -27,6 +27,15 @@ export interface IStrategyBaseParams {
     rewardTokens: string[]
 };
 
+export interface IPythParams {
+    pyth: string;
+    underlyingPythId: string;
+    inputPythIds: string[];
+}
+
+export type IStrategyParams = [IStrategyBaseParams, any];
+export type IStrategyPythParams = [IStrategyBaseParams, IPythParams, any];
+
 export interface IStrategyDeployment extends IDeployment {
     // constructor/init params
     constructorParams: [Erc20Metadata];

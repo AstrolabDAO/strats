@@ -128,7 +128,7 @@ export const getEnv = async (
   );
 };
 
-export const getTokenInfo = async (address: string, abi=erc20Abi, deployer?: SignerWithAddress): Promise<IToken> => {
+export const getTokenInfo = async (address: string, abi:any=erc20Abi, deployer?: SignerWithAddress): Promise<IToken> => {
   if (!Array.isArray(abi) || !abi.filter)
     throw new Error(`ABI must be an array`);
   const contract = new Contract(address, abi, await getDeployer());
@@ -140,7 +140,6 @@ export const getTokenInfo = async (address: string, abi=erc20Abi, deployer?: Sig
     weiPerUnit: 10 ** (await contract.decimals()),
   }
 };
-
 
 async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
 
@@ -352,11 +351,12 @@ const networkOverrides: { [name: string]: Overrides } = {
 
 type AbiFragment = { name: string, inputs: [{ type: string }] };
 
+// TODO: move to @astrolabs/hardhat/utils
 export const getInitSignature = (contract: string) => {
   const fragments = (loadAbi(contract) as AbiFragment[])
     .filter((a) => a.name === "init");
   const dummy = new Contract(addressZero, fragments, provider);
-  return Object.keys(dummy).sort(s => s.length)[0];
+  return Object.keys(dummy).filter(s => s.startsWith("init")).sort((s1, s2) => s2.length - s1.length)?.[0];
 }
 export const getOverrides = (env: Partial<ITestEnv>) => isLive(env) ? {} : networkOverrides[network.name] ?? {};
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

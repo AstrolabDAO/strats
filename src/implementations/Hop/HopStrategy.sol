@@ -3,9 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
-import "../../libs/PythUtils.sol";
-import "../../abstract/StrategyV5.sol";
-import "../../interfaces/IPyth.sol";
+import "../../abstract/StrategyV5Pyth.sol";
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
 
@@ -20,63 +18,53 @@ import "./interfaces/IStakingRewards.sol";
  * @notice Basic liquidity providing strategy for Hop protocol (https://hop.exchange/)
  * @dev Underlying->input[0]->LP->rewardPool->LP->input[0]->underlying
  */
-contract HopStrategy is StrategyV5 {
+contract HopStrategy is StrategyV5Pyth {
 
     using AsMaths for uint256;
     using SafeERC20 for IERC20;
-    using PythUtils for PythStructs.Price;
 
+    // Third party contracts
+    IERC20Metadata public lpToken; // LP token of the pool
+    IStableRouter public stableRouter; // SaddleSwap
+    IStakingRewards public rewardPool; // Reward pool
+    uint8 public tokenIndex;
+
+    /**
+     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
+     */
+    constructor(string[3] memory _erc20Metadata) As4626Abstract(_erc20Metadata) {}
+
+    // Struct containing the strategy init parameters
     struct Params {
-        address pyth;
-        bytes32 underlyingPythId;
-        bytes32 inputPythId;
         address lpToken;
         address rewardPool;
         address stableRouter;
         uint8 tokenIndex;
     }
 
-    // Third party contracts
-    IPyth internal pyth; // Pyth oracle
-    bytes32 internal underlyingPythId; // Pyth id of the underlying asset
-    bytes32 internal inputPythId; // Pyth id of the input asset
-    uint8 internal underlyingDecimals; // Decimals of the underlying asset
-    uint8 internal inputDecimals; // Decimals of the input asset
-
-    IERC20 public lpToken; // LP token of the pool
-    IStableRouter public stableRouter; // SaddleSwap
-    IStakingRewards public rewardPool; // Reward pool
-    uint8 public tokenIndex;
-
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
-     */
-    constructor(
-        string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
-    ) StrategyV5(_erc20Metadata) {}
-
     /**
      * @dev Initializes the strategy with the specified parameters.
-     * @param _params StrategyBaseParams struct containing strategy parameters
+     * @param _baseParams StrategyBaseParams struct containing strategy parameters
+     * @param _pythParams Pyth specific parameters
      * @param _hopParams Hop specific parameters
      */
     function init(
-        StrategyBaseParams calldata _params,
+        StrategyBaseParams calldata _baseParams,
+        PythParams calldata _pythParams,
         Params calldata _hopParams
     ) external onlyAdmin {
 
-        pyth = IPyth(_hopParams.pyth);
-        underlyingPythId = _hopParams.underlyingPythId;
-        inputPythId = _hopParams.inputPythId;
-        underlyingDecimals = IERC20Metadata(underlying).decimals();
-        inputDecimals = IERC20Metadata(_params.inputs[0]).decimals();
-
-        lpToken = IERC20(_hopParams.lpToken);
+        lpToken = IERC20Metadata(_hopParams.lpToken);
         rewardPool = IStakingRewards(_hopParams.rewardPool);
         tokenIndex = _hopParams.tokenIndex;
         stableRouter = IStableRouter(_hopParams.stableRouter);
+
+        // inputs[0] needs to be defined before StrategyV5._init() as required by _setAllowances()
+        underlying = IERC20Metadata(_baseParams.underlying);
+        inputs[0] = IERC20Metadata(_baseParams.inputs[0]);
+        rewardTokens[0] = _baseParams.rewardTokens[0];
         _setAllowances(MAX_UINT256);
-        StrategyV5.init(_params);
+        StrategyV5Pyth._init(_baseParams, _pythParams);
     }
 
     /**
@@ -140,11 +128,11 @@ contract HopStrategy is StrategyV5 {
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
 
         uint256 assetsToLp = available();
-
         investedAmount = AsMaths.min(assetsToLp, _amount);
 
         // The amount we add is capped by _amount
         if (underlying != inputs[0]) {
+            // We reuse assetsToLp to store the amount of input tokens to add
             (assetsToLp, investedAmount) = swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
@@ -155,13 +143,15 @@ contract HopStrategy is StrategyV5 {
 
         if (assetsToLp < 1) revert AmountTooLow(assetsToLp);
 
-        // Adding liquidity to the pool with the asset balance.
+        // Adding liquidity to the pool with the inputs[0] balance
         iouReceived = _addLiquidity({
             _amount: assetsToLp,
             _minLpAmount: _minIouReceived
         });
-        // Stake the lp balance in the reward pool.
+
         rewardPool.stake(iouReceived);
+        if (iouReceived < _minIouReceived)
+            revert AmountTooLow(iouReceived);
     }
 
     /**
@@ -176,11 +166,10 @@ contract HopStrategy is StrategyV5 {
     ) internal override returns (uint256 assetsRecovered) {
 
         // Calculate the amount of lp token to unstake
-        uint256 LPToUnstake = (_amount * stakedLPBalance()) / _invested();
+        uint256 lpToUnstake = (_amount * stakedLpBalance()) / _invested();
         // Unstake the lp token
-        rewardPool.withdraw(LPToUnstake);
-        // Calculate the minimum amount of asset to receive
-        // Withdraw asset from the pool
+        rewardPool.withdraw(lpToUnstake);
+
         assetsRecovered = stableRouter.removeLiquidityOneToken({
             tokenAmount: lpToken.balanceOf(address(this)),
             // tokenIndex: 0,
@@ -189,14 +178,14 @@ contract HopStrategy is StrategyV5 {
             deadline: block.timestamp
         });
 
-        // swap the unstaked token for the underlying asset if different
+        // swap the unstaked tokens (inputs[0]) for the underlying asset if different
         if (inputs[0] != underlying) {
-            (assetsRecovered, ) = swapper.decodeAndSwap(
-                address(inputs[0]),
-                address(underlying),
-                assetsRecovered,
-                _params[0]
-            );
+            (assetsRecovered, ) = swapper.decodeAndSwap({
+                _input: address(inputs[0]),
+                _output: address(underlying),
+                _amount: assetsRecovered,
+                _params: _params[0]
+            });
         }
     }
 
@@ -216,36 +205,21 @@ contract HopStrategy is StrategyV5 {
      */
     function _invested() internal view override returns (uint256) {
         // Should return 0 if no lp token is staked
-        if (stakedLPBalance() == 0) {
+        if (stakedLpBalance() == 0) {
             return 0;
         } else {
             return
                 // calculates how much asset (inputs[0]) is to be withdrawn with the lp token balance
                 // converted to the underlying asset, not the actual ERC4626 underlying invested balance
-                exchangeRateBp().mulDiv(stableRouter.getVirtualPrice(), 1e6) // eg. usdc: 1e6 * 1e6 (BP_BASIS)
-                    .mulDiv(stakedLPBalance(), 1e36); // 1e18**2 (IOU decimals ** virtualPrice decimals)
+                underlyingExchangeRate(0).mulDiv(stableRouter.getVirtualPrice() * stakedLpBalance(), 1e36); // 1e18**2 (IOU decimals ** virtualPrice decimals)
         }
-    }
-
-    /**
-     * @notice Computes the underlying/input exchange rate from Pyth oracle price feeds in bps
-     * @dev Used by invested() to compute input->underlying (base/quote, eg. USDC/BTC == 1/BTCUSD == )
-     * @return The amount available for investment
-     */
-    function exchangeRateBp() public view returns (uint256) {
-        if (underlyingPythId == inputPythId)
-            return 10 ** underlyingDecimals * 1e6; // 1e6 (BP_BASIS)
-        return PythUtils.exchangeRateBp(
-            [pyth.getPrice(underlyingPythId), pyth.getPrice(inputPythId)],
-            [underlyingDecimals, inputDecimals]
-        );
     }
 
     /**
      * @notice Returns the investment in lp token.
      * @return The staked LP balance
      */
-    function stakedLPBalance() public view returns (uint256) {
+    function stakedLpBalance() public view returns (uint256) {
         return IStakingRewards(rewardPool).balanceOf(address(this));
     }
 

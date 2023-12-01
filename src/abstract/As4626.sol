@@ -15,13 +15,13 @@ import "../libs/AsAccounting.sol";
  *
  * @title As4626 Abstract - inherited by all strategies
  * @author Astrolab DAO
- * @notice All As4626 calls are delegated to the agent (StrategyAgentV5)
+ * @notice All As4626 calls are delegated to the agent (StrategyV5Agent)
  * @dev Make sure all state variables are in As4626Abstract to match proxy/implementation slots
  */
 abstract contract As4626 is As4626Abstract {
     using AsMaths for uint256;
     using AsMaths for int256;
-    using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20Metadata;
 
     /**
      * @dev Initialize the contract after deployment.
@@ -37,11 +37,10 @@ abstract contract As4626 is As4626Abstract {
         // check that the fees are not too high
         if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
         fees = _fees;
-        underlying = ERC20(_underlying);
+        underlying = IERC20Metadata(_underlying);
         feeCollector = _feeCollector;
-
         // use the same decimals as the underlying
-        shareDecimals = ERC20(_underlying).decimals();
+        shareDecimals = underlying.decimals();
         weiPerShare = 10 ** shareDecimals;
         last.accountedSharePrice = weiPerShare;
     }

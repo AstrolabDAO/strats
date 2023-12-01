@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
  * @dev Contains data structures used in Pyth contracts.
  */
 contract PythStructs {
+
     // Struct representing a price with uncertainty
     struct Price {
         int64 price; // Price value

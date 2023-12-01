@@ -9,16 +9,6 @@ struct Fees {
     uint64 exit; // Exit fee
 }
 
-// StrategyV5 init params
-struct StrategyBaseParams {
-    Fees fees;
-    address underlying;
-    address[3] coreAddresses;
-    address[] inputs;
-    uint256[] inputWeights;
-    address[] rewardTokens;
-}
-
 // Checkpoint used to keep track of latest events
 struct Checkpoint {
     uint256 accountedSharePrice; // Last accounted share price from the checkpoint

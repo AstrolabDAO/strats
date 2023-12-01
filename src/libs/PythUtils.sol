@@ -43,7 +43,7 @@ library PythUtils {
      * @param decimals Array of the two prices decimals.
      * @return Exchange rate (in bps * 10 ** base decimals)
      */
-    function exchangeRateBp(
+    function exchangeRate(
         PythStructs.Price[2] calldata prices,
         uint8[2] calldata decimals
     ) public pure returns (uint256) {
@@ -51,7 +51,7 @@ library PythUtils {
             toUint256(prices[0], decimals[0]),
             toUint256(prices[1], decimals[1])
         ];
-        return exchangeRateBp(pricesWei[0], pricesWei[1], decimals[1]);
+        return exchangeRate(pricesWei[0], pricesWei[1], decimals[1]);
     }
 
     /**
@@ -62,13 +62,13 @@ library PythUtils {
      * @param d2 Quote decimal places for the second price
      * @return Exchange rate (in bps * 10 ** base decimals)
      */
-    function exchangeRateBp(
+    function exchangeRate(
         uint256 p1,
         uint256 p2,
         uint8 d2
     ) public pure returns (uint256) {
         if (p1 == 0 || p2 == 0)
             revert PythErrors.InvalidArgument();
-        return (1e6 * p1 * (10 ** uint256(d2))) / p2;
+        return (p1 * (10 ** uint256(d2))) / p2;
     }
 }

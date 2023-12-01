@@ -2,12 +2,13 @@ import { IDeploymentUnit, TransactionResponse, deploy, deployAll, ethers, loadAb
 import { ITransactionRequestWithEstimate, getTransactionRequest } from "@astrolabs/swapper";
 import { erc20Abi } from "abitype/abis";
 import { Contract, BigNumber, utils as ethersUtils } from "ethers";
-import { get, merge } from "lodash";
+import { add, get, merge } from "lodash";
 import { Erc20Metadata, IStrategyDeployment, IStrategyDeploymentEnv, ITestEnv, IStrategyBaseParams, IToken } from "../../src/types";
 import { addressZero, getEnv, getInitSignature, getOverrides, getTokenInfo, getTxLogData, isLive, logState, sleep } from "./utils";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 
+// TODO: move the already existing libs/contracts logic to @astrolabs/hardhat
 export const deployStrat = async (
   env: Partial<IStrategyDeploymentEnv>,
   name: string,
@@ -15,6 +16,7 @@ export const deployStrat = async (
   constructorParams: [Erc20Metadata],
   initParams: [IStrategyBaseParams, ...any],
   libNames = ["AsAccounting"],
+  forceVerify = false // check that the contract is verified on etherscan/tenderly
 ): Promise<IStrategyDeploymentEnv> => {
 
   let [swapper, agent] = [{}, {}] as Contract[];
@@ -26,20 +28,21 @@ export const deployStrat = async (
   for (const n of libNames) {
     let lib = {} as Contract;
     const path = `src/libs/${n}.sol:${n}`;
+    const address = env.addresses?.libs?.[n] ?? "";
     if (!libraries[path]) {
       const libParams = {
         contract: n,
         name: n,
         verify: true,
-        deployed: env.addresses?.libs?.[n] ? true : false,
-        address: env.addresses?.libs?.[n] ?? "",
+        deployed: address ? true : false,
+        address,
       } as IDeploymentUnit;
-      // console.log(`Deploying missing library ${n}`);
-      // deployment will be automatically skipped if address is already set
-      lib = await deploy(libParams);
-    } else {
-      console.log(`Using existing ${n} at ${lib.address}`);
-      lib = new Contract(libraries[path], loadAbi(n) ?? [], env.deployer);
+      if (libParams.deployed) {
+        console.log(`Using existing ${n} at ${lib.address}`);
+        lib = new Contract(address, loadAbi(n) ?? [], env.deployer);
+      } else {
+        lib = await deploy(libParams);
+      }
     }
     libraries[path] = lib.address;
   }
@@ -62,13 +65,13 @@ export const deployStrat = async (
       deployed: env.addresses!.astrolab?.Swapper ? true : false,
       address: env.addresses!.astrolab?.Swapper ?? "",
     },
-    StrategyAgentV5: {
-      contract: "StrategyAgentV5",
-      name: "StrategyAgentV5",
+    StrategyV5Agent: {
+      contract: "StrategyV5Agent",
+      name: "StrategyV5Agent",
       libraries: agentLibs,
       verify: true,
-      deployed: env.addresses!.astrolab?.StrategyAgentV5 ? true : false,
-      address: env.addresses!.astrolab?.StrategyAgentV5,
+      deployed: env.addresses!.astrolab?.StrategyV5Agent ? true : false,
+      address: env.addresses!.astrolab?.StrategyV5Agent,
       overrides: getOverrides(env),
     },
     [contract]: {
@@ -77,10 +80,10 @@ export const deployStrat = async (
       verify: true,
       deployed: env.addresses!.astrolab?.[contractUniqueName] ? true : false,
       address: env.addresses!.astrolab?.[contractUniqueName],
-      proxied: ["StrategyAgentV5"],
+      proxied: ["StrategyV5Agent"],
       args: constructorParams,
       overrides: getOverrides(env),
-      libraries, // External libraries are only used in StrategyAgentV5
+      libraries, // External libraries are only used in StrategyV5Agent
     },
   };
 
@@ -108,17 +111,17 @@ export const deployStrat = async (
     );
   }
 
-  if (!env.addresses!.astrolab?.StrategyAgentV5) {
-    console.log(`Deploying missing StrategyAgentV5`);
-    agent = await deploy(units.StrategyAgentV5);
+  if (!env.addresses!.astrolab?.StrategyV5Agent) {
+    console.log(`Deploying missing StrategyV5Agent`);
+    agent = await deploy(units.StrategyV5Agent);
   } else {
     console.log(
-      `Using existing StrategyAgentV5 at ${env.addresses!.astrolab?.StrategyAgentV5
+      `Using existing StrategyV5Agent at ${env.addresses!.astrolab?.StrategyV5Agent
       }`
     );
     agent = new Contract(
-      env.addresses!.astrolab?.StrategyAgentV5,
-      loadAbi("StrategyAgentV5")!,
+      env.addresses!.astrolab?.StrategyV5Agent,
+      loadAbi("StrategyV5Agent")!,
       env.deployer
     );
   }
@@ -131,14 +134,14 @@ export const deployStrat = async (
       entry: 2, // .02%
       exit: 2, // .02%
     },
-    initParams[0]
+    initParams[0].fees
   );
 
   // coreAddresses
   initParams[0].coreAddresses = [
     env.deployer!.address, // feeCollector
     swapper.address, // Swapper
-    agent.address, // StrategyAgentV5
+    agent.address, // StrategyV5Agent
   ];
 
   // inputs
@@ -166,13 +169,22 @@ export const deployStrat = async (
     strat: {} as IToken,
   } as IStrategyDeployment);
 
-  await deployAll(env.deployment!);
+  if (Object.values(env.deployment!.units!).every((u) => u.deployed) && !forceVerify) {
+    console.log(`Using existing deployment [${name} Stack]`);
+    env.deployment!.strat = await getTokenInfo(
+      env.deployment!.units![contract].address!,
+      loadAbi(contract)!,
+      env.deployer
+    );
+  } else {
+    await deployAll(env.deployment!);
+  }
 
   if (!env.deployment!.units![contract].address) {
     throw new Error(`Could not deploy ${contract}`);
   }
 
-  const stratProxyAbi = loadAbi("StrategyV5") as any;
+  const stratProxyAbi = loadAbi("StrategyV5")!;
   env.deployment!.strat = await getTokenInfo(
     env.deployment!.units![contract].address!,
     stratProxyAbi);

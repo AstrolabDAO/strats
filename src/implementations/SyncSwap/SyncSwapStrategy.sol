@@ -90,7 +90,7 @@ contract SyncSwapStrategy is StrategyV5 {
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
         // Calculate the amount of lp token to unstake
-        uint256 lpToUnstake = (_amount * stakedLPBalance()) / _invested();
+        uint256 lpToUnstake = (_amount * stakedLpBalance()) / _invested();
         // calculate minAmounts
         uint minAmount = AsMaths.subBp(lpToUnstake, STAKE_SLIPPAGE);
         // Withdraw asset from the pool
@@ -133,13 +133,13 @@ contract SyncSwapStrategy is StrategyV5 {
     /// @notice Returns the investment in asset.
     function _invested() internal view override returns (uint256) {
         // Should return 0 if no lp token is staked
-        if (stakedLPBalance() == 0) {
+        if (stakedLpBalance() == 0) {
             return 0;
         } else {
             (uint256 reserve0, uint256 reserve1) = pool.getReserves();
             uint256 totalLpBalance = pool.totalSupply();
-            uint256 amount0 = (reserve0 * stakedLPBalance()) / totalLpBalance;
-            uint256 amount1 = (reserve1 * stakedLPBalance()) / totalLpBalance;
+            uint256 amount0 = (reserve0 * stakedLpBalance()) / totalLpBalance;
+            uint256 amount1 = (reserve1 * stakedLpBalance()) / totalLpBalance;
             // calculates how much asset (inputs[0]) is to be withdrawn with the lp token balance
             // not the actual ERC4626 underlying invested balance
             return (amount0 + (amount1 * _getRate(address(inputs[1]))));
@@ -147,7 +147,7 @@ contract SyncSwapStrategy is StrategyV5 {
     }
 
     /// @notice Returns the investment in lp token.
-    function stakedLPBalance() public view returns (uint256) {
+    function stakedLpBalance() public view returns (uint256) {
         return pool.balanceOf(address(this));
     }
 }

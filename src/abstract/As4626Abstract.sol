@@ -17,7 +17,7 @@ import "../libs/AsAccounting.sol";
  *
  * @title As4626Abstract - inherited by all strategies
  * @author Astrolab DAO
- * @notice All As4626 calls are delegated to the agent (StrategyAgentV5)
+ * @notice All As4626 calls are delegated to the agent (StrategyV5Agent)
  * @dev Make sure all As4626 state variables here to match proxy/implementation slots
  */
 abstract contract As4626Abstract is
@@ -91,7 +91,7 @@ abstract contract As4626Abstract is
     // State variables for the contract.
 
     // Base denomination/accounting
-    ERC20 public underlying; // ERC20 token used as the base denomination
+    IERC20Metadata public underlying; // ERC20 token used as the base denomination
     Checkpoint public last; // Checkpoint tracking latest events
     uint8 public shareDecimals; // Decimals of the share
     uint256 public weiPerShare; // Conversion rate of wei to shares

@@ -11,7 +11,7 @@ export type NetworkAddresses = {
   astrolab?: {
     [contract: string]: string;
     Swapper: string;
-    StrategyAgentV5: string;
+    StrategyV5Agent: string;
   };
 };
 
@@ -181,12 +181,12 @@ export const addresses = {
       Pyth: "0x2880aB155794e7179c9eE2e38200202908C17B43",
     },
     libs: {
-      AsAccounting: "0x9726435609ecc7a27d430ba3c74605d5a98d3698",
-      PythUtils: "0x0bbceb2fe8bdcbf03387eb0c11c6598f195efb73",
+      AsAccounting: "0xb151c74496b37b5a7e05fb55d514f326db22f972",
+      PythUtils: "0x345d4ee7411192acfdddc02b3df4f53f92318059",
     },
     astrolab: {
       Swapper: "0x1bca59ef28f7a52ab5fb6b742963ff11e2a0dbf8",
-      StrategyAgentV5: "",
+      StrategyV5Agent: "",
       "HopStrategy.USDC": ""
     },
     tokens: {
@@ -436,7 +436,7 @@ export const addresses = {
     },
     astrolab: {
       Swapper: "",
-      StrategyAgentV5: "",
+      StrategyV5Agent: "",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -477,7 +477,7 @@ export const addresses = {
     },
     astrolab: {
       Swapper: "",
-      StrategyAgentV5: "",
+      StrategyV5Agent: "",
     },
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",

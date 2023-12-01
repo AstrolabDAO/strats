@@ -1,6 +1,6 @@
 import { ethers, network, provider, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { Fees, IStrategyDeploymentEnv, IStrategyBaseParams } from "../../../src/types";
+import { Fees, IStrategyDeploymentEnv, IStrategyBaseParams, IStrategyPythParams } from "../../../src/types";
 import addresses from "../../../src/implementations/Hop/addresses";
 import pythIds from "../../../src/pyth-ids.json";
 import { deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
@@ -45,27 +45,31 @@ describe("test.strategy.hop", function () {
           name,
           [[name, symbol, "1"]], // constructor (Erc20Metadata)
           [{
+            // base params
             fees: {} as Fees, // fees (use default)
             underlying: addr.tokens[underlyingSymbol], // underlying
             coreAddresses: [], // coreAddresses (use default)
             inputs: [addr.tokens[inputSymbol]], // inputs
             inputWeights: [10_000], // inputWeights in bps (100% on input[0])
             rewardTokens: protocolAddr.rewardTokens, // rewardTokens
-          } as IStrategyBaseParams, {
+          }, {
+            // pyth oracle params
             pyth: addr.oracles!.Pyth, // pyth oracle
             underlyingPythId: (pythIds as any)[`Crypto.${underlyingSymbol}/USD`], // pythId for underlying
-            inputPythId: (pythIds as any)[`Crypto.${inputSymbol}/USD`], // pythId for input
-            lp: protocolAddr.lp, // hop lp token
+            inputPythIds: [(pythIds as any)[`Crypto.${inputSymbol}/USD`]], // pythId for input
+          }, {
+            // hop params
+            lpToken: protocolAddr.lp, // hop lp token
             rewardPool: protocolAddr.rewardPools[0], // hop reward pool
-            stableSwap: protocolAddr.swap, // hop stable swap pool
-            tokenInde: 0, // hop tokenIndex
-          }],
-          ["AsAccounting", "PythUtils"],
-          env
+            stableRouter: protocolAddr.swap, // hop stable swap pool
+            tokenIndex: 0, // hop tokenIndex
+          }] as IStrategyPythParams,
+          ["AsAccounting", "PythUtils"], // libraries to link and verify with the strategy
+          env // deployment environment
         );
 
-      assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
-        await ensureFunding(env);
+        assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
+          await ensureFunding(env);
       });
       it("Seed Liquidity", async function () {
         assert((await seedLiquidity(env, 10)).gt(0), "Failed to seed liquidity");

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IStrategyV5.sol";
-import "./StrategyAbstractV5.sol";
+import "./StrategyV5Abstract.sol";
 import "./As4626.sol";
 
 /**            _             _       _
@@ -11,12 +11,12 @@ import "./As4626.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title StrategyAgentV5 Implementation - back-end contract proxied-to by strategies
+ * @title StrategyV5Agent Implementation - back-end contract proxied-to by strategies
  * @author Astrolab DAO
  * @notice This contract is in charge of executing shared strategy logic (accounting, fees, etc.)
- * @dev Make sure all state variables are in StrategyAbstractV5 to match proxy/implementation slots
+ * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
  */
-contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
+contract StrategyV5Agent is StrategyV5Abstract, As4626 {
 
     using AsMaths for uint256;
     using AsMaths for int256;
@@ -24,16 +24,48 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
 
     string[3] DEFAULT_CONSTRUCT = ["", "", ""];
 
-    constructor() StrategyAbstractV5(DEFAULT_CONSTRUCT) {}
+    constructor() StrategyV5Abstract(DEFAULT_CONSTRUCT) {}
 
     /**
      * @notice Initialize the strategy
      * @param _params StrategyBaseParams struct containing strategy parameters
      */
     function init(StrategyBaseParams calldata _params) public onlyAdmin {
-        setInputs(_params.inputs, _params.inputWeights);
-        setRewardTokens(_params.rewardTokens);
+        // setInputs(_params.inputs, _params.inputWeights);
+        // setRewardTokens(_params.rewardTokens);
+        updateSwapper(_params.coreAddresses[1]);
         As4626.init(_params.fees, _params.underlying, _params.coreAddresses[0]);
+    }
+
+    /**
+     * @notice Sets the swapper allowance
+     * @param _amount Amount of allowance to set
+     */
+    function setSwapperAllowance(uint256 _amount) public onlyAdmin {
+        address swapperAddress = address(swapper);
+
+        for (uint256 i = 0; i < rewardTokens.length; i++) {
+            if (rewardTokens[i] == address(0)) break;
+            IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
+        }
+        for (uint256 i = 0; i < inputs.length; i++) {
+            if (address(inputs[i]) == address(0)) break;
+            inputs[i].approve(swapperAddress, _amount);
+        }
+        underlying.approve(swapperAddress, _amount);
+        emit SetSwapperAllowance(_amount);
+    }
+
+    /**
+     * @notice Change the Swapper address, remove allowances and give new ones
+     * @param _swapper Address of the new swapper
+     */
+    function updateSwapper(address _swapper) public onlyAdmin {
+        if (_swapper == address(0)) revert AddressZero();
+        if (address(swapper) != address(0)) setSwapperAllowance(0);
+        swapper = ISwapper(_swapper);
+        setSwapperAllowance(MAX_UINT256);
+        emit SwapperUpdate(_swapper);
     }
 
     /**

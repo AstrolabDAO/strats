@@ -12,10 +12,21 @@ import "./As4626Abstract.sol";
  *
  * @title As4626Abstract - inherited by all strategies
  * @author Astrolab DAO
- * @notice All As4626 calls are delegated to the agent (StrategyAgentV5)
+ * @notice All As4626 calls are delegated to the agent (StrategyV5Agent)
  * @dev Make sure all As4626 state variables here to match proxy/implementation slots
  */
-abstract contract StrategyAbstractV5 is As4626Abstract {
+abstract contract StrategyV5Abstract is As4626Abstract {
+
+    // StrategyV5 init params
+    struct StrategyBaseParams {
+        Fees fees;
+        address underlying;
+        address[3] coreAddresses;
+        address[] inputs;
+        uint256[] inputWeights;
+        address[] rewardTokens;
+    }
+
     // Events
     event Invest(uint256 amount, uint256 timestamp);
     event Harvest(uint256 amount, uint256 timestamp);
@@ -35,16 +46,9 @@ abstract contract StrategyAbstractV5 is As4626Abstract {
     address public agent; // Address of the agent
     address public stratProxy; // Address of the strategy proxy
 
-    IERC20Metadata[16] public inputs; // Array of ERC20 tokens used as inputs
-    uint256[16] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)
-    address[16] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
-
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
-     */
-    constructor(
-        string[3] memory _erc20Metadata
-    ) As4626Abstract(_erc20Metadata) {}
+    IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
+    uint256[8] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)
+    address[8] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
 
     /**
      * @notice Calculates the total pending redemption requests

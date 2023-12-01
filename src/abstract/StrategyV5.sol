@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@astrolabs/registry/interfaces/ISwapper.sol";
-import "./StrategyAbstractV5.sol";
+import "./StrategyV5Abstract.sol";
 import "./AsProxy.sol";
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
@@ -16,34 +16,26 @@ import "../libs/AsMaths.sol";
  *
  * @title StrategyV5 Abstract - implemented by all strategies
  * @author Astrolab DAO
- * @notice All StrategyV5 calls are delegated to the agent (StrategyAgentV5)
+ * @notice All StrategyV5 calls are delegated to the agent (StrategyV5Agent)
  * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
  */
-abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
+abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     using AsMaths for uint256;
     using AsMaths for int256;
     using AsArrays for bytes[];
     using SafeERC20 for IERC20;
 
     /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
-     */
-    constructor(
-        string[3] memory _erc20Metadata
-    ) StrategyAbstractV5(_erc20Metadata) {}
-
-    /**
      * @notice Initialize the strategy
      * @param _params StrategyBaseParams struct containing strategy parameters
      */
-    function init(StrategyBaseParams calldata _params) public onlyAdmin {
+    function _init(StrategyBaseParams calldata _params) internal onlyAdmin {
         setExemption(msg.sender, true);
         // done in As4626 but required for swapper
         stratProxy = address(this);
         underlying = ERC20(_params.underlying);
-        updateSwapper(_params.coreAddresses[1]);
         agent = _params.coreAddresses[2];
-        // StrategyAgentV5.init
+        // StrategyV5Agent.init()
         _delegateWithSignature(
             agent,
             "init(((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[]))"
@@ -51,7 +43,7 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     /**
-     * @notice Returns the StrategyAgentV5 proxy initialization state
+     * @notice Returns the StrategyV5Agent proxy initialization state
      */
     function initialized() public view override returns (bool) {
         return agent != address(0) && address(underlying) != address(0);
@@ -65,44 +57,13 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
     }
 
     /**
-     * @notice Sets the agent (StrategyAgentV5 implementation)
+     * @notice Sets the agent (StrategyV5Agent implementation)
      * @param _agent The new agent address
      */
     function updateAgent(address _agent) external onlyAdmin {
         if (_agent == address(0)) revert AddressZero();
         agent = _agent;
         emit AgentUpdate(_agent);
-    }
-
-    /**
-     * @notice Sets the swapper allowance
-     * @param _amount Amount of allowance to set
-     */
-    function setSwapperAllowance(uint256 _amount) public onlyAdmin {
-        address swapperAddress = address(swapper);
-
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
-            if (rewardTokens[i] == address(0)) break;
-            IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
-        }
-        for (uint256 i = 0; i < inputs.length; i++) {
-            if (address(inputs[i]) == address(0)) break;
-            inputs[i].approve(swapperAddress, _amount);
-        }
-        underlying.approve(swapperAddress, _amount);
-        emit SetSwapperAllowance(_amount);
-    }
-
-    /**
-     * @notice Change the Swapper address, remove allowances and give new ones
-     * @param _swapper Address of the new swapper
-     */
-    function updateSwapper(address _swapper) public onlyAdmin {
-        if (_swapper == address(0)) revert AddressZero();
-        if (address(swapper) != address(0)) setSwapperAllowance(0);
-        swapper = ISwapper(_swapper);
-        setSwapperAllowance(MAX_UINT256);
-        emit SwapperUpdate(_swapper);
     }
 
     /**

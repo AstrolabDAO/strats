@@ -198,7 +198,7 @@ contract KyberSwapStrategy is StrategyV5 {
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
         // Calculate the amount of lp token to unstake
-        uint256 LPToUnstake = (_amount * stakedLPBalance()) / _invested();
+        uint256 LPToUnstake = (_amount * stakedLpBalance()) / _invested();
         // calculate minAmounts
         uint minAmount = AsMaths.subBp(_amount, STAKE_SLIPPAGE);
         // Withdraw asset from the pool
@@ -332,7 +332,7 @@ contract KyberSwapStrategy is StrategyV5 {
     /// @notice Returns the investment in asset.
     function _invested() internal view override returns (uint256) {
         // Should return 0 if no lp token is staked
-        // if (stakedLPBalance() == 0) {
+        // if (stakedLpBalance() == 0) {
         //     return 0;
         // } else {
         //     (uint256 reserve0, uint256 reserve1) = pool.getReserves();
@@ -346,7 +346,7 @@ contract KyberSwapStrategy is StrategyV5 {
     }
 
     /// @notice Returns the investment in lp token.
-    function stakedLPBalance() public view returns (uint256) {
+    function stakedLpBalance() public view returns (uint256) {
         if (tokenId > 0) {
             (Position memory pos, ) = npm.positions(tokenId);
             return pos.liquidity;

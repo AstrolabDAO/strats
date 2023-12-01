@@ -124,7 +124,7 @@
 //     }
 
 //     /// @notice Returns the investment in lp token.
-//     function stakedLPBalance() public view returns (uint256) {
+//     function stakedLpBalance() public view returns (uint256) {
 //         return iouToken.balanceOf(address(this));
 //     }
 // }
