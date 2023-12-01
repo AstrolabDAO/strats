@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../AsTypes.sol";
+import "../abstract/AsTypes.sol";
 
 interface IAs4626 {
 

@@ -6,13 +6,14 @@ import {
   TransactionResponse,
   ethers,
   getDeployer,
+  loadAbi,
   network,
   provider,
   weiToString
 } from "@astrolabs/hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi, wethAbi } from "abitype/abis";
-import { Contract, constants, BigNumber, utils as ethersUtils } from "ethers";
+import { Contract, constants, BigNumber, utils as ethersUtils, Overrides } from "ethers";
 import { merge } from "lodash";
 import {
   IStrategyDeploymentEnv,
@@ -30,9 +31,15 @@ const maxTopup = BigNumber.from(weiToString(5 * 1e18));
 
 export async function logState(
   env: Partial<IStrategyDeploymentEnv>,
-  step?: string
+  step?: string,
+  sleepBefore = 0,
+  sleepAfter = 0
 ) {
   const { strat, underlying } = env.deployment!;
+  if (sleepBefore) {
+    console.log(`Sleeping ${sleepBefore}ms before logging state...`)
+    await sleep(sleepBefore);
+  }
   try {
     const [
       inputsAddresses,
@@ -81,6 +88,7 @@ export async function logState(
       totalClaimableRedemption(): ${totalClaimableRedemption/underlying.weiPerUnit} (${totalClaimableRedemption}wei) (${Math.round(totalClaimableRedemption*100/totalRedemptionRequest)/100}%)
       `
     );
+    if (sleepAfter) await sleep(sleepAfter);
   } catch (e) {
     console.log(`Error logging state ${step ?? ""}: ${e}`);
   }
@@ -330,15 +338,25 @@ export function isLive(env: any) {
   return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
 }
 
-const networkOverrides: { [name: string]: any } = {
+const networkOverrides: { [name: string]: Overrides } = {
   "gnosis-mainnet": {
     gasLimit: 1e7,
     maxPriorityFeePerGas: 2e9,
-    maxFeePerGas: 4e9
+    maxFeePerGas: 4e9,
+    // gasPrice: 4e9,
   },
   "tenderly": {
     gasLimit: 1e7,
   }
 }
 
+type AbiFragment = { name: string, inputs: [{ type: string }] };
+
+export const getInitSignature = (contract: string) => {
+  const fragments = (loadAbi(contract) as AbiFragment[])
+    .filter((a) => a.name === "init");
+  const dummy = new Contract(addressZero, fragments, provider);
+  return Object.keys(dummy).sort(s => s.length)[0];
+}
 export const getOverrides = (env: Partial<ITestEnv>) => isLive(env) ? {} : networkOverrides[network.name] ?? {};
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

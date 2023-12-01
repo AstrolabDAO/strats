@@ -207,7 +207,7 @@ abstract contract As4626Abstract is
      * @return Amount denominated in underlying
      */
     function totalAccountedAssets() public view returns (uint256) {
-        return totalAssets() - totalClaimableUnderlying;
+        return totalAssets() - totalClaimableUnderlying; // approximated
     }
 
     /**

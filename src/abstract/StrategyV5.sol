@@ -34,25 +34,19 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
 
     /**
      * @notice Initialize the strategy
-     * @param _fees fees structure
-     * @param _underlying address of the underlying asset
-     * @param _coreAddresses array of core addresses: feeCollector, swapper, agent
+     * @param _params StrategyBaseParams struct containing strategy parameters
      */
-    function init(
-        Fees memory _fees,
-        address _underlying,
-        address[3] memory _coreAddresses
-    ) public onlyAdmin {
+    function init(StrategyBaseParams calldata _params) public onlyAdmin {
         setExemption(msg.sender, true);
         // done in As4626 but required for swapper
         stratProxy = address(this);
-        underlying = ERC20(_underlying);
-        updateSwapper(_coreAddresses[1]);
-        agent = _coreAddresses[2];
+        underlying = ERC20(_params.underlying);
+        updateSwapper(_params.coreAddresses[1]);
+        agent = _params.coreAddresses[2];
         // StrategyAgentV5.init
         _delegateWithSignature(
             agent,
-            "init((uint64,uint64,uint64,uint64),address,address)"
+            "init(((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[]))"
         );
     }
 
@@ -68,38 +62,6 @@ abstract contract StrategyV5 is StrategyAbstractV5, AsProxy {
      */
     function _implementation() internal view override returns (address) {
         return agent;
-    }
-
-    /**
-     * @notice Sets the reward tokens
-     * @param _rewardTokens array of reward tokens
-     */
-    function setRewardTokens(
-        address[] memory _rewardTokens
-    ) public onlyManager {
-        for (uint256 i = 0; i < _rewardTokens.length; i++)
-            rewardTokens[i] = _rewardTokens[i];
-        for (uint256 i = _rewardTokens.length; i < 16; i++)
-            rewardTokens[i] = address(0);
-    }
-
-    /**
-     * @notice Sets the input tokens (strategy internals)
-     * @param _inputs array of input tokens
-     * @param _weights array of input weights
-     */
-    function setInputs(
-        address[] memory _inputs,
-        uint256[] memory _weights
-    ) public onlyManager {
-        for (uint256 i = 0; i < _inputs.length; i++) {
-            inputs[i] = IERC20Metadata(_inputs[i]);
-            inputWeights[i] = _weights[i];
-        }
-        for (uint256 i = _inputs.length; i < 16; i++) {
-            inputs[i] = IERC20Metadata(address(0));
-            inputWeights[i] = 0;
-        }
     }
 
     /**

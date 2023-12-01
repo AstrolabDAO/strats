@@ -3,7 +3,9 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
+import "../../libs/PythUtils.sol";
 import "../../abstract/StrategyV5.sol";
+import "../../interfaces/IPyth.sol";
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
 
@@ -20,13 +22,31 @@ import "./interfaces/IStakingRewards.sol";
  */
 contract HopStrategy is StrategyV5 {
 
+    using AsMaths for uint256;
     using SafeERC20 for IERC20;
+    using PythUtils for PythStructs.Price;
+
+    struct Params {
+        address pyth;
+        bytes32 underlyingPythId;
+        bytes32 inputPythId;
+        address lpToken;
+        address rewardPool;
+        address stableRouter;
+        uint8 tokenIndex;
+    }
 
     // Third party contracts
+    IPyth internal pyth; // Pyth oracle
+    bytes32 internal underlyingPythId; // Pyth id of the underlying asset
+    bytes32 internal inputPythId; // Pyth id of the input asset
+    uint8 internal underlyingDecimals; // Decimals of the underlying asset
+    uint8 internal inputDecimals; // Decimals of the input asset
+
     IERC20 public lpToken; // LP token of the pool
     IStableRouter public stableRouter; // SaddleSwap
     IStakingRewards public rewardPool; // Reward pool
-    uint8 tokenIndex;
+    uint8 public tokenIndex;
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
@@ -37,41 +57,26 @@ contract HopStrategy is StrategyV5 {
 
     /**
      * @dev Initializes the strategy with the specified parameters.
-     * @param _fees Struct containing perfFee, mgmtFee, entryFee, exitFee in basis points (bps) where 100% = 10000
-     * @param _underlying The asset we are using
-     * @param _coreAddresses Array of core contract addresses
-     * @param _inputs Array of input addresses for the strategy
-     * @param _inputWeights Array of weights corresponding to the inputs
-     * @param _rewardTokens Array of reward token addresses
-     * @param _lpToken Address of the LP token
-     * @param _rewardPool Address of the reward pool contract
-     * @param _stableRouter Address of the stable router contract
-     * @param _tokenIndex Index of the token in the stable router
+     * @param _params StrategyBaseParams struct containing strategy parameters
+     * @param _hopParams Hop specific parameters
      */
     function init(
-        Fees memory _fees,
-        address _underlying,
-        address[3] memory _coreAddresses,
-        address[] memory _inputs,
-        uint256[] memory _inputWeights,
-        address[] memory _rewardTokens,
-        address _lpToken,
-        address _rewardPool,
-        address _stableRouter,
-        uint8 _tokenIndex
+        StrategyBaseParams calldata _params,
+        Params calldata _hopParams
     ) external onlyAdmin {
 
-        // strategy specific initialization
-        setInputs(_inputs, _inputWeights);
-        setRewardTokens(_rewardTokens);
+        pyth = IPyth(_hopParams.pyth);
+        underlyingPythId = _hopParams.underlyingPythId;
+        inputPythId = _hopParams.inputPythId;
+        underlyingDecimals = IERC20Metadata(underlying).decimals();
+        inputDecimals = IERC20Metadata(_params.inputs[0]).decimals();
 
-        lpToken = IERC20(_lpToken);
-        rewardPool = IStakingRewards(_rewardPool);
-        tokenIndex = _tokenIndex;
-        stableRouter = IStableRouter(_stableRouter);
-
+        lpToken = IERC20(_hopParams.lpToken);
+        rewardPool = IStakingRewards(_hopParams.rewardPool);
+        tokenIndex = _hopParams.tokenIndex;
+        stableRouter = IStableRouter(_hopParams.stableRouter);
         _setAllowances(MAX_UINT256);
-        StrategyV5.init(_fees, _underlying, _coreAddresses);
+        StrategyV5.init(_params);
     }
 
     /**
@@ -216,11 +221,24 @@ contract HopStrategy is StrategyV5 {
         } else {
             return
                 // calculates how much asset (inputs[0]) is to be withdrawn with the lp token balance
-                // not the actual ERC4626 underlying invested balance
-                (weiPerShare * // eg. 1e6 for usdc
-                    stableRouter.getVirtualPrice() *
-                    stakedLPBalance()) / 1e36; // 1e18**2 (IOU decimals ** virtualPrice decimals)
+                // converted to the underlying asset, not the actual ERC4626 underlying invested balance
+                exchangeRateBp().mulDiv(stableRouter.getVirtualPrice(), 1e6) // eg. usdc: 1e6 * 1e6 (BP_BASIS)
+                    .mulDiv(stakedLPBalance(), 1e36); // 1e18**2 (IOU decimals ** virtualPrice decimals)
         }
+    }
+
+    /**
+     * @notice Computes the underlying/input exchange rate from Pyth oracle price feeds in bps
+     * @dev Used by invested() to compute input->underlying (base/quote, eg. USDC/BTC == 1/BTCUSD == )
+     * @return The amount available for investment
+     */
+    function exchangeRateBp() public view returns (uint256) {
+        if (underlyingPythId == inputPythId)
+            return 10 ** underlyingDecimals * 1e6; // 1e6 (BP_BASIS)
+        return PythUtils.exchangeRateBp(
+            [pyth.getPrice(underlyingPythId), pyth.getPrice(inputPythId)],
+            [underlyingDecimals, inputDecimals]
+        );
     }
 
     /**

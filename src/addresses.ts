@@ -3,6 +3,7 @@ import { networkBySlug } from "@astrolabs/hardhat";
 export type NetworkAddresses = {
   // common addresses
   accounts?: { [token: string]: string };
+  oracles?: { [token: string]: string };
   tokens: { [name: string]: string };
   libs?: { [name: string]: string };
   // protocol specific addresses
@@ -21,6 +22,12 @@ export type Addresses = {
 export const addresses = {
   // ethereum
   1: {
+    accounts: {
+      impersonate: "0xf977814e90da44bfa03b6295a0616a897441acec", // binance 8
+    },
+    oracles: {
+      Pyth: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
+    },
     tokens: {
       WETH: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
       WGAS: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
@@ -81,12 +88,15 @@ export const addresses = {
       BIFI: "0x5870700f1272a1AdbB87C3140bD770880a95e55D",
       QUICK: "0xd2bA23dE8a19316A638dc1e7a9ADdA1d74233368",
     },
-    accounts: {
-      impersonate: "0xf977814e90da44bfa03b6295a0616a897441acec", // binance 8
-    },
   },
   // optimism
   10: {
+    accounts: {
+      impersonate: "0xacD03D601e5bB1B275Bb94076fF46ED9D753435A",
+    },
+    oracles: {
+      Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
+    },
     tokens: {
       OP: "0x4200000000000000000000000000000000000042",
       WETH: "0x4200000000000000000000000000000000000006",
@@ -127,6 +137,12 @@ export const addresses = {
   },
   // bnb
   56: {
+    accounts: {
+      impersonate: "0x8894E0a0c962CB723c1976a4421c95949bE2D4E3",
+    },
+    oracles: {
+      Pyth: "0x4D7E825f80bDf85e913E0DD2A2D54927e9dE1594",
+    },
     tokens: {
       WBNB: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
       WGAS: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
@@ -155,22 +171,23 @@ export const addresses = {
       BIFI: "0xCa3F508B8e4Dd382eE878A314789373D80A5190A",
       JOE: "0x371c7ec6D8039ff7933a2AA28EB827Ffe1F52f07",
     },
-    accounts: {
-      impersonate: "0x8894E0a0c962CB723c1976a4421c95949bE2D4E3", // binance 6
-    },
   },
   // xdai
   100: {
-    libs: {
-      AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4", // PROD
-    },
-    astrolab: {
-      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
-      StrategyAgentV5: "0x7EfF26E486D1c6DDCE1a88672393D64185d4C428",
-      "HopStrategy.USDC": "0x11c8f790d252f4a49cfbff5766310873898bf5d3"
-    },
     accounts : {
       impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"
+    },
+    oracles: {
+      Pyth: "0x2880aB155794e7179c9eE2e38200202908C17B43",
+    },
+    libs: {
+      AsAccounting: "0x9726435609ecc7a27d430ba3c74605d5a98d3698",
+      PythUtils: "0x0bbceb2fe8bdcbf03387eb0c11c6598f195efb73",
+    },
+    astrolab: {
+      Swapper: "0x1bca59ef28f7a52ab5fb6b742963ff11e2a0dbf8",
+      StrategyAgentV5: "",
+      "HopStrategy.USDC": ""
     },
     tokens: {
       WXDAI: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
@@ -187,8 +204,22 @@ export const addresses = {
       sDAI: "0xaf204776c7245bF4147c2612BF6e5972Ee483701",
     },
   },
+  // manta
+  169: {
+    accounts: {},
+    oracles: {
+      Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
+    },
+    tokens: {}
+  },
   // matic
   137: {
+    accounts: {
+      impersonate: "0xF977814e90dA44bFA03b6295A0616a897441aceC", // binance
+    },
+    oracles: {
+      Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
+    },
     tokens: {
       WBTC: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
       WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
@@ -223,22 +254,26 @@ export const addresses = {
       BAL: "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3",
       QUICK: "0xf28164A485B0B2C90639E47b0f377b4a438a16B1",
     },
-    accounts: {
-      impersonate: "0xF977814e90dA44bFA03b6295A0616a897441aceC", // binance
-    },
   },
   // opbnb
   204: {
+    accounts: {},
+    oracles: {},
     tokens: {
       BTCB: "0x7c6b91d9be155a6db01f749217d76ff02a7227f2",
       ETH: "0xe7798f023fc62146e8aa1b36da45fb70855a77ea",
       USDT: "0x9e5aac1ba1a2e6aed6b32689dfcf62a509ca96f3",
       WBNB: "0x4200000000000000000000000000000000000006",
     },
-    accounts: {},
   },
   // ftm
   250: {
+    accounts: {
+      impersonate: "0x65bab4f268286b9005d6053a177948dddc29bad3",
+    },
+    oracles: {
+      Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
+    },
     tokens: {
       WFTM: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
       WGAS: "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",
@@ -272,12 +307,13 @@ export const addresses = {
       SPELL: "0x468003B688943977e6130F4F68F23aad939a1040",
       BOO: "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE",
     },
-    accounts: {
-      impersonate: "0x65bab4f268286b9005d6053a177948dddc29bad3",
-    },
   },
   // zksync
   324: {
+    impersonate: {},
+    oracles: {
+      Pyth: "0xf087c864AEccFb6A2Bf1Af6A0382B0d0f6c5D834",
+    },
     tokens: {
       WETH: "0x000000000000000000000000000000000000800A",
       WGAS: "0x000000000000000000000000000000000000800A",
@@ -295,15 +331,29 @@ export const addresses = {
       PEPE: "0xFD282F16a64c6D304aC05d1A58Da15bed0467c71",
       KNC: "0x6ee46Cb7cD2f15Ee1ec9534cf29a5b51C83283e6",
     },
-    impersonate: {}
   },
   // rollux
   570: {
-    tokens: {},
     accounts: {},
+    oracles: {},
+    tokens: {},
+  },
+  // polygon zkevm
+  1101: {
+    accounts: {},
+    oracles: {
+      Pyth: "0xC5E56d6b40F3e3B5fbfa266bCd35C37426537c65",
+    },
+    tokens: {},
   },
   // moonbeam
   1284: {
+    accounts: {
+      impersonate: "0x73197B461eA369b36d5ee96A1C9f090Ef512be21",
+    },
+    oracles: {
+      Pyth: "",
+    },
     tokens: {
       WGLMR: "0xAcc15dC74880C9944775448304B263D191c6077F",
       WGAS: "0xAcc15dC74880C9944775448304B263D191c6077F",
@@ -323,12 +373,15 @@ export const addresses = {
       SYN: "0xF44938b0125A6662f9536281aD2CD6c499F22004",
       AXL: "0x467719aD09025FcC6cF6F8311755809d45a5E5f3",
     },
-    accounts: {
-      impersonate: "0x73197B461eA369b36d5ee96A1C9f090Ef512be21",
-    },
   },
   // kava
   2222: {
+    accounts: {
+      impersonate: "",
+    },
+    oracles: {
+      Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
+    },
     tokens: {
       WKAVA: "0xc86c7C0eFbd6A49B35E8714C5f59D99De09A225b",
       WGAS: "0xc86c7C0eFbd6A49B35E8714C5f59D99De09A225b",
@@ -343,10 +396,15 @@ export const addresses = {
       SUSHI: "0x7C598c96D02398d89FbCb9d41Eab3DF0C16F227D",
       BIFI: "0xC19281F22A075E0F10351cd5D6Ea9f0AC63d4327",
     },
-    accounts: {},
   },
   // mantle
   5000: {
+    accounts: {
+      impersonate: "0xf89d7b9c864f589bbF53a82105107622B35EaA40",
+    },
+    oracles: {
+      Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
+    },
     tokens: {
       MNT: "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
       WGAS: "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
@@ -356,10 +414,23 @@ export const addresses = {
       USDT: "0x201EBa5CC46D216Ce6DC03F6a759e8E766e956aE",
       USDC: "0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9",
     },
-    accounts: { impersonate: "0xf89d7b9c864f589bbF53a82105107622B35EaA40" },
+  },
+  // horizen eon
+  7332: {
+    accounts: {},
+    oracles: {
+      Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
+    },
+    tokens: {},
   },
   // base
   8453: {
+    accounts: {
+      impersonate: "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
+    },
+    oracles: {
+      Pyth: "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a",
+    },
     libs: {
       AsAccounting: "",
     },
@@ -384,12 +455,23 @@ export const addresses = {
       STG: "0xE3B53AF74a4BF62Ae5511055290838050bf764Df",
       KNC: "0x28fe69Ff6864C1C218878BDCA01482D36B9D57b1",
     },
-    accounts: {
-      impersonate: "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
+  },
+  // evmos
+  9001: {
+    accounts: {},
+    oracles: {
+      Pyth: "0x354bF866A4B006C9AF9d9e06d9364217A8616E12",
     },
+    tokens: {},
   },
   // arb
   42161: {
+    accounts: {
+      impersonate: "0x489ee077994B6658eAfA855C308275EAd8097C4A",
+    },
+    oracles: {
+      Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
+    },
     libs: {
       AsAccounting: "",
     },
@@ -397,15 +479,12 @@ export const addresses = {
       Swapper: "",
       StrategyAgentV5: "",
     },
-    accounts: {
-      impersonate: "0x489ee077994B6658eAfA855C308275EAd8097C4A",
-    },
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
       WGAS: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
       ARB: "0x912CE59144191C1204E64559FE8253a0e49E6548",
       USDT: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
-      USDCE: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+      USDCe: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
       USDC: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
       DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
       TUSD: "0x4D15a3A2286D883AF0AA1B3f21367843FAc63E07",
@@ -445,6 +524,12 @@ export const addresses = {
   },
   // celo
   42220: {
+    oracles: {
+      Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
+    },
+    accounts: {
+      impersonate: "0x1e0f3bfc926c4c4b98d428de9bbf0e5fa5909063",
+    },
     tokens: {
       CELO: "0x471EcE3750Da237f93B8E339c536989b8978a438",
       WGAS: "0x471EcE3750Da237f93B8E339c536989b8978a438",
@@ -463,12 +548,15 @@ export const addresses = {
 
       SUSHI: "0x29dFce9c22003A4999930382Fd00f9Fd6133Acd1",
     },
-    accounts: {
-      impersonate: "0x1e0f3bfc926c4c4b98d428de9bbf0e5fa5909063",
-    },
   },
   // avalanche
   43114: {
+    accounts: {
+      impersonate: "0x9f8c163cBA728e99993ABe7495F06c0A3c8Ac8b9",
+    },
+    oracles: {
+      Pyth: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
+    },
     tokens: {
       WBTCe: "0x50b7545627a5162F82A992c33b87aDc75187B218",
       WAVAX: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",
@@ -485,10 +573,15 @@ export const addresses = {
       FRAX: "0xD24C2Ad096400B6FBcd2ad8B24E7acBc21A1da64",
       SNXe: "0xbec243c995409e6520d7c41e404da5deba4b209b",
     },
-    accounts: {},
   },
   // linea
   59144: {
+    accounts: {
+      impersonate: "0x7160570bb153edd0ea1775ec2b2ac9b65f1ab61b",
+    },
+    oracles: {
+      Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729"
+    },
     tokens: {
       WETH: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
       WGAS: "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
@@ -507,12 +600,15 @@ export const addresses = {
       LDO: "0x0e076AAFd86a71dCEAC65508DAF975425c9D0cB6",
       KNC: "0x3b2F62d42DB19B30588648bf1c184865D4C3B1D6",
     },
-    accounts: {
-      impersonate: "0x7160570bb153edd0ea1775ec2b2ac9b65f1ab61b",
-    },
   },
   // scroll
   534352: {
+    accounts: {
+      impersonate: "0xeFaAE8E0381bD4e23CE9A662cfA833Fb4ED916e5",
+    },
+    oracles: {
+      Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729"
+    },
     tokens: {
       WETH: "0x5300000000000000000000000000000000000004",
       WGAS: "0x5300000000000000000000000000000000000004",
@@ -529,12 +625,15 @@ export const addresses = {
       BAL: "0x6a28e90582c583fcd3347931c544819C31e9D0e0",
       KNC: "0x608ef9a3bffe206b86c3108218003b3cfbf99c84"
     },
-    accounts: {
-      impersonate: "0xeFaAE8E0381bD4e23CE9A662cfA833Fb4ED916e5",
-    },
   },
   // neon
   245022934: {
+    accounts: {
+      impersonate: "0xef117c0b7b2512c812a64d2ce9bfe767cbb4c1f8",
+    },
+    oracles: {
+      Pyth: "0x7f2dB085eFC3560AFF33865dD727225d91B4f9A5"
+    },
     tokens: {
       WNEON: "0x202c35e517fa803b537565c40f0a6965d7204609",
       WGAS: "0x202c35e517fa803b537565c40f0a6965d7204609",
@@ -545,9 +644,14 @@ export const addresses = {
       USDT: "0x5f0155d08ef4aae2b500aefb64a3419da8bb611a",
       WSOL: "0x5f38248f339bf4e84a2caf4e4c0552862dc9f82a",
     },
-    accounts: {
-      impersonate: "0xef117c0b7b2512c812a64d2ce9bfe767cbb4c1f8",
+  },
+  // aurora
+  1313161554: {
+    accounts: {},
+    oracles: {
+      Pyth: "0xF89C7b475821EC3fDC2dC8099032c05c6c0c9AB9"
     },
+    tokens: {},
   },
 } as { [chainId: number]: NetworkAddresses };
 

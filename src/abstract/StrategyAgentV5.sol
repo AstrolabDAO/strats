@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IStrategyV5.sol";
+import "../interfaces/IStrategyV5.sol";
 import "./StrategyAbstractV5.sol";
 import "./As4626.sol";
 
@@ -27,17 +27,45 @@ contract StrategyAgentV5 is StrategyAbstractV5, As4626 {
     constructor() StrategyAbstractV5(DEFAULT_CONSTRUCT) {}
 
     /**
-     * @dev Initialize the contract after deployment. Overrides an existing 'init' function from a base contract.
-     * @param _fees Structure representing various fees for the contract
-     * @param _underlying Address of the underlying asset
-     * @param _feeCollector Address of the fee collector
+     * @notice Initialize the strategy
+     * @param _params StrategyBaseParams struct containing strategy parameters
      */
-    function init(
-        Fees memory _fees,
-        address _underlying,
-        address _feeCollector
-    ) public override onlyAdmin {
-        As4626.init(_fees, _underlying, _feeCollector);
+    function init(StrategyBaseParams calldata _params) public onlyAdmin {
+        setInputs(_params.inputs, _params.inputWeights);
+        setRewardTokens(_params.rewardTokens);
+        As4626.init(_params.fees, _params.underlying, _params.coreAddresses[0]);
+    }
+
+    /**
+     * @notice Sets the reward tokens
+     * @param _rewardTokens array of reward tokens
+     */
+    function setRewardTokens(
+        address[] memory _rewardTokens
+    ) public onlyManager {
+        for (uint256 i = 0; i < _rewardTokens.length; i++)
+            rewardTokens[i] = _rewardTokens[i];
+        for (uint256 i = _rewardTokens.length; i < 16; i++)
+            rewardTokens[i] = address(0);
+    }
+
+    /**
+     * @notice Sets the input tokens (strategy internals)
+     * @param _inputs array of input tokens
+     * @param _weights array of input weights
+     */
+    function setInputs(
+        address[] memory _inputs,
+        uint256[] memory _weights
+    ) public onlyManager {
+        for (uint256 i = 0; i < _inputs.length; i++) {
+            inputs[i] = IERC20Metadata(_inputs[i]);
+            inputWeights[i] = _weights[i];
+        }
+        for (uint256 i = _inputs.length; i < 16; i++) {
+            inputs[i] = IERC20Metadata(address(0));
+            inputWeights[i] = 0;
+        }
     }
 
     /**

@@ -9,7 +9,7 @@ pragma solidity ^0.8.0;
  *
  * @title AsMaths Library
  * @author Astrolab DAO
- * @notice Astrolab's Maths library inspired by many (oz, prb, uniswap...)
+ * @notice Astrolab's Maths library inspired by many (oz, abdk, prb, uniswap...)
  * @dev This library helps with high level maths
  */
 library AsMaths {

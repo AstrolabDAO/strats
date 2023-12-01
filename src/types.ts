@@ -18,13 +18,19 @@ export type Erc20Metadata = [string, string, string];
 // fees, underlying, feeCollector
 export type As4626InitParams = [Fees, string, string];
 
-// fees, underlying, coreAddresses, inputs, inputWeights, rewardTokens, ...strategyParams
-export type StrategyV5InitParams = [Fees, string, string[], string[], number[], string[], ...any[]];
+export interface IStrategyBaseParams {
+    fees: Fees,
+    underlying: string,
+    coreAddresses: string[],
+    inputs: string[],
+    inputWeights: number[],
+    rewardTokens: string[]
+};
 
 export interface IStrategyDeployment extends IDeployment {
     // constructor/init params
     constructorParams: [Erc20Metadata];
-    initParams: StrategyV5InitParams;
+    initParams: [IStrategyBaseParams, ...any];
     // compilation/verification dependencies
     swapper: Contract;
     agent: Contract;

@@ -1,14 +1,15 @@
 import { ethers, network, provider, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { Fees, IStrategyDeploymentEnv } from "../../../src/types";
+import { Fees, IStrategyDeploymentEnv, IStrategyBaseParams } from "../../../src/types";
 import addresses from "../../../src/implementations/Hop/addresses";
+import pythIds from "../../../src/pyth-ids.json";
 import { deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, swapDeposit, withdraw } from "../flows";
 import { addressZero, ensureFunding, getEnv, isLive } from "../utils";
 
+// Strategy underlying
+const underlyingSymbol = "USDC";
 // Strategy input
 const inputSymbols: string[] = ["USDC"]; // "DAI", "USDT"];
-// Strategy underlying 
-const underlyingSymbol = "USDC";
 
 let env: IStrategyDeploymentEnv;
 
@@ -24,11 +25,12 @@ describe("test.strategy.hop", function () {
   let i = 0;
   for (const inputSymbol of inputSymbols) {
     // Naming strat
-    const addr = addresses[network.config.chainId!][`Hop.${inputSymbol}`];
+    const addr = addresses[network.config.chainId!];
+    const protocolAddr = addr[`Hop.${inputSymbol}`];
     const name = `Astrolab Hop h${inputSymbol}`;
     const symbol = `as.h${inputSymbol}`;
 
-    if (!addr) {
+    if (!protocolAddr) {
       console.error(`Hop.${inputSymbol} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
     }
@@ -42,20 +44,23 @@ describe("test.strategy.hop", function () {
           "HopStrategy",
           name,
           [[name, symbol, "1"]], // constructor (Erc20Metadata)
-          [
-            {} as Fees, // fees (use default)
-            env.addresses.tokens[underlyingSymbol], // underlying
-            [], // coreAddresses (use default)
-            [env.addresses.tokens[inputSymbol]], // inputs
-            [10_000], // inputWeights in bps (100% on input[0])
-            addr.rewardTokens, // rewardTokens
-            addr.lp, // hop lp token
-            addr.rewardPools[0], // hop reward pool
-            addr.swap, // hop stable swap pool
-            0, // hop tokenIndex
-          ],
-          // the above arguments should match the below contract init() signature
-          "init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)",
+          [{
+            fees: {} as Fees, // fees (use default)
+            underlying: addr.tokens[underlyingSymbol], // underlying
+            coreAddresses: [], // coreAddresses (use default)
+            inputs: [addr.tokens[inputSymbol]], // inputs
+            inputWeights: [10_000], // inputWeights in bps (100% on input[0])
+            rewardTokens: protocolAddr.rewardTokens, // rewardTokens
+          } as IStrategyBaseParams, {
+            pyth: addr.oracles!.Pyth, // pyth oracle
+            underlyingPythId: (pythIds as any)[`Crypto.${underlyingSymbol}/USD`], // pythId for underlying
+            inputPythId: (pythIds as any)[`Crypto.${inputSymbol}/USD`], // pythId for input
+            lp: protocolAddr.lp, // hop lp token
+            rewardPool: protocolAddr.rewardPools[0], // hop reward pool
+            stableSwap: protocolAddr.swap, // hop stable swap pool
+            tokenInde: 0, // hop tokenIndex
+          }],
+          ["AsAccounting", "PythUtils"],
           env
         );
 
