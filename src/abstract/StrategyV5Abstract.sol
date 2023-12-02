@@ -47,8 +47,10 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     address public stratProxy; // Address of the strategy proxy
 
     IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
+    uint8[8] internal inputDecimals; // Decimals of the input assets
     uint256[8] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)
     address[8] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
+    uint16 public maxSlippageBps = 100; // Strategy default internal ops slippage 1%
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version

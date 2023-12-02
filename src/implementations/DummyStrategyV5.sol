@@ -47,14 +47,12 @@ contract DummyStrategy is StrategyV5 {
     /**
      * @notice Invests the underlying asset into the pool
      * @param _amount Max amount of underlying to invest
-     * @param _minIouReceived Min amount of LP tokens to receive
      * @param _params Calldata for swap if input != underlying
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
      */
     function _invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {}
 
@@ -77,12 +75,12 @@ contract DummyStrategy is StrategyV5 {
 
     /**
      * @notice Returns the available HOP rewards
-     * @return rewardsAmounts Array of rewards available for each reward token
+     * @return amounts Array of rewards available for each reward token
      */
     function _rewardsAvailable()
         public
         view
         override
-        returns (uint256[] memory rewardsAmounts)
+        returns (uint256[] memory amounts)
     {}
 }

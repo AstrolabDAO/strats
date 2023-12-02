@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 import "./IAs4626.sol";
 
 interface IStrategyV5 is IAs4626 {
-    function rewardsAvailable() external view returns (uint256[] memory rewardAmounts);
+    function rewardsAvailable() external view returns (uint256[] memory amounts);
     function invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) external returns (uint256 investedAmount, uint256 iouReceived);
     function swapSafeDeposit(

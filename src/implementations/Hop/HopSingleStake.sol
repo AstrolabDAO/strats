@@ -225,16 +225,16 @@ contract HopSingleStake is StrategyV5Chainlink {
 
     /**
      * @notice Returns the available HOP rewards
-     * @return rewardsAmounts Array of rewards available for each reward token
+     * @return amounts Array of rewards available for each reward token
      */
     function _rewardsAvailable()
         public
         view
         override
-        returns (uint256[] memory rewardsAmounts)
+        returns (uint256[] memory amounts)
     {
-        rewardsAmounts = new uint256[](1);
-        rewardsAmounts[0] = IStakingRewards(rewardPool).earned(address(this));
-        return rewardsAmounts;
+        amounts = new uint256[](1);
+        amounts[0] = IStakingRewards(rewardPool).earned(address(this));
+        return amounts;
     }
 }

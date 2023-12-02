@@ -58,7 +58,7 @@ interface IKyberSapElasticLM {
    * @param endTime end time of liquidity mining
    * @param vestingDuration time locking in reward locker
    * @param rewardTokens reward token list for pool
-   * @param rewardAmounts reward amount of list token
+   * @param amounts reward amount of list token
    * @param feeTarget fee target for pool
    **/
     function addPool(
@@ -67,7 +67,7 @@ interface IKyberSapElasticLM {
         uint32 endTime,
         uint32 vestingDuration,
         address[] calldata rewardTokens,
-        uint256[] calldata rewardAmounts,
+        uint256[] calldata amounts,
         uint256 feeTarget
     ) external;
 
@@ -77,7 +77,7 @@ interface IKyberSapElasticLM {
    * @param startTime start time of liquidity mining
    * @param endTime end time of liquidity mining
    * @param vestingDuration time locking in reward locker
-   * @param rewardAmounts reward amount of list token
+   * @param amounts reward amount of list token
    * @param feeTarget fee target for pool
    **/
     function renewPool(
@@ -85,7 +85,7 @@ interface IKyberSapElasticLM {
         uint32 startTime,
         uint32 endTime,
         uint32 vestingDuration,
-        uint256[] calldata rewardAmounts,
+        uint256[] calldata amounts,
         uint256 feeTarget
     ) external;
 

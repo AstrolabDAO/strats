@@ -98,6 +98,14 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
     }
 
     /**
+     * @notice Sets the internal slippage
+     * @param _slippageBps array of input tokens
+     */
+    function setMaxSlippageBps(uint16 _slippageBps) public onlyManager {
+        maxSlippageBps = _slippageBps;
+    }
+
+    /**
      * @notice Retrieves the share price from the strategy via the proxy
      * @dev Calls sharePrice function on the IStrategyV5 contract through stratProxy
      * @return The current share price from the strategy
@@ -119,18 +127,16 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
      * @notice Invests an amount into the strategy via the proxy
      * @dev Delegates the call to the 'invest' function in the IStrategyV5 contract through stratProxy
      * @param _amount The amount to be invested
-     * @param _minIouReceived The minimum IOU (I Owe You) to be received from the investment
      * @param _params Additional parameters for the investment, typically passed as generic callData
      * @return investedAmount The actual amount that was invested
      * @return iouReceived The IOU received from the investment
      */
     function invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) public returns (uint256 investedAmount, uint256 iouReceived) {
         return
-            IStrategyV5(stratProxy).invest(_amount, _minIouReceived, _params);
+            IStrategyV5(stratProxy).invest(_amount, _params);
     }
 
     /**
@@ -180,6 +186,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
         bytes[] memory _params
     ) external onlyAdmin returns (uint256 investedAmount, uint256 iouReceived) {
         safeDeposit(_amount, _receiver, _minShareAmount);
-        return invest(_amount, _minShareAmount, _params);
+        return invest(_amount, _params);
     }
 }

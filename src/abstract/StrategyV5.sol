@@ -158,13 +158,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     /**
      * @notice Amount of rewards available to harvest
      * @dev Abstract function to be implemented by the strategy
-     * @return rewardAmounts Amount of reward tokens available
+     * @return amounts Amount of reward tokens available
      */
     function _rewardsAvailable()
         public
         view
         virtual
-        returns (uint256[] memory rewardAmounts)
+        returns (uint256[] memory amounts)
     {}
 
     /**
@@ -218,14 +218,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     /**
      * @dev Internal function for investment, to be implemented by specific strategies
      * @param _amount Amount to be invested
-     * @param _minIouReceived The minimum IOU (I owe you) to be received from the investment
      * @param _params Additional parameters for the investment, typically passed as generic callData
      * @return investedAmount Actual amount that was invested
      * @return iouReceived The IOU received from the investment
      */
     function _invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) internal virtual returns (uint256 investedAmount, uint256 iouReceived) {}
 
@@ -233,21 +231,18 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @notice Inputs prices fetched from price aggregator (e.g., 1inch)
      * @dev Abstract function to be implemented by the strategy
      * @param _amount Amount of inputs to be invested
-     * @param _minIouReceived Prices of inputs in underlying
      * @param _params Generic callData (e.g., SwapperParams)
      * @return investedAmount Amount invested in the strategy
      * @return iouReceived IOUs received from the investment
      */
     function invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) public returns (uint256 investedAmount, uint256 iouReceived) {
         if (_amount == 0) _amount = available();
         // generic swap execution
         (investedAmount, iouReceived) = _invest(
             _amount,
-            _minIouReceived,
             _params
         );
 
@@ -260,14 +255,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @dev Pass a conservative _amount (e.g., available() + 90% of rewards valued in underlying)
      * to ensure the underlying->inputs swaps
      * @param _amount Amount of underlying to be invested (after harvest)
-     * @param _minIouReceived Minimum amount of IOU to be received (after invest)
      * @param _params Generic callData (harvest+invest SwapperParams)
      * @return iouReceived IOUs received from the compound operation
      * @return harvestedRewards Amount of rewards harvested
      */
     function _compound(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params // rewardTokens(0...n)->underling() / underlying()->inputs(0...n) with underlyingWeights(0...n)
     ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
         // we expect the SwapData to cover harvesting + investing
@@ -281,7 +274,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
 
         (, iouReceived) = _invest({
             _amount: _amount,
-            _minIouReceived: _minIouReceived, // 1 by default
             // invest using the second calldata bytes (swap underlying->inputs)
             _params: _params.slice(rewardTokens.length, _params.length) // new bytes[](0) // no swap data needed
         });
@@ -291,14 +283,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     /**
      * @notice Executes the compound operation in the strategy
      * @param _amount Amount to compound in the strategy
-     * @param _minIouReceived Minimum IOU to be received
      * @param _params Generic callData for the compound operation
      * @return iouReceived IOUs received from the compound operation
      * @return harvestedRewards Amount of rewards harvested
      */
     function compound(
         uint256 _amount,
-        uint _minIouReceived,
         bytes[] memory _params
     )
         external
@@ -307,7 +297,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     {
         (iouReceived, harvestedRewards) = _compound(
             _amount,
-            _minIouReceived,
             _params
         );
         emit Compound(_amount, block.timestamp);

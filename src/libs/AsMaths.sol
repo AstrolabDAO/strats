@@ -26,7 +26,7 @@ library AsMaths {
         uint256 amount,
         uint256 basisPoints
     ) internal pure returns (uint256) {
-        return (amount * (BP_BASIS - basisPoints)) / BP_BASIS;
+        return mulDiv(amount, BP_BASIS - basisPoints, BP_BASIS);
     }
 
     /**
@@ -39,7 +39,7 @@ library AsMaths {
         uint256 amount,
         uint256 basisPoints
     ) internal pure returns (uint256) {
-        return (amount * (BP_BASIS + basisPoints)) / BP_BASIS;
+        return mulDiv(amount, BP_BASIS + basisPoints, BP_BASIS);
     }
 
     /**
@@ -52,7 +52,7 @@ library AsMaths {
         uint256 amount,
         uint256 basisPoints
     ) internal pure returns (uint256) {
-        return (amount * basisPoints) / BP_BASIS;
+        return mulDiv(amount, basisPoints, BP_BASIS);
     }
 
     /**
@@ -65,7 +65,7 @@ library AsMaths {
         uint256 amount,
         uint256 basisPoints
     ) internal pure returns (uint256) {
-        return (amount * BP_BASIS) / (BP_BASIS + basisPoints);
+        return mulDiv(amount, BP_BASIS, BP_BASIS + basisPoints);
     }
 
     /**
@@ -78,7 +78,7 @@ library AsMaths {
         uint256 amount,
         uint256 basisPoints
     ) internal pure returns (uint256) {
-        return (amount * BP_BASIS) / (BP_BASIS - basisPoints);
+        return mulDiv(amount, BP_BASIS, BP_BASIS - basisPoints);
     }
 
     /**
@@ -113,10 +113,7 @@ library AsMaths {
      * @return The absolute difference between the two values.
      */
     function diff(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a > b) {
-            return a - b;
-        }
-        return b - a;
+        return a > b ? a - b : b - a;
     }
 
     /**

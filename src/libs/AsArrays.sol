@@ -158,4 +158,51 @@ library AsArrays {
 
         return sliceData;
     }
+
+    /**
+     * @dev Fills a dynamic array with a specific value.
+     * @param a The value to fill the array with.
+     * @param n The size of the array.
+     * @return arr The filled array.
+     */
+    function fill(uint8 a, uint64 n) internal pure returns (uint8[] memory arr) {
+        arr = new uint8[](n); for (uint64 i = 0; i < n; i++) arr[i] = a;
+    }
+
+    function fill(bytes32 a, uint64 n) internal pure returns (bytes32[] memory arr) {
+        arr = new bytes32[](n); for (uint64 i = 0; i < n; i++) arr[i] = a;
+    }
+
+    function fill(uint256 a, uint64 n) internal pure returns (uint256[] memory arr) {
+        arr = new uint256[](n); for (uint64 i = 0; i < n; i++) arr[i] = a;
+    }
+
+    /**
+     * @dev Converts a value to a one-element array.
+     * @param a The value to convert to an array.
+     * @return arr The resulting array.
+     */
+    function toArray(uint8 a) internal pure returns (uint8[] memory arr) {
+        arr = new uint8[](1); arr[0] = a;
+    }
+
+    function toArray(uint8 a, uint8 b) internal pure returns (uint8[] memory arr) {
+        arr = new uint8[](2); (arr[0], arr[1]) = (a, b);
+    }
+
+    function toArray(uint256 a) internal pure returns (uint256[] memory arr) {
+        arr = new uint256[](1); arr[0] = a;
+    }
+
+    function toArray(uint256 a, uint256 b) internal pure returns (uint256[] memory arr) {
+        arr = new uint256[](2); (arr[0], arr[1]) = (a, b);
+    }
+
+    function toArray(address a) internal pure returns (address[] memory arr) {
+        arr = new address[](1); arr[0] = a;
+    }
+
+    function toArray(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
+        arr = new bytes32[](2); (arr[0], arr[1]) = (a, b);
+    }
 }

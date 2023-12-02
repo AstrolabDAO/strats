@@ -70,13 +70,13 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @dev Used by invested() to compute input->underlying (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment
      */
-    function underlyingExchangeRate(uint8 inputId) public view returns (uint256) {
+    function underlyingExchangeRate(uint8 _index) public view returns (uint256) {
 
-        if (address(inputs[inputId]) == address(underlying))
+        if (address(inputs[_index]) == address(underlying))
             return weiPerShare; // == weiPerUnit of underlying == 1:1
 
         (uint256 inputPrice, uint256 underlyingPrice) = (
-            uint256(inputPriceFeeds[inputId].latestAnswer()),
+            uint256(inputPriceFeeds[_index].latestAnswer()),
             uint256(underlyingPriceFeed.latestAnswer())
         );
         uint256 rate = inputPrice.exchangeRate(underlyingPrice, underlyingFeedDecimals); // in underlyingFeedDecimals
@@ -89,5 +89,21 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         } else {
             return rate / 10**uint256(underlyingFeedDecimals - shareDecimals);
         }
+    }
+
+    /**
+     * @notice Converts underlying wei amount to input wei amount
+     * @return Input amount in wei
+     */
+    function _underlyingToInput(uint256 _amount, uint8 _index) internal view returns (uint256) {
+        return _amount.mulDiv(10**inputDecimals[_index], underlyingExchangeRate(_index));
+    }
+
+    /**
+     * @notice Converts input wei amount to underlying wei amount
+     * @return Underlying amount in wei
+     */
+    function _inputToUnderlying(uint256 _amount, uint8 _index) internal view returns (uint256) {
+        return _amount.mulDiv(underlyingExchangeRate(_index), 10**inputDecimals[_index]);
     }
 }

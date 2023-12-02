@@ -60,14 +60,12 @@ contract AaveV3Strategy is StrategyV5Pyth {
     /**
      * @notice Invests the underlying asset into the pool
      * @param _amount Max amount of underlying to invest
-     * @param _minIouReceived Min amount of LP tokens to receive
      * @param _params Calldata for swap if input != underlying
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
      */
     function _invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
         uint256 assetsToLp = available();
@@ -96,7 +94,9 @@ contract AaveV3Strategy is StrategyV5Pyth {
         });
         iouReceived = iouToken.balanceOf(address(this)) - iouBefore;
 
-        if (iouReceived < _minIouReceived) revert AmountTooLow(iouReceived);
+        // allow for .1% slippage
+        if (iouReceived < investedAmount.subBp(10))
+            revert AmountTooLow(iouReceived);
     }
 
     /**
