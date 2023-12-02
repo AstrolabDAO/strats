@@ -18,7 +18,7 @@ contract DummyStrategy is StrategyV5 {
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
      */
-    constructor(string[3] memory _erc20Metadata) As4626Abstract(_erc20Metadata) {}
+    constructor(string[3] memory _erc20Metadata) StrategyV5(_erc20Metadata) {}
 
     // Struct containing the strategy init parameters
     struct Params { address dummy; }

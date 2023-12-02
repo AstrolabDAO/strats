@@ -9,21 +9,33 @@ import {
   loadAbi,
   network,
   provider,
-  weiToString
+  weiToString,
 } from "@astrolabs/hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi, wethAbi } from "abitype/abis";
-import { Contract, constants, BigNumber, utils as ethersUtils, Overrides } from "ethers";
-import { merge } from "lodash";
 import {
-  IStrategyDeploymentEnv,
-  ITestEnv,
-  IToken
-} from "../../src/types";
+  Contract,
+  constants,
+  BigNumber,
+  BigNumberish,
+  utils as ethersUtils,
+  Overrides,
+} from "ethers";
+import { merge } from "lodash";
+import { IStrategyDeploymentEnv, ITestEnv, IToken } from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
-import { ISwapperParams, swapperParamsToString, getAllTransactionRequests } from "@astrolabs/swapper";
-import { Provider as MulticallProvider, Contract as MulticallContract, Call } from "ethcall";
-
+import {
+  ISwapperParams,
+  swapperParamsToString,
+  getAllTransactionRequests,
+  getTransactionRequest,
+  ITransactionRequestWithEstimate,
+} from "@astrolabs/swapper";
+import {
+  Provider as MulticallProvider,
+  Contract as MulticallContract,
+  Call,
+} from "ethcall";
 
 export const addressZero = constants.AddressZero;
 const MaxUint256 = ethers.constants.MaxUint256;
@@ -37,7 +49,7 @@ export async function logState(
 ) {
   const { strat, underlying } = env.deployment!;
   if (sleepBefore) {
-    console.log(`Sleeping ${sleepBefore}ms before logging state...`)
+    console.log(`Sleeping ${sleepBefore}ms before logging state...`);
     await sleep(sleepBefore);
   }
   try {
@@ -46,26 +58,34 @@ export async function logState(
       rewardTokensAddresses,
       sharePrice,
       totalSupply,
+      totalAccountedSupply,
       totalAssets,
+      totalAccountedAssets,
       invested,
       available,
       totalDepositRequest,
       totalRedemptionRequest,
       totalClaimableRedemption,
+      totalUnderlyingRequest,
+      totalClaimableUnderlying,
       stratUnderlyingBalance,
       deployerUnderlyingBalance,
-      deployerSharesBalance
+      deployerSharesBalance,
     ]: any[] = await env.multicallProvider!.all([
       strat.multicallContract.inputs(0),
       strat.multicallContract.rewardTokens(0),
       strat.multicallContract.sharePrice(),
       strat.multicallContract.totalSupply(),
+      strat.multicallContract.totalAccountedSupply(),
       strat.multicallContract.totalAssets(),
+      strat.multicallContract.totalAccountedAssets(),
       strat.multicallContract.invested(),
       strat.multicallContract.available(),
       strat.multicallContract.totalDepositRequest(),
       strat.multicallContract.totalRedemptionRequest(),
       strat.multicallContract.totalClaimableRedemption(),
+      strat.multicallContract.totalUnderlyingRequest(),
+      strat.multicallContract.totalClaimableUnderlying(),
       underlying.multicallContract.balanceOf(strat.contract.address),
       underlying.multicallContract.balanceOf(env.deployer!.address),
       strat.multicallContract.balanceOf(env.deployer!.address),
@@ -77,15 +97,43 @@ export async function logState(
       underlying: ${underlying.contract.address}
       inputs[0]: ${inputsAddresses}
       rewardTokens[0]: ${rewardTokensAddresses}
-      sharePrice(): ${sharePrice/underlying.weiPerUnit} (${sharePrice}wei)
-      totalSuply(): ${totalSupply/underlying.weiPerUnit} (${totalSupply}wei)
-      totalAssets(): ${totalAssets/underlying.weiPerUnit} (${totalAssets}wei)
-      invested(): ${invested/underlying.weiPerUnit} (${invested}wei)
-      available(): ${available/underlying.weiPerUnit} (${available}wei) (${Math.round(available*100/totalAssets)/100}%)
-      stratUnderlyingBalance(): ${stratUnderlyingBalance/underlying.weiPerUnit} (${stratUnderlyingBalance}wei)
-      deployerBalances(shares, underlying): [${deployerSharesBalance/underlying.weiPerUnit},${deployerUnderlyingBalance/underlying.weiPerUnit}]
-      totalRedemptionRequest(): ${totalRedemptionRequest/underlying.weiPerUnit} (${totalRedemptionRequest}wei)
-      totalClaimableRedemption(): ${totalClaimableRedemption/underlying.weiPerUnit} (${totalClaimableRedemption}wei) (${Math.round(totalClaimableRedemption*100/totalRedemptionRequest)/100}%)
+      sharePrice(): ${sharePrice / underlying.weiPerUnit} (${sharePrice}wei)
+      totalSuply(): ${totalSupply / underlying.weiPerUnit} (${totalSupply}wei)
+      totalAccountedSupply(): ${
+        totalAccountedSupply / underlying.weiPerUnit
+      } (${totalAccountedSupply}wei)
+      totalAssets(): ${totalAssets / underlying.weiPerUnit} (${totalAssets}wei)
+      totalAccountedAssets(): ${
+        totalAccountedAssets / underlying.weiPerUnit
+      } (${totalAccountedAssets}wei)
+      invested(): ${invested / underlying.weiPerUnit} (${invested}wei)
+      available(): ${available / underlying.weiPerUnit} (${available}wei) (${
+        Math.round((available * 100) / totalAssets) / 100
+      }%)
+      totalRedemptionRequest(): ${
+        totalRedemptionRequest / underlying.weiPerUnit
+      } (${totalRedemptionRequest}wei)
+      totalClaimableRedemption(): ${
+        totalClaimableRedemption / underlying.weiPerUnit
+      } (${totalClaimableRedemption}wei) (${
+        Math.round((totalClaimableRedemption * 100) / totalRedemptionRequest) /
+        100
+      }%)
+      totalUnderlyingRequest(): ${
+        totalUnderlyingRequest / underlying.weiPerUnit
+      } (${totalUnderlyingRequest}wei)
+      totalClaimableUnderlying(): ${
+        totalClaimableUnderlying / underlying.weiPerUnit
+      } (${totalClaimableUnderlying}wei) (${
+        Math.round((totalClaimableUnderlying * 100) / totalUnderlyingRequest) /
+        100
+      }%)
+      stratUnderlyingBalance(): ${
+        stratUnderlyingBalance / underlying.weiPerUnit
+      } (${stratUnderlyingBalance}wei)
+      deployerBalances(shares, underlying): [${
+        deployerSharesBalance / underlying.weiPerUnit
+      },${deployerUnderlyingBalance / underlying.weiPerUnit}]
       `
     );
     if (sleepAfter) await sleep(sleepAfter);
@@ -98,25 +146,19 @@ export const getEnv = async (
   env: Partial<ITestEnv> = {},
   addressesOverride?: Addresses
 ): Promise<ITestEnv> => {
-
   const addr = (addressesOverride ?? addresses)[network.config.chainId!];
-  const wgas = new Contract(addr.tokens.WGAS, erc20Abi, await getDeployer());
   const deployer = await getDeployer();
   const multicallProvider = new MulticallProvider();
   await multicallProvider.init(provider);
-
+  const live = isLive(env);
+  if (live) env.revertState = false;
   return merge(
     {
       network,
       blockNumber: await provider.getBlockNumber(),
-      snapshotId: isLive(env) ? 0 : await provider.send("evm_snapshot", []),
+      snapshotId: live ? 0 : await provider.send("evm_snapshot", []),
       revertState: false,
-      wgas: {
-        contract: wgas,
-        symbol: await wgas.symbol(),
-        decimals: await wgas.decimals(),
-        weiPerUnit: 10 ** (await wgas.decimals()),
-      },
+      wgas: await getTokenInfo(addr.tokens.WGAS, wethAbi, env.deployer!),
       addresses: addr,
       deployer: deployer as SignerWithAddress,
       provider: ethers.provider,
@@ -128,21 +170,34 @@ export const getEnv = async (
   );
 };
 
-export const getTokenInfo = async (address: string, abi:any=erc20Abi, deployer?: SignerWithAddress): Promise<IToken> => {
+export const getTokenInfo = async (
+  address: string,
+  abi: any = erc20Abi,
+  deployer?: SignerWithAddress
+): Promise<IToken> => {
   if (!Array.isArray(abi) || !abi.filter)
     throw new Error(`ABI must be an array`);
-  const contract = new Contract(address, abi, await getDeployer());
-  return {
-    contract,
-    multicallContract: new MulticallContract(contract.address, abi as any),
-    symbol: await contract.symbol(),
-    decimals: await contract.decimals(),
-    weiPerUnit: 10 ** (await contract.decimals()),
+  try {
+    const contract = new Contract(
+      address,
+      abi,
+      deployer ?? (await getDeployer())
+    );
+    const decimals = await contract.decimals();
+    return {
+      contract,
+      multicallContract: new MulticallContract(contract.address, abi as any),
+      symbol: await contract.symbol(),
+      decimals,
+      weiPerUnit: 10 ** decimals,
+    };
+  } catch (e) {
+    console.error(`Error getting token info for ${address}: ${e}`);
+    throw e;
   }
 };
 
 async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
-
   if (o.inputChainId != network.config.chainId) {
     if (network.name.includes("tenderly")) {
       console.warn(`Skipping case as not on current network: ${network.name}`);
@@ -240,7 +295,7 @@ export async function fundAccount(
   const balanceBefore = await output.balanceOf(receiver);
   let balanceAfter = balanceBefore;
   let retries = 3;
-  while (balanceAfter <= balanceBefore && retries--) {
+  while (balanceAfter.lte(balanceBefore) && retries--) {
     await _swap(env, {
       inputChainId: network.config.chainId!,
       output: asset,
@@ -255,11 +310,16 @@ export async function fundAccount(
   return balanceAfter.sub(balanceBefore);
 }
 
-async function ensureWhitelisted(contract: Contract|any, addresses: string[]) {
+async function ensureWhitelisted(
+  contract: Contract | any,
+  addresses: string[]
+) {
   // check if isWhitelisted and addToWhitelist exist on the contract
   for (const method of ["isWhitelisted", "addToWhitelist"]) {
     if (!(method in contract)) {
-      console.error(`Skipping whitelisting as ${method} is not available on ${contract.address}`);
+      console.error(
+        `Skipping whitelisting as ${method} is not available on ${contract.address}`
+      );
       return;
     }
   }
@@ -279,7 +339,6 @@ async function ensureWhitelisted(contract: Contract|any, addresses: string[]) {
 }
 
 export async function ensureFunding(env: IStrategyDeploymentEnv) {
-
   if (isLive(env)) {
     console.log(
       `Funding is only applicable to test forks and testnets, not ${env.network.name}`
@@ -307,34 +366,98 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
     let gas = env.gasUsedForFunding;
     if (["BTC", "ETH"].some((s) => s.includes(env.wgas.symbol.toUpperCase())))
       gas /= 1000; // less gas tokens or swaps will fail
-    console.log(`Balance before funding: ${underlyingBalance}wei ${underlyingSymbol}`);
+    console.log(
+      `Balance before funding: ${underlyingBalance}wei ${underlyingSymbol}`
+    );
     const received = await fundAccount(
       env,
       gas,
       underlyingAddress,
       env.deployer.address
     );
-    console.log(`Balance after funding: ${underlyingBalance.add(received)}wei ${underlyingSymbol} (+${received})`);
+    console.log(
+      `Balance after funding: ${underlyingBalance.add(
+        received
+      )}wei ${underlyingSymbol} (+${received})`
+    );
   }
 }
 
-export function getTxLogData(tx: TransactionReceipt, types=["uint256"], logIndex: string|number=-1): any {
+export function getTxLogData(
+  tx: TransactionReceipt,
+  types = ["uint256"],
+  logIndex: string | number = -1
+): any {
   const logs = (tx as any).events || tx.logs;
   let log: Log;
   if (typeof logIndex === "string") {
     log = logs.find((l: any) => l?.event === logIndex) as Log;
   } else {
-    if (logIndex < 0)
-      logIndex = logs.length + logIndex;
+    if (logIndex < 0) logIndex = logs.length + logIndex;
     log = logs[logIndex];
   }
-  if (!log) throw new Error(`No log ${logIndex} found on tx ${tx.transactionHash}`);
+  if (!log)
+    throw new Error(`No log ${logIndex} found on tx ${tx.transactionHash}`);
   return ethersUtils.defaultAbiCoder.decode(types, log.data);
 }
 
 export function isLive(env: any) {
   const n = env.network ?? network;
   return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
+}
+
+export async function getSwapperRateEstimate(
+  from: string,
+  to: string,
+  inputWei: BigNumberish | bigint,
+  chainId = 1
+): Promise<number> {
+  return (
+    Number(
+      (await getSwapperEstimate(from, to, inputWei, chainId))
+        ?.estimatedExchangeRate
+    ) ?? 0
+  );
+}
+
+export async function getSwapperOutputEstimate(
+  from: string,
+  to: string,
+  inputWei: BigNumberish | bigint,
+  chainId = 1
+): Promise<BigNumber> {
+  return BigNumber.from(
+    (await getSwapperEstimate(from, to, inputWei, chainId))
+      ?.estimatedOutputWei ?? 0
+  );
+}
+
+export async function getSwapperEstimate(
+  from: string,
+  to: string,
+  inputWei: BigNumberish | bigint,
+  chainId = 1
+): Promise<ITransactionRequestWithEstimate | undefined> {
+  const [input, output] = [from, to].map((s) => addresses[chainId].tokens[s]);
+  if (!input || !output)
+    throw new Error(
+      `Token ${from} or ${to} not found in addresses.ts:ethereum`
+    );
+  if (input == output)
+    return {
+      estimatedOutputWei: inputWei,
+      // estimatedOutput: Number(simulatedSwapSizeWei.toString()) / (10 ** (await (new Contract(input, erc20Abi, provider)).decimals()).toNumber?.()),
+      estimatedExchangeRate: 1,
+    };
+  const tr = (await getTransactionRequest({
+    input,
+    output,
+    amountWei: weiToString(inputWei as any), // 10k USDC
+    inputChainId: chainId,
+    payer: addresses[chainId].accounts!.impersonate,
+    testPayer: addresses[chainId].accounts!.impersonate,
+  })) as ITransactionRequestWithEstimate;
+  return tr;
 }
 
 const networkOverrides: { [name: string]: Overrides } = {
@@ -344,19 +467,43 @@ const networkOverrides: { [name: string]: Overrides } = {
     maxFeePerGas: 4e9,
     // gasPrice: 4e9,
   },
-  "tenderly": {
+  tenderly: {
     gasLimit: 1e7,
-  }
-}
+  },
+};
 
-type AbiFragment = { name: string, inputs: [{ type: string }] };
+type AbiFragment = { name: string; inputs: [{ type: string }] };
 
 // TODO: move to @astrolabs/hardhat/utils
 export const getInitSignature = (contract: string) => {
-  const fragments = (loadAbi(contract) as AbiFragment[])
-    .filter((a) => a.name === "init");
+  const fragments = (loadAbi(contract) as AbiFragment[]).filter(
+    (a) => a.name === "init"
+  );
   const dummy = new Contract(addressZero, fragments, provider);
-  return Object.keys(dummy).filter(s => s.startsWith("init")).sort((s1, s2) => s2.length - s1.length)?.[0];
-}
-export const getOverrides = (env: Partial<ITestEnv>) => isLive(env) ? {} : networkOverrides[network.name] ?? {};
-export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  return Object.keys(dummy)
+    .filter((s) => s.startsWith("init"))
+    .sort((s1, s2) => s2.length - s1.length)?.[0];
+};
+
+export const getOverrides = (env: Partial<ITestEnv>) =>
+  isLive(env) ? {} : networkOverrides[network.name] ?? {};
+
+export const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+export const isStable = (s: string) =>
+  [
+    "USDC",
+    "USDT",
+    "DAI",
+    "XDAI",
+    "SDAI",
+    "FRAX",
+    "LUSD",
+    "USDD",
+    "CRVUSD",
+    "GHO",
+    "USD",
+  ].includes(s.toUpperCase());
+export const isStablePair = (s1: string, s2: string) =>
+  isStable(s1) && isStable(s2);

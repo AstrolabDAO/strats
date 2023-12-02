@@ -11,7 +11,9 @@ struct Fees {
 
 // Checkpoint used to keep track of latest events
 struct Checkpoint {
-    uint256 accountedSharePrice; // Last accounted share price from the checkpoint
+    uint256 sharePrice; // Last share price
+    uint256 sharePriceTimeStamp; // Date of last share price update
+    uint256 accountedSharePrice; // Last accounted share price (fee collection) from the checkpoint
     uint256 feeCollection; // Last fee collection timestamp from the checkpoint
     uint256 liquidate; // Last liquidation timestamp from the checkpoint
     uint256 harvest; // Last harvest timestamp from the checkpoint

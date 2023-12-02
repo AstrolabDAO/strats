@@ -55,7 +55,9 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver
     ) public nonReentrant returns (uint256 assets) {
-        assets = convertToAssets(_shares);
+
+        uint256 price = sharePrice();
+        assets = _shares.mulDiv(price, weiPerShare);
 
         if (assets == 0 || _shares == 0) revert AmountTooLow(0);
         if (totalAssets() < minLiquidity) revert LiquidityTooLow(totalAssets());
@@ -67,6 +69,24 @@ abstract contract As4626 is As4626Abstract {
         underlying.safeTransferFrom(msg.sender, address(this), assets);
         _mint(_receiver, _shares);
         emit Deposit(msg.sender, _receiver, assets, _shares);
+    }
+
+    /**
+     * @notice Rescue any ERC20 token or ETH that is stuck in the contract
+     * @dev Transfers out all ETH from the contract to the sender, and if `_onlyETH` is false, it also transfers the specified ERC20 token
+     * @param _token The address of the ERC20 token to be rescued. Ignored if `_onlyETH` is true
+     * @param _onlyETH If true, only rescues ETH and ignores ERC20 tokens
+     */
+    function rescueToken(address _token, bool _onlyETH) external onlyAdmin {
+        // send any trapped ETH
+        payable(msg.sender).transfer(address(this).balance);
+
+        if (_onlyETH) return;
+
+        if (_token == address(underlying)) revert();
+        ERC20 tokenToRescue = ERC20(_token);
+        uint256 balance = tokenToRescue.balanceOf(address(this));
+        tokenToRescue.transfer(msg.sender, balance);
     }
 
     /**
@@ -134,7 +154,7 @@ abstract contract As4626 is As4626Abstract {
     function deposit(
         uint256 _amount,
         address _receiver
-    ) public returns (uint256 shares) {
+    ) public whenNotPaused returns (uint256 shares) {
         return _deposit(_amount, _receiver, 0);
     }
 
@@ -150,7 +170,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _receiver,
         uint256 _minShareAmount
-    ) public returns (uint256 shares) {
+    ) public whenNotPaused returns (uint256 shares) {
         return _deposit(_amount, _receiver, _minShareAmount);
     }
 
@@ -170,9 +190,15 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minAmountOut,
         address _receiver,
         address _owner
-    ) internal nonReentrant whenNotPaused returns (uint256) {
+    ) internal nonReentrant returns (uint256) {
+
         if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
-        if (_shares >= totalSupply()) _shares = totalSupply() - 1; // never redeem all shares
+
+        uint256 price = sharePrice();
+        uint256 minSharesLeft = convertToShares(minLiquidity);
+
+        if (_shares >= (totalSupply() - minSharesLeft))
+            revert LiquidityTooLow(totalSupply());
 
         // spend the allowance if the msg.sender isn't the receiver
         if (msg.sender != _owner) {
@@ -188,8 +214,6 @@ abstract contract As4626 is As4626Abstract {
         ) {
             claimable = AsMaths.min(request.shares, totalClaimableRedemption);
         }
-
-        uint256 price = sharePrice();
 
         if (claimable >= _shares) {
             // positive slippage (request.sharePrice - price > 0)
@@ -243,7 +267,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _receiver,
         address _owner
-    ) external virtual returns (uint256 shares) {
+    ) external whenNotPaused returns (uint256 shares) {
         // This represents the amount of shares that we're about to burn
         shares = convertToShares(_amount);
         return _withdraw(_amount, shares, 0, _receiver, _owner);
@@ -263,7 +287,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minAmount,
         address _receiver,
         address _owner
-    ) public virtual returns (uint256 shares) {
+    ) public whenNotPaused returns (uint256 shares) {
         // This represents the amount of shares that we're about to burn
         shares = convertToShares(_amount); // take fees here
         _withdraw(_amount, shares, _minAmount, _receiver, _owner);
@@ -323,11 +347,12 @@ abstract contract As4626 is As4626Abstract {
      * @dev This function can be called by any keeper
      */
     function collectFees() external onlyKeeper {
+        uint256 price = sharePrice();
         (
             uint256 perfFeesAmount,
             uint256 mgmtFeesAmount,
             uint256 profit
-        ) = AsAccounting.computeFees(totalAssets(), sharePrice(), fees, last);
+        ) = AsAccounting.computeFees(totalAssets(), price, fees, last);
 
         if (feeCollector == address(0)) revert AddressZero();
         if (profit == 0) return;
@@ -341,7 +366,7 @@ abstract contract As4626 is As4626Abstract {
         claimableUnderlyingFees = 0;
 
         last.feeCollection = block.timestamp;
-        last.accountedSharePrice = sharePrice();
+        last.accountedSharePrice = price;
 
         emit FeesCollected(
             profit,
@@ -354,7 +379,7 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Pause the crate
+     * @notice Pause the vault
      */
     function pause() external onlyManager {
         _pause();
@@ -363,7 +388,7 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Unpause the crate
+     * @notice Unpause the vault
      */
     function unpause() external onlyManager {
         _unpause();
@@ -398,6 +423,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _seedDeposit,
         uint256 _maxTotalAssets
     ) external onlyManager {
+
         // 1e8 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
         // allowance should be given to the vault before calling this function
         if (_seedDeposit < (minLiquidity - totalAssets()))
@@ -434,13 +460,18 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Set the cooldown period for realizing profits
-     * @dev This is to avoid MEV/arbs
+     * @dev Helps avoid MEV/arbs on the sharePrice
      * @param _profitCooldown The cooldown period for realizing profits
      */
     function setProfitCooldown(uint256 _profitCooldown) external onlyAdmin {
         profitCooldown = _profitCooldown;
     }
 
+    /**
+     * @notice Set the redemption request locktime
+     * @dev Helps avoid MEV/arbs on the vault liquidity
+     * @param _redemptionRequestLocktime The redemption request locktime
+     */
     function setRedemptionRequestLocktime(
         uint256 _redemptionRequestLocktime
     ) external onlyAdmin {
@@ -508,7 +539,9 @@ abstract contract As4626 is As4626Abstract {
      */
     function maxRedeem(address _owner) public view returns (uint256) {
         return
-            paused() ? 0 : AsMaths.max(maxRedemptionClaim(_owner), available());
+            paused() ? 0 : AsMaths.min(
+                balanceOf(msg.sender),
+                    AsMaths.max(maxRedemptionClaim(_owner), convertToShares(available())));
     }
 
     /**
@@ -532,10 +565,12 @@ abstract contract As4626 is As4626Abstract {
         address operator,
         address owner
     ) public nonReentrant {
+
         if (owner != msg.sender) revert WrongRequest(msg.sender, shares);
         if (shares == 0) revert AmountTooLow(shares);
         if (balanceOf(owner) < shares) revert InsufficientFunds(shares);
         Erc7540Request storage request = requestByOperator[operator];
+
         uint256 price = sharePrice();
 
         // if a request is already pending, only accept increase requests

@@ -30,7 +30,7 @@ contract AaveV3Strategy is StrategyV5Pyth {
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
      */
-    constructor(string[3] memory _erc20Metadata) As4626Abstract(_erc20Metadata) {}
+    constructor(string[3] memory _erc20Metadata) StrategyV5Pyth(_erc20Metadata) {}
 
     // Struct containing the strategy init parameters
     struct Params {

@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@aashutoshrathi/word-wrap/-/word-wrap-1.2.6.tgz#bd9154aec9983f77b3a034ecaa015c2e4201f6cf"
   integrity sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==
 
-"@astrolabs/hardhat@^1.0.80":
-  version "1.0.80"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.80.tgz#29a0c46fd9031042cfaaa9693dc6a62edd970be2"
-  integrity sha512-RJUlxOCWjmtu/6/qpo+wjtQb6lOTkLOvVdPho0lJQl47gcIOvky/iXu6krTX+MzW8gOJDD94TqBpNTuT4DPEMQ==
+"@astrolabs/hardhat@^1.0.81":
+  version "1.0.81"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.81.tgz#5ed59b62c3d50265a00e55802ded335bda78e9af"
+  integrity sha512-ZXkebX71wbDtFZQUf9yNjZF6fp3Q5Gthj5x4/diQj1Ucp3rEBDATbQr8ZvHASTFCbteyF4ruf+nEXWWam4xAMQ==
   dependencies:
     "@nomiclabs/hardhat-ethers" "^2.1.0"
     "@tenderly/hardhat-tenderly" "^1.7.7"
@@ -23,10 +23,10 @@
   resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.6.tgz#25a2b22bdc0d9aa01daff4abcba9a4ac0e1576df"
   integrity sha512-Gxi5iVe8gg5bhEK3/IImUgeg+zauD8+dshyf7tSoVhQCvGe0DFNrXL89zCyBvja2lz1halK4+jYBU7cvhi2pDw==
 
-"@astrolabs/registry@^1.0.16":
-  version "1.0.16"
-  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.16.tgz#69e6bb89152693f3d08bc2931bad37d5405501b3"
-  integrity sha512-HkRSETbW+UusgI26rohqD370fDWPYkKRDd3mO8l8jjrdc/K8Sp/4cqtzpbwqakjZ04RQ7bmJyRQG3oKAP2xbfQ==
+"@astrolabs/registry@^1.0.17":
+  version "1.0.17"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.17.tgz#574cc281230e2083a33adc19000daf1680200c73"
+  integrity sha512-XMXnBQx/vAwqodUBpFY9gFa0van+PKrFM3nXcVqnjLWDi+G06sQksevWSrgX0p0BmXS1Bha20XBuD3gE2FzsQg==
   dependencies:
     "@astrolabs/registry" "^1.0.8"
 

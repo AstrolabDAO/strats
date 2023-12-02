@@ -33,8 +33,14 @@ export interface IPythParams {
     inputPythIds: string[];
 }
 
+export interface IChainlinkParams {
+    underlyingPriceFeed: string;
+    inputPriceFeeds: string[];
+}
+
 export type IStrategyParams = [IStrategyBaseParams, any];
 export type IStrategyPythParams = [IStrategyBaseParams, IPythParams, any];
+export type IStrategyChainlinkParams = [IStrategyBaseParams, IChainlinkParams, any];
 
 export interface IStrategyDeployment extends IDeployment {
     // constructor/init params

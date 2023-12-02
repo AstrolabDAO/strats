@@ -35,7 +35,10 @@ export default merge(addresses, {
     "Hop.WETH": {
       lp: '0xb9cca4Ed3f082a459c0851058D9FBA0B78dD6C7d', // l2SaddleLpToken
       swap: '0x4014DC015641c08788F15bD6eB20dA4c47D936d8', // l2SaddleSwap
-      rewardPools: ['0xC61bA16e864eFbd06a9fe30Aab39D18B8F63710a', '0x712F0cf37Bdb8299D0666727F73a5cAbA7c1c24c'], // rewardsContracts
+      rewardPools: [
+        '0xC61bA16e864eFbd06a9fe30Aab39D18B8F63710a', // GNO
+        '0x712F0cf37Bdb8299D0666727F73a5cAbA7c1c24c' // HOP
+      ],
       rewardTokens: [addresses[100].tokens.HOP],
     },
     "Hop.USDC": {

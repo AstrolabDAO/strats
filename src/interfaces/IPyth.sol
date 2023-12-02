@@ -4,15 +4,15 @@ pragma solidity ^0.8.0;
 /**
  * @title PythStructs
  * @dev Contains data structures used in Pyth contracts.
+ * cf. https://github.com/pyth-network/pyth-sdk-solidity/blob/main/AbstractPyth.sol
  */
 contract PythStructs {
-
     // Struct representing a price with uncertainty
     struct Price {
         int64 price; // Price value
         uint64 conf; // Confidence interval
         int32 expo; // Price exponent
-        uint publishTime; // Timestamp of price publication
+        uint publishTime; // Timestamp of price externalation
     }
 
     // Struct representing an aggregate price feed
@@ -58,11 +58,16 @@ interface IPythEvents {
 }
 
 /**
- * @title IPyth
+ * @title IPythAggregator
  * @dev Interface for consuming prices from the Pyth Network.
  */
-interface IPyth is IPythEvents {
+interface IPythAggregator is IPythEvents {
     function getValidTimePeriod() external view returns (uint validTimePeriod);
+    function priceFeedExists(bytes32 id) external view returns (bool exists);
+
+    function queryPriceFeed(
+        bytes32 id
+    ) external view returns (PythStructs.PriceFeed memory priceFeed);
 
     function getPrice(
         bytes32 id

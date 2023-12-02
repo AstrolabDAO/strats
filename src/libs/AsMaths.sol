@@ -932,4 +932,21 @@ library AsMaths {
     function unsignedRoundsUp(Rounding rounding) internal pure returns (bool) {
         return uint8(rounding) % 2 == 1;
     }
+
+    /**
+     * @notice Calculates the exchange rate in bps (10_000 == 100%) between two prices (in wei)
+     * @dev Reverts if either value is zero.
+     * @param p1 Base currency price in wei
+     * @param p2 Quote currency price in wei
+     * @param d2 Quote decimal places for the second price
+     * @return Exchange rate (in bps * 10 ** base decimals)
+     */
+    function exchangeRate(
+        uint256 p1,
+        uint256 p2,
+        uint8 d2
+    ) public pure returns (uint256) {
+        require(p1 > 0 && p2 > 0);
+        return (p1 * (10 ** uint256(d2))) / p2;
+    }
 }

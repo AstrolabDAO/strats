@@ -123,10 +123,10 @@ abstract contract As4626Abstract is
     uint256 public totalClaimableUnderlying; // Total claimable underlying
 
     /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
+     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
      */
     constructor(
-        string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
+        string[3] memory _erc20Metadata
     ) ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
         _pause();
     }
@@ -164,11 +164,11 @@ abstract contract As4626Abstract is
     function _invested() internal view virtual returns (uint256) {}
 
     /**
-     * @notice Amount of assets available to non-requested withdrawals
+     * @notice Amount of assets available to non-requested withdrawals (excluding seed)
      * @return Amount denominated in underlying
      */
     function available() public view returns (uint256) {
-        return availableClaimable() - totalClaimableUnderlying;
+        return availableClaimable() - totalClaimableUnderlying - minLiquidity;
     }
 
     /**
@@ -227,15 +227,14 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @notice The share price equal to the amount of assets redeemable for one crate token
-     * @return The virtual price of the crate token
+     * @notice The share price equal to the amount of assets redeemable for one vault token
+     * @return The share price
      */
     function sharePrice() public view virtual returns (uint256) {
         uint256 supply = totalAccountedSupply();
-        return
-            supply == 0
-                ? weiPerShare
-                : totalAccountedAssets().mulDiv(weiPerShare, supply);
+        return supply == 0
+            ? weiPerShare
+            : totalAccountedAssets().mulDiv(weiPerShare, supply);
     }
 
     /**

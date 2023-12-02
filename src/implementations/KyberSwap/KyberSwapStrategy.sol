@@ -50,9 +50,7 @@ contract KyberSwapStrategy is StrategyV5Pyth {
     //     _setAllowances(MAX_UINT256);
     // }
 
-    constructor(
-        string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
-    ) As4626Abstract(_erc20Metadata) {}
+    constructor(string[3] memory _erc20Metadata) StrategyV5Pyth(_erc20Metadata) {}
 
     // Interactions
 

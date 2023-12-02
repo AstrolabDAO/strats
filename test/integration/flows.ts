@@ -1,10 +1,11 @@
-import { IDeploymentUnit, TransactionResponse, deploy, deployAll, ethers, loadAbi, network } from "@astrolabs/hardhat";
-import { ITransactionRequestWithEstimate, getTransactionRequest } from "@astrolabs/swapper";
 import { erc20Abi } from "abitype/abis";
-import { Contract, BigNumber, utils as ethersUtils } from "ethers";
 import { add, get, merge } from "lodash";
+import { Contract, BigNumber, utils as ethersUtils } from "ethers";
+import { IDeploymentUnit, TransactionResponse, deploy, deployAll, ethers, loadAbi, network, weiToString } from "@astrolabs/hardhat";
+import { ITransactionRequestWithEstimate, getTransactionRequest } from "@astrolabs/swapper";
 import { Erc20Metadata, IStrategyDeployment, IStrategyDeploymentEnv, ITestEnv, IStrategyBaseParams, IToken } from "../../src/types";
-import { addressZero, getEnv, getInitSignature, getOverrides, getTokenInfo, getTxLogData, isLive, logState, sleep } from "./utils";
+import { addressZero, getEnv, getInitSignature, getOverrides, getSwapperOutputEstimate, getSwapperRateEstimate, getTokenInfo, getTxLogData, isLive, isStablePair, logState, sleep } from "./utils";
+import addresses from "../../src/addresses";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 
@@ -38,7 +39,7 @@ export const deployStrat = async (
         address,
       } as IDeploymentUnit;
       if (libParams.deployed) {
-        console.log(`Using existing ${n} at ${lib.address}`);
+        console.log(`Using existing ${n} at ${libParams.address}`);
         lib = new Contract(address, loadAbi(n) ?? [], env.deployer);
       } else {
         lib = await deploy(libParams);
@@ -192,6 +193,37 @@ export const deployStrat = async (
   return env as IStrategyDeploymentEnv;
 };
 
+export async function setMinLiquidity(env: Partial<IStrategyDeploymentEnv>, usdAmount=10) {
+  const { strat } = env.deployment!;
+  const [from, to] = ["USDC", env.deployment!.underlying.symbol];
+  const exchangeRate = await getSwapperRateEstimate(from, to, 1e12);
+  const seedAmount = BigNumber.from(usdAmount)
+    .mul(weiToString(Math.round(exchangeRate * env.deployment!.underlying.weiPerUnit)));
+  console.log(`Setting minLiquidity to ${seedAmount} ${to} wei (${usdAmount} USDC)`);
+  await strat.contract.setMinLiquidity(seedAmount).then((tx: TransactionResponse) => tx.wait());
+  console.log(`Liquidity can now be seeded with ${await strat.contract.minLiquidity()}wei ${to}`);
+  return seedAmount;
+}
+
+export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
+  const { strat, underlying } = env.deployment!;
+  let amount = BigNumber.from(_amount).mul(weiToString(underlying.weiPerUnit));
+
+  if (await strat.contract.totalAssets() > await strat.contract.minLiquidity()) {
+    console.log(`Skipping seedLiquidity as totalAssets > minLiquidity`);
+    return BigNumber.from(1);
+  }
+  if ((await underlying.contract.allowance(env.deployer.address, strat.contract.address)).lt(amount))
+    await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env))
+      .then((tx: TransactionResponse) => tx.wait());
+
+  await logState(env, "Before SeedLiquidity");
+  const receipt = await strat.contract.seedLiquidity(amount, MaxUint256, getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+  await logState(env, "After SeedLiquidity", 2_000);
+  return getTxLogData(receipt, ["uint256", "uint256"], -2)[0]; // seeded amount
+}
+
 export async function grantManagerRole(env: Partial<IStrategyDeploymentEnv>, address: string) {
   const { strat } = env.deployment!;
   const [keeperRole, managerRole] = await Promise.all([
@@ -214,12 +246,18 @@ export async function setupStrat(
   // below we use hop strategy signature as placeholder
   constructorParams: [Erc20Metadata],
   initParams: [IStrategyBaseParams, ...any],
+  minLiquidityUsd = 10,
   libNames = ["AsAccounting"],
   env: Partial<IStrategyDeploymentEnv> = {},
   addressesOverride?: any
 ): Promise<IStrategyDeploymentEnv> {
 
   env = await getEnv(env, addressesOverride);
+
+  // make sure to include PythUtils if pyth is used (not lib used with chainlink)
+  if (initParams[1]?.pyth && !libNames.includes("PythUtils")) {
+    libNames.push("PythUtils");
+  }
   env.deployment = {
     underlying: await getTokenInfo(initParams[0].underlying),
     inputs: await Promise.all(initParams[0].inputs!.map((input) => getTokenInfo(input))),
@@ -236,137 +274,134 @@ export async function setupStrat(
   // init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)'
   const proxy = new Contract(strat.contract.address, loadAbi(contract)!, env.deployer);
 
-  // TODO: use await proxy.initialized?.() in next deployments
+  await setMinLiquidity(env, minLiquidityUsd);
+
+  // NB: can use await proxy.initialized?.() instead
   if ((await proxy.agent()) != addressZero) {
     console.log(`Skipping init() as ${name} already initialized`);
   } else {
-    const initSignature = getInitSignature("HopStrategy");
+    const initSignature = getInitSignature("HopSingleStake");
     await proxy[initSignature](...initParams, getOverrides(env));
   }
 
-  await logState(env, "After init", 5_000);
+  await logState(env, "After init", 2_000);
   return env as IStrategyDeploymentEnv;
 }
 
-export async function deposit(env: IStrategyDeploymentEnv, amount = 100) {
+export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
   const { strat, underlying } = env.deployment!;
-  amount *= underlying.weiPerUnit; // 100$ or equivalent
-
   const balance = await underlying.contract.balanceOf(env.deployer.address);
+  let amount = BigNumber.from(_amount).mul(weiToString(underlying.weiPerUnit)); // 100$ or equivalent
+
   if (balance.lt(amount)) {
     console.log(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
-
-  await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env));
+  if ((await underlying.contract.allowance(env.deployer.address, strat.contract.address)).lt(amount))
+    await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env))
+      .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "Before Deposit");
   const receipt = await strat.contract.safeDeposit(
     amount, env.deployer.address, 1, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Deposit", 5_000);
+  await logState(env, "After Deposit", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"])[0];
 }
 
 export async function swapDeposit(
   env: IStrategyDeploymentEnv,
   inputAddress?: string,
-  amount = 100
+  _amount = 10
 ) {
   const { strat, underlying } = env.deployment!;
-  amount *= underlying.weiPerUnit; // 100$ or equivalent
+  const depositAsset = new Contract(inputAddress!, erc20Abi, env.deployer);
+  const [minSwapOut, minSharesOut] = [1, 1];
+  let amount = BigNumber.from(_amount).mul(weiToString(underlying.weiPerUnit)); // 100$ or equivalent
 
-  const input = new Contract(inputAddress!, erc20Abi, env.deployer);
-
-  await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env));
-  await input.approve(strat.contract.address, MaxUint256);
+  if ((await underlying.contract.allowance(env.deployer.address, strat.contract.address)).lt(amount))
+    await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env))
+      .then((tx: TransactionResponse) => tx.wait());
 
   let swapData: any = [];
-  if (underlying.contract.address != input.address) {
+  if (underlying.contract.address != depositAsset.address) {
     const tr = (await getTransactionRequest({
-      input: input.address,
+      input: depositAsset.address,
       output: underlying.contract.address,
-      amountWei: BigInt(amount).toString(),
+      amountWei: amount.toString(),
       inputChainId: network.config.chainId!,
       payer: strat.contract.address,
       testPayer: env.addresses!.accounts!.impersonate,
     })) as ITransactionRequestWithEstimate;
     swapData = ethers.utils.defaultAbiCoder.encode(
       ["address", "uint256", "bytes"],
-      [tr.to, 1, tr.data]
+      [tr.to, minSwapOut, tr.data]
     );
   }
   await logState(env, "Before SwapDeposit");
   const receipt = await strat.contract.swapSafeDeposit(
-    input.address, // input
+    depositAsset.address, // input
     amount, // amount == 100$
     env.deployer.address, // receiver
-    1, // minShareAmount in wei
+    minSharesOut, // minShareAmount in wei
     swapData, // swapData
     getOverrides(env)
   ).then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After SwapDeposit", 5_000);
+  await logState(env, "After SwapDeposit", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"])[0];
 }
 
-export async function seedLiquidity(
-  env: IStrategyDeploymentEnv,
-  amount = 50
-) {
-  const { strat, underlying } = env.deployment!;
-  if (await strat.contract.totalAssets() > await strat.contract.minLiquidity()) {
-    console.log(`Skipping seedLiquidity as totalAssets > minLiquidity`);
-    return BigNumber.from(1);
-  }
-  amount *= underlying.weiPerUnit;
-  await underlying.contract.approve(strat.contract.address, MaxUint256, getOverrides(env));
-  await logState(env, "Before SeedLiquidity");
-  const receipt = await strat.contract.seedLiquidity(amount, MaxUint256, getOverrides(env))
-    .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After SeedLiquidity", 5_000);
-  return getTxLogData(receipt, ["uint256", "uint256"], -2)[0]; // seeded amount
-}
-
-// TODO: add support for multiple inputs
 // input prices are required to weight out the swaps and create the SwapData array
-export async function invest(env: IStrategyDeploymentEnv, amount = 100) {
-  const { underlying, inputs, strat } = env.deployment!;
-  amount *= inputs[0].weiPerUnit; // 100$ or equivalent
+export async function invest(env: IStrategyDeploymentEnv, _amount = 100) {
 
+  const { underlying, inputs, strat } = env.deployment!;
   const stratLiquidity = await strat.contract.available();
+  const [minSwapOut, minIouOut] = [1, 1];
+  let amount = BigNumber.from(_amount).mul(weiToString(underlying.weiPerUnit)); // 100$ or equivalent
+
   if (stratLiquidity.lt(amount)) {
     console.log(`Using stratLiquidity as amount (${stratLiquidity} < ${amount})`);
     amount = stratLiquidity;
   }
 
-  let tr = { to: addressZero, data: "0x00" } as Partial<ITransactionRequestWithEstimate>;
-  const minAmountOut = 1;
-  if (underlying.contract.address != inputs[0].contract.address) {
-    console.log("SwapData required by invest() as underlying != input");
-    tr = (await getTransactionRequest({
-      input: underlying.contract.address,
-      output: inputs[0].contract.address,
-      amountWei: BigInt(amount).toString(),
-      inputChainId: network.config.chainId!,
-      payer: strat.contract.address,
-      testPayer: env.addresses.accounts!.impersonate,
-    })) as ITransactionRequestWithEstimate;
+  const trs = [] as Partial<ITransactionRequestWithEstimate>[];
+  const swapData = [] as string[];
+
+  for (const i in inputs) {
+    let tr = { to: addressZero, data: "0x00" } as ITransactionRequestWithEstimate;
+
+    // only generate swapData if the input is not the underlying
+    if (underlying.contract.address != inputs[i].contract.address) {
+      console.log("Preparing invest() SwapData from inputs/inputWeights");
+      const weight = env.deployment!.initParams[0].inputWeights[i];
+      if (!weight) throw new Error(`No inputWeight found for input ${i} (${inputs[i].symbol})`);
+      tr = (await getTransactionRequest({
+        input: underlying.contract.address,
+        output: inputs[i].contract.address,
+        amountWei: amount.mul(weight).div(10_000).toString(), // using a 10_000 bp basis (10_000 = 100%)
+        inputChainId: network.config.chainId!,
+        payer: strat.contract.address,
+        testPayer: env.addresses.accounts!.impersonate,
+      })) as ITransactionRequestWithEstimate;
+    }
+    trs.push(tr);
+    swapData.push(ethersUtils.defaultAbiCoder.encode(
+      // router, minAmountOut, data // TODO: minSwapOut == pessimistic estimate - slippage
+      ["address", "uint256", "bytes"],
+      [tr.to, minSwapOut, tr.data]
+    ));
   }
-  const swapData = ethers.utils.defaultAbiCoder.encode(
-    ["address", "uint256", "bytes"],
-    [tr.to, minAmountOut, tr.data]
-  );
   await logState(env, "Before Invest");
-  const receipt = await strat.contract.invest(amount, minAmountOut, [swapData], getOverrides(env))
+  const receipt = await strat.contract.invest(amount, minIouOut, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Invest", 5_000);
+  await logState(env, "After Invest", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"])[0];
 }
 
-// TODO: add support for multiple inputs
 // input prices are required to weight out the swaps and create the SwapData array
-export async function liquidate(env: IStrategyDeploymentEnv, amount = 50) {
+export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
   const { underlying, inputs, strat } = env.deployment!;
-  amount *= inputs[0].weiPerUnit; // 10$ or equivalent
+
+  let amount = BigNumber.from(_amount).mul(weiToString(underlying.weiPerUnit)); // 10$ or equivalent
 
   const pendingWithdrawalRequest = await strat.contract.totalPendingUnderlyingRequest();
   const invested = await strat.contract.invested();
@@ -386,40 +421,69 @@ export async function liquidate(env: IStrategyDeploymentEnv, amount = 50) {
     amount = max;
   }
 
-  let swapData: any = [];
-
-  const input = inputs[0].contract.address;
-  const output = underlying.contract.address;
-
-  let tr = { to: addressZero, data: "0x00" } as ITransactionRequestWithEstimate;
-  if (input != output) {
-    tr = (await getTransactionRequest({
-      input,
-      output,
-      amountWei: BigInt(amount).toString(),
-      inputChainId: network.config.chainId!,
-      payer: strat.contract.address, // env.deployer.address
-      testPayer: env.addresses.accounts!.impersonate,
-    })) as ITransactionRequestWithEstimate;
+  if (amount.lt(10)) {
+    console.log(`Skipping liquidate as amount < 10wei (no liquidation required)`);
+    return BigNumber.from(1);
   }
-  swapData = ethersUtils.defaultAbiCoder.encode(
-    ["address", "uint256", "bytes"],
-    [tr.to, 1, tr.data]
-  );
+
+  const trs = [] as Partial<ITransactionRequestWithEstimate>[];
+  const swapData = [] as string[];
+
+  for (const i in inputs) {
+
+    const weight = env.deployment!.initParams[0].inputWeights[i];
+
+    // convert underlying liquidation requirement to inputs[i] wei amount
+    let amountInput = await getSwapperOutputEstimate(
+      underlying.symbol,
+      inputs[i].symbol,
+      amount.mul(weight).div(10_000), // using a 10_000 bp basis (10_000 = 100%)
+      env.network.config.chainId!);
+
+    const stablePair = isStablePair(underlying.symbol, inputs[i].symbol);
+
+    // add .1% slippage to the input amount, .015% if stable (2x as switching from ask estimate->bid)
+    // NB: in case of a volatility event (eg. news/depeg), the liquidity would be one sided
+    // and these estimates would be off. Liquidation would require manual parametrization
+    // using more pessimistic amounts (eg. more slippage) in the swapData generation
+    amountInput = amountInput.add(amountInput.div((stablePair ? 6666 : 1000)*2));
+
+    let swapData: any = [];
+
+    let tr = { to: addressZero, data: "0x00" } as ITransactionRequestWithEstimate;
+    // only generate swapData if the input is not the underlying
+    if (underlying.contract.address != inputs[i].contract.address) {
+      tr = (await getTransactionRequest({
+        input: inputs[i].contract.address,
+        output: underlying.contract.address,
+        amountWei: amountInput.mul(weight).div(10_000).toString(), // using a 10_000 bp basis (10_000 = 100%)
+        inputChainId: network.config.chainId!,
+        payer: strat.contract.address, // env.deployer.address
+        testPayer: env.addresses.accounts!.impersonate,
+      })) as ITransactionRequestWithEstimate;
+      if (!tr.to)
+        throw new Error(`No swapData generated for ${inputs[i].contract.address} -> ${underlying.contract.address}`);
+    }
+    trs.push(tr);
+    swapData.push(ethersUtils.defaultAbiCoder.encode(
+      ["address", "uint256", "bytes"],
+      [tr.to, 1, tr.data]
+    ));
+  }
   await logState(env, "Before Liquidate");
   // const [liquidity, totalAssets] = await strat.liquidate(amount, 1, false, [swapData], { 2e6 });
-  const receipt = await strat.contract.liquidate(amount, 1, false, [swapData], getOverrides(env))
+  const receipt = await strat.contract.liquidate(amount, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Liquidate", 5_000);
+  await logState(env, "After Liquidate", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256", "uint256"])[2]; // liquidityAvailable
 }
 
-export async function withdraw(env: IStrategyDeploymentEnv, amount = 50) {
-  const { underlying, inputs, strat } = env.deployment!;
-  amount *= underlying.weiPerUnit; // 10$ or equivalent
-  const minAmount = 1; // TODO: change with staticCall
+export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
 
+  const { underlying, inputs, strat } = env.deployment!;
+  const minAmountOut = 1; // TODO: change with staticCall
   const max = await strat.contract.maxWithdraw(env.deployer.address);
+  let amount = BigNumber.from(_amount).mul(weiToString(underlying.weiPerUnit)); // 10$ or equivalent
 
   if (max.lt(10)) {
     console.log(`Skipping withdraw as maxWithdraw < 10wei (no exit possible at this time)`);
@@ -433,19 +497,20 @@ export async function withdraw(env: IStrategyDeploymentEnv, amount = 50) {
 
   await logState(env, "Before Withdraw");
   const receipt = await strat.contract.safeWithdraw(
-    amount, minAmount, env.deployer.address, env.deployer.address,
+    amount, minAmountOut, env.deployer.address, env.deployer.address,
     getOverrides(env)
   ).then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Withdraw", 5_000);
+  await logState(env, "After Withdraw", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered
 }
 
-export async function requestWithdraw(env: IStrategyDeploymentEnv, amount = 50) {
+export async function requestWithdraw(env: IStrategyDeploymentEnv, _amount = 50) {
 
   const { underlying, inputs, strat } = env.deployment!;
-  amount *= underlying.weiPerUnit; // 10$ or equivalent
-
   const balance = await strat.contract.balanceOf(env.deployer.address);
+  const pendingRequest = await strat.contract.pendingUnderlyingRequest(env.deployer.address);
+  let amount = BigNumber.from(_amount).mul(weiToString(underlying.weiPerUnit)); // 10$ or equivalent
+
   if (balance.lt(10)) {
     console.log(`Skipping requestWithdraw as balance < 10wei (user owns no shares)`);
     return BigNumber.from(1);
@@ -456,18 +521,16 @@ export async function requestWithdraw(env: IStrategyDeploymentEnv, amount = 50) 
     amount = balance;
   }
 
-  // TODO: use await strat.contract.pendingUnderlyingRequest (not available atm but next deployments)
-  const request = (await strat.contract.pendingRedeemRequest(env.deployer.address)).mul(
-    await strat.contract.sharePrice()).div(strat.weiPerUnit);
-  if (request.gte(BigNumber.from(amount).mul(underlying.weiPerUnit))) {
+  if (pendingRequest.gte(amount.mul(weiToString(underlying.weiPerUnit)))) {
     console.log(`Skipping requestWithdraw as pendingRedeemRequest > amount`);
     return BigNumber.from(1);
   }
   await logState(env, "Before RequestWithdraw");
   const receipt = await strat.contract.requestWithdraw(
     amount,
-    env.deployer.address, env.deployer.address, getOverrides(env)
+    env.deployer.address, env.deployer.address,
+    getOverrides(env)
   ).then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After RequestWithdraw", 5_000);
+  await logState(env, "After RequestWithdraw", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered
 }

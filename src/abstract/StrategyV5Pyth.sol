@@ -25,11 +25,16 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     using PythUtils for uint256;
 
     // Third party contracts
-    IPyth internal pyth; // Pyth oracle
+    IPythAggregator internal pyth; // Pyth oracle
     bytes32 internal underlyingPythId; // Pyth id of the underlying asset
     bytes32[8] internal inputPythIds; // Pyth id of the inputs
     uint8 internal underlyingDecimals; // Decimals of the underlying asset
     uint8[8] internal inputDecimals; // Decimals of the input asset
+
+    /**
+     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
+     */
+    constructor(string[3] memory _erc20Metadata) StrategyV5(_erc20Metadata) {}
 
     struct PythParams {
         address pyth;
@@ -55,7 +60,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @param _pythParams Pyth specific parameters
      */
     function updatePyth(PythParams calldata _pythParams) public onlyAdmin {
-        pyth = IPyth(_pythParams.pyth);
+        pyth = IPythAggregator(_pythParams.pyth);
         underlyingPythId = _pythParams.underlyingPythId;
         underlyingDecimals = underlying.decimals();
 
@@ -74,9 +79,13 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     function underlyingExchangeRate(uint8 inputId) public view returns (uint256) {
         if (inputPythIds[inputId] == underlyingPythId)
             return weiPerShare; // == weiPerUnit of underlying == 1:1
-        return pyth.getPrice(inputPythIds[inputId]).toUint256(inputDecimals[inputId]) // input (quote) price in wei
-                .exchangeRate(
-                    pyth.getPrice(underlyingPythId).toUint256(underlyingDecimals), // underlying (base) price in wei
-                    underlyingDecimals); // underlying (base) decimals (rate divider)
+        PythStructs.Price memory inputPrice = pyth.getPriceUnsafe(inputPythIds[inputId]);
+        PythStructs.Price memory underlyingPrice = pyth.getPriceUnsafe(underlyingPythId);
+        uint256 inputPriceWei = inputPrice.toUint256(inputDecimals[inputId]); // input (quote) price in wei
+        uint256 underlyingPriceWei = underlyingPrice.toUint256(underlyingDecimals); // underlying (base) price in wei
+        uint256 rate = AsMaths.exchangeRate(
+            inputPriceWei, // underlying (base) price in wei
+            underlyingPriceWei, underlyingDecimals); // underlying (base) decimals (rate divider)
+        return rate;
     }
 }

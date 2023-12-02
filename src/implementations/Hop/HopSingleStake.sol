@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
-import "../../abstract/StrategyV5Pyth.sol";
+import "../../abstract/StrategyV5Chainlink.sol";
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
 
@@ -13,12 +13,12 @@ import "./interfaces/IStakingRewards.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title HopStrategy - Liquidity providing on Hop
+ * @title HopSingleStake - Liquidity providing on Hop (single pool)
  * @author Astrolab DAO
  * @notice Basic liquidity providing strategy for Hop protocol (https://hop.exchange/)
  * @dev Underlying->input[0]->LP->rewardPool->LP->input[0]->underlying
  */
-contract HopStrategy is StrategyV5Pyth {
+contract HopSingleStake is StrategyV5Chainlink {
 
     using AsMaths for uint256;
     using SafeERC20 for IERC20;
@@ -32,7 +32,7 @@ contract HopStrategy is StrategyV5Pyth {
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
      */
-    constructor(string[3] memory _erc20Metadata) As4626Abstract(_erc20Metadata) {}
+    constructor(string[3] memory _erc20Metadata) StrategyV5Chainlink(_erc20Metadata) {}
 
     // Struct containing the strategy init parameters
     struct Params {
@@ -45,12 +45,12 @@ contract HopStrategy is StrategyV5Pyth {
     /**
      * @dev Initializes the strategy with the specified parameters.
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
-     * @param _pythParams Pyth specific parameters
+     * @param _chainlinkParams Pyth specific parameters
      * @param _hopParams Hop specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
-        PythParams calldata _pythParams,
+        ChainlinkParams calldata _chainlinkParams,
         Params calldata _hopParams
     ) external onlyAdmin {
 
@@ -64,7 +64,7 @@ contract HopStrategy is StrategyV5Pyth {
         inputs[0] = IERC20Metadata(_baseParams.inputs[0]);
         rewardTokens[0] = _baseParams.rewardTokens[0];
         _setAllowances(MAX_UINT256);
-        StrategyV5Pyth._init(_baseParams, _pythParams);
+        StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
     /**

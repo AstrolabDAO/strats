@@ -26,6 +26,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     using SafeERC20 for IERC20;
 
     /**
+     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
+     */
+    constructor(string[3] memory _erc20Metadata) StrategyV5Abstract(_erc20Metadata) {}
+
+    /**
      * @notice Initialize the strategy
      * @param _params StrategyBaseParams struct containing strategy parameters
      */
@@ -123,7 +128,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
 
         uint256 liquidated = 0;
 
-        // if enough cash, withdraw from the protocol
+        // liquidate only if required (cash shortage on the vault)
         if (liquidityAvailable < _amount) {
             // liquidate protocol positions
             liquidated = _liquidate(_amount, _params);

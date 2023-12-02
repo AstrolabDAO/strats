@@ -51,6 +51,11 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     address[8] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
 
     /**
+     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
+     */
+    constructor(string[3] memory _erc20Metadata) As4626Abstract(_erc20Metadata) {}
+
+    /**
      * @notice Calculates the total pending redemption requests
      * @dev Returns the difference between totalRedemptionRequest and totalClaimableRedemption
      * @return The total amount of pending redemption requests

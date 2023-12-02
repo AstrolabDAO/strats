@@ -17,14 +17,11 @@ import "./As4626.sol";
  * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
  */
 contract StrategyV5Agent is StrategyV5Abstract, As4626 {
-
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for IERC20;
 
-    string[3] DEFAULT_CONSTRUCT = ["", "", ""];
-
-    constructor() StrategyV5Abstract() {}
+    constructor() StrategyV5Abstract(["", "", ""]) {}
 
     /**
      * @notice Initialize the strategy
@@ -137,61 +134,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
     }
 
     /**
-     * @notice Rescue any ERC20 token or ETH that is stuck in the contract
-     * @dev Transfers out all ETH from the contract to the sender, and if `_onlyETH` is false, it also transfers the specified ERC20 token
-     * @param _token The address of the ERC20 token to be rescued. Ignored if `_onlyETH` is true
-     * @param _onlyETH If true, only rescues ETH and ignores ERC20 tokens
-     */
-    function rescueToken(address _token, bool _onlyETH) external onlyAdmin {
-        // send any trapped ETH
-        payable(msg.sender).transfer(address(this).balance);
-
-        if (_onlyETH) return;
-
-        if (_token == address(underlying)) revert();
-        ERC20 tokenToRescue = ERC20(_token);
-        uint256 balance = tokenToRescue.balanceOf(address(this));
-        tokenToRescue.transfer(msg.sender, balance);
-    }
-
-    /**
-     * @notice Withdraw assets denominated in underlying
-     * @dev Beware, there's no slippage control - use safeWithdraw if you want it. Overrides the withdraw function in As4626.
-     * @param _amount The amount of underlying assets to withdraw
-     * @param _receiver The address where the withdrawn assets should be sent
-     * @param _owner The owner of the shares being withdrawn
-     * @return shares The amount of shares burned in the withdrawal process
-     */
-    function withdraw(
-        uint256 _amount,
-        address _receiver,
-        address _owner
-    ) public override(As4626) returns (uint256 shares) {
-        // This represents the amount of shares that we're about to burn
-        shares = convertToShares(_amount);
-        _withdraw(_amount, shares, 0, _receiver, _owner);
-    }
-
-    /**
-     * @dev Overloaded version of withdraw with slippage control. It includes an additional parameter for minimum asset amount control.
-     * @param _amount The amount of underlying assets to withdraw
-     * @param _minAmount The minimum amount of assets we'll accept to mitigate slippage
-     * @param _receiver The address where the withdrawn assets should be sent
-     * @param _owner The owner of the shares being withdrawn
-     * @return shares The amount of shares burned in the withdrawal process
-     */
-    function safeWithdraw(
-        uint256 _amount,
-        uint256 _minAmount,
-        address _receiver,
-        address _owner
-    ) public override returns (uint256 shares) {
-        // This represents the amount of shares that we're about to burn
-        shares = convertToShares(_amount); // We take fees here
-        _withdraw(_amount, shares, _minAmount, _receiver, _owner);
-    }
-
-    /**
      * @notice Swaps an input token to the underlying token and then safely deposits it
      * @param _input The address of the input token to be swapped
      * @param _amount The amount of the input token to swap
@@ -223,7 +165,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
     /**
      * @notice Deposits an amount and then invests it, with control over the minimum share amount
      * @dev This function first makes a safe deposit and then invests the deposited amount.
-     *      It is restricted to onlyAdmin for execution.
+     * It is restricted to onlyAdmin for execution.
      * @param _amount The amount to be deposited and invested
      * @param _receiver The address where the shares from the deposit should be sent
      * @param _minShareAmount The minimum amount of shares expected from the deposit, used for slippage control

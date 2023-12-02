@@ -32,9 +32,7 @@ contract SyncSwapStrategy is StrategyV5Pyth {
     //     _setAllowances(MAX_UINT256);
     // }
 
-    constructor(
-        string[3] memory _erc20Metadata // name, symbol of the share and EIP712 version
-    ) As4626Abstract(_erc20Metadata) {}
+    constructor(string[3] memory _erc20Metadata) StrategyV5Pyth(_erc20Metadata) {}
 
     // Interactions
 
@@ -114,15 +112,11 @@ contract SyncSwapStrategy is StrategyV5Pyth {
         }
     }
 
-    // Utils
-
     /// @notice Set allowances for third party contracts
     function _setAllowances(uint256 _amount) internal override {
         underlying.approve(address(swapper), _amount);
         inputs[0].approve(address(router), _amount);
     }
-
-    // Getters
 
     /// @notice Returns the price of a token compared to another.
     function _getRate(address token) internal pure returns (uint256) {
