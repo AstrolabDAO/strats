@@ -29,7 +29,6 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     bytes32 internal underlyingPythId; // Pyth id of the underlying asset
     bytes32[8] internal inputPythIds; // Pyth id of the inputs
     uint8 internal underlyingDecimals; // Decimals of the underlying asset
-    uint8[8] internal inputDecimals; // Decimals of the input asset
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version

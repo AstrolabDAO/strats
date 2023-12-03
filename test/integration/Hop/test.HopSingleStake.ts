@@ -15,7 +15,7 @@ const seedLiquidityUsd = 10; // Seed liquidity in USD
 
 let env: IStrategyDeploymentEnv;
 
-describe("test.strategy.hop", function () {
+describe(`test.${contract}.${underlyingSymbol}`, function () {
   this.beforeAll(async function () {});
   this.afterAll(async function () {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
@@ -36,7 +36,7 @@ describe("test.strategy.hop", function () {
       console.error(`Hop.${inputSymbol} addresses not found for network ${network.name} (${network.config.chainId})`);
       continue;
     }
-    describe(`Test ${++i}: ${strategyName}`, function () {
+    describe(`Test ${++i}: ${strategyName} ${underlyingSymbol}->${inputSymbol}`, function () {
       this.beforeAll("Deploy and setup strat", async function () {
 
         env = await getEnv({

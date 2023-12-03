@@ -36,27 +36,36 @@ export default merge(addresses, {
       lp: '0xb9cca4Ed3f082a459c0851058D9FBA0B78dD6C7d', // l2SaddleLpToken
       swap: '0x4014DC015641c08788F15bD6eB20dA4c47D936d8', // l2SaddleSwap
       rewardPools: [
+        '0x712F0cf37Bdb8299D0666727F73a5cAbA7c1c24c', // HOP
         '0xC61bA16e864eFbd06a9fe30Aab39D18B8F63710a', // GNO
-        '0x712F0cf37Bdb8299D0666727F73a5cAbA7c1c24c' // HOP
       ],
       rewardTokens: [addresses[100].tokens.HOP],
     },
     "Hop.USDC": {
       lp: '0x9D373d22FD091d7f9A6649EB067557cc12Fb1A0A', // l2SaddleLpToken
       swap: '0x5C32143C8B198F392d01f8446b754c181224ac26', // l2SaddleSwap
-      rewardPools: ['0x5D13179c5fa40b87D53Ff67ca26245D3D5B2F872', '0x636A7ee78faCd079DaBC8f81EDA1D09AA9D440A7'], // rewardsContracts
+      rewardPools: [
+        '0x636A7ee78faCd079DaBC8f81EDA1D09AA9D440A7', // HOP
+        '0x5D13179c5fa40b87D53Ff67ca26245D3D5B2F872', // GNO
+      ], // rewardsContracts
       rewardTokens: [addresses[100].tokens.HOP],
     },
     "Hop.USDT": {
       lp: '0x5b10222f2Ada260AAf6C6fC274bd5810AF9d33c0', // l2SaddleLpToken
       swap: '0x3Aa637D6853f1d9A9354FE4301Ab852A88b237e7', // l2SaddleSwap
-      rewardPools: ['0x2C2Ab81Cf235e86374468b387e241DF22459A265', '0x3d4Cc8A61c7528Fd86C55cfe061a78dCBA48EDd1'], // rewardsContracts
+      rewardPools: [
+        '0x3d4Cc8A61c7528Fd86C55cfe061a78dCBA48EDd1', // HOP
+        '0x2C2Ab81Cf235e86374468b387e241DF22459A265', // GNO
+      ], // rewardsContracts
       rewardTokens: [addresses[100].tokens.HOP],
     },
     "Hop.DAI": {
       lp: '0x5300648b1cFaa951bbC1d56a4457083D92CFa33F', // l2SaddleLpToken
       swap: '0x24afDcA4653042C6D08fb1A754b2535dAcF6Eb24', // l2SaddleSwap
-      rewardPools: ['0x12a3a66720dD925fa93f7C895bC20Ca9560AdFe7', '0xBF7a02d963b23D84313F07a04ad663409CEE5A92'], // rewardsContracts
+      rewardPools: [
+        '0xBF7a02d963b23D84313F07a04ad663409CEE5A92', // HOP
+        '0x12a3a66720dD925fa93f7C895bC20Ca9560AdFe7', // GNO
+      ], // rewardsContracts
       rewardTokens: [addresses[100].tokens.HOP],
     }
   },
@@ -65,25 +74,37 @@ export default merge(addresses, {
     "Hop.WETH": {
       lp: '0x971039bF0A49c8d8A675f839739eE7a42511eC91', // l2SaddleLpToken
       swap: '0x266e2dc3C4c59E42AA07afeE5B09E964cFFe6778', // l2SaddleSwap
-      rewardPools: ['0x7bCeDA1Db99D64F25eFA279BB11CE48E15Fda427', '0xAA7b3a4A084e6461D486E53a03CF45004F0963b7'], // rewardsContracts
+      rewardPools: [
+        '0xAA7b3a4A084e6461D486E53a03CF45004F0963b7', // HOP
+        '0x7bCeDA1Db99D64F25eFA279BB11CE48E15Fda427', // GNO
+      ], // rewardsContracts
       rewardTokens: [addresses[137].tokens.HOP],
     },
     "Hop.USDC": {
       lp: '0x9D373d22FD091d7f9A6649EB067557cc12Fb1A0A', // l2SaddleLpToken
       swap: '0x5C32143C8B198F392d01f8446b754c181224ac26', // l2SaddleSwap
-      rewardPools: ['0x2C2Ab81Cf235e86374468b387e241DF22459A265', '0x7811737716942967Ae6567B26a5051cC72af550E'], // rewardsContracts
+      rewardPools: [
+        '0x7811737716942967Ae6567B26a5051cC72af550E', // HOP
+        '0x2C2Ab81Cf235e86374468b387e241DF22459A265', // GNO
+      ], // rewardsContracts
       rewardTokens: [addresses[137].tokens.HOP],
     },
     "Hop.USDT": {
       lp: '0x3cA3218D6c52B640B0857cc19b69Aa9427BC842C', // l2SaddleLpToken
       swap: '0xB2f7d27B21a69a033f85C42d5EB079043BAadC81', // l2SaddleSwap
-      rewardPools: ['0x07932e9A5AB8800922B2688FB1FA0DAAd8341772', '0x297E5079DF8173Ae1696899d3eACD708f0aF82Ce'], // rewardsContracts
+      rewardPools: [
+        '0x297E5079DF8173Ae1696899d3eACD708f0aF82Ce', // HOP
+        '0x07932e9A5AB8800922B2688FB1FA0DAAd8341772', // GNO
+      ], // rewardsContracts
       rewardTokens: [addresses[137].tokens.HOP],
     },
     "Hop.DAI": {
       lp: '0x8b7aA8f5cc9996216A88D900df8B8a0a3905939A', // l2SaddleLpToken
       swap: '0x25FB92E505F752F730cAD0Bd4fa17ecE4A384266', // l2SaddleSwap
-      rewardPools: ['0x4Aeb0B5B1F3e74314A7Fa934dB090af603E8289b', '0xd6dC6F69f81537Fe9DEcc18152b7005B45Dc2eE7'], // rewardsContracts
+      rewardPools: [
+        '0xd6dC6F69f81537Fe9DEcc18152b7005B45Dc2eE7', // HOP
+        '0x4Aeb0B5B1F3e74314A7Fa934dB090af603E8289b', // GNO
+      ], // rewardsContracts
       rewardTokens: [addresses[137].tokens.HOP],
     }
   },

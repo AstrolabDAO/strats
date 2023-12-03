@@ -116,41 +116,37 @@ contract HopSingleStake is StrategyV5Chainlink {
     /**
      * @notice Invests the underlying asset into the pool
      * @param _amount Max amount of underlying to invest
-     * @param _minIouReceived Min amount of LP tokens to receive
      * @param _params Calldata for swap if input != underlying
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
      */
     function _invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
 
-        uint256 assetsToLp = available();
-        investedAmount = AsMaths.min(assetsToLp, _amount);
+        _amount = AsMaths.min(available(), _amount);
+        uint256 toDeposit;
 
         // The amount we add is capped by _amount
         if (underlying != inputs[0]) {
             // We reuse assetsToLp to store the amount of input tokens to add
-            (assetsToLp, investedAmount) = swapper.decodeAndSwap({
+            (toDeposit, investedAmount) = swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
-                _amount: investedAmount,
+                _amount: _amount,
                 _params: _params[0]
             });
         }
 
-        if (assetsToLp < 1) revert AmountTooLow(assetsToLp);
-
         // Adding liquidity to the pool with the inputs[0] balance
         iouReceived = _addLiquidity({
-            _amount: assetsToLp,
-            _minLpAmount: _minIouReceived
+            _amount: toDeposit,
+            _minLpAmount: 1 // slippage is checked afterwards
         });
 
         rewardPool.stake(iouReceived);
-        if (iouReceived < _minIouReceived)
+        if (iouReceived < _inputToStake(toDeposit).subBp(maxSlippageBps * 2))
             revert AmountTooLow(iouReceived);
     }
 
@@ -165,14 +161,13 @@ contract HopSingleStake is StrategyV5Chainlink {
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
 
-        // Calculate the amount of lp token to unstake
-        uint256 lpToUnstake = (_amount * stakedLpBalance()) / _invested();
-        // Unstake the lp token
-        rewardPool.withdraw(lpToUnstake);
+       _amount = AsMaths.min(_amount, _invested());
+        uint256 toLiquidate = _underlyingToStake(_amount);
+
+        rewardPool.withdraw(toLiquidate);
 
         assetsRecovered = stableRouter.removeLiquidityOneToken({
             tokenAmount: lpToken.balanceOf(address(this)),
-            // tokenIndex: 0,
             tokenIndex: tokenIndex,
             minAmount: 1, // checked after receiving
             deadline: block.timestamp
@@ -187,6 +182,11 @@ contract HopSingleStake is StrategyV5Chainlink {
                 _params: _params[0]
             });
         }
+
+        // unified slippage check (unstake+remove liquidity+swap out)
+        if (assetsRecovered < _amount.subBp(maxSlippageBps * 2))
+            revert AmountTooLow(assetsRecovered);
+
     }
 
     /**
@@ -220,7 +220,56 @@ contract HopSingleStake is StrategyV5Chainlink {
      * @return The staked LP balance
      */
     function stakedLpBalance() public view returns (uint256) {
-        return IStakingRewards(rewardPool).balanceOf(address(this));
+        return rewardPool.balanceOf(address(this));
+    }
+
+
+    /**
+     * @notice Convert LP/staked LP to input
+     * @return Input value of the LP amount
+     */
+    function _stakeToInput(uint256 _amount) internal view returns (uint256) {
+        return _amount.mulDiv(stableRouter.getVirtualPrice(), 1e18); // 1e18 == lpToken[i] decimals
+    }
+
+    /**
+     * @notice Convert LP/staked LP to input
+     * @return Input value of the LP amount
+     */
+    function _stakeToUnderlying(uint256 _amount) internal view returns (uint256) {
+        return _inputToUnderlying(_stakeToInput(_amount), 0);
+    }
+
+    /**
+     * @notice Convert input to LP/staked LP
+     * @return LP value of the input amount
+     */
+    function _inputToStake(uint256 _amount) internal view returns (uint256) {
+        return _amount.mulDiv(1e18, stableRouter.getVirtualPrice());
+    }
+
+    /**
+     * @notice Convert underlying to LP/staked LP
+     * @return LP value of the underlying amount
+     */
+    function _underlyingToStake(uint256 _amount) internal view returns (uint256) {
+        return _inputToStake(_underlyingToInput(_amount, 0));
+    }
+
+    /**
+     * @notice Returns the invested input converted from the staked LP token
+     * @return Input value of the LP/staked balance
+     */
+    function _stakedInput() public view returns (uint256) {
+        return _stakeToInput(rewardPool.balanceOf(address(this)));
+    }
+
+    /**
+     * @notice Returns the invested underlying converted from the staked LP token
+     * @return Underlying value of the LP/staked balance
+     */
+    function _stakedUnderlying() public view returns (uint256) {
+        return _stakeToUnderlying(rewardPool.balanceOf(address(this)));
     }
 
     /**

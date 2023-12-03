@@ -190,9 +190,9 @@ export const addresses = {
     },
     astrolab: {
       Swapper: "0xc3e5550c1c4ed7acfccd785277c45edf1578da14",
-      StrategyV5Agent: "0xed640de00540d8503e453bb8bf1d8657132d3a46",
+      StrategyV5Agent: "",
       "HopSingleStake.USDC": "",
-      "HopSingleStake.WETH": "0x98cbac82de8d64b65b9e5247315acd66f579e7c8",
+      "HopSingleStake.WETH": "",
     },
     tokens: {
       WXDAI: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",

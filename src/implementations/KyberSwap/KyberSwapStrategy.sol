@@ -56,11 +56,9 @@ contract KyberSwapStrategy is StrategyV5Pyth {
 
     /// @notice Invests the underlying asset into the pool
     /// @param _amount Max amount of underlying to invest
-    /// @param _minIouReceived Min amount of LP tokens to receive
     /// @param _params Calldata for swap if input != underlying
     function _invest(
         uint256 _amount,
-        uint256 _minIouReceived,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
         uint256 assetsToLP = available();

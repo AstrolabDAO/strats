@@ -24,7 +24,7 @@ export const deployStrat = async (
 
   // strategy dependencies
   const libraries: { [name: string]: string } = {};
-  const contractUniqueName = `${contract}.${env.deployment?.inputs?.map(i => i.symbol).join("-")}`; // StrategyV5.[inputAddresses.join("-")]
+  const contractUniqueName = name; // `${contract}.${env.deployment?.inputs?.map(i => i.symbol).join("-")}`;
 
   for (const n of libNames) {
     let lib = {} as Contract;
