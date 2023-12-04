@@ -69,7 +69,7 @@ abstract contract As4626Abstract is
         address indexed receiver
     );
     event FeeCollectorUpdated(address indexed feeCollector);
-    event FeesUpdated(uint256 perf, uint256 mgmt, uint256 entry, uint256 exit);
+    event FeesUpdated(Fees fees);
     event MaxTotalAssetsSet(uint256 maxTotalAssets);
 
     // Errors
@@ -87,40 +87,27 @@ abstract contract As4626Abstract is
 
     // Constants
     uint256 internal constant MAX_UINT256 = type(uint256).max;
-    uint256 internal constant ZERO = 0;
-    // State variables for the contract.
 
-    // Base denomination/accounting
-    IERC20Metadata public underlying; // ERC20 token used as the base denomination
-    Checkpoint public last; // Checkpoint tracking latest events
-    uint8 public shareDecimals; // Decimals of the share
-    uint256 public weiPerShare; // Conversion rate of wei to shares
-
-    // Limits
-    uint256 public maxTotalAssets; // Maximum total assets that can be deposited
+    uint16 internal maxSlippageBps = 100; // Strategy default internal ops slippage 1%
+    uint256 internal profitCooldown = 7 days; // Profit linearization period
+    uint256 public maxTotalAssets = MAX_UINT256; // Maximum total assets that can be deposited
     uint256 public minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
 
-    // Profit-related variables
-    uint256 public expectedProfits; // Expected profits
-    uint256 public profitCooldown = 7 days; // Profit linearization period
+    IERC20Metadata public underlying; // ERC20 token used as the base denomination
+    uint8 public shareDecimals; // Decimals of the share
+    uint256 internal weiPerShare; // Conversion rate of wei to shares
+    Checkpoint public last; // Checkpoint tracking latest events
 
-    // Fees
-    Fees internal MAX_FEES = Fees(5_000, 200, 100, 100); // Maximum fees: 50%, 2%, 1%, 1%
-    mapping(address => bool) internal exemptionList; // List of addresses exempted from fees
+    // Profit-related variables
+    uint256 internal expectedProfits; // Expected profits
+
+    // Fees max = Fees(5_000, 200, 100, 100) Maximum fees: 50%, 2%, 1%, 1%
     Fees public fees; // Current fee structure
     address public feeCollector; // Address to collect fees
-    uint256 public claimableUnderlyingFees; // Amount of underlying fees that can be claimed
+    uint256 internal claimableUnderlyingFees; // Amount of underlying fees (entry+exit) that can be claimed
+    mapping(address => bool) public exemptionList; // List of addresses exempted from fees
 
-    // ERC7540
-    mapping(address => Erc7540Request) internal requestByOperator; // Mapping of ERC7540 requests by operator
-    uint256 public redemptionRequestLocktime = 2 days; // Locktime for redemption requests
-
-    uint256 public totalRedemptionRequest; // Total amount requested for redemption
-    uint256 public totalUnderlyingRequest; // Total underlying requested
-    uint256 public totalDepositRequest; // Total amount requested for deposit
-
-    uint256 public totalClaimableRedemption; // Total amount claimable for redemption
-    uint256 public totalClaimableUnderlying; // Total claimable underlying
+    Requests public req;
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
@@ -168,7 +155,7 @@ abstract contract As4626Abstract is
      * @return Amount denominated in underlying
      */
     function available() public view returns (uint256) {
-        return availableClaimable() - totalClaimableUnderlying - minLiquidity;
+        return availableClaimable() - req.totalClaimableUnderlying - minLiquidity;
     }
 
     /**
@@ -207,7 +194,7 @@ abstract contract As4626Abstract is
      * @return Amount denominated in underlying
      */
     function totalAccountedAssets() public view returns (uint256) {
-        return totalAssets() - totalClaimableUnderlying; // approximated
+        return totalAssets() - req.totalClaimableUnderlying; // approximated
     }
 
     /**
@@ -215,7 +202,7 @@ abstract contract As4626Abstract is
      * @return Amount of shares
      */
     function totalAccountedSupply() public view returns (uint256) {
-        return totalSupply() - totalClaimableRedemption;
+        return totalSupply() - req.totalClaimableRedemption;
     }
 
     /**
@@ -273,7 +260,7 @@ abstract contract As4626Abstract is
     function pendingRedeemRequest(
         address operator
     ) external view returns (uint256) {
-        return requestByOperator[operator].shares;
+        return req.byOperator[operator].shares;
     }
 
     /**
@@ -284,7 +271,7 @@ abstract contract As4626Abstract is
     function pendingUnderlyingRequest(
         address operator
     ) external view returns (uint256) {
-        Erc7540Request memory request = requestByOperator[operator];
+        Erc7540Request memory request = req.byOperator[operator];
         uint256 price = AsMaths.min(request.sharePrice, sharePrice());
         return request.shares.mulDiv(price, weiPerShare);
     }
@@ -300,7 +287,7 @@ abstract contract As4626Abstract is
         return
             requestTimestamp <
             AsMaths.max(
-                block.timestamp - redemptionRequestLocktime,
+                block.timestamp - req.redemptionLocktime,
                 last.liquidate
             );
     }
@@ -312,7 +299,7 @@ abstract contract As4626Abstract is
     function maxClaimableUnderlying() public view returns (uint256) {
         return
             AsMaths.min(
-                totalUnderlyingRequest,
+                req.totalUnderlying,
                 underlying.balanceOf(address(this)) -
                     claimableUnderlyingFees -
                     AsAccounting.unrealizedProfits(
@@ -329,10 +316,10 @@ abstract contract As4626Abstract is
      * @return The maximum redemption claim for the owner
      */
     function maxRedemptionClaim(address _owner) public view returns (uint256) {
-        Erc7540Request memory request = requestByOperator[_owner];
+        Erc7540Request memory request = req.byOperator[_owner];
         return
             isRequestClaimable(request.timestamp)
-                ? AsMaths.min(request.shares, totalClaimableRedemption)
+                ? AsMaths.min(request.shares, req.totalClaimableRedemption)
                 : 0;
     }
 }

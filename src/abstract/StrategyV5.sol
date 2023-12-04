@@ -28,7 +28,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
      */
-    constructor(string[3] memory _erc20Metadata) StrategyV5Abstract(_erc20Metadata) {}
+    constructor(
+        string[3] memory _erc20Metadata
+    ) StrategyV5Abstract(_erc20Metadata) {}
 
     /**
      * @notice Initialize the strategy
@@ -40,10 +42,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         stratProxy = address(this);
         underlying = ERC20(_params.underlying);
         agent = _params.coreAddresses[2];
-        // StrategyV5Agent.init()
+        if (agent == address(0)) revert AddressZero();
         _delegateWithSignature(
             agent,
-            "init(((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[]))"
+            "init(((uint64,uint64,uint64,uint64),address,address[3],address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
         );
     }
 
@@ -62,6 +64,22 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
+     * @notice Changes the strategy underlying token (automatically pauses the strategy)
+     * called from oracle implementations
+     * @param _underlying Address of the token
+     * @param _swapData Swap callData oldUnderlying->newUnderlying
+     */
+    function _updateUnderlying(
+        address _underlying,
+        bytes calldata _swapData
+    ) internal {
+        _delegateWithSignature(
+            agent,
+            "updateUnderlying(address,bytes)" // StrategyV5Agent.updateUnderlying(_underlying, _swapData)
+        );
+    }
+
+    /**
      * @notice Sets the agent (StrategyV5Agent implementation)
      * @param _agent The new agent address
      */
@@ -72,20 +90,19 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
-     * @notice Strategy liquidation (unfolding mechanism)
-     * @dev Abstract function to be implemented by the strategy
-     * @param _amount Amount of underlyings to liquidate
-     * @param _params Generic callData (e.g., SwapperParams)
-     * @return assetsRecovered Amount of assets recovered from the liquidation
+     * @notice Withdraw asset function, can remove all funds in case of emergency
+     * @param _amounts Amounts of asset to withdraw
+     * @param _params Swaps calldata
+     * @return assetsRecovered Amount of asset withdrawn
      */
     function _liquidate(
-        uint256 _amount,
+        uint256[8] calldata _amounts, // from previewLiquidate()
         bytes[] memory _params
     ) internal virtual returns (uint256 assetsRecovered) {}
 
     /**
      * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function.
-     * @param _amount Amount of underlyings to liquidate
+     * @param _amounts Amount of inputs to liquidate (in underlying)
      * @param _minLiquidity Minimum amount of assets to receive
      * @param _panic Set to true to ignore slippage when unfolding
      * @param _params Generic callData (e.g., SwapperParams)
@@ -93,7 +110,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @return Total assets in the strategy after unfolding
      */
     function liquidate(
-        uint256 _amount,
+        uint256[8] calldata _amounts,
         uint256 _minLiquidity,
         bool _panic,
         bytes[] memory _params
@@ -103,9 +120,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         nonReentrant
         returns (uint256 liquidityAvailable, uint256)
     {
-        liquidityAvailable = available();
-        uint256 allocated = _invested();
-
         // pre-liquidation sharePrice
         uint256 price = sharePrice();
         uint256 underlyingRequests = totalPendingRedemptionRequest().mulDiv(
@@ -113,59 +127,35 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
             weiPerShare
         );
 
-        // if not in panic, liquidate must fulfill minLiquidity+withdrawal requests
-        if (!_panic && _amount <
-            AsMaths.max(
-                minLiquidity.subMax0(liquidityAvailable + allocated),
-                underlyingRequests // pending underlying requests
-            )
-        ) revert AmountTooLow(_amount);
-
-        // pani or less assets than requested >> liquidate all
-        if (_panic || _amount > allocated) {
-            _amount = allocated;
-        }
-
-        uint256 liquidated = 0;
-
-        // liquidate only if required (cash shortage on the vault)
-        if (liquidityAvailable < _amount) {
-            // liquidate protocol positions
-            liquidated = _liquidate(_amount, _params);
-            liquidityAvailable += liquidated;
-
-            // Check that we have enough assets to return
-            if ((liquidityAvailable < _minLiquidity) && !_panic)
-                revert AmountTooLow(liquidityAvailable);
-        }
-
-        totalClaimableUnderlying = AsMaths.min(
-            totalUnderlyingRequest,
-            totalClaimableUnderlying + liquidated
+        _minLiquidity = AsMaths.min(
+            _minLiquidity,
+            underlyingRequests // pending underlying requests
         );
 
-        totalClaimableRedemption = AsMaths.min(
-            totalRedemptionRequest,
-            totalClaimableUnderlying.mulDiv(weiPerShare, price)
+        // liquidate protocol positions
+        uint256 liquidated = _liquidate(_amounts, _params);
+        uint256 claimable = availableClaimable();
+
+        req.totalClaimableUnderlying = AsMaths.min(
+            req.totalUnderlying,
+            req.totalClaimableUnderlying + liquidated
         );
+
+        req.totalClaimableRedemption = AsMaths.min(
+            req.totalClaimableRedemption,
+            req.totalClaimableUnderlying.mulDiv(weiPerShare, price)
+        );
+
+        uint256 cash = claimable - req.totalClaimableUnderlying - minLiquidity;
+
+        if ((cash < _minLiquidity) && !_panic)
+            revert AmountTooLow(liquidityAvailable);
 
         last.liquidate = block.timestamp;
 
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
         return (liquidityAvailable, totalAssets());
     }
-
-    /**
-     * @notice Amount of rewards available to harvest
-     * @dev Abstract function to be implemented by the strategy
-     * @return amounts Amount of reward tokens available
-     */
-    function _rewardsAvailable()
-        public
-        view
-        virtual
-        returns (uint256[] memory amounts)
-    {}
 
     /**
      * @dev Internal function to liquidate a specified amount, to be implemented by strategies
@@ -216,37 +206,30 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
-     * @dev Internal function for investment, to be implemented by specific strategies
-     * @param _amount Amount to be invested
-     * @param _params Additional parameters for the investment, typically passed as generic callData
-     * @return investedAmount Actual amount that was invested
-     * @return iouReceived The IOU received from the investment
+     * @notice Invests the underlying asset into the pool
+     * @param _amounts Amounts of underlying to invest in each input
+     * @param _params Swaps calldata
+     * @return investedAmount Amount invested
+     * @return iouReceived Amount of LP tokens received
      */
     function _invest(
-        uint256 _amount,
+        uint256[8] calldata _amounts, // from previewInvest()
         bytes[] memory _params
     ) internal virtual returns (uint256 investedAmount, uint256 iouReceived) {}
 
     /**
-     * @notice Inputs prices fetched from price aggregator (e.g., 1inch)
-     * @dev Abstract function to be implemented by the strategy
-     * @param _amount Amount of inputs to be invested
-     * @param _params Generic callData (e.g., SwapperParams)
-     * @return investedAmount Amount invested in the strategy
-     * @return iouReceived IOUs received from the investment
+     * @notice Invests the underlying asset into the pool
+     * @param _amounts Amounts of underlying to invest in each input
+     * @param _params Swaps calldata
+     * @return investedAmount Amount invested
+     * @return iouReceived Amount of LP tokens received
      */
     function invest(
-        uint256 _amount,
+        uint256[8] calldata _amounts, // from previewInvest()
         bytes[] memory _params
-    ) public returns (uint256 investedAmount, uint256 iouReceived) {
-        if (_amount == 0) _amount = available();
-        // generic swap execution
-        (investedAmount, iouReceived) = _invest(
-            _amount,
-            _params
-        );
-
-        emit Invest(_amount, block.timestamp);
+    ) public onlyManager returns (uint256 investedAmount, uint256 iouReceived) {
+        (investedAmount, iouReceived) = _invest(_amounts, _params);
+        emit Invest(investedAmount, block.timestamp);
         return (investedAmount, iouReceived);
     }
 
@@ -254,52 +237,45 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @notice Compounds the strategy using SwapData for both harvest and invest
      * @dev Pass a conservative _amount (e.g., available() + 90% of rewards valued in underlying)
      * to ensure the underlying->inputs swaps
-     * @param _amount Amount of underlying to be invested (after harvest)
+     * @param _amounts Amount of inputs to invest (in underlying, after harvest-> should include rewards)
      * @param _params Generic callData (harvest+invest SwapperParams)
      * @return iouReceived IOUs received from the compound operation
      * @return harvestedRewards Amount of rewards harvested
      */
     function _compound(
-        uint256 _amount,
+        uint256[8] calldata _amounts,
         bytes[] memory _params // rewardTokens(0...n)->underling() / underlying()->inputs(0...n) with underlyingWeights(0...n)
     ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
         // we expect the SwapData to cover harvesting + investing
-        if (_params.length != (rewardTokens.length + inputs.length))
+        if (_params.length != (rewardLength + inputLength))
             revert InvalidCalldata();
 
         // harvest using the first calldata bytes (swap rewards->underlying)
         harvestedRewards = harvest(_params.slice(0, rewardTokens.length));
-
-        _amount = AsMaths.min(_amount, available());
-
-        (, iouReceived) = _invest({
-            _amount: _amount,
-            // invest using the second calldata bytes (swap underlying->inputs)
-            _params: _params.slice(rewardTokens.length, _params.length) // new bytes[](0) // no swap data needed
-        });
+        (, iouReceived) = _invest(
+            _amounts,
+            _params.slice(rewardTokens.length, _params.length)
+        ); // invest using the second calldata bytes (swap underlying->inputs)
         return (iouReceived, harvestedRewards);
     }
 
     /**
      * @notice Executes the compound operation in the strategy
-     * @param _amount Amount to compound in the strategy
+     * @param _amounts Amounts of inputs to compound (in underlying, after harvest-> should include rewards)
      * @param _params Generic callData for the compound operation
      * @return iouReceived IOUs received from the compound operation
      * @return harvestedRewards Amount of rewards harvested
      */
     function compound(
-        uint256 _amount,
+        uint256[8] calldata _amounts,
         bytes[] memory _params
     )
         external
         onlyKeeper
         returns (uint256 iouReceived, uint256 harvestedRewards)
     {
-        (iouReceived, harvestedRewards) = _compound(
-            _amount,
-            _params
-        );
-        emit Compound(_amount, block.timestamp);
+        (iouReceived, harvestedRewards) = _compound(_amounts, _params);
+        emit Compound(iouReceived, block.timestamp);
     }
 
     /**
@@ -309,13 +285,195 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     function _setAllowances(uint256 _amount) internal virtual {}
 
     /**
-     * @dev Internal virtual function to swap rewards, to be implemented by specific strategies
-     * @param _minAmountsOut Minimum amounts out expected from the swap
-     * @param _params Additional parameters for the swap operation, typically passed as generic callData
-     * @return amountsOut The total amounts out received from the swap
+     * @notice Converts underlying wei amount to input wei amount
+     * @return Input amount in wei
+     * @dev Abstract function to be implemented by the oracle or the strategy
      */
-    function _swapRewards(
-        uint256[] memory _minAmountsOut,
-        bytes memory _params
-    ) internal virtual returns (uint256 amountsOut) {}
+    function _underlyingToInput(
+        uint256 _amount,
+        uint8 _index
+    ) internal view virtual returns (uint256) {}
+
+    /**
+     * @notice Converts input wei amount to underlying wei amount
+     * @return Underlying amount in wei
+     * @dev Abstract function to be implemented by the oracle or the strategy
+     */
+    function _inputToUnderlying(
+        uint256 _amount,
+        uint8 _index
+    ) internal view virtual returns (uint256) {}
+
+    /**
+     * @notice Convert LP/staked LP to input
+     * @return Input value of the LP amount
+     * @dev Abstract function to be implemented by the oracle or the strategy
+     */
+    function _stakeToInput(
+        uint256 _amount,
+        uint8 _index
+    ) internal view virtual returns (uint256) {}
+
+    /**
+     * @notice Convert input to LP/staked LP
+     * @return LP value of the input amount
+     * @dev Abstract function to be implemented by the oracle or the strategy
+     */
+    function _inputToStake(
+        uint256 _amount,
+        uint8 _index
+    ) internal view virtual returns (uint256) {}
+
+    /**
+     * @notice Returns the invested input converted from the staked LP token
+     * @return Input value of the LP/staked balance
+     * @dev Abstract function to be implemented by the oracle or the strategy
+     */
+    function _stakedInput(
+        uint8 _index
+    ) internal view virtual returns (uint256) {}
+
+    /**
+     * @notice Returns the invested underlying converted from the staked LP token
+     * @return Underlying value of the LP/staked balance
+     * @dev Abstract function to be implemented by the oracle or the strategy
+     */
+    function _stakedUnderlying(
+        uint8 _index
+    ) internal view virtual returns (uint256) {}
+
+    /**
+     * @notice Convert LP/staked LP to input
+     * @return Input value of the LP amount
+     */
+    function _stakeToUnderlying(
+        uint256 _amount,
+        uint8 _index
+    ) internal view returns (uint256) {
+        return _inputToUnderlying(_stakeToInput(_amount, _index), _index);
+    }
+
+    /**
+     * @notice Convert underlying to LP/staked LP
+     * @return LP value of the underlying amount
+     */
+    function _underlyingToStake(
+        uint256 _amount,
+        uint8 _index
+    ) internal view returns (uint256) {
+        return _inputToStake(_underlyingToInput(_amount, _index), _index);
+    }
+
+    /**
+     * @dev Calculate the excess weight for a given input index.
+     * @param _index Index of the input
+     * @param _total Total invested amount
+     * @return int256 Excess weight (/10_000)
+     */
+    function _excessWeight(
+        uint8 _index,
+        uint256 _total
+    ) internal view returns (int256) {
+        if (_total == 0) _total = _invested();
+        return
+            int256(_stakedUnderlying(_index).mulDiv(10_000, _total)) -
+            int256(uint256(inputWeights[_index]));
+    }
+
+    /**
+     * @dev Calculate the excess liquidity for a given input index.
+     * @param _index Index of the input
+     * @param _total Total invested amount
+     * @return int256 Excess liquidity
+     */
+    function _excessLiquidity(
+        uint8 _index,
+        uint256 _total
+    ) internal view returns (int256) {
+        if (_total == 0) _total = _invested();
+        return
+            int256(_stakedUnderlying(_index)) -
+            int256(_total.mulDiv(uint256(inputWeights[_index]), 10_000));
+    }
+
+    /**
+     * @dev Calculate the excess weights for all inputs.
+     * @param _total Total invested amount
+     * @return excessWeights int256[8] Excess weights for each input
+     */
+    function _excessWeights(
+        uint256 _total
+    ) internal view returns (int256[8] memory excessWeights) {
+        if (_total == 0) _total = _invested();
+        for (uint8 i = 0; i < inputLength; i++)
+            excessWeights[i] = _excessWeight(i, _total);
+    }
+
+    /**
+     * @dev Calculate the excess liquidity for all inputs.
+     * @param _total Total invested amount
+     * @return excessLiquidity int256[8] Excess liquidity for each input
+     */
+    function _excessLiquidity(
+        uint256 _total
+    ) internal view returns (int256[8] memory excessLiquidity) {
+        if (_total == 0) _total = _invested();
+        for (uint8 i = 0; i < inputLength; i++)
+            excessLiquidity[i] = _excessLiquidity(i, _total);
+    }
+
+    /**
+     * @dev Preview the amounts that would be liquidated based on the given amount.
+     * @param _amount Amount of underlying to liquidate with
+     * @return amounts uint256[8] Previewed liquidation amounts for each input
+     */
+    function previewLiquidate(
+        uint256 _amount
+    ) public view returns (uint256[8] memory amounts) {
+        uint256 allocated = _invested();
+        if (_amount == 0)
+            _amount = totalPendingUnderlyingRequest() + allocated.bp(100); // defaults to requests + 1% offset to buffer flows
+        int256[8] memory excess = _excessLiquidity(allocated - _amount);
+        for (uint8 i = 0; i < inputLength; i++) {
+            if (_amount < 10) break; // no leftover
+            if (excess[i] > 0) {
+                uint256 need = AsMaths.min(excess[i].abs(), _amount);
+                amounts[i] = need;
+                _amount -= need;
+            }
+        }
+    }
+
+    /**
+     * @dev Preview the amounts that would be invested based on the given amount.
+     * @param _amount Amount of underlying to invest with
+     * @return amounts uint256[8] Previewed investment amounts for each input
+     */
+    function previewInvest(
+        uint256 _amount
+    ) public view returns (uint256[8] memory amounts) {
+        if (_amount == 0)
+            _amount = available().subBp(1_000); // only invest 90% of liquidity for buffered flows
+        int256[8] memory excess = _excessLiquidity(_invested() + _amount);
+        for (uint8 i = 0; i < inputLength; i++) {
+            if (_amount < 10) break; // no leftover
+            if (excess[i] < 0) {
+                uint256 need = AsMaths.min(excess[i].abs(), _amount);
+                amounts[i] = need;
+                _amount -= need;
+            }
+        }
+    }
+
+    /**
+     * @notice Amount of rewards available to harvest
+     * @dev Abstract function to be implemented by the strategy
+     * @return amounts Amount of reward tokens available
+     */
+    function _rewardsAvailable()
+        public
+        view
+        virtual
+        returns (uint256[] memory amounts)
+    {}
 }

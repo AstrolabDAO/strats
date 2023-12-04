@@ -184,15 +184,17 @@ export const addresses = {
       Pyth: "0x2880aB155794e7179c9eE2e38200202908C17B43",
     },
     libs: {
-      AsMaths: "0x3a6df92d78c78568996b69f367815817c0f78933",
-      AsAccounting: "0x81a4ece332d60673a578b70cc01137617be883b9",
-      PythUtils: "0x47a84e64a9b50d6f489f9ab58db1ab7a2719c42b",
+      AsMaths: "0x337a7132e8c07a5e6d32cf77ccb299f83cf4c70d",
+      AsArrays: "",
+      AsAccounting: "0x4c2404ee50b8792c7a3bea4236325410130a61b5",
+      PythUtils: "",
     },
     astrolab: {
-      Swapper: "0xc3e5550c1c4ed7acfccd785277c45edf1578da14",
-      StrategyV5Agent: "",
+      Swapper: "0x597a3df5638cf5f5713f2c74147fbc096e4dbdb0",
+      StrategyV5Agent: "0xec0332adf0ce8a1e1730a0118577d84fa74e7a07",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
+      "Astrolab Hop TriStable": "0xa790c48778b6865af6ec6d4def48a257c8bb818d",
     },
     tokens: {
       WXDAI: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",

@@ -66,6 +66,19 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     }
 
     /**
+     * @notice Changes the strategy underlying token (automatically pauses the strategy)
+     * @param _underlying Address of the token
+     * @param _swapData Swap callData oldUnderlying->newUnderlying
+     * @param _priceFeed Address of the Chainlink price feed
+     */
+    function updateUnderlying(address _underlying, bytes calldata _swapData, address _priceFeed) external onlyAdmin {
+        if (_priceFeed == address(0)) revert AddressZero();
+        underlyingPriceFeed = IChainlinkAggregatorV3(_priceFeed);
+        underlyingFeedDecimals = underlyingPriceFeed.decimals();
+        _updateUnderlying(_underlying, _swapData);
+    }
+
+    /**
      * @notice Computes the underlying/input exchange rate from Chainlink oracle price feeds in bps
      * @dev Used by invested() to compute input->underlying (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment
@@ -95,15 +108,15 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @notice Converts underlying wei amount to input wei amount
      * @return Input amount in wei
      */
-    function _underlyingToInput(uint256 _amount, uint8 _index) internal view returns (uint256) {
+    function _underlyingToInput(uint256 _amount, uint8 _index) internal view override returns (uint256) {
         return _amount.mulDiv(10**inputDecimals[_index], underlyingExchangeRate(_index));
     }
 
-    /**
+/**
      * @notice Converts input wei amount to underlying wei amount
      * @return Underlying amount in wei
      */
-    function _inputToUnderlying(uint256 _amount, uint8 _index) internal view returns (uint256) {
+    function _inputToUnderlying(uint256 _amount, uint8 _index) internal view override returns (uint256) {
         return _amount.mulDiv(underlyingExchangeRate(_index), 10**inputDecimals[_index]);
     }
 }

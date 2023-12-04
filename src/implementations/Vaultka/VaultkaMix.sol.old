@@ -5,8 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
-import "./interfaces/IStableRouter.sol";
-import "./interfaces/IStakingRewards.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -14,20 +12,20 @@ import "./interfaces/IStakingRewards.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title HopMultiStake - Liquidity providing on Hop (n stable (max 5), eg. USDC+USDT+DAI)
+ * @title HopMultiStake - Liquidity providing on Vaultka (n stable (max 5), eg. USDC+USDT+DAI)
  * @author Astrolab DAO
  * @notice Basic liquidity providing strategy for Hop protocol (https://hop.exchange/)
  * @dev Underlying->input[0]->LP->rewardPools->LP->input[0]->underlying
  */
-contract HopMultiStake is StrategyV5Chainlink {
+contract VaultkaMix is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IERC20Metadata[5] public lpTokens; // LP token of the pool
-    IStableRouter[5] public stableRouters; // SaddleSwap
-    IStakingRewards[5] public rewardPools; // Reward pool
+    // IERC20Metadata[5] public lpTokens; // LP token of the pool
+    // IStableRouter[5] public stableRouters; // SaddleSwap
+    // IStakingRewards[5] public rewardPools; // Reward pool
     uint8[5] public tokenIndexes;
 
     /**
@@ -53,7 +51,7 @@ contract HopMultiStake is StrategyV5Chainlink {
      */
     function init(
         StrategyBaseParams calldata _baseParams,
-        ChainlinkParams calldata _chainlinkParams,
+        PyhtParams calldata _chainlinkParams,
         Params calldata _hopParams
     ) external onlyAdmin {
         for (uint8 i = 0; i < _hopParams.lpTokens.length; i++) {
@@ -126,7 +124,6 @@ contract HopMultiStake is StrategyV5Chainlink {
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
      */
-     // TODO: return ious[]
     function _invest(
         uint256[8] calldata _amounts, // from previewInvest()
         bytes[] memory _params

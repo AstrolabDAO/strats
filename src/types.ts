@@ -18,6 +18,17 @@ export type Erc20Metadata = [string, string, string];
 // fees, underlying, feeCollector
 export type As4626InitParams = [Fees, string, string];
 
+export interface IStrategyDesc {
+    name: string;
+    symbol: string;
+    version: number;
+    contract: string;
+    underlying: string;
+    inputs: string[];
+    inputWeights: number[];
+    seedLiquidityUsd: number;
+}
+
 export interface IStrategyBaseParams {
     fees: Fees,
     underlying: string,
@@ -57,11 +68,10 @@ export interface IStrategyDeployment extends IDeployment {
     rewardTokens: IToken[];
 }
 
-export interface IToken {
-    contract: Contract;
-    multicallContract: MulticallContract;
-    symbol: string;
-    decimals: number;
+export interface IToken extends Contract {
+    multi: MulticallContract;
+    sym: string;
+    scale: number;
     weiPerUnit: number;
 }
 

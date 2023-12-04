@@ -23,19 +23,19 @@
   resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.6.tgz#25a2b22bdc0d9aa01daff4abcba9a4ac0e1576df"
   integrity sha512-Gxi5iVe8gg5bhEK3/IImUgeg+zauD8+dshyf7tSoVhQCvGe0DFNrXL89zCyBvja2lz1halK4+jYBU7cvhi2pDw==
 
-"@astrolabs/registry@^1.0.17":
-  version "1.0.17"
-  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.17.tgz#574cc281230e2083a33adc19000daf1680200c73"
-  integrity sha512-XMXnBQx/vAwqodUBpFY9gFa0van+PKrFM3nXcVqnjLWDi+G06sQksevWSrgX0p0BmXS1Bha20XBuD3gE2FzsQg==
+"@astrolabs/registry@^1.0.19":
+  version "1.0.20"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.20.tgz#999263693ef26d9bfe3e28a701636b5f860c4a93"
+  integrity sha512-dOLa/XYKfIreU8pqUpu2LmC2isCMLTcOGYSo8UXfzAroiuxbV/GNWoAuaO5SiCQP1Myn6W7gIm0XLfxYT3d/sA==
   dependencies:
-    "@astrolabs/registry" "^1.0.8"
+    "@astrolabs/registry" "^1.0.19"
 
-"@astrolabs/registry@^1.0.8":
-  version "1.0.10"
-  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.10.tgz#7ad0410526bb4ed11fdf364d2a16ba2c3c79a2e6"
-  integrity sha512-Et11igNGx4ZPACmKSQwS7qLLbrTk+L+5vFnq04zPkJ9tMxuchqU1u5WlYrAA1Sm5oT2J4s6K69Mbu4q4OiEvEA==
+"@astrolabs/registry@^1.0.24":
+  version "1.0.24"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.24.tgz#8ac593c32c162b0f850167ff0328bf617374f548"
+  integrity sha512-pZ3VW1fPpUvisemFn9WEn0IXkvJW/IjvoCuTrLpAP5qHnu7nEQqvwDf1PON0NYVi/oeXo7SPINhlpx3neyYSdA==
   dependencies:
-    "@astrolabs/registry" "^1.0.8"
+    "@astrolabs/registry" "^1.0.19"
 
 "@astrolabs/swapper@^1.0.13":
   version "1.0.13"

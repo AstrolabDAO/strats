@@ -35,14 +35,17 @@ abstract contract As4626 is As4626Abstract {
         address _feeCollector
     ) public virtual onlyAdmin {
         // check that the fees are not too high
-        if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
+        // if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
         fees = _fees;
-        underlying = IERC20Metadata(_underlying);
         feeCollector = _feeCollector;
-        // use the same decimals as the underlying
+
+        underlying = IERC20Metadata(_underlying);
         shareDecimals = underlying.decimals();
         weiPerShare = 10 ** shareDecimals;
         last.accountedSharePrice = weiPerShare;
+        last.feeCollection = block.timestamp;
+        last.liquidate = block.timestamp;
+        last.harvest = block.timestamp;
     }
 
     /**
@@ -116,9 +119,9 @@ abstract contract As4626 is As4626Abstract {
 
         // slice the fee from the amount (gas optimized)
         if (!exemptionList[_receiver]) {
-            uint256 fee = _amount.bp(fees.entry);
-            claimableUnderlyingFees += fee;
-            _amount -= fee;
+            uint256 feeAmount = _amount.bp(fees.entry);
+            claimableUnderlyingFees += feeAmount;
+            _amount -= feeAmount;
         }
 
         shares = supply == 0
@@ -206,13 +209,13 @@ abstract contract As4626 is As4626Abstract {
         }
 
         uint256 claimable = 0;
-        Erc7540Request memory request = requestByOperator[_receiver];
+        Erc7540Request memory request = req.byOperator[_receiver];
 
         if (
-            totalClaimableRedemption > 0 &&
+            req.totalClaimableRedemption > 0 &&
             isRequestClaimable(request.timestamp)
         ) {
-            claimable = AsMaths.min(request.shares, totalClaimableRedemption);
+            claimable = AsMaths.min(request.shares, req.totalClaimableRedemption);
         }
 
         if (claimable >= _shares) {
@@ -230,11 +233,11 @@ abstract contract As4626 is As4626Abstract {
         if (claimable >= _shares) {
             request.shares -= _shares;
 
-            totalRedemptionRequest.subMax0(_shares);
-            totalUnderlyingRequest.subMax0(expected);
+            req.totalRedemption.subMax0(_shares);
+            req.totalUnderlying.subMax0(expected);
 
-            totalClaimableRedemption.subMax0(_shares);
-            totalClaimableUnderlying.subMax0(recovered);
+            req.totalClaimableRedemption.subMax0(_shares);
+            req.totalClaimableUnderlying.subMax0(recovered);
         }
 
         // slice fee from burnt shares if not exempted
@@ -444,9 +447,9 @@ abstract contract As4626 is As4626Abstract {
      * @param _fees.perf Fee on performance
      */
     function setFees(Fees memory _fees) external onlyAdmin {
-        if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
+        // if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
         fees = _fees;
-        emit FeesUpdated(fees.perf, fees.mgmt, fees.entry, fees.exit);
+        emit FeesUpdated(_fees);
     }
 
     /**
@@ -470,12 +473,12 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Set the redemption request locktime
      * @dev Helps avoid MEV/arbs on the vault liquidity
-     * @param _redemptionRequestLocktime The redemption request locktime
+     * @param _redemptionLocktime The redemption request locktime
      */
     function setRedemptionRequestLocktime(
-        uint256 _redemptionRequestLocktime
+        uint256 _redemptionLocktime
     ) external onlyAdmin {
-        redemptionRequestLocktime = _redemptionRequestLocktime;
+        req.redemptionLocktime = _redemptionLocktime;
     }
 
     /**
@@ -505,8 +508,8 @@ abstract contract As4626 is As4626Abstract {
     function previewRedeem(uint256 _shares) public view returns (uint256) {
         uint256 afterFees = convertToAssets(_shares).subBp(fees.exit);
         uint256 claimable = AsMaths.min(
-            requestByOperator[msg.sender].shares,
-            totalClaimableRedemption
+            req.byOperator[msg.sender].shares,
+            req.totalClaimableRedemption
         );
         return AsMaths.max(available(), claimable) >= afterFees ? afterFees : 0;
     }
@@ -569,7 +572,7 @@ abstract contract As4626 is As4626Abstract {
         if (owner != msg.sender) revert WrongRequest(msg.sender, shares);
         if (shares == 0) revert AmountTooLow(shares);
         if (balanceOf(owner) < shares) revert InsufficientFunds(shares);
-        Erc7540Request storage request = requestByOperator[operator];
+        Erc7540Request storage request = req.byOperator[operator];
 
         uint256 price = sharePrice();
 
@@ -578,8 +581,8 @@ abstract contract As4626 is As4626Abstract {
             if (request.shares < shares) revert WrongRequest(owner, shares);
 
             // temporary clear the request
-            totalRedemptionRequest.subMax0(request.shares);
-            totalUnderlyingRequest.subMax0(
+            req.totalRedemption.subMax0(request.shares);
+            req.totalUnderlying.subMax0(
                 request.shares.mulDiv(request.sharePrice, weiPerShare)
             );
 
@@ -598,8 +601,8 @@ abstract contract As4626 is As4626Abstract {
 
         // throttle the request to avoid claimable overdraft
         request.timestamp = block.timestamp;
-        totalRedemptionRequest += shares;
-        totalUnderlyingRequest += request.sharePrice.mulDiv(
+        req.totalRedemption += shares;
+        req.totalUnderlying += request.sharePrice.mulDiv(
             request.shares,
             weiPerShare
         );
@@ -636,30 +639,54 @@ abstract contract As4626 is As4626Abstract {
      * @param operator Address initiating the request
      * @param owner The owner of the shares to be redeemed
      */
-    function cancelRedeemRequest(address operator, address owner) external {
-        require(
-            owner == msg.sender || operator == msg.sender,
-            "Caller is not owner or operator"
-        );
+    function cancelRedeemRequest(address operator, address owner) external nonReentrant {
 
-        Erc7540Request storage request = requestByOperator[operator];
-        uint256 amount = request.shares;
+        if (owner != msg.sender && operator != msg.sender)
+            revert WrongRequest(msg.sender, 0);
+
+        Erc7540Request storage request = req.byOperator[operator];
+        uint256 shares = request.shares;
+
+        if (shares == 0) revert WrongRequest(owner, 0);
+
         uint256 price = sharePrice();
 
         if (price > request.sharePrice) {
             // burn the excess shares from the loss incurred while not farming
             // with the idle funds (opportunity cost)
-            uint256 opportunityCost = amount.mulDiv(
+            uint256 opportunityCost = shares.mulDiv(
                 price - request.sharePrice,
                 weiPerShare
             );
             _burn(owner, opportunityCost);
         }
 
-        totalRedemptionRequest -= amount;
+        req.totalRedemption -= shares;
+        if (isRequestClaimable(request.timestamp)) {
+            req.totalClaimableRedemption -= shares;
+            req.totalClaimableUnderlying -= shares.mulDiv(
+                request.sharePrice,
+                weiPerShare
+            );
+        }
         request.shares = 0;
+        emit RedeemRequestCanceled(owner, shares);
+    }
 
-        emit RedeemRequestCanceled(owner, amount);
+    function totalRedemptionRequest()
+        external
+        view
+        returns (uint256)
+    {
+        return req.totalRedemption;
+    }
+
+    function totalClaimableRedemption()
+        external
+        view
+        returns (uint256)
+    {
+        return req.totalClaimableRedemption;
     }
 
     receive() external payable {}

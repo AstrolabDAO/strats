@@ -71,6 +71,19 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     }
 
     /**
+     * @notice Changes the strategy underlying token (automatically pauses the strategy)
+     * @param _underlying Address of the token
+     * @param _swapData Swap callData oldUnderlying->newUnderlying
+     * @param _pythId Pyth price feed id
+     */
+    function updateUnderlying(address _underlying, bytes calldata _swapData, bytes32 _pythId) external onlyAdmin {
+        if (_pythId == bytes32(0)) revert AddressZero();
+        underlyingPythId = _pythId;
+        underlyingDecimals = underlying.decimals();
+        _updateUnderlying(_underlying, _swapData);
+    }
+
+    /**
      * @notice Computes the underlying/input exchange rate from Pyth oracle price feeds in bps
      * @dev Used by invested() to compute input->underlying (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment

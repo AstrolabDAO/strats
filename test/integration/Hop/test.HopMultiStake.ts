@@ -1,107 +1,83 @@
 import { ethers, network, provider, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
+import { utils as ethersUtils } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Hop/addresses";
-import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv } from "../../../src/types";
+import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
 import { deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, withdraw } from "../flows";
-import { addressZero, ensureFunding, getEnv, isLive } from "../utils";
-import { utils  as ethersUtils } from "ethers";
-import { NetworkAddresses } from "src/addresses";
+import { ensureFunding, getEnv, isLive } from "../utils";
 
-// strategy metadata
-const strategyName = `Astrolab Hop TriStable`;
-const symbol = `as.HTS`;
-const version = 1;
+// strategy description to be converted into test/deployment params
+const desc: IStrategyDesc = {
+  name: `Astrolab Hop TriStable`,
+  symbol: `as.HTS`,
+  version: 1,
+  contract: "HopMultiStake",
+  underlying: "USDC",
+  inputs: ["USDC", "WXDAI", "USDT"],
+  inputWeights: [3_000, 3_000, 3_000], // 90% allocation, 10% cash
+  seedLiquidityUsd: 10,
+};
 
-// strategy params
-const contract = "HopMultiStake";
-const underlying = "USDC";
-const inputs = ["USDC", "DAI", "USDT"];
-const weights = [3_000, 3_000, 3_000]; // 90% allocation, 10% cash
-const seedLiquidityUsd = 10;
+describe(`test.${desc.name}`, () => {
 
-const addr = addresses[network.config.chainId!];
-const hopAddresses = <any>inputs.map(i => addr[`Hop.${i}`]) as NetworkAddresses;
+  const addr = addresses[network.config.chainId!];
+  const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr[`Hop.${i}`]);
+  const oracles = (<any>chainlinkOracles)[network.config.chainId!];
+  let env: IStrategyDeploymentEnv;
 
-let env: IStrategyDeploymentEnv;
-
-describe(`test.${strategyName}`, () => {
-
-  beforeEach(async function () {});
-
-  after(async function () {
+  beforeEach(async () => {});
+  after(async () => {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
     if (env?.revertState) await revertNetwork(env.snapshotId);
   });
 
-  before("Deploy and setup strat", async function () {
-
+  before("Deploy and setup strat", async () => {
     env = await getEnv({ revertState: false }, addresses) as IStrategyDeploymentEnv;
-
     // load environment+deploy+verify the strategy stack
     env = await setupStrat(
-      contract,
-      strategyName,
-      [[strategyName, symbol, version.toString()]], // constructor (Erc20Metadata)
+      desc.contract,
+      desc.name,
+      [[desc.name, desc.symbol, desc.version.toString()]], // constructor (Erc20Metadata)
       [{
         // base params
         fees: {} as Fees, // fees (use default)
-        underlying: addr.tokens[underlying], // underlying
+        underlying: addr.tokens[desc.underlying], // underlying
         coreAddresses: [], // coreAddresses (use default)
-        inputs: inputs.map(i => addr.tokens[i]), // inputs
-        inputWeights: weights, // inputWeights in bps (100% on input[0])
-        rewardTokens: inputs.map((i: string) => hopAddresses[i]!.rewardTokens).flat(), // rewardTokens
+        inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
+        inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
+        rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens[0]).flat())), // keep unique reward token: HOP
       }, {
         // chainlink oracle params
-        underlyingPriceFeed: (<any>chainlinkOracles)[network.config.chainId!][`Crypto.${underlying}/USD`],
-        inputPriceFeeds: inputs.map(i => (<any>chainlinkOracles)[network.config.chainId!][`Crypto.${i}/USD`]),
+        underlyingPriceFeed: oracles[`Crypto.${desc.underlying}/USD`],
+        inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params
-        lpTokens: inputs.map(i => hopAddresses[i]!.lp),
-        rewardPools: inputs.map(i => hopAddresses[i]!.rewardPools[0]), // hop reward pool
-        stableRouters: inputs.map(i => hopAddresses[i]!.swap), // hop stable swap pool
-        tokenIndexes: inputs.map(i => 0), // h{INPUT} tokenIndex in pool
+        lpTokens: protocolAddr.map(i => i.lp), // hop lp token
+        rewardPools: protocolAddr.map(i => i.rewardPools[0]), // hop reward pool
+        stableRouters: protocolAddr.map(i => i.swap), // stable swap
+        tokenIndexes: desc.inputs.map(i => 0), // h{INPUT} tokenIndex in pool
       }] as IStrategyChainlinkParams,
-      seedLiquidityUsd,
+      desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsAccounting", "AsMaths"], // libraries to link and verify with the strategy
       env // deployment environment
     );
-
     assert(ethersUtils.isAddress(env.deployment.strat.contract.address), "Strat not deployed");
+    // ensure deployer account is funded if testing
     await ensureFunding(env);
   });
-  it("Seed Liquidity", async function () {
-    assert((await seedLiquidity(env, seedLiquidityUsd)).gt(0), "Failed to seed liquidity");
-  });
-  it("Deposit", async function () {
-    assert((await deposit(env, 90)).gt(0), "Failed to deposit");
-  });
-  // it("Swap+Deposit", async function () {
-  //   assert((await swapDeposit(env, 1)).gt(0), "Failed to swap+deposit");
-  // });
-  it("Invest", async function () {
-    assert((await invest(env, 90)).gt(0), "Failed to invest");
-  });
-  it("Liquidate (just enough for normal withdraw)", async function () {
-    assert((await liquidate(env, 250)).gt(0), "Failed to liquidate");
-  });
-  // test erc4626 (synchronous withdrawals)
-  it("Withdraw (erc4626 without request)", async function () {
-    assert((await withdraw(env, 10)).gt(0), "Failed to withdraw");
-  });
+  it("Seed Liquidity (if required)", async () => assert((await seedLiquidity(env, desc.seedLiquidityUsd)).gt(0)));
+  it("Deposit", async () => assert((await deposit(env, 90)).gt(0)));
+  // it("Swap+Deposit", async () => assert((await swapDeposit(env, 1)).gt(0)));
+  it("Invest", async () => assert((await invest(env, 90)).gt(0)));
+  it("Liquidate (for first withdraw)", async () => assert((await liquidate(env, 20)).gt(0)));
+  it("Withdraw (ERC4626 without request)", async () => assert((await withdraw(env, 10)).gt(0)));
   // test erc7540 (asynchronous withdrawals)
-  it("Request Withdraw (if no pending request)", async function () {
-    assert((await requestWithdraw(env, 10)).gt(0), "Failed to request withdraw");
-  });
-  it("Liquidate (0+pending requests)", async function () {
-    assert((await liquidate(env, 10)).gt(0), "Failed to liquidate");
-  });
-  it("Withdraw (using erc7540 claimable request)", async function () {
-    // jump to a new block (1 week later)
-    if (!isLive(env)) {
-      const params = [ethers.utils.hexValue(60)]; // 1min
-      await provider.send('evm_increaseTime', params);
-    }
-    assert((await withdraw(env, 10)).gt(0), "Failed to withdraw");
+  it("Request Withdraw (if required)", async () => assert((await requestWithdraw(env, 10)).gt(0)));
+  it("Liquidate (0+pending requests)", async () => assert((await liquidate(env, 10)).gt(0)));
+  it("Withdraw (using claimable request)", async () => {
+    // jump to a new block to unlock request if testing
+    if (!isLive(env)) await provider.send('evm_increaseTime', [ethers.utils.hexValue(60)]);
+    assert((await withdraw(env, 10)).gt(0));
   });
 });

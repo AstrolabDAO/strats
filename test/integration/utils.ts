@@ -63,38 +63,38 @@ export async function logState(
       totalAccountedAssets,
       invested,
       available,
-      totalDepositRequest,
+      // totalDepositRequest,
       totalRedemptionRequest,
       totalClaimableRedemption,
-      totalUnderlyingRequest,
-      totalClaimableUnderlying,
+      // totalUnderlying, // only available on strat.req() struct
+      // totalClaimableUnderlying, // only available on strat.req() struct
       stratUnderlyingBalance,
       deployerUnderlyingBalance,
       deployerSharesBalance,
     ]: any[] = await env.multicallProvider!.all([
-      strat.multicallContract.inputs(0),
-      strat.multicallContract.rewardTokens(0),
-      strat.multicallContract.sharePrice(),
-      strat.multicallContract.totalSupply(),
-      strat.multicallContract.totalAccountedSupply(),
-      strat.multicallContract.totalAssets(),
-      strat.multicallContract.totalAccountedAssets(),
-      strat.multicallContract.invested(),
-      strat.multicallContract.available(),
-      strat.multicallContract.totalDepositRequest(),
-      strat.multicallContract.totalRedemptionRequest(),
-      strat.multicallContract.totalClaimableRedemption(),
-      strat.multicallContract.totalUnderlyingRequest(),
-      strat.multicallContract.totalClaimableUnderlying(),
-      underlying.multicallContract.balanceOf(strat.contract.address),
-      underlying.multicallContract.balanceOf(env.deployer!.address),
-      strat.multicallContract.balanceOf(env.deployer!.address),
+      strat.multi.inputs(0),
+      strat.multi.rewardTokens(0),
+      strat.multi.sharePrice(),
+      strat.multi.totalSupply(),
+      strat.multi.totalAccountedSupply(),
+      strat.multi.totalAssets(),
+      strat.multi.totalAccountedAssets(),
+      strat.multi.invested(),
+      strat.multi.available(),
+      // strat.multicallContract.totalDepositRequest(),
+      strat.multi.totalRedemptionRequest(),
+      strat.multi.totalClaimableRedemption(),
+      // strat.multicallContract.totalUnderlying(), // only available on strat.req() struct
+      // strat.multicallContract.totalClaimableUnderlying(), // only available on strat.req() struct
+      underlying.multi.balanceOf(strat.address),
+      underlying.multi.balanceOf(env.deployer!.address),
+      strat.multi.balanceOf(env.deployer!.address),
       // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
 
     console.log(
       `State ${step ?? ""}:
-      underlying: ${underlying.contract.address}
+      underlying: ${underlying.address}
       inputs[0]: ${inputsAddresses}
       rewardTokens[0]: ${rewardTokensAddresses}
       sharePrice(): ${sharePrice / underlying.weiPerUnit} (${sharePrice}wei)
@@ -117,15 +117,6 @@ export async function logState(
         totalClaimableRedemption / underlying.weiPerUnit
       } (${totalClaimableRedemption}wei) (${
         Math.round((totalClaimableRedemption * 100) / totalRedemptionRequest) /
-        100
-      }%)
-      totalUnderlyingRequest(): ${
-        totalUnderlyingRequest / underlying.weiPerUnit
-      } (${totalUnderlyingRequest}wei)
-      totalClaimableUnderlying(): ${
-        totalClaimableUnderlying / underlying.weiPerUnit
-      } (${totalClaimableUnderlying}wei) (${
-        Math.round((totalClaimableUnderlying * 100) / totalUnderlyingRequest) /
         100
       }%)
       stratUnderlyingBalance(): ${
@@ -158,7 +149,7 @@ export const getEnv = async (
       blockNumber: await provider.getBlockNumber(),
       snapshotId: live ? 0 : await provider.send("evm_snapshot", []),
       revertState: false,
-      wgas: await getTokenInfo(addr.tokens.WGAS, wethAbi, env.deployer!),
+      wgas: await buildToken(addr.tokens.WGAS, wethAbi, env.deployer!),
       addresses: addr,
       deployer: deployer as SignerWithAddress,
       provider: ethers.provider,
@@ -170,7 +161,7 @@ export const getEnv = async (
   );
 };
 
-export const getTokenInfo = async (
+export const buildToken = async (
   address: string,
   abi: any = erc20Abi,
   deployer?: SignerWithAddress
@@ -178,19 +169,16 @@ export const getTokenInfo = async (
   if (!Array.isArray(abi) || !abi.filter)
     throw new Error(`ABI must be an array`);
   try {
-    const contract = new Contract(
+    const t = <any>(new Contract(
       address,
       abi,
       deployer ?? (await getDeployer())
-    );
-    const decimals = await contract.decimals();
-    return {
-      contract,
-      multicallContract: new MulticallContract(contract.address, abi as any),
-      symbol: await contract.symbol(),
-      decimals,
-      weiPerUnit: 10 ** decimals,
-    };
+    )) as IToken;
+    t.scale = await t.decimals();
+    t.weiPerUnit = 10 ** t.scale;
+    t.multi = new MulticallContract(t.address, abi as any);
+    t.sym = await t.symbol();
+    return t;
   } catch (e) {
     console.error(`Error getting token info for ${address}: ${e}`);
     throw e;
@@ -346,10 +334,10 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
     return;
   }
 
-  const underlyingSymbol = env.deployment!.underlying.symbol;
-  const underlyingAddress = env.deployment!.underlying.contract.address;
+  const underlyingSymbol = env.deployment!.underlying.sym;
+  const underlyingAddress = env.deployment!.underlying.address;
   const minLiquidity = underlyingSymbol.includes("USD") ? 1e8 : 5e16; // 100 USDC or 0.05 ETH
-  const underlyingBalance = await env.deployment!.underlying.contract.balanceOf(
+  const underlyingBalance = await env.deployment!.underlying.balanceOf(
     env.deployer.address
   );
   if (underlyingBalance.lt(minLiquidity)) {
@@ -361,10 +349,10 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   if (env.needsFunding) {
     console.log(
-      `Funding ${env.deployer.address} from ${env.gasUsedForFunding}wei ${env.wgas.symbol} (gas tokens) to ${minLiquidity}wei ${underlyingSymbol}`
+      `Funding ${env.deployer.address} from ${env.gasUsedForFunding}wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${underlyingSymbol}`
     );
     let gas = env.gasUsedForFunding;
-    if (["BTC", "ETH"].some((s) => s.includes(env.wgas.symbol.toUpperCase())))
+    if (["BTC", "ETH"].some((s) => s.includes(env.wgas.sym.toUpperCase())))
       gas /= 1000; // less gas tokens or swaps will fail
     console.log(
       `Balance before funding: ${underlyingBalance}wei ${underlyingSymbol}`
@@ -406,6 +394,14 @@ export function isLive(env: any) {
   return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
 }
 
+export function isAddress(s: string) {
+  return /^0x[a-fA-F0-9]{40}$/.test(s);
+}
+
+export function getAddresses(s: string) {
+  return isAddress(s) ? s : addresses[network.config.chainId!].tokens[s];
+}
+
 export async function getSwapperRateEstimate(
   from: string,
   to: string,
@@ -433,12 +429,13 @@ export async function getSwapperOutputEstimate(
 }
 
 export async function getSwapperEstimate(
-  from: string,
-  to: string,
+  from: string, // "USDC"
+  to: string, // "AVAX"
   inputWei: BigNumberish | bigint,
-  chainId = 1
+  inputChainId = 1,
+  outputChainId = 1
 ): Promise<ITransactionRequestWithEstimate | undefined> {
-  const [input, output] = [from, to].map((s) => addresses[chainId].tokens[s]);
+  const [input, output] = [from, to].map((s) => getAddresses(s));
   if (!input || !output)
     throw new Error(
       `Token ${from} or ${to} not found in addresses.ts:ethereum`
@@ -453,9 +450,10 @@ export async function getSwapperEstimate(
     input,
     output,
     amountWei: weiToString(inputWei as any), // 10k USDC
-    inputChainId: chainId,
-    payer: addresses[chainId].accounts!.impersonate,
-    testPayer: addresses[chainId].accounts!.impersonate,
+    inputChainId: inputChainId,
+    outputChainId: outputChainId,
+    payer: addresses[inputChainId].accounts!.impersonate,
+    testPayer: addresses[inputChainId].accounts!.impersonate,
   })) as ITransactionRequestWithEstimate;
   return tr;
 }
@@ -494,16 +492,26 @@ export const sleep = (ms: number) =>
 export const isStable = (s: string) =>
   [
     "USDC",
+    "USDCe",
     "USDT",
+    "USDTe",
     "DAI",
+    "DAIe",
     "XDAI",
+    "WXDAI",
     "SDAI",
     "FRAX",
     "LUSD",
     "USDD",
     "CRVUSD",
     "GHO",
+    "EURS",
+    "EURT",
+    "EURTe",
+    "agEUR",
     "USD",
+    "EUR",
   ].includes(s.toUpperCase());
+
 export const isStablePair = (s1: string, s2: string) =>
   isStable(s1) && isStable(s2);

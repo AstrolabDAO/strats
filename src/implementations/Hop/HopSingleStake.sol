@@ -115,26 +115,26 @@ contract HopSingleStake is StrategyV5Chainlink {
 
     /**
      * @notice Invests the underlying asset into the pool
-     * @param _amount Max amount of underlying to invest
+     * @param _amounts Max amount of underlying to invest
      * @param _params Calldata for swap if input != underlying
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
      */
     function _invest(
-        uint256 _amount,
+        uint256[8] calldata _amounts,
         bytes[] memory _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {
 
-        _amount = AsMaths.min(available(), _amount);
+        uint256 amount = AsMaths.min(available(), _amounts[0]);
         uint256 toDeposit;
 
-        // The amount we add is capped by _amount
+        // The amount we add is capped by amount
         if (underlying != inputs[0]) {
             // We reuse assetsToLp to store the amount of input tokens to add
             (toDeposit, investedAmount) = swapper.decodeAndSwap({
                 _input: address(underlying),
                 _output: address(inputs[0]),
-                _amount: _amount,
+                _amount: amount,
                 _params: _params[0]
             });
         }
@@ -152,17 +152,17 @@ contract HopSingleStake is StrategyV5Chainlink {
 
     /**
      * @notice Withdraw asset function, can remove all funds in case of emergency
-     * @param _amount The amount of asset to withdraw
+     * @param _amounts The amount of asset to withdraw
      * @param _params Calldata for the asset swap if needed
      * @return assetsRecovered Amount of asset withdrawn
      */
     function _liquidate(
-        uint256 _amount,
+        uint256[8] calldata _amounts,
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {
 
-       _amount = AsMaths.min(_amount, _invested());
-        uint256 toLiquidate = _underlyingToStake(_amount);
+        uint256 amount = AsMaths.min(_amounts[0], _invested());
+        uint256 toLiquidate = _underlyingToStake(amount);
 
         rewardPool.withdraw(toLiquidate);
 
@@ -184,7 +184,7 @@ contract HopSingleStake is StrategyV5Chainlink {
         }
 
         // unified slippage check (unstake+remove liquidity+swap out)
-        if (assetsRecovered < _amount.subBp(maxSlippageBps * 2))
+        if (assetsRecovered < amount.subBp(maxSlippageBps * 2))
             revert AmountTooLow(assetsRecovered);
 
     }

@@ -17,16 +17,6 @@ import "./As4626Abstract.sol";
  */
 abstract contract StrategyV5Abstract is As4626Abstract {
 
-    // StrategyV5 init params
-    struct StrategyBaseParams {
-        Fees fees;
-        address underlying;
-        address[3] coreAddresses;
-        address[] inputs;
-        uint256[] inputWeights;
-        address[] rewardTokens;
-    }
-
     // Events
     event Invest(uint256 amount, uint256 timestamp);
     event Harvest(uint256 amount, uint256 timestamp);
@@ -36,6 +26,8 @@ abstract contract StrategyV5Abstract is As4626Abstract {
         uint256 liquidityAvailable,
         uint256 timestamp
     );
+    event UnderlyingUpdate(address indexed addr, uint256 spent, uint256 received);
+    event InputUpdate(address indexed addr);
     event AgentUpdate(address indexed addr);
     event SwapperUpdate(address indexed addr);
     event SetSwapperAllowance(uint256 amount);
@@ -48,9 +40,10 @@ abstract contract StrategyV5Abstract is As4626Abstract {
 
     IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
     uint8[8] internal inputDecimals; // Decimals of the input assets
-    uint256[8] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)
+    uint16[8] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)
     address[8] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
-    uint16 public maxSlippageBps = 100; // Strategy default internal ops slippage 1%
+    uint8 internal inputLength; // Actual length of the inputs array
+    uint8 internal rewardLength; // Actual length of the reward tokens array
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
@@ -59,11 +52,11 @@ abstract contract StrategyV5Abstract is As4626Abstract {
 
     /**
      * @notice Calculates the total pending redemption requests
-     * @dev Returns the difference between totalRedemptionRequest and totalClaimableRedemption
+     * @dev Returns the difference between req.totalClaimableRedemption and req.totalClaimableRedemption
      * @return The total amount of pending redemption requests
      */
     function totalPendingRedemptionRequest() public view returns (uint256) {
-        return totalRedemptionRequest - totalClaimableRedemption;
+        return req.totalClaimableRedemption - req.totalClaimableRedemption;
     }
 
     /**

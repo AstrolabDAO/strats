@@ -72,7 +72,7 @@ describe(`test.${contract}.${underlyingSymbol}`, function () {
           env // deployment environment
         );
 
-        assert(env.deployment.strat.contract.address && env.deployment.strat.contract.address !== addressZero, "Strat not deployed");
+        assert(env.deployment.strat.address && env.deployment.strat.address !== addressZero, "Strat not deployed");
         await ensureFunding(env);
       });
       it("Seed Liquidity", async function () {

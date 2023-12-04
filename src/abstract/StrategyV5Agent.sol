@@ -41,11 +41,11 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
     function setSwapperAllowance(uint256 _amount) public onlyAdmin {
         address swapperAddress = address(swapper);
 
-        for (uint256 i = 0; i < rewardTokens.length; i++) {
+        for (uint256 i = 0; i < rewardLength; i++) {
             if (rewardTokens[i] == address(0)) break;
             IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
         }
-        for (uint256 i = 0; i < inputs.length; i++) {
+        for (uint256 i = 0; i < inputLength; i++) {
             if (address(inputs[i]) == address(0)) break;
             inputs[i].approve(swapperAddress, _amount);
         }
@@ -66,35 +66,55 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
     }
 
     /**
-     * @notice Sets the reward tokens
-     * @param _rewardTokens array of reward tokens
+     * @notice Changes the strategy underlying token (automatically pauses the strategy)
+     * make sure to update the oracles by calling the appropriate updateUnderlying
+     * @param _underlying Address of the token
+     * @param _swapData Swap callData oldUnderlying->newUnderlying
      */
-    function setRewardTokens(
-        address[] memory _rewardTokens
-    ) public onlyManager {
-        for (uint256 i = 0; i < _rewardTokens.length; i++)
-            rewardTokens[i] = _rewardTokens[i];
-        for (uint256 i = _rewardTokens.length; i < 16; i++)
-            rewardTokens[i] = address(0);
+    function updateUnderlying(address _underlying, bytes calldata _swapData) external virtual onlyAdmin {
+        if (_underlying == address(0)) revert AddressZero();
+        if (_underlying == address(underlying)) return;
+        _pause();
+        // slippage is checked within Swapper
+        (uint256 received, uint256 spent) = swapper.decodeAndSwap(
+            address(underlying),
+            _underlying,
+            underlying.balanceOf(address(this)),
+            _swapData
+        );
+        emit UnderlyingUpdate(_underlying, spent, received);
+        underlying = IERC20Metadata(_underlying);
+        shareDecimals = underlying.decimals();
+        weiPerShare = 10 ** shareDecimals;
+        last.accountedSharePrice = weiPerShare;
     }
 
     /**
-     * @notice Sets the input tokens (strategy internals)
+     * @notice Sets the input tokens (strategy internals), make sure to liquidate() them first
      * @param _inputs array of input tokens
      * @param _weights array of input weights
      */
     function setInputs(
-        address[] memory _inputs,
-        uint256[] memory _weights
+        address[] calldata _inputs,
+        uint16[] calldata _weights
     ) public onlyManager {
-        for (uint256 i = 0; i < _inputs.length; i++) {
+        for (uint8 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
             inputWeights[i] = _weights[i];
         }
-        for (uint256 i = _inputs.length; i < 16; i++) {
-            inputs[i] = IERC20Metadata(address(0));
-            inputWeights[i] = 0;
-        }
+        inputLength = uint8(_inputs.length);
+    }
+
+    /**
+     * @notice Sets the reward tokens
+     * @param _rewardTokens array of reward tokens
+     */
+    function setRewardTokens(
+        address[] calldata _rewardTokens
+    ) public onlyManager {
+        for (uint8 i = 0; i < _rewardTokens.length; i++)
+            rewardTokens[i] = _rewardTokens[i];
+        rewardLength = uint8(_rewardTokens.length);
     }
 
     /**
@@ -121,22 +141,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
      */
     function totalAssets() public view override returns (uint256) {
         return IStrategyV5(stratProxy).totalAssets();
-    }
-
-    /**
-     * @notice Invests an amount into the strategy via the proxy
-     * @dev Delegates the call to the 'invest' function in the IStrategyV5 contract through stratProxy
-     * @param _amount The amount to be invested
-     * @param _params Additional parameters for the investment, typically passed as generic callData
-     * @return investedAmount The actual amount that was invested
-     * @return iouReceived The IOU received from the investment
-     */
-    function invest(
-        uint256 _amount,
-        bytes[] memory _params
-    ) public returns (uint256 investedAmount, uint256 iouReceived) {
-        return
-            IStrategyV5(stratProxy).invest(_amount, _params);
     }
 
     /**
@@ -168,24 +172,17 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
         return safeDeposit(underlyingAmount, _receiver, _minShareAmount);
     }
 
-    /**
-     * @notice Deposits an amount and then invests it, with control over the minimum share amount
-     * @dev This function first makes a safe deposit and then invests the deposited amount.
-     * It is restricted to onlyAdmin for execution.
-     * @param _amount The amount to be deposited and invested
-     * @param _receiver The address where the shares from the deposit should be sent
-     * @param _minShareAmount The minimum amount of shares expected from the deposit, used for slippage control
-     * @param _params Additional parameters for the investment process
-     * @return investedAmount The amount that was actually invested
-     * @return iouReceived The IOU received from the investment
-     */
-    function safeDepositInvest(
-        uint256 _amount,
-        address _receiver,
-        uint256 _minShareAmount,
-        bytes[] memory _params
-    ) external onlyAdmin returns (uint256 investedAmount, uint256 iouReceived) {
-        safeDeposit(_amount, _receiver, _minShareAmount);
-        return invest(_amount, _params);
+    function previewInvest(
+        uint256 _amount
+    ) public view returns (uint256[8] memory amounts) {
+        return
+            IStrategyV5(stratProxy).previewInvest(_amount);
+    }
+
+    function previewLiquidate(
+        uint256 _amount
+    ) public view returns (uint256[8] memory amounts) {
+        return
+            IStrategyV5(stratProxy).previewInvest(_amount);
     }
 }

@@ -45,7 +45,7 @@ export default merge(addresses, {
       lp: '0x9D373d22FD091d7f9A6649EB067557cc12Fb1A0A', // l2SaddleLpToken
       swap: '0x5C32143C8B198F392d01f8446b754c181224ac26', // l2SaddleSwap
       rewardPools: [
-        '0x636A7ee78faCd079DaBC8f81EDA1D09AA9D440A7', // HOP
+        '0x636a7ee78facd079dabc8f81eda1d09aa9d440a7', // HOP
         '0x5D13179c5fa40b87D53Ff67ca26245D3D5B2F872', // GNO
       ], // rewardsContracts
       rewardTokens: [addresses[100].tokens.HOP],
@@ -59,7 +59,7 @@ export default merge(addresses, {
       ], // rewardsContracts
       rewardTokens: [addresses[100].tokens.HOP],
     },
-    "Hop.DAI": {
+    "Hop.WXDAI": {
       lp: '0x5300648b1cFaa951bbC1d56a4457083D92CFa33F', // l2SaddleLpToken
       swap: '0x24afDcA4653042C6D08fb1A754b2535dAcF6Eb24', // l2SaddleSwap
       rewardPools: [
