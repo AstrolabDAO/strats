@@ -73,6 +73,8 @@ export interface IToken extends Contract {
     sym: string;
     scale: number;
     weiPerUnit: number;
+    toWei: (n: number|bigint|string|BigNumber) => BigNumber;
+    toAmount: (n: number|bigint|string|BigNumber) => number;
 }
 
 export interface ITestEnv {

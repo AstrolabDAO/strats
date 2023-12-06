@@ -281,7 +281,7 @@ contract VaultkaMix is StrategyV5Chainlink {
      * @notice Returns the invested underlying converted from the staked LP token
      * @return Underlying value of the LP/staked balance
      */
-    function _stakedUnderlying(
+    function invested(
         uint8 _index
     ) internal view override returns (uint256) {
         return
@@ -295,7 +295,7 @@ contract VaultkaMix is StrategyV5Chainlink {
      * @notice Returns the available HOP rewards
      * @return amounts Array of rewards available for each reward token
      */
-    function _rewardsAvailable()
+    function rewardsAvailable()
         public
         view
         override

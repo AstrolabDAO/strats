@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@astrolabs/registry/interfaces/ISwapper.sol";
+import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
 import "./StrategyV5Abstract.sol";
 import "./AsProxy.sol";
 import "../libs/AsArrays.sol";
@@ -37,7 +37,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @param _params StrategyBaseParams struct containing strategy parameters
      */
     function _init(StrategyBaseParams calldata _params) internal onlyAdmin {
-        setExemption(msg.sender, true);
+        // setExemption(msg.sender, true);
         // done in As4626 but required for swapper
         stratProxy = address(this);
         underlying = ERC20(_params.underlying);
@@ -48,7 +48,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
             "init(((uint64,uint64,uint64,uint64),address,address[3],address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
         );
     }
-
+ 
     /**
      * @notice Returns the StrategyV5Agent proxy initialization state
      */
@@ -251,10 +251,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
             revert InvalidCalldata();
 
         // harvest using the first calldata bytes (swap rewards->underlying)
-        harvestedRewards = harvest(_params.slice(0, rewardTokens.length));
+        harvestedRewards = harvest(_params.slice(0, rewardLength));
         (, iouReceived) = _invest(
             _amounts,
-            _params.slice(rewardTokens.length, _params.length)
+            _params.slice(rewardLength, _params.length)
         ); // invest using the second calldata bytes (swap underlying->inputs)
         return (iouReceived, harvestedRewards);
     }
@@ -334,13 +334,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     ) internal view virtual returns (uint256) {}
 
     /**
-     * @notice Returns the invested underlying converted from the staked LP token
-     * @return Underlying value of the LP/staked balance
-     * @dev Abstract function to be implemented by the oracle or the strategy
+     * @notice Returns the investment in underlying asset
+     * @return total Amount invested
      */
-    function _stakedUnderlying(
-        uint8 _index
-    ) internal view virtual returns (uint256) {}
+    function invested() public view virtual override returns (uint256 total) {
+        for (uint8 i = 0; i < inputLength; i++)
+            total += invested(i);
+    }
 
     /**
      * @notice Convert LP/staked LP to input
@@ -374,26 +374,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         uint8 _index,
         uint256 _total
     ) internal view returns (int256) {
-        if (_total == 0) _total = _invested();
+        if (_total == 0) _total = invested();
         return
-            int256(_stakedUnderlying(_index).mulDiv(10_000, _total)) -
+            int256(invested(_index).mulDiv(10_000, _total)) -
             int256(uint256(inputWeights[_index]));
-    }
-
-    /**
-     * @dev Calculate the excess liquidity for a given input index.
-     * @param _index Index of the input
-     * @param _total Total invested amount
-     * @return int256 Excess liquidity
-     */
-    function _excessLiquidity(
-        uint8 _index,
-        uint256 _total
-    ) internal view returns (int256) {
-        if (_total == 0) _total = _invested();
-        return
-            int256(_stakedUnderlying(_index)) -
-            int256(_total.mulDiv(uint256(inputWeights[_index]), 10_000));
     }
 
     /**
@@ -404,41 +388,59 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     function _excessWeights(
         uint256 _total
     ) internal view returns (int256[8] memory excessWeights) {
-        if (_total == 0) _total = _invested();
+        if (_total == 0) _total = invested();
         for (uint8 i = 0; i < inputLength; i++)
             excessWeights[i] = _excessWeight(i, _total);
     }
 
     /**
-     * @dev Calculate the excess liquidity for all inputs.
-     * @param _total Total invested amount
+     * @dev Calculate the excess liquidity for a given input
+     * @param _index Index of the input
+     * @param _total Total invested amount in underlying (0 == invested())
+     * @return int256 Excess liquidity
+     */
+    function _excessInputLiquidity(
+        uint8 _index,
+        uint256 _total
+    ) internal view returns (int256) {
+        if (_total == 0) _total = invested();
+        return
+            int256(investedInput(_index)) -
+            int256(_underlyingToInput(_total.mulDiv(uint256(inputWeights[_index]), 10_000), _index));
+    }
+
+    /**
+     * @dev Calculate the excess liquidity for all inputs
+     * @param _total Total invested amount in underlying (0 == invested())
      * @return excessLiquidity int256[8] Excess liquidity for each input
      */
-    function _excessLiquidity(
+    function _excessInputLiquidity(
         uint256 _total
     ) internal view returns (int256[8] memory excessLiquidity) {
-        if (_total == 0) _total = _invested();
+        if (_total == 0) _total = invested();
         for (uint8 i = 0; i < inputLength; i++)
-            excessLiquidity[i] = _excessLiquidity(i, _total);
+            excessLiquidity[i] = _excessInputLiquidity(i, _total);
     }
 
     /**
      * @dev Preview the amounts that would be liquidated based on the given amount.
-     * @param _amount Amount of underlying to liquidate with
+     * @param _amount Amount of underlying to liquidate with (0 == totalPendingUnderlyingRequest() + allocated.bp(100))
      * @return amounts uint256[8] Previewed liquidation amounts for each input
      */
     function previewLiquidate(
         uint256 _amount
     ) public view returns (uint256[8] memory amounts) {
-        uint256 allocated = _invested();
+        uint256 allocated = invested();
         if (_amount == 0)
-            _amount = totalPendingUnderlyingRequest() + allocated.bp(100); // defaults to requests + 1% offset to buffer flows
-        int256[8] memory excess = _excessLiquidity(allocated - _amount);
+            _amount = AsMaths.min(totalPendingUnderlyingRequest() + allocated.bp(100), allocated); // defaults to requests + 1% offset to buffer flows
+        int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
-            if (excess[i] > 0) {
-                uint256 need = AsMaths.min(excess[i].abs(), _amount);
-                amounts[i] = need;
+            if (excessInput[i] > 0) {
+                uint256 need = _inputToUnderlying(excessInput[i].abs(), i);
+                if (need > _amount)
+                    need = _amount;
+                amounts[i] = _underlyingToInput(need, i);
                 _amount -= need;
             }
         }
@@ -454,11 +456,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     ) public view returns (uint256[8] memory amounts) {
         if (_amount == 0)
             _amount = available().subBp(1_000); // only invest 90% of liquidity for buffered flows
-        int256[8] memory excess = _excessLiquidity(_invested() + _amount);
+        int256[8] memory excessInput = _excessInputLiquidity(invested() + _amount);
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
-            if (excess[i] < 0) {
-                uint256 need = AsMaths.min(excess[i].abs(), _amount);
+            if (excessInput[i] < 0) {
+                uint256 need = _inputToUnderlying(excessInput[i].abs(), i);
+                if (need > _amount)
+                    need = _amount;
                 amounts[i] = need;
                 _amount -= need;
             }
@@ -470,7 +474,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @dev Abstract function to be implemented by the strategy
      * @return amounts Amount of reward tokens available
      */
-    function _rewardsAvailable()
+    function rewardsAvailable()
         public
         view
         virtual

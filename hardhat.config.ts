@@ -7,7 +7,7 @@ config.solidity!.compilers = [
     settings: {
       optimizer: {
         enabled: true,
-        runs: 150,
+        runs: 160,
       },
       viaIR: false,
     },

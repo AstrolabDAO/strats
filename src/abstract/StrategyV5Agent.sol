@@ -29,7 +29,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
      */
     function init(StrategyBaseParams calldata _params) public onlyAdmin {
         // setInputs(_params.inputs, _params.inputWeights);
-        // setRewardTokens(_params.rewardTokens);
+        setRewardTokens(_params.rewardTokens);
         updateSwapper(_params.coreAddresses[1]);
         As4626.init(_params.fees, _params.underlying, _params.coreAddresses[0]);
     }
@@ -76,10 +76,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
         if (_underlying == address(underlying)) return;
         _pause();
         // slippage is checked within Swapper
-        (uint256 received, uint256 spent) = swapper.decodeAndSwap(
+        (uint256 received, uint256 spent) = swapper.decodeAndSwapBalance(
             address(underlying),
             _underlying,
-            underlying.balanceOf(address(this)),
             _swapData
         );
         emit UnderlyingUpdate(_underlying, spent, received);
@@ -112,8 +111,10 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626 {
     function setRewardTokens(
         address[] calldata _rewardTokens
     ) public onlyManager {
-        for (uint8 i = 0; i < _rewardTokens.length; i++)
+        for (uint8 i = 0; i < _rewardTokens.length; i++) {
             rewardTokens[i] = _rewardTokens[i];
+            rewardTokenIndex[_rewardTokens[i]] = i;
+        }
         rewardLength = uint8(_rewardTokens.length);
     }
 

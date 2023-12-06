@@ -30,17 +30,17 @@
   dependencies:
     "@astrolabs/registry" "^1.0.19"
 
-"@astrolabs/registry@^1.0.24":
-  version "1.0.24"
-  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.24.tgz#8ac593c32c162b0f850167ff0328bf617374f548"
-  integrity sha512-pZ3VW1fPpUvisemFn9WEn0IXkvJW/IjvoCuTrLpAP5qHnu7nEQqvwDf1PON0NYVi/oeXo7SPINhlpx3neyYSdA==
+"@astrolabs/registry@^1.0.26":
+  version "1.0.26"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.26.tgz#8f4d2ce6ed82a0ab06de10a8ca465e7f4a35d623"
+  integrity sha512-gG2ceYnH8Tb14ISKMB437sgywwOTQz33GUdiXd4+PS2Wez6sEN5vBUAHGwWlrp9ln7A4AfjRzrjJnRr0xDkEsA==
   dependencies:
     "@astrolabs/registry" "^1.0.19"
 
-"@astrolabs/swapper@^1.0.13":
-  version "1.0.13"
-  resolved "https://registry.yarnpkg.com/@astrolabs/swapper/-/swapper-1.0.13.tgz#fb63a7c7760d5e7ef745a7bd297936dcafb6bc69"
-  integrity sha512-ERnvqX+y1+JyoWEYnR5gDjTY2guDqjUgpeDrNNy8zj4DW5DW3rzEDplsuG+MIjF2N9BmtsL2eoieRFqT8BjlqA==
+"@astrolabs/swapper@^1.0.17":
+  version "1.0.17"
+  resolved "https://registry.yarnpkg.com/@astrolabs/swapper/-/swapper-1.0.17.tgz#9e56b55e2f36a5016ea87ccf4c8049f775eb94f6"
+  integrity sha512-4JSMHHgAqBfEKfq3NecBzQwKStaixQlEDYFK5G1oqkU4BsGgPIy+HAJ5oplEIH9elf08loaHHjmfvUPokZ3Pug==
   dependencies:
     "@astrolabs/registry" "^1.0.1"
     "@types/qs" "^6.9.9"

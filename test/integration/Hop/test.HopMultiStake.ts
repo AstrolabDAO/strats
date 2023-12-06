@@ -1,10 +1,10 @@
 import { ethers, network, provider, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { utils as ethersUtils } from "ethers";
+import { utils as ethersUtils, BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Hop/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, withdraw } from "../flows";
+import { IFlow, compound, deposit, harvest, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
 import { ensureFunding, getEnv, isLive } from "../utils";
 
 // strategy description to be converted into test/deployment params
@@ -18,6 +18,19 @@ const desc: IStrategyDesc = {
   inputWeights: [3_000, 3_000, 3_000], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
 };
+
+const testFlows: Partial<IFlow>[] = [
+  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [90], assert: (n: BigNumber) => n.gt(0) },
+  { fn: invest, params: [90], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
+  { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: requestWithdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
+];
 
 describe(`test.${desc.name}`, () => {
 
@@ -54,30 +67,21 @@ describe(`test.${desc.name}`, () => {
       }, {
         // strategy specific params
         lpTokens: protocolAddr.map(i => i.lp), // hop lp token
-        rewardPools: protocolAddr.map(i => i.rewardPools[0]), // hop reward pool
+        rewardPools: protocolAddr.map(i => i.rewardPools), // hop reward pool
         stableRouters: protocolAddr.map(i => i.swap), // stable swap
         tokenIndexes: desc.inputs.map(i => 0), // h{INPUT} tokenIndex in pool
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsAccounting", "AsMaths"], // libraries to link and verify with the strategy
+      ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
       env // deployment environment
     );
-    assert(ethersUtils.isAddress(env.deployment.strat.contract.address), "Strat not deployed");
+    assert(ethersUtils.isAddress(env.deployment.strat.address), "Strat not deployed");
     // ensure deployer account is funded if testing
     await ensureFunding(env);
   });
-  it("Seed Liquidity (if required)", async () => assert((await seedLiquidity(env, desc.seedLiquidityUsd)).gt(0)));
-  it("Deposit", async () => assert((await deposit(env, 90)).gt(0)));
-  // it("Swap+Deposit", async () => assert((await swapDeposit(env, 1)).gt(0)));
-  it("Invest", async () => assert((await invest(env, 90)).gt(0)));
-  it("Liquidate (for first withdraw)", async () => assert((await liquidate(env, 20)).gt(0)));
-  it("Withdraw (ERC4626 without request)", async () => assert((await withdraw(env, 10)).gt(0)));
-  // test erc7540 (asynchronous withdrawals)
-  it("Request Withdraw (if required)", async () => assert((await requestWithdraw(env, 10)).gt(0)));
-  it("Liquidate (0+pending requests)", async () => assert((await liquidate(env, 10)).gt(0)));
-  it("Withdraw (using claimable request)", async () => {
-    // jump to a new block to unlock request if testing
-    if (!isLive(env)) await provider.send('evm_increaseTime', [ethers.utils.hexValue(60)]);
-    assert((await withdraw(env, 10)).gt(0));
+  describe("Test flow", async () => {
+    (testFlows as IFlow[]).map(f => {
+      it(`Test ${f.fn.name}`, async () => { f.env = env; await testFlow(f); });
+    });
   });
 });

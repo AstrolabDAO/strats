@@ -44,23 +44,23 @@ abstract contract As4626Abstract is
     );
 
     // ERC7540
-    event DepositRequest(
-        address indexed sender,
-        address indexed operator,
-        uint256 assets
-    );
+    // event DepositRequest(
+    //     address indexed sender,
+    //     address indexed operator,
+    //     uint256 assets
+    // );
     event RedeemRequest(
         address indexed sender,
         address indexed operator,
         address indexed owner,
         uint256 assets
     );
-    event DepositRequestCanceled(address indexed owner, uint256 assets);
+    // event DepositRequestCanceled(address indexed owner, uint256 assets);
     event RedeemRequestCanceled(address indexed owner, uint256 assets);
 
     // As4626 specific
-    event SharePriceUpdated(uint256 shareprice, uint256 timestamp);
-    event FeesCollected(
+    event SharePriceUpdate(uint256 shareprice, uint256 timestamp);
+    event FeeCollection(
         uint256 profit,
         uint256 totalAssets,
         uint256 perfFeesAmount,
@@ -68,20 +68,14 @@ abstract contract As4626Abstract is
         uint256 sharesToMint,
         address indexed receiver
     );
-    event FeeCollectorUpdated(address indexed feeCollector);
-    event FeesUpdated(Fees fees);
+    event FeeCollectorUpdate(address indexed feeCollector);
+    event FeesUpdate(Fees fees);
     event MaxTotalAssetsSet(uint256 maxTotalAssets);
 
     // Errors
-    error LiquidityTooLow(uint256 assets);
-    error SelfMintNotAllowed();
-    error FeeError();
     error Unauthorized();
-    error TransactionExpired();
     error AmountTooHigh(uint256 amount);
     error AmountTooLow(uint256 amount);
-    error InsufficientFunds(uint256 amount);
-    error WrongToken();
     error AddressZero();
     error WrongRequest(address owner, uint256 amount);
 
@@ -104,10 +98,10 @@ abstract contract As4626Abstract is
     // Fees max = Fees(5_000, 200, 100, 100) Maximum fees: 50%, 2%, 1%, 1%
     Fees public fees; // Current fee structure
     address public feeCollector; // Address to collect fees
-    uint256 internal claimableUnderlyingFees; // Amount of underlying fees (entry+exit) that can be claimed
+    uint256 public claimableUnderlyingFees; // Amount of underlying fees (entry+exit) that can be claimed
     mapping(address => bool) public exemptionList; // List of addresses exempted from fees
 
-    Requests public req;
+    Requests internal req;
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
@@ -144,11 +138,27 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @notice Amount of assets in the protocol farmed by the strategy
-     * @dev Underlying abstract function to be implemented by the strategy
-     * @return Amount of assets in the pool
+     * @notice Total amount of inputs denominated in underlying
+     * @dev Abstract function to be implemented by the strategy
+     * @return Amount of assets
      */
-    function _invested() internal view virtual returns (uint256) {}
+    function invested() public view virtual returns (uint256) {}
+
+    /**
+     * @notice Amount of _index input denominated in underlying
+     * @dev Abstract function to be implemented by the strategy
+     * @param _index Index of the asset
+     * @return Amount of assets
+     */
+    function invested(uint8 _index) public view virtual returns (uint256) {}
+
+    /**
+     * @notice Amount of _index input
+     * @dev Abstract function to be implemented by the strategy
+     * @param _index Index of the asset
+     * @return Amount of assets
+     */
+    function investedInput(uint8 _index) public view virtual returns (uint256) {}
 
     /**
      * @notice Amount of assets available to non-requested withdrawals (excluding seed)
@@ -171,14 +181,6 @@ abstract contract As4626Abstract is
                 expectedProfits,
                 profitCooldown
             );
-    }
-
-    /**
-     * @notice Amount of assets invested by the strategy
-     * @return Amount of assets invested
-     */
-    function invested() public view returns (uint256) {
-        return _invested();
     }
 
     /**

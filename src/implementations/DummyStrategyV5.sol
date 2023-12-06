@@ -41,9 +41,9 @@ contract DummyStrategy is StrategyV5 {
         bytes[] memory _params
     ) internal override returns (uint256 assetsRecovered) {}
 
-    function _invested() internal view override returns (uint256) {}
+    function invested() public view override returns (uint256) {}
 
-    function _rewardsAvailable()
+    function rewardsAvailable()
         public
         view
         override

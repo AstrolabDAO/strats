@@ -47,85 +47,129 @@ export async function logState(
   sleepBefore = 0,
   sleepAfter = 0
 ) {
-  const { strat, underlying } = env.deployment!;
+  const { strat, underlying, inputs, rewardTokens } = env.deployment!;
   if (sleepBefore) {
     console.log(`Sleeping ${sleepBefore}ms before logging state...`);
     await sleep(sleepBefore);
   }
   try {
     const [
-      inputsAddresses,
-      rewardTokensAddresses,
       sharePrice,
       totalSupply,
       totalAccountedSupply,
       totalAssets,
       totalAccountedAssets,
-      invested,
+      totalClaimableUnderlyingFees,
       available,
       // totalDepositRequest,
       totalRedemptionRequest,
       totalClaimableRedemption,
       // totalUnderlying, // only available on strat.req() struct
       // totalClaimableUnderlying, // only available on strat.req() struct
+      previewInvest,
+      previewLiquidate,
       stratUnderlyingBalance,
       deployerUnderlyingBalance,
       deployerSharesBalance,
     ]: any[] = await env.multicallProvider!.all([
-      strat.multi.inputs(0),
-      strat.multi.rewardTokens(0),
       strat.multi.sharePrice(),
       strat.multi.totalSupply(),
       strat.multi.totalAccountedSupply(),
       strat.multi.totalAssets(),
       strat.multi.totalAccountedAssets(),
-      strat.multi.invested(),
+      strat.multi.claimableUnderlyingFees(),
       strat.multi.available(),
       // strat.multicallContract.totalDepositRequest(),
       strat.multi.totalRedemptionRequest(),
       strat.multi.totalClaimableRedemption(),
       // strat.multicallContract.totalUnderlying(), // only available on strat.req() struct
       // strat.multicallContract.totalClaimableUnderlying(), // only available on strat.req() struct
+      strat.multi.previewInvest(0),
+      strat.multi.previewLiquidate(0),
       underlying.multi.balanceOf(strat.address),
       underlying.multi.balanceOf(env.deployer!.address),
       strat.multi.balanceOf(env.deployer!.address),
       // await underlyingTokenContract.balanceOf(strategy.address),
     ]);
 
+    const inputsAddresses = inputs.map((input) => input.address);
+    // await env.multicallProvider!.all(inputs.map((input, index) => strat.multi.inputs(index)));
+
+    const rewardsAddresses = rewardTokens.map((reward) => reward.address);
+    // await env.multicallProvider!.all(rewardTokens.map((input, index) => strat.multi.rewardTokens(index)));
+
+    // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
+    const invested = await strat["invested()"](); // base function (not overloaded)
+    const investedAmounts: BigNumber[] = await env.multicallProvider!.all(
+      inputs.map((input, index) => strat.multi.invested(index))
+    );
+
     console.log(
       `State ${step ?? ""}:
-      underlying: ${underlying.address}
-      inputs[0]: ${inputsAddresses}
-      rewardTokens[0]: ${rewardTokensAddresses}
-      sharePrice(): ${sharePrice / underlying.weiPerUnit} (${sharePrice}wei)
-      totalSuply(): ${totalSupply / underlying.weiPerUnit} (${totalSupply}wei)
-      totalAccountedSupply(): ${
-        totalAccountedSupply / underlying.weiPerUnit
-      } (${totalAccountedSupply}wei)
-      totalAssets(): ${totalAssets / underlying.weiPerUnit} (${totalAssets}wei)
-      totalAccountedAssets(): ${
-        totalAccountedAssets / underlying.weiPerUnit
-      } (${totalAccountedAssets}wei)
-      invested(): ${invested / underlying.weiPerUnit} (${invested}wei)
-      available(): ${available / underlying.weiPerUnit} (${available}wei) (${
-        Math.round((available * 100) / totalAssets) / 100
-      }%)
-      totalRedemptionRequest(): ${
-        totalRedemptionRequest / underlying.weiPerUnit
-      } (${totalRedemptionRequest}wei)
-      totalClaimableRedemption(): ${
-        totalClaimableRedemption / underlying.weiPerUnit
-      } (${totalClaimableRedemption}wei) (${
-        Math.round((totalClaimableRedemption * 100) / totalRedemptionRequest) /
-        100
-      }%)
-      stratUnderlyingBalance(): ${
-        stratUnderlyingBalance / underlying.weiPerUnit
-      } (${stratUnderlyingBalance}wei)
-      deployerBalances(shares, underlying): [${
-        deployerSharesBalance / underlying.weiPerUnit
-      },${deployerUnderlyingBalance / underlying.weiPerUnit}]
-      `
+    underlying: ${underlying.address}
+    inputs: [${inputsAddresses.join(", ")}]
+    rewardTokens: [${rewardsAddresses.join(", ")}]
+    sharePrice(): ${underlying.toAmount(sharePrice)} (${sharePrice}wei)
+    totalSuply(): ${underlying.toAmount(totalSupply)} (${totalSupply}wei)
+    totalAccountedSupply(): ${
+      underlying.toAmount(totalAccountedSupply)
+    } (${totalAccountedSupply}wei)
+    totalAssets(): ${underlying.toAmount(totalAssets)} (${totalAssets}wei)
+    totalAccountedAssets(): ${
+      underlying.toAmount(totalAccountedAssets)
+    } (${totalAccountedAssets}wei)
+    totalClaimableUnderlyingFees(): ${
+      underlying.toAmount(totalClaimableUnderlyingFees)
+    } (${totalClaimableUnderlyingFees}wei)
+    invested(): ${underlying.toAmount(invested)} (${invested}wei)\n${inputs
+      .map(
+        (input, index) =>
+          `      -${input.sym}: ${
+            <any>underlying.toAmount(investedAmounts[index])
+          } (${investedAmounts[index]}wei)`
+      )
+      .join("\n")}
+    available(): ${available / underlying.weiPerUnit} (${available}wei) (${
+      Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
+    }%)
+    available(): ${available / underlying.weiPerUnit} (${available}wei) (${
+      Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
+    }%)
+    totalRedemptionRequest(): ${
+      totalRedemptionRequest / underlying.weiPerUnit
+    } (${totalRedemptionRequest}wei)
+    totalClaimableRedemption(): ${
+      totalClaimableRedemption / underlying.weiPerUnit
+    } (${totalClaimableRedemption}wei) (${
+      Math.round(
+        totalRedemptionRequest.lt(10)
+          ? 0
+          : (totalClaimableRedemption * 100) / totalRedemptionRequest
+      ) / 100
+    }%)
+    previewInvest(0 == available()*.9):\n${inputs
+      .map(
+        (input, i) =>
+          `      -${input.sym}: ${underlying.toAmount(
+            previewInvest[i]
+          )} (${previewInvest[i].toString()}wei)`
+      )
+      .join("\n")}
+    previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
+      .map(
+        (input, i) =>
+          `      -${input.sym}: ${underlying.toAmount(
+            previewLiquidate[i]
+          )} (${previewLiquidate[i].toString()}wei)`
+      )
+      .join("\n")}
+    stratUnderlyingBalance(): ${underlying.toAmount(
+      stratUnderlyingBalance
+    )} (${stratUnderlyingBalance}wei)
+    deployerBalances(shares, underlying): [${underlying.toAmount(
+      deployerSharesBalance
+    )},${underlying.toAmount(deployerUnderlyingBalance)}]
+    `
     );
     if (sleepAfter) await sleep(sleepAfter);
   } catch (e) {
@@ -169,15 +213,17 @@ export const buildToken = async (
   if (!Array.isArray(abi) || !abi.filter)
     throw new Error(`ABI must be an array`);
   try {
-    const t = <any>(new Contract(
-      address,
-      abi,
-      deployer ?? (await getDeployer())
+    const t = (<any>(
+      new Contract(address, abi, deployer ?? (await getDeployer()))
     )) as IToken;
     t.scale = await t.decimals();
     t.weiPerUnit = 10 ** t.scale;
     t.multi = new MulticallContract(t.address, abi as any);
     t.sym = await t.symbol();
+    t.toWei = (n: number | bigint | string | BigNumber) =>
+      ethersUtils.parseUnits(n.toString(), t.scale);
+    t.toAmount = (n: number | bigint | string | BigNumber) =>
+      Number(weiToString(n as any)) / t.weiPerUnit;
     return t;
   } catch (e) {
     console.error(`Error getting token info for ${address}: ${e}`);
@@ -228,7 +274,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
 
   if (inputBalance.lt(o.amountWei)) {
     console.log(
-      `payer ${o.payer} has not enough balance of ${o.inputChainId}:${o.input}, swapping from gasToken to ${o.input}`
+      `payer ${o.payer} has not enough balance of ${o.inputChainId}:\n${o.input}, swapping from gasToken to ${o.input}`
     );
     await _swap(env, {
       payer: o.payer,
@@ -433,7 +479,7 @@ export async function getSwapperEstimate(
   to: string, // "AVAX"
   inputWei: BigNumberish | bigint,
   inputChainId = 1,
-  outputChainId = 1
+  outputChainId?: number
 ): Promise<ITransactionRequestWithEstimate | undefined> {
   const [input, output] = [from, to].map((s) => getAddresses(s));
   if (!input || !output)
@@ -451,7 +497,7 @@ export async function getSwapperEstimate(
     output,
     amountWei: weiToString(inputWei as any), // 10k USDC
     inputChainId: inputChainId,
-    outputChainId: outputChainId,
+    outputChainId: outputChainId ?? inputChainId,
     payer: addresses[inputChainId].accounts!.impersonate,
     testPayer: addresses[inputChainId].accounts!.impersonate,
   })) as ITransactionRequestWithEstimate;
@@ -483,8 +529,15 @@ export const getInitSignature = (contract: string) => {
     .sort((s1, s2) => s2.length - s1.length)?.[0];
 };
 
+export function getSelectors(abi: any) {
+  const i = new ethers.utils.Interface(abi);
+  return Object.keys(i.functions).map((signature) => ({
+    name: i.functions[signature].name,
+    signature: i.getSighash(i.functions[signature]),
+  }));
+}
 export const getOverrides = (env: Partial<ITestEnv>) =>
-  isLive(env) ? {} : networkOverrides[network.name] ?? {};
+  isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -515,3 +568,9 @@ export const isStable = (s: string) =>
 
 export const isStablePair = (s1: string, s2: string) =>
   isStable(s1) && isStable(s2);
+
+export const isOracleLib = (name: string) =>
+  ["Pyth", "RedStone", "Chainlink", "Witnet"].some((libname) =>
+    name.includes(libname)
+  );
+

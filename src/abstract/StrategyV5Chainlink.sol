@@ -3,6 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libs/AsMaths.sol";
+import "../libs/ChainlinkUtils.sol";
 import "./StrategyV5.sol";
 import "../interfaces/IChainlink.sol";
 
@@ -84,24 +85,8 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @return The amount available for investment
      */
     function underlyingExchangeRate(uint8 _index) public view returns (uint256) {
-
-        if (address(inputs[_index]) == address(underlying))
-            return weiPerShare; // == weiPerUnit of underlying == 1:1
-
-        (uint256 inputPrice, uint256 underlyingPrice) = (
-            uint256(inputPriceFeeds[_index].latestAnswer()),
-            uint256(underlyingPriceFeed.latestAnswer())
-        );
-        uint256 rate = inputPrice.exchangeRate(underlyingPrice, underlyingFeedDecimals); // in underlyingFeedDecimals
-
-        if (shareDecimals == underlyingFeedDecimals) {
-            return rate; // same decimals >> no conversion needed
-        } else if (shareDecimals > underlyingFeedDecimals) {
-            // negative feed vs token decimalsOffset >> multiply by 10^(-decimalsOffset)
-            return rate * 10**uint256(shareDecimals - underlyingFeedDecimals);
-        } else {
-            return rate / 10**uint256(underlyingFeedDecimals - shareDecimals);
-        }
+        return ChainlinkUtils.underlyingExchangeRate(
+            [inputPriceFeeds[_index], underlyingPriceFeed], shareDecimals, underlyingFeedDecimals);
     }
 
     /**
@@ -112,7 +97,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         return _amount.mulDiv(10**inputDecimals[_index], underlyingExchangeRate(_index));
     }
 
-/**
+    /**
      * @notice Converts input wei amount to underlying wei amount
      * @return Underlying amount in wei
      */

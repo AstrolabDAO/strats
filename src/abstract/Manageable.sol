@@ -26,10 +26,8 @@ abstract contract Manageable is AccessControlEnumerable, Pausable {
 
 	// The keeper role can be used to perform automated maintenance
 	bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
-
 	// The manager role can be used to perform manual maintenance
 	bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-
 	// The pending period is the time that the new admin has to wait to accept the role
 	uint256 private constant PENDING_PERIOD = 2 days;
 	// The grace period is the time that the grantee has to accept the role
@@ -39,8 +37,8 @@ abstract contract Manageable is AccessControlEnumerable, Pausable {
 
 	error AdminCantRenounce();
 	error AdminRoleError();
-	error GracePeriodElapsed(uint256 _GraceTimestamp);
-	error PendingPeriodNotElapsed(uint256 _PendingTimestamp);
+	error GracePeriodElapsed(uint256 _graceTimestamp);
+	error PendingPeriodNotElapsed(uint256 _pendingTimestamp);
 
 	constructor() {
 		// We give the admin role to the account that deploys the contract
