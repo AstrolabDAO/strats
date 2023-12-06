@@ -46,134 +46,134 @@ As per the [licence](./LICENCE) states, the code is provided as-is and is under 
 
 ### Staking
 Primitives
-  - [Lido/stETH](https://github.com/lidofinance/lido-dao) `todo`
-  - [RocketPool/rETH](https://github.com/rocket-pool/rocketpool) `todo`
-  - [StakeWise/rETH2](https://github.com/stakewise/contracts) `todo`
-  - [Stader/ETHx](https://github.com/stader-labs/ethx) `todo`
-  - [Swell/swETH](https://github.com/SwellNetwork/v3-core-public) `todo`
-  - [Frax/sfrxETH](https://github.com/FraxFinance/frxETH-public) `todo`
-  - [Coinbase/cbETH](https://github.com/coinbase/wrapped-tokens-os) `todo`
-  - [Binance/wBETH](https://github.com/bnb-chain) `todo`
+  - [Lido/stETH](https://github.com/lidofinance/lido-dao)
+  - [RocketPool/rETH](https://github.com/rocket-pool/rocketpool)
+  - [StakeWise/rETH2](https://github.com/stakewise/contracts)
+  - [Stader/ETHx](https://github.com/stader-labs/ethx)
+  - [Swell/swETH](https://github.com/SwellNetwork/v3-core-public)
+  - [Frax/sfrxETH](https://github.com/FraxFinance/frxETH-public)
+  - [Coinbase/cbETH](https://github.com/coinbase/wrapped-tokens-os)
+  - [Binance/wBETH](https://github.com/bnb-chain)
 
 Derivatives
-  - [Prisma](https://github.com/prisma-fi/prisma-contracts) `todo`
-  - [Lybra](https://github.com/LybraFinance/LybraV2) `todo`
-  - [Stakehouse/dETH](https://github.com/stakehouse-dev/compound-staking) `todo`
+  - [Prisma](https://github.com/prisma-fi/prisma-contracts)
+  - [Lybra](https://github.com/LybraFinance/LybraV2)
+  - [Stakehouse/dETH](https://github.com/stakehouse-dev/compound-staking)
   - [Manifold/mevETH2](https://github.com/manifoldfinance/mevETH2)
-  - [unshEth](https://github.com/UnshETH/merkle-distributor) `todo`
+  - [unshEth](https://github.com/UnshETH/merkle-distributor)
 
 ### ReStaking
 Primitives
-  - [EigenLayer](https://github.com/Layr-Labs/eigenlayer-contracts) `todo`
-  - [Stakehouse](https://github.com/stakehouse-dev/compound-staking) `todo`
+  - [EigenLayer](https://github.com/Layr-Labs/eigenlayer-contracts)
+  - [Stakehouse](https://github.com/stakehouse-dev/compound-staking)
 
 ### RWA
 Primitives
-  - [Spark](https://github.com/marsfoundation/sparklend) `todo`
-  - [stUSDT](https://github.com/justlend/justlend-protocol) `todo`
-  - [Ondo/USDY](https://github.com/ondoprotocol/usdy) `todo`
-  - [OpenEden/TBill](https://github.com/OpenEdenHQ/openeden.smartcontract.audit) `todo`
-  - [Goldfinch](https://github.com/goldfinch-eng/goldfinch-contracts) `todo`
-  - [Centrifuge](https://github.com/centrifuge/liquidity-pools) `todo`
-  - [Maple](https://github.com/maple-labs/maple-core-v2) `todo`
-  - [TrueFi](https://github.com/trusttoken/contracts-pre22) `todo`
+  - [Spark](https://github.com/marsfoundation/sparklend)
+  - [stUSDT](https://github.com/justlend/justlend-protocol)
+  - [Ondo/USDY](https://github.com/ondoprotocol/usdy)
+  - [OpenEden/TBill](https://github.com/OpenEdenHQ/openeden.smartcontract.audit)
+  - [Goldfinch](https://github.com/goldfinch-eng/goldfinch-contracts)
+  - [Centrifuge](https://github.com/centrifuge/liquidity-pools)
+  - [Maple](https://github.com/maple-labs/maple-core-v2)
+  - [TrueFi](https://github.com/trusttoken/contracts-pre22)
 
 ### Money Markets
 Primitives
-  - [AAVE V2](https://github.com/aave/protocol-v2) `todo`
-  - [AAVE V3](https://github.com/aave/aave-v3-core) `todo`
-  - [Compound V2](https://github.com/compound-finance/compound-protocol) `todo`
-  - [Compound V3](https://github.com/compound-finance/compound-protocol) `todo`
-  - [JustLend](https://github.com/justlend/justlend-protocol) `todo`
-  - [Spark](https://github.com/marsfoundation/sparklend) `todo`
-  - [Frax](https://github.com/FraxFinance/fraxlend) `todo`
+  - [AAVE V2](https://github.com/aave/protocol-v2)
+  - [AAVE V3](https://github.com/aave/aave-v3-core)
+  - [Compound V2](https://github.com/compound-finance/compound-protocol)
+  - [Compound V3](https://github.com/compound-finance/compound-protocol)
+  - [JustLend](https://github.com/justlend/justlend-protocol)
+  - [Spark](https://github.com/marsfoundation/sparklend)
+  - [Frax](https://github.com/FraxFinance/fraxlend)
   - [Silo](https://github.com/silo-finance/silo-core-v1)
-  - [Venus](https://github.com/VenusProtocol/venus-protocol) `todo`
-  - [Radiant](https://github.com/radiant-capital) `todo`
-  - [Agave](https://github.com/Agave-DAO/protocol-v2) `todo`
-  - [Lodestar](https://github.com/LodestarFinance) `todo`
-  - [Abracadabra](https://github.com/Abracadabra-money/abracadabra-money-contracts) `todo`
+  - [Venus](https://github.com/VenusProtocol/venus-protocol)
+  - [Radiant](https://github.com/radiant-capital)
+  - [Agave](https://github.com/Agave-DAO/protocol-v2)
+  - [Lodestar](https://github.com/LodestarFinance)
+  - [Abracadabra](https://github.com/Abracadabra-money/abracadabra-money-contracts)
 
 Derivatives
-  - [Morpho](https://github.com/morpho-org) `todo`
-  - [Gearbox](https://github.com/Gearbox-protocol/core-v3) `todo`
-  - [Sturdy](https://github.com/sturdyfi/sturdy-aggregator)`todo`
+  - [Morpho](https://github.com/morpho-org)
+  - [Gearbox](https://github.com/Gearbox-protocol/core-v3)
+  - [Sturdy](https://github.com/sturdyfi/sturdy-aggregator
 
 ### Spot DEXs
 Primitives
-  - [Uniswap V2](https://github.com/Uniswap/v2-core) `todo`
-  - [Uniswap V3](https://github.com/Uniswap/v3-core) `todo`
-  - [Uniswap V4](https://github.com/Uniswap/v4-core) `todo`
-  - [Balancer V1](https://github.com/balancer/balancer-core) `todo`
-  - [Balancer V2](https://github.com/balancer/balancer-v2-monorepo) `todo`
-  - [Curve](https://github.com/curvefi/curve-contract) `todo`
-  - [Maverick](https://github.com/maverickprotocol/maverick-v1-interfaces) `todo`
-  - [Sushi](https://github.com/sushiswap/v2-core) `todo`
-  - [PancakeSwap](https://github.com/pancakeswap/pancake-smart-contracts) `todo`
-  - [QuickSwap](https://github.com/QuickSwap/quickswap-core) `todo`
-  - [Trader Joe](https://github.com/traderjoe-xyz/joe-v2) `todo`
-  - [KyberSwap](https://github.com/KyberNetwork/ks-elastic-sc) `todo`
-  - [DODO](https://github.com/DODOEX/dodo-smart-contract) `todo`
-  - [Biswap](https://github.com/biswap-org/core) `todo`
-  - [Camelot](https://github.com/CamelotLabs/core) `todo`
-  - [Velodrome](https://github.com/velodrome-finance/contracts) `todo`
-  - [iZUMi/iZiSwap](https://github.com/izumiFinance/iZiSwap-core) `todo`
-  - [SyncSwap](https://github.com/syncswap/core-contracts) `todo`
+  - [Uniswap V2](https://github.com/Uniswap/v2-core)
+  - [Uniswap V3](https://github.com/Uniswap/v3-core)
+  - [Uniswap V4](https://github.com/Uniswap/v4-core)
+  - [Balancer V1](https://github.com/balancer/balancer-core)
+  - [Balancer V2](https://github.com/balancer/balancer-v2-monorepo)
+  - [Curve](https://github.com/curvefi/curve-contract)
+  - [Maverick](https://github.com/maverickprotocol/maverick-v1-interfaces)
+  - [Sushi](https://github.com/sushiswap/v2-core)
+  - [PancakeSwap](https://github.com/pancakeswap/pancake-smart-contracts)
+  - [QuickSwap](https://github.com/QuickSwap/quickswap-core)
+  - [Trader Joe](https://github.com/traderjoe-xyz/joe-v2)
+  - [KyberSwap](https://github.com/KyberNetwork/ks-elastic-sc)
+  - [DODO](https://github.com/DODOEX/dodo-smart-contract)
+  - [Biswap](https://github.com/biswap-org/core)
+  - [Camelot](https://github.com/CamelotLabs/core)
+  - [Velodrome](https://github.com/velodrome-finance/contracts)
+  - [iZUMi/iZiSwap](https://github.com/izumiFinance/iZiSwap-core)
+  - [SyncSwap](https://github.com/syncswap/core-contracts)
 
 Derivatives
-  - [Convex](https://github.com/convex-eth/platform) `todo`
-  - [Aura](https://github.com/aurafinance/aura-contracts) `todo`
-  - [Gamma](https://github.com/GammaStrategies/hypervisor) `todo`
-  - [Arrakis V2](https://github.com/ArrakisFinance/v2-core) `todo`
-  - [Tokemak V1](https://github.com/Tokemak/contracts-v1) `todo`
-  - [Tokemak V2](https://github.com/Tokemak) `todo`
-  - [Beefy](https://github.com/beefyfinance/beefy-contracts) `todo`
+  - [Convex](https://github.com/convex-eth/platform)
+  - [Aura](https://github.com/aurafinance/aura-contracts)
+  - [Gamma](https://github.com/GammaStrategies/hypervisor)
+  - [Arrakis V2](https://github.com/ArrakisFinance/v2-core)
+  - [Tokemak V1](https://github.com/Tokemak/contracts-v1)
+  - [Tokemak V2](https://github.com/Tokemak)
+  - [Beefy](https://github.com/beefyfinance/beefy-contracts)
 
 ### Derivatives DEXs
 Primitives
-  - [GMX](https://github  .com/gmx-io/gmx-contracts) `todo`
-  - [Gains/gTrade](https://github.com/GainsNetwork/gTrade-v6.1) `todo`
-  - [MUX](https://github.com/mux-world/mux-protocol) `todo`
-  - [HMX](https://github.com/HMXOrg/v2-evm) `todo`
-  - [Pika](https://github.com/PikaProtocol/PikaPerpV4) `todo`
-  - [Vela](https://github.com/VelaExchange/vela-exchange-contracts) `todo`
-  - [ApolloX](https://github.com/apollox-finance/apollox-contracts) `todo`
+  - [GMX](https://github  .com/gmx-io/gmx-contracts)
+  - [Gains/gTrade](https://github.com/GainsNetwork/gTrade-v6.1)
+  - [MUX](https://github.com/mux-world/mux-protocol)
+  - [HMX](https://github.com/HMXOrg/v2-evm)
+  - [Pika](https://github.com/PikaProtocol/PikaPerpV4)
+  - [Vela](https://github.com/VelaExchange/vela-exchange-contracts)
+  - [ApolloX](https://github.com/apollox-finance/apollox-contracts)
 
 Derivatives
-  - [Vaultka](https://github.com/Vaultka-Project) `todo`
-  - [JonesDAO](https://github.com/Jones-DAO/jaura-oracle) `todo`
-  - [Umami](https://github.com/UmamiDAO/arbis-contracts) `todo`
+  - [Vaultka](https://github.com/Vaultka-Project)
+  - [JonesDAO](https://github.com/Jones-DAO/jaura-oracle)
+  - [Umami](https://github.com/UmamiDAO/arbis-contracts)
 
 ### Structured Finance
 Primitives
-  - [Pendle](https://github.com/pendle-finance/pendle-core-v2-public) `todo`
+  - [Pendle](https://github.com/pendle-finance/pendle-core-v2-public)
 
 Derivatives
-  - [Equilibria](https://github.com/eqbtech/equilibria-contracts) `todo` `todo`
+  - [Equilibria](https://github.com/eqbtech/equilibria-contracts)
 
 ### Bridges
 Primitives
-  - [Hop](https://github.com/hop-protocol/contracts-v2) `todo`
-  - [Stargate](https://github.com/stargate-protocol/stargate-dao) `todo`
-  - [Synapse](https://github.com/synapsecns/synapse-contracts) `todo`
-  - [Across](https://github.com/across-protocol/contracts-v2) `todo`
-  - [Connext](https://github.com/connext/interfaces) `todo`
-  - [Celer/cBridge](https://github.com/celer-network/sgn-v2-contracts) `todo`
+  - [Hop](https://github.com/hop-protocol/contracts-v2)
+  - [Stargate](https://github.com/stargate-protocol/stargate-dao)
+  - [Synapse](https://github.com/synapsecns/synapse-contracts)
+  - [Across](https://github.com/across-protocol/contracts-v2)
+  - [Connext](https://github.com/connext/interfaces)
+  - [Celer/cBridge](https://github.com/celer-network/sgn-v2-contracts)
 
 Derivatives
-  - [Beefy](https://github.com/beefyfinance/beefy-contracts) `todo`
+  - [Beefy](https://github.com/beefyfinance/beefy-contracts)
   - [Socket](https://github.com/SocketDotTech/socket-DL)
   - [LiFi]()
   - [Squid]()
 
 ### Yield Aggregators
-- [Yearn](https://github.com/yearn/tokenized-strategy-periphery) `todo`
-- [Sommelier](https://github.com/PeggyJV/cellar-contracts) `todo`
-- [Overnight/USD+](https://github.com/ovnstable/ovnstable-core) `todo`
-- [Origin/OUSD](https://github.com/OriginProtocol/origin-dollar) `todo`
-- [Idle](https://github.com/Idle-Finance) `todo`
-- [dHedge/Toros](https://github.com/dhedge/V2-Public) `todo`
-- [Neutra](https://github.com/NeutraFinance/neutra-strategies) `todo`
+- [Yearn](https://github.com/yearn/tokenized-strategy-periphery)
+- [Sommelier](https://github.com/PeggyJV/cellar-contracts)
+- [Overnight/USD+](https://github.com/ovnstable/ovnstable-core)
+- [Origin/OUSD](https://github.com/OriginProtocol/origin-dollar)
+- [Idle](https://github.com/Idle-Finance)
+- [dHedge/Toros](https://github.com/dhedge/V2-Public)
+- [Neutra](https://github.com/NeutraFinance/neutra-strategies)
 
 ## Credits
 Special thanks to peer aggregators who also open source their strategies
