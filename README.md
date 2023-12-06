@@ -13,35 +13,36 @@
 </div>
 
 This repo holds Astrolab's strategies smart contracts, aka the DAO's yield primitives.
-- Libs
-  - [AsMaths.sol](./src/abstract/AsMaths.sol): math utils
-  - [AsArrays.sol](./src/abstract/AsArrays.sol): array utils
-  - [AsAccounting.sol](./src/abstract/AsAccounting.sol): strategy accounting helpers
-  - [ChainlinkUtils.sol](./src/abstract/ChainlinkUtils.sol): chainlink specific oracle utils
-  - [PythUtils.sol](./src/abstract/PythUtils.sol): pyth specific oracle utils
 
-- Strategy abstract contracts
+- Strategy abstract contracts 🎯
   - [As4626.sol](./src/abstract/As4626.sol) (light-weight, full-featured ERC4626 tokenized vault implementation)
   - [StrategyV5.sol](./src/abstract/StrategyV5.sol) (strategy contract, extended by strategies, transparent proxy delegating to StrategyV5Agent)
   - [StrategyV5Agent.sol](./src/abstract/StrategyV5Agent.sol) (common strategy logic, implementation inheriting from As4626)
-  - Add-ons:
+  - Add-ons 🧩
     - [StrategyV5Chainlink.sol](./src/abstract/StrategyV5Chainlink.sol)
     - [StrategyV5Pyth.sol](./src/abstract/StrategyV5Pyth.sol)
 
 - Implementations of DeFi multi-protocol, multi-chain strategies ([cf. below](#strategies))
 
+- Libs 📚
+  - [AsMaths.sol](./src/libs/AsMaths.sol)
+  - [AsArrays.sol](./src/libs/AsArrays.sol)
+  - [AsAccounting.sol](./src/libs/AsAccounting.sol) Strategy accounting helpers
+  - [ChainlinkUtils.sol](./src/libs/ChainlinkUtils.sol) Chainlink specific oracle utils
+  - [PythUtils.sol](./src/libs/PythUtils.sol) Pyth specific oracle utils
+
 Besides harvesting/compounding automation (cf. [Astrolab Botnet](https://github.com/AstrolabDAO/monorepo/nptnet)), some of the strategies have off-chain components (eg. cross-chain arb, statistical arb, triangular arb, carry trading etc.), which are not part of this repository, and kept closed-source as part of our Protocol secret sauce.
 
-## ⚠️ Disclaimer
+## Disclaimer ⚠️
 Astrolab DAO and its core team members will not be held accountable for losses related to the deployment and use of this repository's codebase.
 As per the [licence](./LICENCE) states, the code is provided as-is and is under active development. The codebase, documentation, and other aspects of the project may be subject to changes and improvements over time.
 
-## Strategies
+## Strategies 🚧
 - [AaveMultiStake](./src/implementations/Aave/AaveMultiStake.sol)
 - [HopMultiStake](./src/implementations/Aave/HopMultiStake.sol)
 - ...
 
-## Integrated Protocols
+## Integrated/Watched Protocols 👀
 
 ### Staking
 Primitives
