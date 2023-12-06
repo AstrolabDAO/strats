@@ -9,7 +9,7 @@ import "../abstract/StrategyV5.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title DummyStrategy - Liquidity providing on Hop
+ * @title DummyStrategy - A dummy strategy for ABI generation purpose
  * @author Astrolab DAO
  * @notice Used to export generic unified StrategyV5+StrategyV5Agent ABI
  */
