@@ -713,8 +713,17 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
 
   // const rewardTokens = (await strat.rewardTokens()).filter((rt: string) => rt != addressZero);
   const amounts = await strat.rewardsAvailable();
-  const balances: BigNumber[] = await env.multicallProvider!.all(
-    rewardTokens.map((rt) => rt.multi.balanceOf(strat.address))
+
+  console.log(
+    `Generating harvest swapData for:\n${rewardTokens
+      .map(
+        (rt, i) =>
+          "  - " +
+          rt.sym +
+          ": " +
+          rt.toAmount(amounts[i])
+      )
+      .join("\n")}`
   );
 
   const trs: Partial<ITransactionRequestWithEstimate>[] = [];
@@ -724,15 +733,15 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
     let tr = {
       to: addressZero,
       data: "0x00",
-      estimatedOutputWei: balances[i],
+      estimatedOutputWei: amounts[i],
       estimatedExchangeRate: 1,
     } as ITransactionRequestWithEstimate;
 
-    if (balances[i].gt(10) && rewardTokens[i].address != underlying.address) {
+    if (amounts[i].gt(10) && rewardTokens[i].address != underlying.address) {
       tr = (await getTransactionRequest({
         input: rewardTokens[i].address,
         output: underlying.address,
-        amountWei: amounts[i],
+        amountWei: amounts[i].sub(amounts[i].div(1_000)), // .1% slippage
         inputChainId: network.config.chainId!,
         payer: strat.address,
         testPayer: env.addresses.accounts!.impersonate,
@@ -750,7 +759,7 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
 }
 
 export async function harvest(env: IStrategyDeploymentEnv) {
-  const { strat } = env.deployment!;
+  const { strat, rewardTokens } = env.deployment!;
   const params = await preHarvest(env);
   await logState(env, "Before Harvest");
   const receipt = await strat
