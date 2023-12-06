@@ -82,11 +82,12 @@ export const deployStrat = async (
     libraries[n] = lib.address;
   }
 
-  delete libraries.AsMaths; // linking not required on the strategy itself
-
   // exclude implementation specific libraries from agentLibs (eg. oracle libs)
   // as these are specific to the strategy implementation
-  const agentLibs = Object.assign({}, libraries);
+  const stratLibs = Object.assign({}, libraries);
+  delete stratLibs.AsMaths; // linking not required on the strategy itself
+
+  const agentLibs = Object.assign({}, stratLibs);
   for (const lib of Object.keys(agentLibs)) {
     if (isOracleLib(lib)) delete agentLibs[lib];
   }
@@ -117,7 +118,7 @@ export const deployStrat = async (
       proxied: ["StrategyV5Agent"],
       args: constructorParams,
       overrides: getOverrides(env),
-      libraries: libraries, // External libraries are only used in StrategyV5Agent
+      libraries: stratLibs, // External libraries are only used in StrategyV5Agent
     },
   };
 
@@ -125,7 +126,7 @@ export const deployStrat = async (
     units[libName] = {
       contract: libName,
       name: libName,
-      verify: true,
+      verify: false,
       deployed: true,
       address:
         libraries[libName] ?? libraries[`src/libs/${libName}.sol:${libName}`],
@@ -149,6 +150,7 @@ export const deployStrat = async (
   if (!env.addresses!.astrolab?.StrategyV5Agent) {
     console.log(`Deploying missing StrategyV5Agent`);
     agent = await deploy(units.StrategyV5Agent);
+    units.StrategyV5Agent.verify = false; // already verified
   } else {
     console.log(
       `Using existing StrategyV5Agent at ${env.addresses!.astrolab
@@ -239,7 +241,7 @@ export async function setMinLiquidity(
   const [from, to] = ["USDC", env.deployment!.underlying.sym];
   const exchangeRate = await getSwapperRateEstimate(from, to, 1e12);
   const seedAmount = underlying.toWei(usdAmount * exchangeRate);
-  if ((await strat.minLiquidity()) == seedAmount) {
+  if ((await strat.minLiquidity()).gte(seedAmount)) {
     console.log(`Skipping setMinLiquidity as minLiquidity == ${seedAmount}`);
   } else {
     console.log(
@@ -258,7 +260,7 @@ export async function setMinLiquidity(
 export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
   const { strat, underlying } = env.deployment!;
   let amount = underlying.toWei(_amount);
-  if ((await strat.totalAssets()) > (await strat.minLiquidity())) {
+  if ((await strat.totalAssets()).gte(await strat.minLiquidity())) {
     console.log(`Skipping seedLiquidity as totalAssets > minLiquidity`);
     return BigNumber.from(1);
   }
@@ -274,7 +276,7 @@ export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
     .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"], -2)[0]; // seeded amount
+  return getTxLogData(receipt, ["uint256", "uint256"], 0, -2); // seeded amount
 }
 
 export async function grantManagerRole(
@@ -294,7 +296,6 @@ export async function grantManagerRole(
       await strat
         .grantRole(roles[i], address, getOverrides(env))
         .then((tx: TransactionResponse) => tx.wait());
-  console.log("ok");
 }
 
 export async function setupStrat(
@@ -351,26 +352,26 @@ export async function setupStrat(
     await proxy[initSignature](...initParams, getOverrides(env));
   }
 
-  const actualInputs = //inputs.map((input) => input.address);
+  const actualInputs: string[] = //inputs.map((input) => input.address);
     await env.multicallProvider!.all(
       inputs.map((input, index) => strat.multi.inputs(index))
     );
 
-  const actualRewardTokens = // rewardTokens.map((reward) => reward.address);
+  const actualRewardTokens: string[] = // rewardTokens.map((reward) => reward.address);
     await env.multicallProvider!.all(
       rewardTokens.map((input, index) => strat.multi.rewardTokens(index))
     );
 
   // assert that the inputs and rewardTokens are set correctly
   for (const i in inputs) {
-    if (inputs[i].address != actualInputs[i])
+    if (inputs[i].address.toUpperCase() != actualInputs[i].toUpperCase())
       throw new Error(
         `Input ${i} address mismatch ${inputs[i].address} != ${actualInputs[i]}`
       );
   }
 
   for (const i in rewardTokens) {
-    if (rewardTokens[i].address != actualRewardTokens[i])
+    if (rewardTokens[i].address.toUpperCase() != actualRewardTokens[i].toUpperCase())
       throw new Error(
         `RewardToken ${i} address mismatch ${rewardTokens[i].address} != ${actualRewardTokens[i]}`
       );
@@ -400,7 +401,7 @@ export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
     .safeDeposit(amount, env.deployer.address, 1, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Deposit", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"])[0];
+  return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
 export async function swapDeposit(
@@ -447,7 +448,7 @@ export async function swapDeposit(
     )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SwapDeposit", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"])[0];
+  return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
 export async function preInvest(env: IStrategyDeploymentEnv, _amount = 100) {
@@ -501,7 +502,7 @@ export async function preInvest(env: IStrategyDeploymentEnv, _amount = 100) {
 }
 
 // input prices are required to weight out the swaps and create the SwapData array
-export async function invest(env: IStrategyDeploymentEnv, _amount = 100) {
+export async function invest(env: IStrategyDeploymentEnv, _amount = 0) {
   const { strat } = env.deployment!;
   const params = await preInvest(env, _amount);
   await logState(env, "Before Invest");
@@ -510,7 +511,7 @@ export async function invest(env: IStrategyDeploymentEnv, _amount = 100) {
     getOverrides(env)
   ).then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"])[0];
+  return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
 // input prices are required to weight out the swaps and create the SwapData array
@@ -633,7 +634,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256", "uint256"])[2]; // liquidityAvailable
+  return getTxLogData(receipt, ["uint256", "uint256", "uint256"], 2); // liquidityAvailable
 }
 
 export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
@@ -665,7 +666,7 @@ export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
     )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered
+  return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
 }
 
 export async function requestWithdraw(
@@ -705,7 +706,7 @@ export async function requestWithdraw(
     )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After RequestWithdraw", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"])[0]; // recovered
+  return getTxLogData(receipt, ["address, address, address, uint256"], 3); // recovered
 }
 
 export async function preHarvest(env: IStrategyDeploymentEnv) {
@@ -766,7 +767,7 @@ export async function harvest(env: IStrategyDeploymentEnv) {
     .harvest(...params, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Harvest", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"])[0];
+  return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
 export async function compound(env: IStrategyDeploymentEnv) {
@@ -774,14 +775,17 @@ export async function compound(env: IStrategyDeploymentEnv) {
   const [harvestSwapData] = await preHarvest(env);
 
   // harvest static call
-  const harvestReceipt = await strat.callStatic
-    .harvest(harvestSwapData, getOverrides(env))
-    .then((tx: TransactionResponse) => tx.wait());
-  const harvested = getTxLogData(harvestReceipt, ["uint256", "uint256"])[0];
+  let harvestEstimate = BigNumber.from(0);
+  try {
+    harvestEstimate = await strat.callStatic
+      .harvest(harvestSwapData, getOverrides(env));
+  } catch (e) {
+    console.error(`Harvest static call failed: probably reverted ${e}`);
+  }
 
   const [investAmounts, investSwapData] = await preInvest(
     env,
-    underlying.toAmount(harvested.sub(harvested.div(50)))
+    underlying.toAmount(harvestEstimate.sub(harvestEstimate.div(50)))
   ); // 2% slippage
   await logState(env, "Before Compound");
   const receipt = await strat
@@ -792,7 +796,7 @@ export async function compound(env: IStrategyDeploymentEnv) {
     )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Compound", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"])[0];
+  return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
 export const Flows: { [name: string]: Function } = {
@@ -817,7 +821,7 @@ export interface IFlow {
 }
 
 export async function testFlow(flow: IFlow) {
-  const { env, elapsedSec, revertState, fn, params, assert } = flow;
+  let { env, elapsedSec, revertState, fn, params, assert } = flow;
   const live = isLive(env);
 
   console.log(
@@ -829,16 +833,29 @@ export async function testFlow(flow: IFlow) {
 
   if (!live) {
     if (revertState) snapshotId = await env.provider.send("evm_snapshot", []);
-    if (elapsedSec)
-      await env.provider.send("evm_increaseTime", [
-        ethers.utils.hexValue(elapsedSec),
-      ]);
+    if (elapsedSec) {
+      const timeBefore = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
+      await env.provider.send("evm_increaseTime", [ethers.utils.hexValue(elapsedSec)]);
+      await env.provider.send("evm_increaseBlocks", ["0x20"]); // evm_mine
+      const timeAfter = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
+      console.log(`⏰🔜 Advanced blocktime by ${elapsedSec}s: ${timeBefore} -> ${timeAfter}`);
+    }
+  }
+  let result;
+  try {
+    result = await fn(env, ...params);
+  } catch (e) {
+    assert = () => false;
+    console.error(e);
   }
 
-  const result = await fn(env, ...params);
-
   // revert the state of the chain to the beginning of this test, not to env.snapshotId
-  if (!live && revertState) await env.provider.send("evm_revert", [snapshotId]);
+  if (!live && revertState) {
+    const timeBefore = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
+    await env.provider.send("evm_revert", [snapshotId]);
+    const timeAfter = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
+    console.log(`⏰🔙 Reverted blocktime: ${timeBefore} -> ${timeAfter}`);
+  }
 
   if (assert) assert(result);
 

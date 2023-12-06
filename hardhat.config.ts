@@ -25,6 +25,7 @@ config.paths = {
   // local sources
   tests: "./test/integration",
 } as any;
+config.mocha!.bail = true;
 
 config.tenderly!.privateVerification = true;
 

@@ -9,6 +9,7 @@ import {
   loadAbi,
   network,
   provider,
+  setBalances,
   weiToString,
 } from "@astrolabs/hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -22,7 +23,7 @@ import {
   Overrides,
 } from "ethers";
 import { merge } from "lodash";
-import { IStrategyDeploymentEnv, ITestEnv, IToken } from "../../src/types";
+import { IChainlinkParams, IStrategyDeploymentEnv, ITestEnv, IToken } from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
 import {
   ISwapperParams,
@@ -40,6 +41,91 @@ import {
 export const addressZero = constants.AddressZero;
 const MaxUint256 = ethers.constants.MaxUint256;
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
+
+
+export function isLive(env: any) {
+  const n = env.network ?? network;
+  return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
+}
+
+export function isAddress(s: string) {
+  return /^0x[a-fA-F0-9]{40}$/.test(s);
+}
+
+export function getAddresses(s: string) {
+  return isAddress(s) ? s : addresses[network.config.chainId!].tokens[s];
+}
+
+
+const networkOverrides: { [name: string]: Overrides } = {
+  "gnosis-mainnet": {
+    gasLimit: 1e7,
+    maxPriorityFeePerGas: 2e9,
+    maxFeePerGas: 4e9,
+    // gasPrice: 4e9,
+  },
+  tenderly: {
+    gasLimit: 1e7,
+  },
+};
+
+type AbiFragment = { name: string; inputs: [{ type: string }] };
+
+// TODO: move to @astrolabs/hardhat/utils
+export const getInitSignature = (contract: string) => {
+  const fragments = (loadAbi(contract) as AbiFragment[]).filter(
+    (a) => a.name === "init"
+  );
+  const dummy = new Contract(addressZero, fragments, provider);
+  return Object.keys(dummy)
+    .filter((s) => s.startsWith("init"))
+    .sort((s1, s2) => s2.length - s1.length)?.[0];
+};
+
+export function getSelectors(abi: any) {
+  const i = new ethers.utils.Interface(abi);
+  return Object.keys(i.functions).map((signature) => ({
+    name: i.functions[signature].name,
+    signature: i.getSighash(i.functions[signature]),
+  }));
+}
+export const getOverrides = (env: Partial<ITestEnv>) =>
+  isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
+
+export const sleep = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+export const isStable = (s: string) =>
+  [
+    "USDC",
+    "USDCe",
+    "USDT",
+    "USDTe",
+    "DAI",
+    "DAIe",
+    "XDAI",
+    "WXDAI",
+    "SDAI",
+    "FRAX",
+    "LUSD",
+    "USDD",
+    "CRVUSD",
+    "GHO",
+    "EURS",
+    "EURT",
+    "EURTe",
+    "agEUR",
+    "USD",
+    "EUR",
+  ].includes(s.toUpperCase());
+
+export const isStablePair = (s1: string, s2: string) =>
+  isStable(s1) && isStable(s2);
+
+export const isOracleLib = (name: string) =>
+  ["Pyth", "RedStone", "Chainlink", "Witnet"].some((libname) =>
+    name.includes(libname)
+  );
 
 export async function logState(
   env: Partial<IStrategyDeploymentEnv>,
@@ -66,6 +152,7 @@ export async function logState(
       totalClaimableRedemption,
       // totalUnderlying, // only available on strat.req() struct
       // totalClaimableUnderlying, // only available on strat.req() struct
+      rewardsAvailable,
       previewInvest,
       previewLiquidate,
       stratUnderlyingBalance,
@@ -84,6 +171,7 @@ export async function logState(
       strat.multi.totalClaimableRedemption(),
       // strat.multicallContract.totalUnderlying(), // only available on strat.req() struct
       // strat.multicallContract.totalClaimableUnderlying(), // only available on strat.req() struct
+      strat.multi.rewardsAvailable(),
       strat.multi.previewInvest(0),
       strat.multi.previewLiquidate(0),
       underlying.multi.balanceOf(strat.address),
@@ -111,22 +199,22 @@ export async function logState(
     rewardTokens: [${rewardsAddresses.join(", ")}]
     sharePrice(): ${underlying.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${underlying.toAmount(totalSupply)} (${totalSupply}wei)
-    totalAccountedSupply(): ${
-      underlying.toAmount(totalAccountedSupply)
-    } (${totalAccountedSupply}wei)
+    totalAccountedSupply(): ${underlying.toAmount(
+      totalAccountedSupply
+    )} (${totalAccountedSupply}wei)
     totalAssets(): ${underlying.toAmount(totalAssets)} (${totalAssets}wei)
-    totalAccountedAssets(): ${
-      underlying.toAmount(totalAccountedAssets)
-    } (${totalAccountedAssets}wei)
-    totalClaimableUnderlyingFees(): ${
-      underlying.toAmount(totalClaimableUnderlyingFees)
-    } (${totalClaimableUnderlyingFees}wei)
+    totalAccountedAssets(): ${underlying.toAmount(
+      totalAccountedAssets
+    )} (${totalAccountedAssets}wei)
+    totalClaimableUnderlyingFees(): ${underlying.toAmount(
+      totalClaimableUnderlyingFees
+    )} (${totalClaimableUnderlyingFees}wei)
     invested(): ${underlying.toAmount(invested)} (${invested}wei)\n${inputs
       .map(
         (input, index) =>
-          `      -${input.sym}: ${
-            <any>underlying.toAmount(investedAmounts[index])
-          } (${investedAmounts[index]}wei)`
+          `      -${input.sym}: ${<any>(
+            underlying.toAmount(investedAmounts[index])
+          )} (${investedAmounts[index]}wei)`
       )
       .join("\n")}
     available(): ${available / underlying.weiPerUnit} (${available}wei) (${
@@ -147,10 +235,18 @@ export async function logState(
           : (totalClaimableRedemption * 100) / totalRedemptionRequest
       ) / 100
     }%)
+    rewardsAvailable():\n${rewardTokens
+      .map(
+        (reward, index) =>
+          `      -${reward.sym}: ${reward.toAmount(
+            rewardsAvailable[index]
+          )} (${rewardsAvailable[index]}wei)`
+      )
+      .join("\n")}
     previewInvest(0 == available()*.9):\n${inputs
       .map(
         (input, i) =>
-          `      -${input.sym}: ${underlying.toAmount(
+          `      -${input.sym}: ${input.toAmount(
             previewInvest[i]
           )} (${previewInvest[i].toString()}wei)`
       )
@@ -158,7 +254,7 @@ export async function logState(
     previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
       .map(
         (input, i) =>
-          `      -${input.sym}: ${underlying.toAmount(
+          `      -${input.sym}: ${input.toAmount(
             previewLiquidate[i]
           )} (${previewLiquidate[i].toString()}wei)`
       )
@@ -199,7 +295,7 @@ export const getEnv = async (
       provider: ethers.provider,
       multicallProvider,
       needsFunding: false,
-      gasUsedForFunding: 1e21,
+      gasUsedForFunding: 0, // denominated in wgas decimal
     },
     env
   );
@@ -321,7 +417,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
 
 export async function fundAccount(
   env: Partial<IStrategyDeploymentEnv>,
-  amount: number,
+  amount: number | BigNumber,
   asset: string,
   receiver: string
 ): Promise<void> {
@@ -397,12 +493,32 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
     console.log(
       `Funding ${env.deployer.address} from ${env.gasUsedForFunding}wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${underlyingSymbol}`
     );
-    let gas = env.gasUsedForFunding;
-    if (["BTC", "ETH"].some((s) => s.includes(env.wgas.sym.toUpperCase())))
-      gas /= 1000; // less gas tokens or swaps will fail
+    let gas =
+      env.gasUsedForFunding ||
+      (await getSwapperOutputEstimate(
+        "USDC",
+        env.wgas.sym,
+        50_005 * 1e6,
+        network.config.chainId!,
+        network.config.chainId!
+      )) ||
+      0;
+    if (!gas) {
+      throw new Error(
+        `Failed to get gas estimate for ${env.wgas.sym} => ${underlyingSymbol}`
+      );
+    }
     console.log(
       `Balance before funding: ${underlyingBalance}wei ${underlyingSymbol}`
     );
+    const nativeBalance = await provider.getBalance(env.deployer.address);
+    if (nativeBalance.lt(gas)) {
+      console.log(
+        `Funding ${env.deployer.address} with ${gas}wei ${env.wgas.sym} (gas tokens)`
+      );
+      // if not enough gas tokens, add it
+      await setBalances(gas, env.deployer.address);
+    }
     const received = await fundAccount(
       env,
       gas,
@@ -417,35 +533,62 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
   }
 }
 
+export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
+  if (isLive(env)) {
+    console.log(
+      `Oracle access is only applicable to test forks and testnets, not ${env.network.name}`
+    );
+    return;
+  }
+  const params = env.deployment!.initParams[1] as IChainlinkParams;
+  for (const lib of Object.keys(env.deployment!.units!)) {
+    if (isOracleLib(lib)) {
+      console.log(`Whitelisting oracle access for ${lib}`);
+      switch (lib) {
+        case "ChainlinkUtils": {
+          const oracles = new Set([params.underlyingPriceFeed, ...params.inputPriceFeeds]);
+          for (const oracle of oracles) {
+            const storageSlot = '0x0000000000000000000000000000000000000000000000000000000000000031';
+            // set the storage slot for Chainlink's "checkEnabled" to false, in order to deactivate access control
+            const newValue = '0x0000000000000000000000000000000000000000000000000000000000000000';
+            // Sending the tenderly_setStorageAt command
+            await provider.send("tenderly_setStorageAt", [
+              oracle,
+              storageSlot,
+              newValue,
+            ]);
+          }
+        }
+      }
+    }
+  }
+}
+
 export function getTxLogData(
   tx: TransactionReceipt,
   types = ["uint256"],
+  outputIndex = 0,
   logIndex: string | number = -1
 ): any {
   const logs = (tx as any).events || tx.logs;
   let log: Log;
-  if (typeof logIndex === "string") {
-    log = logs.find((l: any) => l?.event === logIndex) as Log;
-  } else {
-    if (logIndex < 0) logIndex = logs.length + logIndex;
-    log = logs[logIndex];
+  try {
+    if (!logs?.length) throw "No logs found on tx ${tx.transactionHash}";
+    if (typeof logIndex === "string") {
+      log = logs.find((l: any) => l?.event === logIndex) as Log;
+    } else {
+      if (logIndex < 0) logIndex = logs.length + logIndex;
+      log = logs[logIndex];
+    }
+    if (!log) throw `Log ${logIndex} not found on tx ${tx.transactionHash}`;
+    const decoded = ethersUtils.defaultAbiCoder.decode(types, log.data);
+    return decoded?.[outputIndex];
+  } catch (e) {
+    console.error(
+      `Failed to parse log ${e}: tx ${tx.transactionHash} probably reverted`
+    );
+    return undefined;
   }
-  if (!log)
-    throw new Error(`No log ${logIndex} found on tx ${tx.transactionHash}`);
-  return ethersUtils.defaultAbiCoder.decode(types, log.data);
-}
-
-export function isLive(env: any) {
-  const n = env.network ?? network;
-  return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
-}
-
-export function isAddress(s: string) {
-  return /^0x[a-fA-F0-9]{40}$/.test(s);
-}
-
-export function getAddresses(s: string) {
-  return isAddress(s) ? s : addresses[network.config.chainId!].tokens[s];
 }
 
 export async function getSwapperRateEstimate(
@@ -466,10 +609,11 @@ export async function getSwapperOutputEstimate(
   from: string,
   to: string,
   inputWei: BigNumberish | bigint,
-  chainId = 1
+  chainId = 1,
+  outputChainId?: number
 ): Promise<BigNumber> {
   return BigNumber.from(
-    (await getSwapperEstimate(from, to, inputWei, chainId))
+    (await getSwapperEstimate(from, to, inputWei, chainId, outputChainId))
       ?.estimatedOutputWei ?? 0
   );
 }
@@ -503,74 +647,3 @@ export async function getSwapperEstimate(
   })) as ITransactionRequestWithEstimate;
   return tr;
 }
-
-const networkOverrides: { [name: string]: Overrides } = {
-  "gnosis-mainnet": {
-    gasLimit: 1e7,
-    maxPriorityFeePerGas: 2e9,
-    maxFeePerGas: 4e9,
-    // gasPrice: 4e9,
-  },
-  tenderly: {
-    gasLimit: 1e7,
-  },
-};
-
-type AbiFragment = { name: string; inputs: [{ type: string }] };
-
-// TODO: move to @astrolabs/hardhat/utils
-export const getInitSignature = (contract: string) => {
-  const fragments = (loadAbi(contract) as AbiFragment[]).filter(
-    (a) => a.name === "init"
-  );
-  const dummy = new Contract(addressZero, fragments, provider);
-  return Object.keys(dummy)
-    .filter((s) => s.startsWith("init"))
-    .sort((s1, s2) => s2.length - s1.length)?.[0];
-};
-
-export function getSelectors(abi: any) {
-  const i = new ethers.utils.Interface(abi);
-  return Object.keys(i.functions).map((signature) => ({
-    name: i.functions[signature].name,
-    signature: i.getSighash(i.functions[signature]),
-  }));
-}
-export const getOverrides = (env: Partial<ITestEnv>) =>
-  isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
-
-export const sleep = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-export const isStable = (s: string) =>
-  [
-    "USDC",
-    "USDCe",
-    "USDT",
-    "USDTe",
-    "DAI",
-    "DAIe",
-    "XDAI",
-    "WXDAI",
-    "SDAI",
-    "FRAX",
-    "LUSD",
-    "USDD",
-    "CRVUSD",
-    "GHO",
-    "EURS",
-    "EURT",
-    "EURTe",
-    "agEUR",
-    "USD",
-    "EUR",
-  ].includes(s.toUpperCase());
-
-export const isStablePair = (s1: string, s2: string) =>
-  isStable(s1) && isStable(s2);
-
-export const isOracleLib = (name: string) =>
-  ["Pyth", "RedStone", "Chainlink", "Witnet"].some((libname) =>
-    name.includes(libname)
-  );
-

@@ -19,7 +19,7 @@ import "./interfaces/IOracle.sol";
  * @notice Basic liquidity providing strategy for Aave V3 (https://aave.com/)
  * @dev Underlying->inputs->LPs->inputs->underlying
  */
-contract HopMultiStake is StrategyV5Chainlink {
+contract AaveMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
     using SafeERC20 for IERC20;

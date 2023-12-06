@@ -100,6 +100,22 @@ export const addresses = {
     oracles: {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
+    libs: {
+      AsMaths: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      AsArrays: "",
+      AsAccounting: "0x1761ff905292548ff2254620166eabd988e48718",
+      PythUtils: "",
+      ChainlinkUtils: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
+      RedStoneUtils: "",
+    },
+    astrolab: {
+      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
+      StrategyV5Agent: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
+      "HopSingleStake.USDC": "",
+      "HopSingleStake.WETH": "",
+      "Astrolab Hop TriStable": "",
+      "Astrolab Aave BiStable": "",
+    },
     tokens: {
       OP: "0x4200000000000000000000000000000000000042",
       WETH: "0x4200000000000000000000000000000000000006",
@@ -184,19 +200,20 @@ export const addresses = {
       Pyth: "0x2880aB155794e7179c9eE2e38200202908C17B43",
     },
     libs: {
-      AsMaths: "0x71b7d3ddc3faf53bbb99034d93c541db033eb1a9",
+      AsMaths: "0x81a4ece332d60673a578b70cc01137617be883b9",
       AsArrays: "",
-      AsAccounting: "0x1c46486727fc8419b4cbdac7862d38d9e2a510a3",
+      AsAccounting: "0x47A84E64a9b50D6f489F9AB58DB1ab7a2719C42b",
       PythUtils: "",
-      ChainlinkUtils: "0x36a4d3b370756639b1bd603980937b37583000a4",
+      ChainlinkUtils: "0x3ad84f7dd934d7ba3dc3a6ee42d900237f5ada0c",
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xc3e5550c1c4ed7acfccd785277c45edf1578da14",
-      StrategyV5Agent: "0x6b3a3166156b7e09a53f041a66d37e5afe564364",
+      StrategyV5Agent: "0x55b5e5c8541feac305bebde91a7558a1a685fbfd",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
-      "Astrolab Hop TriStable": "0x5b1a46cbdd0ce52ee9d03b2b653014c5b48258cc",
+      "Astrolab Hop TriStable": "0x597a3df5638cf5f5713f2c74147fbc096e4dbdb0",
+      "Astrolab Aave BiStable": "",
     },
     tokens: {
       WXDAI: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
