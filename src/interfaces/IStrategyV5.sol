@@ -1,9 +1,20 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.0;
 
 import "./IAs4626.sol";
 
-interface IStrategyV5 is IAs4626 {
+interface IStrategyV5Abstract is IAs4626 {
+    function swapper() external view returns (address);
+    function agent() external view returns (address);
+    function stratProxy() external view returns (address);
+    function inputs() external view returns (address[8] memory);
+    function inputWeights() external view returns (uint16[8] memory);
+    function rewardTokens() external view returns (address[8] memory);
+    function inputLength() external view returns (uint8);
+    function rewardLength() external view returns (uint8);
+}
+
+interface IStrategyV5 is IStrategyV5Abstract {
     function rewardsAvailable()
         external
         view
@@ -53,6 +64,6 @@ interface IStrategyV5 is IAs4626 {
     ) external returns (uint256 liquidityAvailable, uint256);
 
     function liquidateRequest(uint256 _amount) external returns (uint256);
-
     function rescueToken(address _token, bool _onlyETH) external;
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }

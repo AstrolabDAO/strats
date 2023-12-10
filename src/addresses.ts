@@ -55,6 +55,7 @@ export const addresses = {
       swETH: "0xf951E335afb289353dc249e82926178EaC7DEd78",
       ETHx: "0xA35b1B31Ce002FBF2058D22F30f95D405200A15b",
 
+      SGETH: "0x72E2F4830b9E45d52F80aC08CB2bEC0FeF72eD9c",
       BNB: "0xB8c77482e45F1F44dE1745F52C74426C631bDD52",
       LINK: "0x514910771AF9Ca656af840dff83E8264EcF986CA",
       WBTC: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
@@ -101,20 +102,20 @@ export const addresses = {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
     libs: {
-      AsMaths: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      AsMaths: "0x503301eb7cfc64162b5ce95cc67b84fbf6df5255",
       AsArrays: "",
-      AsAccounting: "0x1761ff905292548ff2254620166eabd988e48718",
+      AsAccounting: "0x73f65faefb2be3b7d868300fd5e3a9054e1769a6",
       PythUtils: "",
-      ChainlinkUtils: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
+      ChainlinkUtils: "0x11656b8f95613b1617a5862d089873ed67e43128",
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      StrategyV5Agent: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
+      StrategyV5Agent: "0x98bc71a155a11d516a2f4e675f4cd0df04aa1d2b",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
-      "Astrolab Hop TriStable": "",
-      "Astrolab Aave BiStable": "",
+      "Astrolab Hop MetaStable": "0xafa8b5dc842ef550323413b255efc1ee014b7f60",
+      "Astrolab Aave Metastable": "",
     },
     tokens: {
       OP: "0x4200000000000000000000000000000000000042",
@@ -125,13 +126,14 @@ export const addresses = {
       USDC: "0x0b2c639c533813f4aa9d7837caf62653d097ff85",
       USDCe: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
       USDT: "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",
+      LUSD: "0xc40f949f8a4e094d1b49a23ea9241d289b7b2819",
+      sUSD: "0x8c6f28f2F1A3C87F0f938b96d27520d9751ec8d9",
       DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
       FRAX: "0x2E3D870790dC77A83DD1d18184Acc7439A53f475",
       TUSD: "0xcB59a0A753fDB7491d5F3D794316F1adE197B21E",
       axlUSD: "0xEB466342C4d449BC9f53A865D5Cb90586f405215",
       BOB: "0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb",
       DOLA: "0x8aE125E8653821E851F12A49F7765db9a9ce7384",
-      sUSD: "0x8c6f28f2F1A3C87F0f938b96d27520d9751ec8d9",
       USDplus: "0x73cb180bf0521828d8849bc8CF2B920918e23032",
 
       // staked eth
@@ -141,6 +143,7 @@ export const addresses = {
       sfrxETH: "0x484c2D6e3cDd945a8B2DF735e079178C1036578c",
       wstETH: "0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb",
 
+      SGETH: "0xb69c8CBCD90A39D8D3d3ccf0a3E968511C3856A0",
       KNC: "0xa00E3A3511aAC35cA78530c85007AFCd31753819",
       SNX: "0x8700dAec35aF8Ff88c16BdF0418774CB3D7599B4",
       RPL: "0xC81D1F0EB955B0c020E5d5b264E1FF72c14d1401",
@@ -172,6 +175,7 @@ export const addresses = {
       DAI: "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
       TUSD: "0x40af3827F39D0EAcBF4A168f8D4ee67c121D11c9",
       BUSD: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+      USDD: "0xd17479997F34dd9156Deef8F95A52D81D265be9c",
 
       LINK: "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
       MATIC: "0xCC42724C6683B7E57334c4E856f4c9965ED682bD",
@@ -200,19 +204,20 @@ export const addresses = {
       Pyth: "0x2880aB155794e7179c9eE2e38200202908C17B43",
     },
     libs: {
-      AsMaths: "0x81a4ece332d60673a578b70cc01137617be883b9",
+      AsMaths: "",
       AsArrays: "",
-      AsAccounting: "0x47A84E64a9b50D6f489F9AB58DB1ab7a2719C42b",
+      AsAccounting: "",
       PythUtils: "",
-      ChainlinkUtils: "0x3ad84f7dd934d7ba3dc3a6ee42d900237f5ada0c",
+      ChainlinkUtils: "",
       RedStoneUtils: "",
     },
     astrolab: {
-      Swapper: "0xc3e5550c1c4ed7acfccd785277c45edf1578da14",
-      StrategyV5Agent: "0x55b5e5c8541feac305bebde91a7558a1a685fbfd",
+      Swapper: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb", // PROD
+      // Swapper: "0xc3e5550c1c4ed7acfccd785277c45edf1578da14",
+      StrategyV5Agent: "",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
-      "Astrolab Hop TriStable": "0x597a3df5638cf5f5713f2c74147fbc096e4dbdb0",
+      "Astrolab Hop MetaStable": "",
       "Astrolab Aave BiStable": "",
     },
     tokens: {
@@ -247,15 +252,34 @@ export const addresses = {
     oracles: {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
+    libs: {
+      AsMaths: "0x1761ff905292548ff2254620166eabd988e48718",
+      AsArrays: "",
+      AsAccounting: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
+      PythUtils: "",
+      ChainlinkUtils: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
+      RedStoneUtils: "",
+    },
+    astrolab: {
+      Swapper: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
+      // Swapper: "0xc3e5550c1c4ed7acfccd785277c45edf1578da14",
+      StrategyV5Agent: "",
+      "HopSingleStake.USDC": "",
+      "HopSingleStake.WETH": "",
+      "Astrolab Hop MetaStable": "",
+      "Astrolab Aave MetaStable": "",
+      "Astrolab Stargate MetaStable": "",
+    },
     tokens: {
       WBTC: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
       WETH: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+      WGAS: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
       WMATIC: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
 
       USDT: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
       BNB: "0x3BA4c387f786bFEE076A58914F5Bd38d668B42c3",
       USDC: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-      USDCe: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+      USDCe: "0x2791bca1f2de4661ed88a30c99a7a9449aa84174",
       BUSD: "0xdAb529f40E671A1D4bF91361c21bf9f0C9712ab7",
       DAI: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
       TUSD: "0x2e1AD108fF1D8C782fcBbB89AAd783aC49586756",
@@ -419,6 +443,7 @@ export const addresses = {
       USDC: "0xfA9343C3897324496A05fC75abeD6bAC29f8A40f",
       USDT: "0xB44a9B6905aF7c801311e8F4E76932ee959c663C",
       MIM: "0x471EE749bA270eb4c1165B5AD95E614947f6fCeb",
+      SGUSDT: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
       STG: "0x83c30eb8bc9ad7C56532895840039E62659896ea",
       SUSHI: "0x7C598c96D02398d89FbCb9d41Eab3DF0C16F227D",
       BIFI: "0xC19281F22A075E0F10351cd5D6Ea9f0AC63d4327",
@@ -440,6 +465,9 @@ export const addresses = {
 
       USDT: "0x201EBa5CC46D216Ce6DC03F6a759e8E766e956aE",
       USDC: "0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9",
+
+      SGUSDC: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
+
     },
   },
   // horizen eon
@@ -479,6 +507,7 @@ export const addresses = {
       cbETH: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
       rETH: "0xB6fe221Fe9EeF5aBa221c348bA20A1Bf5e73624c",
 
+      SGETH: "0x224D8Fd7aB6AD4c6eb4611Ce56EF35Dec2277F03",
       STG: "0xE3B53AF74a4BF62Ae5511055290838050bf764Df",
       KNC: "0x28fe69Ff6864C1C218878BDCA01482D36B9D57b1",
     },
@@ -491,7 +520,7 @@ export const addresses = {
     },
     tokens: {},
   },
-  // arb
+  // arbitrum
   42161: {
     accounts: {
       impersonate: "0x489ee077994B6658eAfA855C308275EAd8097C4A",
@@ -509,6 +538,7 @@ export const addresses = {
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
       WGAS: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+      WBTC: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
       ARB: "0x912CE59144191C1204E64559FE8253a0e49E6548",
       USDT: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
       USDCe: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
@@ -520,7 +550,7 @@ export const addresses = {
       MIM: "0xFEa7a6a0B346362BF88A9e4A88416B77a57D6c2A",
       USDD: "0x680447595e8b7b3Aa1B43beB9f6098C79ac2Ab3f",
       AGEUR: "0xFA5Ed56A203466CbBC2430a43c66b9D8723528E7",
-      WBTC: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f",
+
       LINK: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4",
       SUSHI: "0xd4d42F0b6DEF4CE0383636770eF773390d85c61A",
       CRV: "0x11cDb42B0EB46D95f990BeDD4695A6e3fA034978",
@@ -530,6 +560,8 @@ export const addresses = {
       GMX: "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a",
       FXS: "0x9d2F299715D94d8A7E6F5eaa8E654E8c74a988A7",
       LDO: "0xFdb794692724153d1488CcdBE0C56c252596735F",
+
+      SGETH: "0x82CbeCF39bEe528B5476FE6d1550af59a9dB6Fc0",
       STG: "0x6694340fc020c5E6B96567843da2df01b2CE1eb6",
       // AXL: "0x23ee2343B892b1BB63503a4FAbc840E0e2C6810f", // no liquidity
       ACX: "0x53691596d1BCe8CEa565b84d4915e69e03d9C99d",
@@ -619,6 +651,8 @@ export const addresses = {
       DAI: "0x4AF15ec2A0BD43Db75dd04E62FAA3B8EF36b00d5",
       BUSD: "0x7d43AABC515C356145049227CeE54B608342c0ad",
       MIM: "0xDD3B8084AF79B9BaE3D1b668c0De08CCC2C9429A",
+
+      SGETH: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
 
       AVAX: "0x5471ea8f739dd37E9B81Be9c5c77754D8AA953E4",
       BNB: "0xf5C6825015280CdfD0b56903F9F8B5A2233476F5",

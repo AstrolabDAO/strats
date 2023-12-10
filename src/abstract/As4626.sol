@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./As4626Abstract.sol";
 import "./AsTypes.sol";
+import "../libs/SafeERC20.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
 
@@ -35,7 +35,7 @@ abstract contract As4626 is As4626Abstract {
         address _feeCollector
     ) public virtual onlyAdmin {
         // check that the fees are not too high
-        // if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
+        if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert Unauthorized();
         fees = _fees;
         feeCollector = _feeCollector;
 
@@ -74,20 +74,24 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Rescue any ERC20 token or native that is stuck in the contract
+     * @notice Rescue native tokens (like Ether) that are stuck in the contract
      * @dev Transfers out all native tokens from the contract to the admin (DAO multisig)
-     * @param _token The address of the ERC20 token to be rescued. Ignored if `_native` is true
-     * @param _native If true, rescues native and ignores ERC20 tokens
      */
-    function rescueToken(address _token, bool _native) external onlyAdmin {
-        if (_native) {
-            payable(msg.sender).transfer(address(this).balance);
-        } else {
-            // The underlying token (vault denomination) cannot be transferred out
-            if (_token == address(underlying)) revert Unauthorized();
-            IERC20Metadata toRescue = IERC20Metadata(_token);
-            toRescue.transfer(msg.sender, toRescue.balanceOf(address(this)));
-        }
+    function rescueNative() external onlyAdmin {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+
+    /**
+     * @notice Rescue any ERC20 token that is stuck in the contract
+     * @dev Transfers out the specified ERC20 token from the contract to the admin (DAO multisig)
+     * @param _token The address of the ERC20 token to be rescued
+     */
+    function rescueErc20(address _token) external onlyAdmin {
+        // Unlike input/farmed assets, the underlying token (vault denomination) cannot be transferred out
+        if (_token == address(underlying)) revert Unauthorized();
+
+        IERC20Metadata toRescue = IERC20Metadata(_token);
+        toRescue.safeTransferFrom(address(this), msg.sender, toRescue.balanceOf(address(this)));
     }
 
     /**
@@ -350,7 +354,7 @@ abstract contract As4626 is As4626Abstract {
         last.accountedSharePrice = price;
 
         emit FeeCollection(
-            profit,
+            profit, // basis AsMaths.BP_BASIS**2
             totalAssets(),
             perfFeesAmount,
             mgmtFeesAmount,
@@ -415,7 +419,8 @@ abstract contract As4626 is As4626Abstract {
         if (totalSupply() < minLiquidity) {
             _deposit(_seedDeposit, msg.sender, 1);
         }
-        _unpause();
+        // if the vault is still paused, unpause it
+        if (paused()) _unpause();
     }
 
     /**
@@ -424,7 +429,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _fees.perf Fee on performance
      */
     function setFees(Fees memory _fees) external onlyAdmin {
-        // if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert FeeError();
+        if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert Unauthorized();
         fees = _fees;
         emit FeesUpdate(_fees);
     }
@@ -655,6 +660,4 @@ abstract contract As4626 is As4626Abstract {
     function totalClaimableRedemption() external view returns (uint256) {
         return req.totalClaimableRedemption;
     }
-
-    receive() external payable {}
 }

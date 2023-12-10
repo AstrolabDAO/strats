@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "./Nonces.sol";
@@ -60,7 +59,7 @@ library NonceLib {
      * @param version The version of the contract
      * @return The calculated domain separator
      */
-    function calculateDomainSeparator(
+    function getDomainSeparator(
         uint256 chainId,
         bytes memory name,
         bytes memory version
@@ -68,9 +67,7 @@ library NonceLib {
         return
             keccak256(
                 abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
+                    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                     keccak256(name),
                     keccak256(version),
                     chainId,
@@ -132,7 +129,7 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
     ) ERC20(_name, _symbol) EIP712(_name, _version) {
         VERSION = _version;
         deploymentChainId = block.chainid;
-        _DOMAIN_SEPARATOR = NonceLib.calculateDomainSeparator(
+        _DOMAIN_SEPARATOR = NonceLib.getDomainSeparator(
             deploymentChainId,
             bytes(_name),
             bytes(VERSION)
@@ -164,7 +161,7 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
                 "\x19\x01",
                 block.chainid == deploymentChainId
                     ? _DOMAIN_SEPARATOR
-                    : NonceLib.calculateDomainSeparator(block.chainid, bytes(name()), bytes(VERSION)),
+                    : NonceLib.getDomainSeparator(block.chainid, bytes(name()), bytes(VERSION)),
                 keccak256(
                     abi.encode(
                         PERMIT_TYPEHASH,

@@ -3,14 +3,15 @@ import { config } from "@astrolabs/hardhat/dist/hardhat.config";
 
 config.solidity!.compilers = [
   {
-    version: "0.8.19",
+    version: `0.8.22`,
     settings: {
       optimizer: {
         enabled: true,
-        runs: 160,
+        runs: 160
       },
       viaIR: false,
-    },
+      evmVersion: `paris`
+    }
   },
 ];
 config.paths = {

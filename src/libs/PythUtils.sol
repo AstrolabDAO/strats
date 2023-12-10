@@ -39,7 +39,7 @@ library PythUtils {
     }
 
     /**
-     * @notice Calculates the exchange rate in bps (10_000 == 100%) between two prices (in wei)
+     * @notice Calculates the exchange rate in bps (AsMaths.BP_BASIS == 100%) between two prices (in wei)
      * @dev Reverts if either price is zero.
      * @param prices Array of the two Pyth prices (base and quote, in wei)
      * @param decimals Array of the two prices decimals.

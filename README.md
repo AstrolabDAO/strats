@@ -12,7 +12,7 @@
   </p>
 </div>
 
-This repo holds Astrolab's strategies smart contracts, aka the DAO's yield primitives.
+This repo holds Astrolab DAO's yield primitives.
 
 - Strategy abstract contracts 🎯
   - [As4626.sol](./src/abstract/As4626.sol) (light-weight, full-featured ERC4626 tokenized vault implementation)
@@ -69,10 +69,13 @@ Primitives
 
 ### RWA
 Primitives
-  - [Spark](https://github.com/marsfoundation/sparklend)
+  - [Spark/sDAI](https://github.com/marsfoundation/sparklend)
   - [stUSDT](https://github.com/justlend/justlend-protocol)
-  - [Ondo/USDY](https://github.com/ondoprotocol/usdy)
-  - [OpenEden/TBill](https://github.com/OpenEdenHQ/openeden.smartcontract.audit)
+  - [Ondo/USDY/OUSG](https://github.com/ondoprotocol/usdy) `KYC`
+  - [Matrixdock/STBT](https://stbt.matrixdock.com/) `KYC`
+  - [OpenEden/TBill](https://github.com/OpenEdenHQ/openeden.smartcontract.audit) `KYC`
+  - [BackedFi/bIB01](https://backed.fi) `KYC`
+  - [Hashnote/USYC](https://usyc.hashnote.com) `KYC`
   - [Goldfinch](https://github.com/goldfinch-eng/goldfinch-contracts)
   - [Centrifuge](https://github.com/centrifuge/liquidity-pools)
   - [Maple](https://github.com/maple-labs/maple-core-v2)
@@ -114,6 +117,7 @@ Primitives
   - [Trader Joe](https://github.com/traderjoe-xyz/joe-v2)
   - [KyberSwap](https://github.com/KyberNetwork/ks-elastic-sc)
   - [DODO](https://github.com/DODOEX/dodo-smart-contract)
+  - [Wombat](https://app.wombat.exchange)
   - [Biswap](https://github.com/biswap-org/core)
   - [Camelot](https://github.com/CamelotLabs/core)
   - [Velodrome](https://github.com/velodrome-finance/contracts)

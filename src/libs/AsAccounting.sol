@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../abstract/AsTypes.sol";
+import "./AsCast.sol";
 import "./AsMaths.sol";
 
 /**            _             _       _
@@ -17,6 +18,8 @@ import "./AsMaths.sol";
  */
 library AsAccounting {
     using AsMaths for uint256;
+    using AsCast for uint256;
+    using AsCast for int256;
 
     /**
      * @notice Calculates performance and management fees based on vault profits and elapsed time.
@@ -45,30 +48,32 @@ library AsAccounting {
         if (duration == 0) return (0, 0, 0);
 
         // Calculate the profit since the last fee collection
-        profit =
-            AsMaths.max(last.accountedSharePrice, sharePrice) -
-            last.accountedSharePrice;
+        int256 priceChange = int256(sharePrice) - int256(last.accountedSharePrice);
+        if (priceChange < 0)
+            // If the share price decreased, no fees are collected
+            return (0, 0, 0);
 
-        // If no profits, return zero fees
-        if (profit == 0) return (0, 0, 0);
+        // relative profit = price change / last price on a BP_BASIS^2 scale
+        profit = uint256(priceChange).mulDiv(AsMaths.PRECISION_BP_BASIS, last.accountedSharePrice);
 
         // Calculate management fees as a percentage of total assets
+        // NOTE: This is a linear approximation of the accrued profits on a BP_BASIS^2 scale
+
         uint256 mgmtFeesRel = sharePrice.mulDiv(
             fees.mgmt * duration,
-            AsMaths.BP_BASIS * 365 days
+            AsMaths.SEC_PER_YEAR // approx 3e11
         );
 
         // Calculate performance fees as a percentage of profits
         uint256 perfFeesRel = profit.bp(fees.perf);
 
         // Adjust management fee if it exceeds profits after performance fee
-        if (mgmtFeesRel + perfFeesRel > profit) {
-            mgmtFeesRel = profit - perfFeesRel;
-        }
+        if ((mgmtFeesRel + perfFeesRel) > profit)
+            mgmtFeesRel = profit.subMax0(perfFeesRel);
 
         // Convert fees to assets
-        perfFeesAmount = perfFeesRel.mulDiv(totalAssets, sharePrice);
-        mgmtFeesAmount = mgmtFeesRel.mulDiv(totalAssets, sharePrice);
+        perfFeesAmount = perfFeesRel.mulDiv(totalAssets, AsMaths.PRECISION_BP_BASIS);
+        mgmtFeesAmount = mgmtFeesRel.mulDiv(totalAssets, AsMaths.PRECISION_BP_BASIS);
 
         return (perfFeesAmount, mgmtFeesAmount, profit);
     }
@@ -136,6 +141,8 @@ library FixedPoint96 {
  */
 library AsPoolMaths {
     using AsMaths for uint256;
+    using AsCast for uint256;
+    using AsCast for int256;
 
     /**
      * @notice Computes the amount of liquidity received for a given amount of token0 and price range

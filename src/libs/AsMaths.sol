@@ -1,5 +1,7 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.0;
+
+import "./AsCast.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -13,8 +15,13 @@ pragma solidity ^0.8.0;
  * @dev This library helps with high level maths
  */
 library AsMaths {
+    using AsCast for uint256;
+    using AsCast for int256;
+
     // Constants
-    uint256 constant BP_BASIS = 10_000; // 50% == 5000
+    uint256 internal constant BP_BASIS = 10_000; // 50% == 5_000 == 5e3
+    uint256 internal constant PRECISION_BP_BASIS = BP_BASIS ** 2; // 50% == 50_000_000 == 5e7
+    uint256 internal constant SEC_PER_YEAR = 31_556_952; // 365.2425 days, more precise than 365 days const
 
     /**
      * @notice Subtract a certain percentage from a given amount.
@@ -230,7 +237,7 @@ library AsMaths {
      * @return The negated value of the input as a signed integer.
      */
     function neg(uint256 x) internal pure returns (int256) {
-        return toInt(x) * (-1);
+        return x.toInt() * (-1);
     }
 
     /**
@@ -271,99 +278,6 @@ library AsMaths {
      */
     function min(int256 x, int256 y) internal pure returns (int256) {
         return (x < y ? x : y);
-    }
-
-    /**
-     * @notice Convert an unsigned integer to a signed integer.
-     * @dev Requires the input to be within the valid range for a signed integer.
-     * @param x The input unsigned integer.
-     * @return The input value as a signed integer.
-     */
-    function toInt(uint256 x) internal pure returns (int256) {
-        require(
-            x <= uint256(type(int256).max),
-            "Value out of range for int256"
-        );
-        return int256(x);
-    }
-
-    /**
-     * @notice Convert a signed integer to a signed 128-bit integer.
-     * @dev Requires the input to be within the valid range for a signed 128-bit integer.
-     * @param x The input signed integer.
-     * @return The input value as a signed 128-bit integer.
-     */
-    function toInt128(int256 x) internal pure returns (int128) {
-        require(
-            type(int128).min <= x && x <= type(int128).max,
-            "Value out of range for int128"
-        );
-        return int128(x);
-    }
-
-    /**
-     * @notice Convert an unsigned integer to a signed 128-bit integer.
-     * @dev Calls `toInt` to perform the conversion.
-     * @param x The input unsigned integer.
-     * @return The input value as a signed 128-bit integer.
-     */
-    function toInt128(uint256 x) internal pure returns (int128) {
-        return toInt128(toInt(x));
-    }
-
-    /**
-     * @notice Convert a signed integer to an unsigned integer.
-     * @dev Requires the input to be non-negative.
-     * @param x The input signed integer.
-     * @return The input value as an unsigned integer.
-     */
-    function toUint(int256 x) internal pure returns (uint256) {
-        require(x >= 0, "Negative value cannot be converted to uint256");
-        return uint256(x);
-    }
-
-    /**
-     * @notice Convert an unsigned integer to a 32-bit unsigned integer.
-     * @dev Requires the input to be within the valid range for a 32-bit unsigned integer.
-     * @param x The input unsigned integer.
-     * @return The input value as a 32-bit unsigned integer.
-     */
-    function toUint32(uint256 x) internal pure returns (uint32) {
-        require(x <= type(uint32).max, "Value out of range for uint32");
-        return uint32(x);
-    }
-
-    /**
-     * @notice Convert an unsigned integer to a 112-bit unsigned integer.
-     * @dev Requires the input to be within the valid range for a 112-bit unsigned integer.
-     * @param x The input unsigned integer.
-     * @return The input value as a 112-bit unsigned integer.
-     */
-    function toUint112(uint256 x) internal pure returns (uint112) {
-        require(x <= type(uint112).max, "Value out of range for uint112");
-        return uint112(x);
-    }
-
-    /**
-     * @notice Convert an unsigned integer to a 96-bit unsigned integer.
-     * @dev Requires the input to be within the valid range for a 96-bit unsigned integer.
-     * @param x The input unsigned integer.
-     * @return The input value as a 96-bit unsigned integer.
-     */
-    function toUint96(uint256 x) internal pure returns (uint96) {
-        require(x <= type(uint96).max, "Value out of range for uint96");
-        return uint96(x);
-    }
-
-    /**
-     * @notice Convert an unsigned integer to a 128-bit unsigned integer.
-     * @dev Requires the input to be within the valid range for a 128-bit unsigned integer.
-     * @param x The input unsigned integer.
-     * @return The input value as a 128-bit unsigned integer.
-     */
-    function toUint128(uint256 x) internal pure returns (uint128) {
-        require(x <= type(uint128).max, "Value out of range for uint128");
-        return uint128(x);
     }
 
     /**

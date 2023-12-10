@@ -4,7 +4,6 @@ import {
   TransactionReceipt,
   TransactionRequest,
   TransactionResponse,
-  ethers,
   getDeployer,
   loadAbi,
   network,
@@ -19,11 +18,11 @@ import {
   constants,
   BigNumber,
   BigNumberish,
-  utils as ethersUtils,
   Overrides,
 } from "ethers";
+import * as ethers from "ethers";
 import { merge } from "lodash";
-import { IChainlinkParams, IStrategyDeploymentEnv, ITestEnv, IToken } from "../../src/types";
+import { IChainlinkParams, IStrategyDeploymentEnv, ITestEnv } from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
 import {
   ISwapperParams,
@@ -76,7 +75,7 @@ export const getInitSignature = (contract: string) => {
   const fragments = (loadAbi(contract) as AbiFragment[]).filter(
     (a) => a.name === "init"
   );
-  const dummy = new Contract(addressZero, fragments, provider);
+  const dummy = new Contract(addressZero, fragments, provider!);
   return Object.keys(dummy)
     .filter((s) => s.startsWith("init"))
     .sort((s1, s2) => s2.length - s1.length)?.[0];
@@ -220,9 +219,6 @@ export async function logState(
     available(): ${available / underlying.weiPerUnit} (${available}wei) (${
       Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
     }%)
-    available(): ${available / underlying.weiPerUnit} (${available}wei) (${
-      Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
-    }%)
     totalRedemptionRequest(): ${
       totalRedemptionRequest / underlying.weiPerUnit
     } (${totalRedemptionRequest}wei)
@@ -246,7 +242,7 @@ export async function logState(
     previewInvest(0 == available()*.9):\n${inputs
       .map(
         (input, i) =>
-          `      -${input.sym}: ${input.toAmount(
+          `      -${input.sym}: ${underlying.toAmount(
             previewInvest[i]
           )} (${previewInvest[i].toString()}wei)`
       )
@@ -289,10 +285,10 @@ export const getEnv = async (
       blockNumber: await provider.getBlockNumber(),
       snapshotId: live ? 0 : await provider.send("evm_snapshot", []),
       revertState: false,
-      wgas: await buildToken(addr.tokens.WGAS, wethAbi, env.deployer!),
+      wgas: await SafeContract.build(addr.tokens.WGAS, wethAbi, env.deployer!),
       addresses: addr,
       deployer: deployer as SignerWithAddress,
-      provider: ethers.provider,
+      provider: provider,
       multicallProvider,
       needsFunding: false,
       gasUsedForFunding: 0, // denominated in wgas decimal
@@ -301,31 +297,51 @@ export const getEnv = async (
   );
 };
 
-export const buildToken = async (
-  address: string,
-  abi: any = erc20Abi,
-  deployer?: SignerWithAddress
-): Promise<IToken> => {
-  if (!Array.isArray(abi) || !abi.filter)
-    throw new Error(`ABI must be an array`);
-  try {
-    const t = (<any>(
-      new Contract(address, abi, deployer ?? (await getDeployer()))
-    )) as IToken;
-    t.scale = await t.decimals();
-    t.weiPerUnit = 10 ** t.scale;
-    t.multi = new MulticallContract(t.address, abi as any);
-    t.sym = await t.symbol();
-    t.toWei = (n: number | bigint | string | BigNumber) =>
-      ethersUtils.parseUnits(n.toString(), t.scale);
-    t.toAmount = (n: number | bigint | string | BigNumber) =>
-      Number(weiToString(n as any)) / t.weiPerUnit;
-    return t;
-  } catch (e) {
-    console.error(`Error getting token info for ${address}: ${e}`);
-    throw e;
+export class SafeContract extends Contract {
+
+  public multi: MulticallContract = {} as MulticallContract;
+  public sym: string = '';
+  public scale: number = 0;
+  public weiPerUnit: number = 0;
+
+  constructor(address: string, abi: ReadonlyArray<any>|any[]=erc20Abi, signer: SignerWithAddress|ethers.providers.JsonRpcProvider) {
+      super(address, abi, signer);
   }
-};
+
+  public static async build(address: string, abi: ReadonlyArray<any>|any[]=erc20Abi, signer?: SignerWithAddress): Promise<SafeContract> {
+    signer ||= await getDeployer() as SignerWithAddress;
+    const c = new SafeContract(address, abi, signer);
+    c.multi = new MulticallContract(address, abi as any[]);
+    if ("symbol" in c) {
+      // c is a token
+      c.sym = await c.symbol?.();
+      c.scale = await c.decimals?.();
+      c.weiPerUnit = 10 ** c.scale ?? 0;  
+    }
+    return c;
+  }
+
+  public safe = async (fn: string, params: any[], opts: any = {}): Promise<any> => {
+    if (typeof this[fn] != 'function')
+      throw new Error(`${fn} does not exist on the contract ${this.address}`);
+    try {
+      await this.callStatic[fn](...params, opts);
+    } catch (error) {
+      throw new Error(`${fn} static call failed, tx not sent: ${error}`);
+    }
+    console.log(`${fn} static call succeeded, sending tx...`);
+    return this[fn](...params, opts);
+  };
+
+  public toWei = (n: number | bigint | string | BigNumber): BigNumber => {
+      return ethers.utils.parseUnits(n.toString(), this.scale);
+  };
+
+  public toAmount = (n: number | bigint | string | BigNumber): number => {
+      const weiString = ethers.utils.formatUnits(n, this.scale);
+      return parseFloat(weiString);
+  };
+}
 
 async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   if (o.inputChainId != network.config.chainId) {
@@ -397,7 +413,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
       tr.to!,
       o.input,
       o.output,
-    ]);
+    ], env as IStrategyDeploymentEnv);
     const ok = await env.deployment!.swapper.swap(
       input.target ?? input.address,
       output.target ?? output.address,
@@ -441,8 +457,9 @@ export async function fundAccount(
 }
 
 async function ensureWhitelisted(
-  contract: Contract | any,
-  addresses: string[]
+  contract: SafeContract | any,
+  addresses: string[],
+  env: IStrategyDeploymentEnv
 ) {
   // check if isWhitelisted and addToWhitelist exist on the contract
   for (const method of ["isWhitelisted", "addToWhitelist"]) {
@@ -453,19 +470,15 @@ async function ensureWhitelisted(
       return;
     }
   }
-  const whitelistPromises = addresses.map(async (addr) => {
-    const isWhitelisted = await contract.isWhitelisted(addr);
+  const whitelisted = await env.multicallProvider!.all(
+    addresses.map((addr) => contract.multi.isWhitelisted(addr))
+  );
+  whitelisted.map(async (isWhitelisted, i) => {
     if (!isWhitelisted) {
-      console.log(`whitelisting ${addr}`);
-      await contract.addToWhitelist(addr);
-      assert(
-        await contract.isWhitelisted(addr),
-        `Address ${addr} could not be whitelisted`
-      );
+      console.log(`whitelisting ${addresses[i]}`);
+      await contract.addToWhitelist(addresses[i]);
     }
   });
-
-  await Promise.all(whitelistPromises);
 }
 
 export async function ensureFunding(env: IStrategyDeploymentEnv) {
@@ -517,7 +530,11 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
         `Funding ${env.deployer.address} with ${gas}wei ${env.wgas.sym} (gas tokens)`
       );
       // if not enough gas tokens, add it
-      await setBalances(gas, env.deployer.address);
+      // await setBalances(gas, env.deployer.address);
+      await env.provider.send("tenderly_setBalance", [
+        [env.deployer.address],
+        ethers.utils.hexValue(gas),
+      ])
     }
     const received = await fundAccount(
       env,
@@ -581,7 +598,7 @@ export function getTxLogData(
       log = logs[logIndex];
     }
     if (!log) throw `Log ${logIndex} not found on tx ${tx.transactionHash}`;
-    const decoded = ethersUtils.defaultAbiCoder.decode(types, log.data);
+    const decoded = ethers.utils.defaultAbiCoder.decode(types, log.data);
     return decoded?.[outputIndex];
   } catch (e) {
     console.error(

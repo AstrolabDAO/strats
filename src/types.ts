@@ -4,6 +4,7 @@ import { BigNumber, Contract, providers } from "ethers";
 import { Network } from "hardhat/types";
 import { NetworkAddresses } from "./addresses";
 import { Provider as MulticallProvider, Contract as MulticallContract} from "ethcall";
+import { SafeContract } from "test/integration/utils";
 
 export interface Fees {
     perf: number;
@@ -62,19 +63,10 @@ export interface IStrategyDeployment extends IDeployment {
     agent: Contract;
     libraries: { [name: string]: string };
     // product of deployment
-    strat: IToken;
-    underlying: IToken;
-    inputs: IToken[];
-    rewardTokens: IToken[];
-}
-
-export interface IToken extends Contract {
-    multi: MulticallContract;
-    sym: string;
-    scale: number;
-    weiPerUnit: number;
-    toWei: (n: number|bigint|string|BigNumber) => BigNumber;
-    toAmount: (n: number|bigint|string|BigNumber) => number;
+    strat: SafeContract;
+    underlying: SafeContract;
+    inputs: SafeContract[];
+    rewardTokens: SafeContract[];
 }
 
 export interface ITestEnv {
@@ -83,7 +75,7 @@ export interface ITestEnv {
     blockNumber: number;
     snapshotId: string;
     revertState: boolean; // should we revert state after test
-    wgas: IToken; // wrapped gas == native token
+    wgas: SafeContract; // wrapped gas == native token
     addresses: NetworkAddresses;
     // deployer
     deployer: SignerWithAddress; // provided by hardhat

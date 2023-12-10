@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.0;
 
 import "../interfaces/IStrategyV5.sol";
 import "./StrategyV5Abstract.sol";
 import "./As4626.sol";
+import "./AsRescuable.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -16,12 +17,21 @@ import "./As4626.sol";
  * @notice This contract is in charge of executing shared strategy logic (accounting, fees, etc.)
  * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
  */
-contract StrategyV5Agent is StrategyV5Abstract, As4626 {
+contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for IERC20;
 
     constructor() StrategyV5Abstract(["", "", ""]) {}
+
+    /**
+     * @dev Rescues tokens from the contract.
+     * Can only be called by the admin.
+     * @param _token The address of the token to be rescued.
+     */
+    function rescue(address _token) external override onlyAdmin {
+        _rescue(_token);
+    }
 
     /**
      * @notice Initialize the strategy

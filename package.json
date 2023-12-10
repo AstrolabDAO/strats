@@ -27,7 +27,8 @@
     "test-integration": "yarn ts-mocha --require hardhat/register --timeout 120000 --recursive \"test/integration/**/*.ts\" --exit",
     "build": "tsc --build .",
     "deploy-tenderly": "yarn hardhat run --network tenderly test/integration/scripts/deploy.ts",
-    "test-tenderly": "yarn hardhat test --network tenderly --grep 'Astrolab Hop TriStable'",
+    "test-tenderly": "yarn hardhat test --network tenderly --grep 'Astrolab Hop MetaStable'",
+    "test-gnosis": "yarn hardhat test --network gnosis-mainnet --grep 'Astrolab Hop MetaStable'",
     "prepublishOnly": "yarn build",
     "clean": "yarn rimraf dist internal types *.{d.ts,js}{,.map} build-test tsconfig.tsbuildinfo"
   },
@@ -68,7 +69,7 @@
   },
   "peerDependencies": {},
   "dependencies": {
-    "@astrolabs/hardhat": "^1.0.81",
+    "@astrolabs/hardhat": "^1.0.82",
     "@astrolabs/registry": "^1.0.26",
     "@astrolabs/swapper": "^1.0.17",
     "dotenv": "^16.3.1",

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSL 1.1
 pragma solidity >=0.5 <0.9.0;
 
 interface IMiningFixRangeBoost {

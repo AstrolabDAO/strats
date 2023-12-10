@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
+import "../interfaces/IStrategyV5.sol";
 import "./StrategyV5Abstract.sol";
 import "./AsProxy.sol";
+import "../libs/SafeERC20.sol";
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
 
@@ -48,7 +49,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
             "init(((uint64,uint64,uint64,uint64),address,address[3],address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
         );
     }
- 
+
     /**
      * @notice Returns the StrategyV5Agent proxy initialization state
      */
@@ -368,7 +369,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @dev Calculate the excess weight for a given input index.
      * @param _index Index of the input
      * @param _total Total invested amount
-     * @return int256 Excess weight (/10_000)
+     * @return int256 Excess weight (/AsMaths.BP_BASIS)
      */
     function _excessWeight(
         uint8 _index,
@@ -376,7 +377,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     ) internal view returns (int256) {
         if (_total == 0) _total = invested();
         return
-            int256(invested(_index).mulDiv(10_000, _total)) -
+            int256(invested(_index).mulDiv(AsMaths.BP_BASIS, _total)) -
             int256(uint256(inputWeights[_index]));
     }
 
@@ -406,7 +407,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         if (_total == 0) _total = invested();
         return
             int256(investedInput(_index)) -
-            int256(_underlyingToInput(_total.mulDiv(uint256(inputWeights[_index]), 10_000), _index));
+            int256(_underlyingToInput(_total.mulDiv(uint256(inputWeights[_index]), AsMaths.BP_BASIS), _index));
     }
 
     /**
@@ -467,6 +468,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
                 _amount -= need;
             }
         }
+    }
+
+    /**
+     * @dev IERC165-supportsInterface
+     */
+    function supportsInterface(bytes4 interfaceId) public view returns (bool) {
+        return interfaceId == type(IStrategyV5).interfaceId;
     }
 
     /**

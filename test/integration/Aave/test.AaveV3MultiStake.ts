@@ -1,6 +1,6 @@
 import { ethers, network, provider, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { utils as ethersUtils, BigNumber } from "ethers";
+import { BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Aave/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
@@ -9,27 +9,27 @@ import { ensureFunding, getEnv, isLive } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const desc: IStrategyDesc = {
-  name: `Astrolab Aave TriStable`,
-  symbol: `as.ATS`,
+  name: `Astrolab Aave Metastable`,
+  symbol: `as.AAM`,
   version: 1,
   contract: "AaveMultiStake",
   underlying: "USDC",
-  inputs: ["WXDAI", "USDC"],
-  inputWeights: [45_000, 45_000], // 90% allocation, 10% cash
+  inputs: ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
+  inputWeights: [2000, 2500, 2000, 2500, 1000, 0], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
 };
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [90], assert: (n: BigNumber) => n.gt(0) },
-  { fn: invest, params: [90], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [9990], assert: (n: BigNumber) => n.gt(0) },
+  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
   { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
   { fn: requestWithdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
   { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { elapsedSec: 60*60*24*5, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  { elapsedSec: 60*60*24*5, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
 ];
 
 describe(`test.${desc.name}`, () => {
@@ -73,7 +73,7 @@ describe(`test.${desc.name}`, () => {
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
       env // deployment environment
     );
-    assert(ethersUtils.isAddress(env.deployment.strat.address), "Strat not deployed");
+    assert(ethers.utils.isAddress(env.deployment.strat.address), "Strat not deployed");
     // ensure deployer account is funded if testing
     await ensureFunding(env);
   });

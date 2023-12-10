@@ -215,12 +215,19 @@ export default merge(addresses, {
         irStrategy: '0xeE1BAc9355EaAfCD1B68d272d640d870bC9b4b5C',
         stataToken: '0x39BCf217ACc4Bf2fCaF7BC8800E69D986912c75e',
       },
-      USDC: {
+      USDCe: {
         aToken: '0x625E7708f30cA75bfd92586e17077590C60eb4cD',
         sToken: '0x307ffe186F84a3bc2613D1eA417A5737D69A7007',
         vToken: '0xFCCf3cAbbe80101232d343252614b6A3eE81C989',
         irStrategy: '0x3832311560d3B457E9cC35e5b8e06EB167D8c17D',
         stataToken: '0x9F281eb58fd98ad98EDe0fc4C553AD4D73e7Ca2C',
+      },
+      USDC: {
+        aToken: '0x38d693cE1dF5AaDF7bC62595A37D667aD57922e5',
+        sToken: '0x8a9FdE6925a839F6B1932d16B36aC026F8d3FbdB',
+        vToken: '0x5D557B07776D12967914379C71a1310e917C7555',
+        irStrategy: '0x5eE947d920643cCd3e2c54eAAd8F260FC8Add3b4',
+        stataToken: '0x0000000000000000000000000000000000000000',
       },
       WBTC: {
         aToken: '0x078f358208685046a11C85e8ad32895DED33A249',
@@ -291,13 +298,6 @@ export default merge(addresses, {
         vToken: '0xf611aEb5013fD2c0511c9CD55c7dc5C1140741A6',
         irStrategy: '0x3B57B081dA6Af5e2759A57bD3211932Cb6176997',
         stataToken: '0xf9ce3c97b4b54F3D16861420f4816D9f68190B7B',
-      },
-      USDCn: {
-        aToken: '0x38d693cE1dF5AaDF7bC62595A37D667aD57922e5',
-        sToken: '0x8a9FdE6925a839F6B1932d16B36aC026F8d3FbdB',
-        vToken: '0x5D557B07776D12967914379C71a1310e917C7555',
-        irStrategy: '0x5eE947d920643cCd3e2c54eAAd8F260FC8Add3b4',
-        stataToken: '0x0000000000000000000000000000000000000000',
       },
     },
   },

@@ -2,10 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/interfaces/IERC165.sol";
 import "./ERC20Permit.sol";
-import "./Manageable.sol";
+import "./AsManageable.sol";
 import "./AsTypes.sol";
 import "../libs/AsAccounting.sol";
 
@@ -22,7 +20,7 @@ import "../libs/AsAccounting.sol";
  */
 abstract contract As4626Abstract is
     ERC20Permit,
-    Manageable,
+    AsManageable,
     ReentrancyGuard
 {
     using AsMaths for uint256;
@@ -73,7 +71,6 @@ abstract contract As4626Abstract is
     event MaxTotalAssetsSet(uint256 maxTotalAssets);
 
     // Errors
-    error Unauthorized();
     error AmountTooHigh(uint256 amount);
     error AmountTooLow(uint256 amount);
     error AddressZero();
@@ -83,7 +80,7 @@ abstract contract As4626Abstract is
     uint256 internal constant MAX_UINT256 = type(uint256).max;
 
     uint16 internal maxSlippageBps = 100; // Strategy default internal ops slippage 1%
-    uint256 internal profitCooldown = 7 days; // Profit linearization period
+    uint256 internal profitCooldown = 10 days; // Profit linearization period (profit locktime)
     uint256 public maxTotalAssets = MAX_UINT256; // Maximum total assets that can be deposited
     uint256 public minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
 
@@ -95,7 +92,7 @@ abstract contract As4626Abstract is
     // Profit-related variables
     uint256 internal expectedProfits; // Expected profits
 
-    // Fees max = Fees(5_000, 200, 100, 100) Maximum fees: 50%, 2%, 1%, 1%
+    Fees internal MAX_FEES = Fees(5_000, 200, 100, 100); // Maximum fees: 50% perf, 2% mgmt, 1% entry, 1% exit
     Fees public fees; // Current fee structure
     address public feeCollector; // Address to collect fees
     uint256 public claimableUnderlyingFees; // Amount of underlying fees (entry+exit) that can be claimed
@@ -111,6 +108,8 @@ abstract contract As4626Abstract is
     ) ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
         _pause();
     }
+
+    payable receive() external virtual {}
 
     /**
      * @notice Get the address of the underlying asset

@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-
-
 // As4626 fee structure
 struct Fees {
     uint64 perf; // Performance fee
