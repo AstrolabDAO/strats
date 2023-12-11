@@ -187,7 +187,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
                 (recovered, ) = swapper.decodeAndSwap({
                     _input: address(inputs[i]),
                     _output: address(underlying),
-                    _amount: recovered,
+                    _amount: _amounts[i],
                     _params: _params[i]
                 });
             }

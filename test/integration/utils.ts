@@ -22,7 +22,7 @@ import {
 } from "ethers";
 import * as ethers from "ethers";
 import { merge } from "lodash";
-import { IChainlinkParams, IStrategyDeploymentEnv, ITestEnv } from "../../src/types";
+import { IChainlinkParams, IStrategyDeploymentEnv, ITestEnv, SafeContract } from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
 import {
   ISwapperParams,
@@ -196,7 +196,7 @@ export async function logState(
     underlying: ${underlying.address}
     inputs: [${inputsAddresses.join(", ")}]
     rewardTokens: [${rewardsAddresses.join(", ")}]
-    sharePrice(): ${underlying.toAmount(sharePrice)} (${sharePrice}wei)
+    sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${underlying.toAmount(totalSupply)} (${totalSupply}wei)
     totalAccountedSupply(): ${underlying.toAmount(
       totalAccountedSupply
@@ -296,52 +296,6 @@ export const getEnv = async (
     env
   );
 };
-
-export class SafeContract extends Contract {
-
-  public multi: MulticallContract = {} as MulticallContract;
-  public sym: string = '';
-  public scale: number = 0;
-  public weiPerUnit: number = 0;
-
-  constructor(address: string, abi: ReadonlyArray<any>|any[]=erc20Abi, signer: SignerWithAddress|ethers.providers.JsonRpcProvider) {
-      super(address, abi, signer);
-  }
-
-  public static async build(address: string, abi: ReadonlyArray<any>|any[]=erc20Abi, signer?: SignerWithAddress): Promise<SafeContract> {
-    signer ||= await getDeployer() as SignerWithAddress;
-    const c = new SafeContract(address, abi, signer);
-    c.multi = new MulticallContract(address, abi as any[]);
-    if ("symbol" in c) {
-      // c is a token
-      c.sym = await c.symbol?.();
-      c.scale = await c.decimals?.();
-      c.weiPerUnit = 10 ** c.scale ?? 0;  
-    }
-    return c;
-  }
-
-  public safe = async (fn: string, params: any[], opts: any = {}): Promise<any> => {
-    if (typeof this[fn] != 'function')
-      throw new Error(`${fn} does not exist on the contract ${this.address}`);
-    try {
-      await this.callStatic[fn](...params, opts);
-    } catch (error) {
-      throw new Error(`${fn} static call failed, tx not sent: ${error}`);
-    }
-    console.log(`${fn} static call succeeded, sending tx...`);
-    return this[fn](...params, opts);
-  };
-
-  public toWei = (n: number | bigint | string | BigNumber): BigNumber => {
-      return ethers.utils.parseUnits(n.toString(), this.scale);
-  };
-
-  public toAmount = (n: number | bigint | string | BigNumber): number => {
-      const weiString = ethers.utils.formatUnits(n, this.scale);
-      return parseFloat(weiString);
-  };
-}
 
 async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   if (o.inputChainId != network.config.chainId) {

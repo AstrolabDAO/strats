@@ -19,7 +19,7 @@ import "./AsAccessControl.sol";
 abstract contract AsManageable is AsAccessControl, Pausable {
     using AsSequentialSet for AsSequentialSet.Set;
 
-    struct PendingRoleChange {
+    struct PendingAcceptance {
         bytes32 role; // by default 0x00 == DEFAULT_ADMIN_ROLE
         address replacing;
         uint256 timestamp;
@@ -27,14 +27,14 @@ abstract contract AsManageable is AsAccessControl, Pausable {
 
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER");
-    uint256 private constant PENDING_PERIOD = 2 days;
-    uint256 private constant GRACE_PERIOD = 7 days;
+    uint256 private constant TIMELOCK_PERIOD = 2 days;
+    uint256 private constant VALIDITY_PERIOD = 7 days;
 
-    mapping(address => PendingRoleChange) public pendingChange;
+    mapping(address => PendingAcceptance) public pendingAcceptance;
 
     // Errors
-    error GracePeriodElapsed(uint256 graceTimestamp);
-    error PendingPeriodNotElapsed(uint256 pendingTimestamp);
+    error AcceptanceExpired();
+    error AcceptanceLocked();
 
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -71,7 +71,7 @@ abstract contract AsManageable is AsAccessControl, Pausable {
      * @notice Grant a role to an account
      *
      * @dev If the role is admin, the account will have to accept the role
-     * The request will expire after PENDING_PERIOD has passed
+     * The acceptance period will expire after TIMELOCK_PERIOD has passed
      */
     function grantRole(
         bytes32 role,
@@ -81,8 +81,11 @@ abstract contract AsManageable is AsAccessControl, Pausable {
         override
         onlyRole(getRoleAdmin(role))
     {
+        require(!hasRole(role, account));
+
         if (role == DEFAULT_ADMIN_ROLE || role == MANAGER_ROLE) {
-            pendingChange[account] = PendingRoleChange({
+
+            pendingAcceptance[account] = PendingAcceptance({
                 // only get replaced if admin, managers can coexist
                 replacing: role == DEFAULT_ADMIN_ROLE
                     ? msg.sender
@@ -108,10 +111,9 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     function renounceRole(
         bytes32 role,
         address caller
-    ) public override {
-        if (caller != msg.sender)
-            revert RoleChangeError();
-        if (role == DEFAULT_ADMIN_ROLE) revert Unauthorized();
+    ) external override {
+        if (caller != msg.sender || role == DEFAULT_ADMIN_ROLE)
+            revert Unauthorized();
         _revokeRole(role, caller);
     }
 
@@ -135,9 +137,8 @@ abstract contract AsManageable is AsAccessControl, Pausable {
         override
         onlyRole(getRoleAdmin(role))
     {
-        if ((role == DEFAULT_ADMIN_ROLE) && account == msg.sender) {
-            revert Unauthorized();
-        }
+        if ((role == DEFAULT_ADMIN_ROLE) && account == msg.sender)
+            revert Unauthorized(); // admin role can't renounce as it would brick the contract
         _revokeRole(role, account);
     }
 
@@ -145,40 +146,74 @@ abstract contract AsManageable is AsAccessControl, Pausable {
      * @notice Accept an admin role and revoke the old admin
      *
      * @dev If the role is admin or manager, the account will have to accept the role
-     * The request will expire after PENDING_PERIOD + GRACE_PERIOD has passed
+     * The acceptance will expire after TIMELOCK_PERIOD + VALIDITY_PERIOD has passed
      * Old admin will be revoked and new admin will be granted
      */
     function acceptRole(bytes32 role) external {
-        PendingRoleChange memory request = pendingChange[msg.sender];
+        PendingAcceptance memory acceptance = pendingAcceptance[msg.sender];
 
-        _validateRoleAcceptance(request);
-        if (request.replacing != address(0)) {
+        _checkRoleAcceptance(acceptance);
+        if (acceptance.replacing != address(0)) {
             // if replacing, revoke the old role
-            _revokeRole(request.role, request.replacing);
+            _revokeRole(acceptance.role, acceptance.replacing);
         }
         _grantRole(role, msg.sender);
-        delete pendingChange[msg.sender];
+        delete pendingAcceptance[msg.sender];
     }
 
-    function _validateRoleAcceptance(
-        PendingRoleChange memory request
+    /**
+     * @dev Checks the acceptance of a role change.
+     * @param acceptance The acceptance data containing the role and timestamp.
+     */
+    function _checkRoleAcceptance(
+        PendingAcceptance memory acceptance
     ) private view {
         // grant the keeper role instantly (no attack surface here)
-        if (request.role == KEEPER_ROLE) return;
-        if (block.timestamp > request.timestamp + PENDING_PERIOD + GRACE_PERIOD)
-            // shields from default timestamp(0)
-            revert GracePeriodElapsed(
-                request.timestamp + PENDING_PERIOD + GRACE_PERIOD
-            );
-        if (block.timestamp < request.timestamp + PENDING_PERIOD)
-            revert PendingPeriodNotElapsed(request.timestamp + PENDING_PERIOD);
+        if (acceptance.role == KEEPER_ROLE) return;
+        if (block.timestamp > (acceptance.timestamp + TIMELOCK_PERIOD + VALIDITY_PERIOD))
+            revert AcceptanceExpired();
+        if (block.timestamp < (acceptance.timestamp + TIMELOCK_PERIOD))
+            revert AcceptanceLocked();
     }
 
+    /**
+     * @dev Contract that provides functions for managing roles and permissions.
+     */
     function getManagers() external view returns (address[] memory) {
         return getMembers(MANAGER_ROLE);
     }
 
+    /**
+     * @dev Contract that provides functions for managing roles and permissions.
+     */
     function getKeepers() external view returns (address[] memory) {
         return getMembers(KEEPER_ROLE);
+    }
+
+    /**
+     * @dev Checks if an account has the admin role.
+     * @param _account The address of the account to check.
+     * @return A boolean indicating whether the account has the admin role.
+     */
+    function isAdmin(address _account) external view returns (bool) {
+        return hasRole(DEFAULT_ADMIN_ROLE, _account);
+    }
+
+    /**
+     * @dev Checks if an account has the manager role.
+     * @param _account The address of the account to check.
+     * @return A boolean indicating whether the account has the manager role.
+     */
+    function isManager(address _account) external view returns (bool) {
+        return hasRole(MANAGER_ROLE, _account);
+    }
+
+    /**
+     * @dev Checks if an account has the keeper role.
+     * @param _account The address of the account to check.
+     * @return A boolean indicating whether the account has the keeper role.
+     */
+    function isKeeper(address _account) external view returns (bool) {
+        return hasRole(KEEPER_ROLE, _account);
     }
 }

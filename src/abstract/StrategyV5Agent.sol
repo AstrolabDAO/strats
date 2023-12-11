@@ -25,15 +25,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
     constructor() StrategyV5Abstract(["", "", ""]) {}
 
     /**
-     * @dev Rescues tokens from the contract.
-     * Can only be called by the admin.
-     * @param _token The address of the token to be rescued.
-     */
-    function rescue(address _token) external override onlyAdmin {
-        _rescue(_token);
-    }
-
-    /**
      * @notice Initialize the strategy
      * @param _params StrategyBaseParams struct containing strategy parameters
      */
@@ -93,9 +84,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
         );
         emit UnderlyingUpdate(_underlying, spent, received);
         underlying = IERC20Metadata(_underlying);
-        shareDecimals = underlying.decimals();
-        weiPerShare = 10 ** shareDecimals;
-        last.accountedSharePrice = weiPerShare;
+        // last.accountedProfit = 0;
+        last.accountedTotalAssets = totalAssets();
+        last.accountedTotalSupply = totalSupply();
     }
 
     /**
@@ -183,17 +174,43 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
         return safeDeposit(underlyingAmount, _receiver, _minShareAmount);
     }
 
+    /**
+     * @dev Returns the preview of the investment amounts for a given underlying amount.
+     * @param _amount The amount to preview the investment for.
+     * @return amounts An array of investment amounts for different tokens.
+     */
     function previewInvest(
         uint256 _amount
     ) public view returns (uint256[8] memory amounts) {
-        return
-            IStrategyV5(stratProxy).previewInvest(_amount);
+        return IStrategyV5(stratProxy).previewInvest(_amount);
     }
 
+    /**
+     * @dev Returns the preview of the liquidation amounts for a given underlying amount.
+     * @param _amount The amount to preview the liquidation for.
+     * @return amounts An array of liquidation amounts for different tokens.
+     */
     function previewLiquidate(
         uint256 _amount
     ) public view returns (uint256[8] memory amounts) {
-        return
-            IStrategyV5(stratProxy).previewInvest(_amount);
+        return IStrategyV5(stratProxy).previewInvest(_amount);
+    }
+
+    /**
+     * @dev Requests a rescue for a specific token.
+     * Only the admin can call this function.
+     * @param _token The address of the token to be rescued (use address(1) for native/eth).
+     */
+    function requestRescue(address _token) external override onlyAdmin {
+        _requestRescue(_token);
+    }
+
+    /**
+     * @dev Rescues a specific token.
+     * Only the admin can call this function.
+     * @param _token The address of the token to be rescued (use address(1) for native/eth).
+     */
+    function rescue(address _token) external override onlyAdmin {
+        _rescue(_token);
     }
 }

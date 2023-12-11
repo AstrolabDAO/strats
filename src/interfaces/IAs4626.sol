@@ -3,6 +3,34 @@ pragma solidity ^0.8.0;
 
 import "../abstract/AsTypes.sol";
 import "./IERC20Permit.sol";
+import "./IAsManageable.sol";
+
+/**
+ * @title IFlashLoanReceiver
+ * @author Astrolab DAO, based on AAVE's work (cf. https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/interfaces/IFlashLoanReceiver.sol)
+ * @notice Defines the basic interface of a flashloan-receiver contract.
+ * @dev Implement this interface to develop a flashloan-compatible flashLoanReceiver contract
+ */
+interface IFlashLoanReceiver {
+    /**
+     * @notice Executes an operation after receiving the flash-borrowed assets
+     * @dev Ensure that the contract can return the debt + premium, e.g., has
+     *      enough funds to repay and has approved the Pool to pull the total amount
+     * @param asset The address of the flash-borrowed asset
+     * @param amount The amount of the flash-borrowed asset
+     * @param premium The premium amount to be repaid along with the debt
+     * @param initiator The address initiating the flash loan
+     * @param params Additional parameters for the operation
+     * @return A boolean indicating the success of the operation
+     */
+    function executeOperation(
+        address asset,
+        uint256 amount,
+        uint256 premium,
+        address initiator,
+        bytes calldata params
+    ) external returns (bool);
+}
 
 interface IAs4626Abstract is IERC20Permit {
     function maxSlippageBps() external view returns (uint16);
@@ -12,11 +40,11 @@ interface IAs4626Abstract is IERC20Permit {
     function underlying() external view returns (address);
     function shareDecimals() external view returns (uint8);
     function weiPerShare() external view returns (uint256);
-    function lastCheckpoint() external view returns (Checkpoint memory);
     function expectedProfits() external view returns (uint256);
     function maxFees() external view returns (Fees memory);
     function fees() external view returns (Fees memory);
     function feeCollector() external view returns (address);
+    function last() external view returns (Epoch memory);
     function claimableUnderlyingFees() external view returns (uint256);
     function isExemptFromFees(address account) external view returns (bool);
     function asset() external view returns (address);
@@ -41,7 +69,7 @@ interface IAs4626Abstract is IERC20Permit {
     function maxRedemptionClaim(address _owner) external view returns (uint256);
 }
 
-interface IAs4626 is IAs4626Abstract {
+interface IAs4626 is IAs4626Abstract, IAsManageable {
     function init(
         Fees memory _fees,
         address _underlying,

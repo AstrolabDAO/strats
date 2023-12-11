@@ -40,7 +40,6 @@ abstract contract As4626Abstract is
         uint256 assets,
         uint256 shares
     );
-
     // ERC7540
     // event DepositRequest(
     //     address indexed sender,
@@ -58,23 +57,18 @@ abstract contract As4626Abstract is
 
     // As4626 specific
     event SharePriceUpdate(uint256 shareprice, uint256 timestamp);
-    event FeeCollection(
-        uint256 profit,
-        uint256 totalAssets,
-        uint256 perfFeesAmount,
-        uint256 mgmtFeesAmount,
-        uint256 sharesToMint,
-        address indexed receiver
-    );
     event FeeCollectorUpdate(address indexed feeCollector);
     event FeesUpdate(Fees fees);
     event MaxTotalAssetsSet(uint256 maxTotalAssets);
+    // Flash loan
+    event FlashLoan(address indexed borrower, uint256 amount, uint256 fee);
 
     // Errors
     error AmountTooHigh(uint256 amount);
     error AmountTooLow(uint256 amount);
     error AddressZero();
     error WrongRequest(address owner, uint256 amount);
+    error FlashLoanDefault(address borrower, uint256 amount);
 
     // Constants
     uint256 internal constant MAX_UINT256 = type(uint256).max;
@@ -84,21 +78,25 @@ abstract contract As4626Abstract is
     uint256 public maxTotalAssets = MAX_UINT256; // Maximum total assets that can be deposited
     uint256 public minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
 
-    IERC20Metadata public underlying; // ERC20 token used as the base denomination
-    uint8 public shareDecimals; // Decimals of the share
-    uint256 internal weiPerShare; // Conversion rate of wei to shares
-    Checkpoint public last; // Checkpoint tracking latest events
+    IERC20Metadata internal underlying; // ERC20 token used as the base denomination
+    uint8 internal constant shareDecimals = 8; // Decimals of the share
+    uint256 internal constant weiPerShare = 8**10; // weis in a share (base unit)
+    Epoch public last; // Epoch tracking latest events
 
     // Profit-related variables
     uint256 internal expectedProfits; // Expected profits
 
-    Fees internal MAX_FEES = Fees(5_000, 200, 100, 100); // Maximum fees: 50% perf, 2% mgmt, 1% entry, 1% exit
+    Fees internal MAX_FEES = Fees(5_000, 200, 100, 100, 100); // Maximum fees: 50% perf, 2% mgmt, 1% entry, 1% exit, 1% flash
     Fees public fees; // Current fee structure
     address public feeCollector; // Address to collect fees
     uint256 public claimableUnderlyingFees; // Amount of underlying fees (entry+exit) that can be claimed
     mapping(address => bool) public exemptionList; // List of addresses exempted from fees
 
     Requests internal req;
+
+    // Flash loan
+    uint256 internal totalLent;
+    uint256 public maxLoan = 1e12; // Maximum amount of flash loan allowed (default to 1e12 eg. 1m usdc)
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
@@ -108,8 +106,6 @@ abstract contract As4626Abstract is
     ) ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
         _pause();
     }
-
-    payable receive() external virtual {}
 
     /**
      * @notice Get the address of the underlying asset
@@ -123,7 +119,7 @@ abstract contract As4626Abstract is
      * @notice Get the decimals of the share
      * @return The decimals of the share
      */
-    function decimals() public view override(ERC20) returns (uint8) {
+    function decimals() public pure override(ERC20) returns (uint8) {
         return shareDecimals;
     }
 
@@ -171,7 +167,7 @@ abstract contract As4626Abstract is
      * @notice Total amount of assets available to withdraw
      * @return Amount denominated in underlying
      */
-    function availableClaimable() public view returns (uint256) {
+    function availableClaimable() internal view returns (uint256) {
         return
             underlying.balanceOf(address(this)) -
             claimableUnderlyingFees -
@@ -180,6 +176,10 @@ abstract contract As4626Abstract is
                 expectedProfits,
                 profitCooldown
             );
+    }
+
+    function availableBorrowable() internal view returns (uint256) {
+        return availableClaimable() - totalLent;
     }
 
     /**
@@ -207,14 +207,6 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @notice totalAssets alias
-     * @return Amount denominated in underlying
-     */
-    function tvl() external view returns (uint256) {
-        return totalAssets();
-    }
-
-    /**
      * @notice The share price equal to the amount of assets redeemable for one vault token
      * @return The share price
      */
@@ -222,7 +214,9 @@ abstract contract As4626Abstract is
         uint256 supply = totalAccountedSupply();
         return supply == 0
             ? weiPerShare
-            : totalAccountedAssets().mulDiv(weiPerShare, supply);
+            : totalAccountedAssets().mulDiv( // 1e18
+                weiPerShare, // 1e8
+                supply * ((underlying.decimals() - shareDecimals) ** 10)); // 1e8+(1e18-1e8) = 1e18
     }
 
     /**
@@ -251,76 +245,5 @@ abstract contract As4626Abstract is
      */
     function convertToAssets(uint256 _shares) public view returns (uint256) {
         return _shares.mulDiv(sharePrice(), weiPerShare);
-    }
-
-    /**
-     * @notice Get the pending redeem request for a specific operator
-     * @param operator The operator's address
-     * @return Amount of shares pending redemption
-     */
-    function pendingRedeemRequest(
-        address operator
-    ) external view returns (uint256) {
-        return req.byOperator[operator].shares;
-    }
-
-    /**
-     * @notice Get the pending redeem request in underlying for a specific operator
-     * @param operator The operator's address
-     * @return Amount of assets pending redemption
-     */
-    function pendingUnderlyingRequest(
-        address operator
-    ) external view returns (uint256) {
-        Erc7540Request memory request = req.byOperator[operator];
-        uint256 price = AsMaths.min(request.sharePrice, sharePrice());
-        return request.shares.mulDiv(price, weiPerShare);
-    }
-
-    /**
-     * @notice Check if a redemption request is claimable
-     * @param requestTimestamp The timestamp of the redemption request
-     * @return Whether the redemption request is claimable
-     */
-    function isRequestClaimable(
-        uint256 requestTimestamp
-    ) public view returns (bool) {
-        return
-            requestTimestamp <
-            AsMaths.max(
-                block.timestamp - req.redemptionLocktime,
-                last.liquidate
-            );
-    }
-
-    /**
-     * @notice Get the maximum claimable redemption amount
-     * @return The maximum claimable redemption amount
-     */
-    function maxClaimableUnderlying() public view returns (uint256) {
-        return
-            AsMaths.min(
-                req.totalUnderlying,
-                underlying.balanceOf(address(this)) -
-                    claimableUnderlyingFees -
-                    AsAccounting.unrealizedProfits(
-                        last.harvest,
-                        expectedProfits,
-                        profitCooldown
-                    )
-            );
-    }
-
-    /**
-     * @notice Get the maximum redemption claim for a specific owner
-     * @param _owner The owner's address
-     * @return The maximum redemption claim for the owner
-     */
-    function maxRedemptionClaim(address _owner) public view returns (uint256) {
-        Erc7540Request memory request = req.byOperator[_owner];
-        return
-            isRequestClaimable(request.timestamp)
-                ? AsMaths.min(request.shares, req.totalClaimableRedemption)
-                : 0;
     }
 }

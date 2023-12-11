@@ -18,6 +18,7 @@ import "../libs/AsSequentialSet.sol";
  */
 abstract contract AsAccessControl {
     using AsSequentialSet for AsSequentialSet.Set;
+    using AsCast for bytes32;
     using AsCast for address;
 
     event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
@@ -25,7 +26,6 @@ abstract contract AsAccessControl {
     event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
 
     error Unauthorized();
-    error RoleChangeError();
 
     struct RoleState {
         AsSequentialSet.Set members;
@@ -103,7 +103,7 @@ abstract contract AsAccessControl {
      * @param role The role to renounce.
      * @param account The account renouncing the role.
      */
-    function renounceRole(bytes32 role, address account) public virtual {
+    function renounceRole(bytes32 role, address account) external virtual {
         if (account != msg.sender) revert Unauthorized();
         _revokeRole(role, account);
     }

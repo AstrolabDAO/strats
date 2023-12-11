@@ -24,10 +24,10 @@ library AsMaths {
     uint256 internal constant SEC_PER_YEAR = 31_556_952; // 365.2425 days, more precise than 365 days const
 
     /**
-     * @notice Subtract a certain percentage from a given amount.
+     * @notice Subtract a certain proportion from a given amount.
      * @param amount The initial amount.
-     * @param basisPoints The percentage to subtract.
-     * @return The result of subtracting the percentage.
+     * @param basisPoints The proportion to subtract.
+     * @return The result of subtracting the proportion.
      */
     function subBp(
         uint256 amount,
@@ -37,10 +37,10 @@ library AsMaths {
     }
 
     /**
-     * @notice Add a certain percentage to a given amount.
+     * @notice Add a certain proportion to a given amount.
      * @param amount The initial amount.
-     * @param basisPoints The percentage to add.
-     * @return The result of adding the percentage.
+     * @param basisPoints The proportion to add.
+     * @return The result of adding the proportion.
      */
     function addBp(
         uint256 amount,
@@ -50,10 +50,10 @@ library AsMaths {
     }
 
     /**
-     * @notice Calculate the percentage of a given amount.
+     * @notice Calculate the proportion of a given amount.
      * @param amount The initial amount.
-     * @param basisPoints The percentage to calculate.
-     * @return The calculated percentage of the amount.
+     * @param basisPoints The proportion to calculate.
+     * @return The calculated proportion of the amount /BP_BASIS.
      */
     function bp(
         uint256 amount,
@@ -63,10 +63,23 @@ library AsMaths {
     }
 
     /**
-     * @notice Calculate the reverse of adding a certain percentage to a given amount.
+     * @notice Calculate the precise proportion of a given amount.
      * @param amount The initial amount.
-     * @param basisPoints The percentage to reverse add.
-     * @return The result of reverse adding the percentage.
+     * @param basisPoints The proportion to calculate.
+     * @return The calculated proportion of the amount /PRECISION_BP_BASIS.
+     */
+    function precisionBp(
+        uint256 amount,
+        uint256 basisPoints
+    ) internal pure returns (uint256) {
+        return mulDiv(amount, basisPoints, PRECISION_BP_BASIS);
+    }
+
+    /**
+     * @notice Calculate the reverse of adding a certain proportion to a given amount.
+     * @param amount The initial amount.
+     * @param basisPoints The proportion to reverse add.
+     * @return The result of reverse adding the proportion.
      */
     function revAddBp(
         uint256 amount,
@@ -76,10 +89,10 @@ library AsMaths {
     }
 
     /**
-     * @notice Calculate the reverse of subtracting a certain percentage from a given amount.
+     * @notice Calculate the reverse of subtracting a certain proportion from a given amount.
      * @param amount The initial amount.
-     * @param basisPoints The percentage to reverse subtract.
-     * @return The result of reverse subtracting the percentage.
+     * @param basisPoints The proportion to reverse subtract.
+     * @return The result of reverse subtracting the proportion.
      */
     function revSubBp(
         uint256 amount,
@@ -142,7 +155,7 @@ library AsMaths {
      * @return The result of subtracting the integer, with a requirement that the result is non-negative.
      */
     function subNoNeg(int256 a, int256 b) internal pure returns (int256) {
-        require(a >= b);
+        if (a < b) revert AsCast.ValueOutOfCastRange();
         return a - b; // no unchecked since if b is very negative, a - b might overflow
     }
 
@@ -240,42 +253,18 @@ library AsMaths {
         return x.toInt() * (-1);
     }
 
-    /**
-     * @notice Get the maximum of two unsigned integers.
-     * @param x The first unsigned integer.
-     * @param y The second unsigned integer.
-     * @return The greater of the two input values.
-     */
     function max(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x > y ? x : y);
     }
 
-    /**
-     * @notice Get the maximum of two signed integers.
-     * @param x The first signed integer.
-     * @param y The second signed integer.
-     * @return The greater of the two input values.
-     */
     function max(int256 x, int256 y) internal pure returns (int256) {
         return (x > y ? x : y);
     }
 
-    /**
-     * @notice Get the minimum of two unsigned integers.
-     * @param x The first unsigned integer.
-     * @param y The second unsigned integer.
-     * @return The smaller of the two input values.
-     */
     function min(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x < y ? x : y);
     }
 
-    /**
-     * @notice Get the minimum of two signed integers.
-     * @param x The first signed integer.
-     * @param y The second signed integer.
-     * @return The smaller of the two input values.
-     */
     function min(int256 x, int256 y) internal pure returns (int256) {
         return (x < y ? x : y);
     }

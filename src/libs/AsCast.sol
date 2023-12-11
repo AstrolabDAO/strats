@@ -1,4 +1,19 @@
-library AsCast {
+// SPDX-License-Identifier: BSL 1.1
+pragma solidity ^0.8.0;
+
+/**            _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *
+ * @title AsCast Library
+ * @author Astrolab DAO
+ * @notice Astrolab's type casting library
+ */
+ library AsCast {
+
+    error ValueOutOfCastRange();
 
     /**
      * @notice Convert an unsigned integer to a signed integer.
@@ -7,10 +22,7 @@ library AsCast {
      * @return The input value as a signed integer.
      */
     function toInt(uint256 x) internal pure returns (int256) {
-        require(
-            x <= uint256(type(int256).max),
-            "Value out of range for int256"
-        );
+        if (x > uint256(type(int256).max)) revert ValueOutOfCastRange();
         return int256(x);
     }
 
@@ -21,10 +33,7 @@ library AsCast {
      * @return The input value as a signed 128-bit integer.
      */
     function toInt128(int256 x) internal pure returns (int128) {
-        require(
-            type(int128).min <= x && x <= type(int128).max,
-            "Value out of range for int128"
-        );
+        if (type(int128).min > x || x > type(int128).max) revert ValueOutOfCastRange();
         return int128(x);
     }
 
@@ -45,7 +54,7 @@ library AsCast {
      * @return The input value as an unsigned integer.
      */
     function toUint(int256 x) internal pure returns (uint256) {
-        require(x >= 0, "Negative value cannot be converted to uint256");
+        if (x < 0) revert ValueOutOfCastRange();
         return uint256(x);
     }
 
@@ -56,7 +65,7 @@ library AsCast {
      * @return The input value as a 32-bit unsigned integer.
      */
     function toUint32(uint256 x) internal pure returns (uint32) {
-        require(x <= type(uint32).max, "Value out of range for uint32");
+        if (x > type(uint32).max) revert ValueOutOfCastRange();
         return uint32(x);
     }
 
@@ -67,7 +76,7 @@ library AsCast {
      * @return The input value as a 112-bit unsigned integer.
      */
     function toUint112(uint256 x) internal pure returns (uint112) {
-        require(x <= type(uint112).max, "Value out of range for uint112");
+        if (x > type(uint112).max) revert ValueOutOfCastRange();
         return uint112(x);
     }
 
@@ -78,7 +87,7 @@ library AsCast {
      * @return The input value as a 96-bit unsigned integer.
      */
     function toUint96(uint256 x) internal pure returns (uint96) {
-        require(x <= type(uint96).max, "Value out of range for uint96");
+        if (x > type(uint96).max) revert ValueOutOfCastRange();
         return uint96(x);
     }
 
@@ -89,7 +98,7 @@ library AsCast {
      * @return The input value as a 128-bit unsigned integer.
      */
     function toUint128(uint256 x) internal pure returns (uint128) {
-        require(x <= type(uint128).max, "Value out of range for uint128");
+        if (x > type(uint128).max) revert ValueOutOfCastRange();
         return uint128(x);
     }
 

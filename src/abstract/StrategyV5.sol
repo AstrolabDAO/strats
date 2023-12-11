@@ -152,7 +152,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         if ((cash < _minLiquidity) && !_panic)
             revert AmountTooLow(liquidityAvailable);
 
-        last.liquidate = block.timestamp;
+        last.liquidate = uint64(block.timestamp);
 
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
         return (liquidityAvailable, totalAssets());
@@ -202,7 +202,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
                 profitCooldown
             ) +
             amount;
-        last.harvest = block.timestamp;
+        last.harvest = uint64(block.timestamp);
         emit Harvest(amount, block.timestamp);
     }
 

@@ -3,9 +3,11 @@ pragma solidity ^0.8.0;
 
 import "./As4626Abstract.sol";
 import "./AsTypes.sol";
+import "../interfaces/IAs4626.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
+import "./AsRescuable.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -22,6 +24,8 @@ abstract contract As4626 is As4626Abstract {
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for IERC20Metadata;
+
+    receive() external payable {}
 
     /**
      * @dev Initialize the contract after deployment.
@@ -40,12 +44,11 @@ abstract contract As4626 is As4626Abstract {
         feeCollector = _feeCollector;
 
         underlying = IERC20Metadata(_underlying);
-        shareDecimals = underlying.decimals();
-        weiPerShare = 10 ** shareDecimals;
         last.accountedSharePrice = weiPerShare;
-        last.feeCollection = block.timestamp;
-        last.liquidate = block.timestamp;
-        last.harvest = block.timestamp;
+        last.accountedProfit = weiPerShare;
+        last.feeCollection = uint64(block.timestamp);
+        last.liquidate = uint64(block.timestamp);
+        last.harvest = uint64(block.timestamp);
     }
 
     /**
@@ -71,27 +74,6 @@ abstract contract As4626 is As4626Abstract {
         underlying.safeTransferFrom(msg.sender, address(this), assets);
         _mint(_receiver, _shares);
         emit Deposit(msg.sender, _receiver, assets, _shares);
-    }
-
-    /**
-     * @notice Rescue native tokens (like Ether) that are stuck in the contract
-     * @dev Transfers out all native tokens from the contract to the admin (DAO multisig)
-     */
-    function rescueNative() external onlyAdmin {
-        payable(msg.sender).transfer(address(this).balance);
-    }
-
-    /**
-     * @notice Rescue any ERC20 token that is stuck in the contract
-     * @dev Transfers out the specified ERC20 token from the contract to the admin (DAO multisig)
-     * @param _token The address of the ERC20 token to be rescued
-     */
-    function rescueErc20(address _token) external onlyAdmin {
-        // Unlike input/farmed assets, the underlying token (vault denomination) cannot be transferred out
-        if (_token == address(underlying)) revert Unauthorized();
-
-        IERC20Metadata toRescue = IERC20Metadata(_token);
-        toRescue.safeTransferFrom(address(this), msg.sender, toRescue.balanceOf(address(this)));
     }
 
     /**
@@ -204,7 +186,7 @@ abstract contract As4626 is As4626Abstract {
             _spendAllowance(_owner, msg.sender, _shares);
         }
 
-        Erc7540Request memory request = req.byOperator[_receiver];
+        Erc7540Request storage request = req.byOperator[_receiver];
         uint256 claimable = (req.totalClaimableRedemption > 0 &&
             isRequestClaimable(request.timestamp))
             ? AsMaths.min(request.shares, req.totalClaimableRedemption)
@@ -217,12 +199,19 @@ abstract contract As4626 is As4626Abstract {
 
         if (claimable >= _shares) {
             req.byOperator[_receiver].shares -= _shares;
-            req.totalRedemption.subMax0(_shares);
-            req.totalUnderlying.subMax0(
-                _shares.mulDiv(request.sharePrice, weiPerShare)
+            req.totalRedemption -= AsMaths.min(_shares, req.totalRedemption);
+            req.totalUnderlying -= AsMaths.min(
+                _shares.mulDiv(request.sharePrice, weiPerShare),
+                req.totalUnderlying
             );
-            req.totalClaimableRedemption.subMax0(_shares);
-            req.totalClaimableUnderlying.subMax0(recovered);
+            req.totalClaimableRedemption -= AsMaths.min(
+                _shares,
+                req.totalClaimableRedemption
+            );
+            req.totalClaimableUnderlying -= AsMaths.min(
+                recovered,
+                req.totalClaimableUnderlying
+            );
         }
 
         if (!exemptionList[_owner]) {
@@ -331,36 +320,20 @@ abstract contract As4626 is As4626Abstract {
      * @notice Trigger a fee collection: mints shares to the feeCollector
      * @dev This function can be called by any keeper
      */
-    function collectFees() external onlyKeeper {
-        if (feeCollector == address(0)) revert AddressZero();
-
-        uint256 price = sharePrice();
+    function collectFees() external nonReentrant onlyKeeper {
         (
-            uint256 perfFeesAmount,
-            uint256 mgmtFeesAmount,
-            uint256 profit
-        ) = AsAccounting.computeFees(totalAssets(), price, fees, last);
-
-        if (profit == 0) return;
-
-        uint256 toMint = convertToShares(
-            perfFeesAmount + mgmtFeesAmount + claimableUnderlyingFees
-        );
-
+            uint256 assets,
+            uint256 price,
+            uint256 profit,
+            uint256 toMint
+        ) = AsAccounting.collectFees(IAs4626(address(this)));
         _mint(feeCollector, toMint);
-        claimableUnderlyingFees = 0;
-
-        last.feeCollection = block.timestamp;
+        last.feeCollection = uint64(block.timestamp);
+        last.accountedTotalAssets = assets;
         last.accountedSharePrice = price;
-
-        emit FeeCollection(
-            profit, // basis AsMaths.BP_BASIS**2
-            totalAssets(),
-            perfFeesAmount,
-            mgmtFeesAmount,
-            toMint,
-            feeCollector
-        );
+        last.accountedProfit = profit;
+        last.accountedTotalSupply = totalSupply();
+        claimableUnderlyingFees = 0;
     }
 
     /**
@@ -368,8 +341,7 @@ abstract contract As4626 is As4626Abstract {
      */
     function pause() external onlyManager {
         _pause();
-        // This prevents deposit
-        maxTotalAssets = 0;
+        maxTotalAssets = 0; // This prevents deposit
     }
 
     /**
@@ -488,12 +460,18 @@ abstract contract As4626 is As4626Abstract {
      * @return Preview amount of underlying tokens that the caller will get for his shares
      */
     function previewRedeem(uint256 _shares) public view returns (uint256) {
-        uint256 afterFees = convertToAssets(_shares).subBp(fees.exit);
-        uint256 claimable = AsMaths.min(
-            req.byOperator[msg.sender].shares,
-            req.totalClaimableRedemption
-        );
-        return AsMaths.max(available(), claimable) >= afterFees ? afterFees : 0;
+        uint256 price = sharePrice();
+        uint256 claimable = (
+            AsMaths.min(
+                req.byOperator[msg.sender].shares,
+                req.totalClaimableRedemption
+            )
+        ).mulDiv(price, weiPerShare);
+        return
+            AsMaths.min(
+                AsMaths.max(available(), claimable),
+                _shares.mulDiv(price, weiPerShare).subBp(fees.exit) // after fees
+            );
     }
 
     /**
@@ -566,8 +544,12 @@ abstract contract As4626 is As4626Abstract {
         if (request.shares > 0) {
             if (request.shares < shares) revert WrongRequest(owner, shares);
 
-            req.totalRedemption.subMax0(request.shares);
-            req.totalUnderlying.subMax0(
+            req.totalRedemption -= AsMaths.min(
+                req.totalRedemption,
+                request.shares
+            );
+            req.totalUnderlying -= AsMaths.min(
+                req.totalUnderlying,
                 request.shares.mulDiv(request.sharePrice, weiPerShare)
             );
 
@@ -640,24 +622,128 @@ abstract contract As4626 is As4626Abstract {
             );
             _burn(owner, opportunityCost);
         }
+        uint256 amount = shares.mulDiv(request.sharePrice, weiPerShare);
 
         req.totalRedemption -= shares;
+        req.totalUnderlying -= amount;
         if (isRequestClaimable(request.timestamp)) {
             req.totalClaimableRedemption -= shares;
-            req.totalClaimableUnderlying -= shares.mulDiv(
-                request.sharePrice,
-                weiPerShare
-            );
+            req.totalClaimableUnderlying -= amount;
         }
         request.shares = 0;
         emit RedeemRequestCanceled(owner, shares);
     }
 
+    /**
+     * @dev Returns the total number of redemption requests.
+     * @return The total number of redemption requests.
+     */
     function totalRedemptionRequest() external view returns (uint256) {
         return req.totalRedemption;
     }
 
+    /**
+     * @dev Returns the total amount of redemption that can be claimed.
+     * @return The total amount of redemption that can be claimed.
+     */
     function totalClaimableRedemption() external view returns (uint256) {
         return req.totalClaimableRedemption;
+    }
+
+    /**
+     * @notice Get the pending redeem request for a specific operator
+     * @param operator The operator's address
+     * @return Amount of shares pending redemption
+     */
+    function pendingRedeemRequest(
+        address operator
+    ) external view returns (uint256) {
+        return req.byOperator[operator].shares;
+    }
+
+    /**
+     * @notice Get the pending redeem request in underlying for a specific operator
+     * @param operator The operator's address
+     * @return Amount of assets pending redemption
+     */
+    function pendingUnderlyingRequest(
+        address operator
+    ) external view returns (uint256) {
+        Erc7540Request memory request = req.byOperator[operator];
+        return
+            request.shares.mulDiv(
+                AsMaths.min(request.sharePrice, sharePrice()), // worst of
+                weiPerShare
+            );
+    }
+
+    /**
+     * @notice Check if a redemption request is claimable
+     * @param requestTimestamp The timestamp of the redemption request
+     * @return Whether the redemption request is claimable
+     */
+    function isRequestClaimable(
+        uint256 requestTimestamp
+    ) public view returns (bool) {
+        return
+            requestTimestamp <
+            AsMaths.max(
+                block.timestamp - req.redemptionLocktime,
+                last.liquidate
+            );
+    }
+
+    /**
+     * @notice Get the maximum claimable redemption amount
+     * @return The maximum claimable redemption amount
+     */
+    function maxClaimableUnderlying() public view returns (uint256) {
+        return
+            AsMaths.min(
+                req.totalUnderlying,
+                underlying.balanceOf(address(this)) -
+                    claimableUnderlyingFees -
+                    AsAccounting.unrealizedProfits(
+                        last.harvest,
+                        expectedProfits,
+                        profitCooldown
+                    )
+            );
+    }
+
+    /**
+     * @notice Get the maximum redemption claim for a specific owner
+     * @param _owner The owner's address
+     * @return The maximum redemption claim for the owner
+     */
+    function maxRedemptionClaim(address _owner) public view returns (uint256) {
+        Erc7540Request memory request = req.byOperator[_owner];
+        return
+            isRequestClaimable(request.timestamp)
+                ? AsMaths.min(request.shares, req.totalClaimableRedemption)
+                : 0;
+    }
+
+    function flashLoanSimple(
+        IFlashLoanReceiver receiver,
+        uint256 amount,
+        bytes calldata params
+    ) external nonReentrant {
+        uint256 available = availableBorrowable();
+        if (amount > available || (totalLent + amount) > maxLoan) revert AmountTooHigh(amount);
+
+        uint256 fee = amount.bp(fees.flash);
+        uint256 toRepay = amount + fee;
+
+        uint256 balanceBefore = underlying.balanceOf(address(this));
+        totalLent += amount;
+
+        underlying.safeTransferFrom(address(this), address(receiver), amount);
+        receiver.executeOperation(address(underlying), amount, fee, msg.sender, params);
+
+        if ((underlying.balanceOf(address(this)) - balanceBefore) < toRepay)
+            revert FlashLoanDefault(msg.sender, amount);
+
+        emit FlashLoan(msg.sender, amount, fee);
     }
 }

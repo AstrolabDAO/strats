@@ -21,6 +21,7 @@ import {
   IStrategyDeploymentEnv,
   ITestEnv,
   IStrategyBaseParams,
+  SafeContract,
 } from "../../src/types";
 import {
   addressZero,
@@ -36,7 +37,6 @@ import {
   logState,
   sleep,
   isOracleLib,
-  SafeContract,
 } from "./utils";
 import addresses from "../../src/addresses";
 

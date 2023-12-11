@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../abstract/AsTypes.sol";
+import "../interfaces/IAs4626.sol";
 import "./AsCast.sol";
 import "./AsMaths.sol";
 
@@ -21,61 +22,100 @@ library AsAccounting {
     using AsCast for uint256;
     using AsCast for int256;
 
-    /**
-     * @notice Calculates performance and management fees based on vault profits and elapsed time.
-     * @param totalAssets Total assets under management in the vault.
-     * @param sharePrice Current share price of the vault.
-     * @param fees Struct containing fee parameters (performance and management fees).
-     * @param last Struct containing checkpoint information from the last fee collection.
-     * @return perfFeesAmount The calculated performance fee.
-     * @return mgmtFeesAmount The calculated management fee.
-     * @return profit The vault profit since the last fee collection.
-     */
-    function computeFees(
+    event FeeCollection(
+        address indexed collector,
         uint256 totalAssets,
         uint256 sharePrice,
-        Fees calldata fees,
-        Checkpoint calldata last
+        uint256 profit,
+        uint256 feesAmount,
+        uint256 sharesMinted
+    );
+
+    /**
+     * @dev Computes the fees for the given As4626 contract.
+     * @param self The As4626 contract instance.
+     * @return assets The total assets of the contract.
+     * @return price The current share price of the contract.
+     * @return profit The calculated profit since the last fee collection.
+     * @return feesAmount The amount of fees to be collected.
+     */
+    function computeFees(
+        IAs4626 self
     )
         public
         view
-        returns (uint256 perfFeesAmount, uint256 mgmtFeesAmount, uint256 profit)
+        returns (
+            uint256 assets,
+            uint256 price,
+            uint256 profit,
+            uint256 feesAmount
+        )
     {
-        // Calculate the duration since the last fee collection
-        uint256 duration = block.timestamp - last.feeCollection;
+        Epoch memory last = self.last();
+        Fees memory fees = self.fees();
+        price = self.sharePrice();
 
-        // If called within the same block, return zero fees
-        if (duration == 0) return (0, 0, 0);
+        // Calculate the duration since the last fee collection
+        uint64 duration = uint64(block.timestamp) - last.feeCollection;
 
         // Calculate the profit since the last fee collection
-        int256 priceChange = int256(sharePrice) - int256(last.accountedSharePrice);
-        if (priceChange < 0)
-            // If the share price decreased, no fees are collected
-            return (0, 0, 0);
+        int256 change = int256(price) - int256(last.accountedSharePrice); // 1e? - 1e? = 1e?
 
-        // relative profit = price change / last price on a BP_BASIS^2 scale
-        profit = uint256(priceChange).mulDiv(AsMaths.PRECISION_BP_BASIS, last.accountedSharePrice);
+        // If called within the same block or the share price decreased, no fees are collected
+        if (duration == 0 || change < 0) return (0, 0, 0, 0);
 
-        // Calculate management fees as a percentage of total assets
-        // NOTE: This is a linear approximation of the accrued profits on a BP_BASIS^2 scale
+        // relative profit = (change / last price) on a PRECISION_BP_BASIS scale
+        profit = uint256(change).mulDiv(
+            AsMaths.PRECISION_BP_BASIS,
+            last.accountedSharePrice
+        ); // 1e? * 1e8 / 1e? = 1e8
 
-        uint256 mgmtFeesRel = sharePrice.mulDiv(
+        // Calculate management fees as proportion of profits on a PRECISION_BP_BASIS scale
+        // NOTE: This is a linear approximation of the accrued profits (SEC_PER_YEAR ~3e11)
+        uint256 mgmtFeesRel = profit.mulDiv(
             fees.mgmt * duration,
-            AsMaths.SEC_PER_YEAR // approx 3e11
+            AsMaths.SEC_PER_YEAR
+        ); // 1e8 * 1e4 * 1e? / 1e? = 1e12
+
+        // Calculate performance fees as proportion of profits on a PRECISION_BP_BASIS scale
+        uint256 perfFeesRel = profit * fees.perf; // 1e8 * 1e4 = 1e12
+
+        // Adjust fees if it exceeds profits
+        uint256 feesRel = AsMaths.min(
+            (mgmtFeesRel + perfFeesRel) / AsMaths.BP_BASIS, // 1e12 / 1e4 = 1e8
+            profit
         );
 
-        // Calculate performance fees as a percentage of profits
-        uint256 perfFeesRel = profit.bp(fees.perf);
-
-        // Adjust management fee if it exceeds profits after performance fee
-        if ((mgmtFeesRel + perfFeesRel) > profit)
-            mgmtFeesRel = profit.subMax0(perfFeesRel);
-
+        assets = self.totalAssets();
         // Convert fees to assets
-        perfFeesAmount = perfFeesRel.mulDiv(totalAssets, AsMaths.PRECISION_BP_BASIS);
-        mgmtFeesAmount = mgmtFeesRel.mulDiv(totalAssets, AsMaths.PRECISION_BP_BASIS);
+        feesAmount = feesRel.mulDiv(assets, AsMaths.PRECISION_BP_BASIS); // 1e8 * 1e? / 1e8 = 1e? (underlying decimals)
+        return (assets, price, profit, feesAmount);
+    }
 
-        return (perfFeesAmount, mgmtFeesAmount, profit);
+
+    /**
+     * @dev Collects fees from the given `self` contract.
+     * @param self The instance of the `IAs4626` contract.
+     * @return assets The total assets.
+     * @return price The price.
+     * @return profit The profit.
+     * @return toMint The amount to mint.
+     */
+    function collectFees(IAs4626 self) public returns (uint256 assets, uint256 price, uint256 profit, uint256 toMint) {
+        require(self.feeCollector() != address(0) && self.isKeeper(msg.sender));
+        uint256 feesAmount;
+        (assets, price, profit, feesAmount) = computeFees(self);
+
+        if (profit == 0) return (0, 0, 0, 0);
+        toMint = self.convertToShares(feesAmount + self.claimableUnderlyingFees());
+        emit FeeCollection(
+            self.feeCollector(),
+            assets,
+            price,
+            profit, // basis AsMaths.BP_BASIS**2
+            feesAmount,
+            toMint
+        );
     }
 
     /**
@@ -121,7 +161,8 @@ library AsAccounting {
             _fees.perf <= _maxFees.perf &&
             _fees.mgmt <= _maxFees.mgmt &&
             _fees.entry <= _maxFees.entry &&
-            _fees.exit <= _maxFees.exit;
+            _fees.exit <= _maxFees.exit &&
+            _fees.flash <= _maxFees.flash;
     }
 }
 

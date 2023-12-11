@@ -15,6 +15,7 @@ import "./AsCast.sol";
  */
 library AsSequentialSet {
     using AsCast for bytes32;
+    using AsCast for address;
 
     error EmptySet();
 
@@ -39,29 +40,21 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Removes zero elements from the tail end of the sequential set.
-     * @param q The sequential set.
+     * @dev Pushes an element of type `uint256` to the set.
+     * @param q The set to push the element to.
+     * @param o The element to push.
      */
-    function _cleanTail(Set storage q) internal {
-        uint32 n = uint32(q.data.length);
-        while (n > 0 && q.data[--n] == bytes32(0)) {
-            q.data.pop();
-        }
+    function push(Set storage q, uint256 o) internal {
+        push(q, bytes32(o));
     }
 
     /**
-     * @dev Removes zero elements from the head of the sequential set, maintaining the set's integrity.
-     * @param q The sequential set.
+     * @dev Pushes an element of type `address` to the set.
+     * @param q The set to push the element to.
+     * @param o The element to push.
      */
-    function _cleanHead(Set storage q) internal {
-        _cleanTail(q);
-        uint32 n = uint32(q.data.length);
-        while (n > 0 && q.data[0] == bytes32(0)) {
-            delete q.data[0];
-            q.data[0] = q.data[--n];
-            q.data.pop();
-        }
-        q.index[q.data[0]] = 1;
+    function push(Set storage q, address o) internal {
+        push(q, o.toBytes32());
     }
 
     /**
@@ -127,11 +120,11 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Deletes an element at a specific index in the sequential set.
+     * @dev Removes an element at a specific index in the sequential set.
      * @param q The sequential set.
      * @param i The index of the element to be deleted.
      */
-    function remove(Set storage q, uint256 i) internal {
+    function removeAt(Set storage q, uint256 i) internal {
         require(i < q.data.length, "Index out of bounds");
         if (i < q.data.length - 1) {
             delete q.data[i];
@@ -141,14 +134,32 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Deletes an element from the sequential set.
+     * @dev Removes a raw element from the sequential set.
      * @param q The sequential set.
      * @param o The element to be deleted.
      */
     function remove(Set storage q, bytes32 o) internal {
         uint32 i = q.index[o];
         require(i > 0, "Element not found");
-        remove(q, i - 1);
+        removeAt(q, i - 1);
+    }
+
+    /**
+     * @dev Removes an uint256 from the set.
+     * @param q The set to remove the element from.
+     * @param o The element to be removed.
+     */
+    function remove(Set storage q, uint256 o) internal {
+        remove(q, bytes32(o));
+    }
+
+    /**
+     * @dev Removes an address from the set.
+     * @param q The set to remove the element from.
+     * @param o The element to be removed.
+     */
+    function remove(Set storage q, address o) internal {
+        remove(q, o.toBytes32());
     }
 
     /**
@@ -157,19 +168,19 @@ library AsSequentialSet {
      * @param i The index of the element.
      * @return The element at the specified index.
      */
-    function get(Set storage q, uint256 i) internal view returns (bytes32) {
-        require(i < q.data.length, "Index out of bounds");
+    function getAt(Set storage q, uint256 i) internal view returns (bytes32) {
+        require(i < q.data.length);
         return q.data[i];
     }
 
     /**
-     * @dev Retrieves an element by its key in the sequential set.
+     * @dev Retrieves an element by its index in the sequential set.
      * @param q The sequential set.
-     * @param i The key of the element.
-     * @return The element corresponding to the key.
+     * @param i The index of the element.
+     * @return The element at the specified index.
      */
-    function getByKey(Set storage q, bytes32 i) internal view returns (bytes32) {
-        return q.data[q.index[i] - 1];
+    function get(Set storage q, bytes32 i) internal view returns (bytes32) {
+        return getAt(q, q.index[i] - 1);
     }
 
     /**
@@ -179,7 +190,7 @@ library AsSequentialSet {
      * @return True if the element is in the set, false otherwise.
      */
     function has(Set storage q, bytes32 o) internal view returns (bool) {
-        return q.index[o] > 0;
+        return q.index[o] > 0 && q.index[o] <= q.data.length;
     }
 
     /**
@@ -200,7 +211,6 @@ library AsSequentialSet {
      * @return An array containing all elements of the set.
      */
     function rawValues(Set storage q) internal view returns (bytes32[] memory) {
-        bytes32[] memory data = q.data;
         return q.data;
     }
 
@@ -240,4 +250,30 @@ library AsSequentialSet {
             values[i] = q.data[i].toAddress();
         }
     }
+
+    // /**
+    //  * @dev Removes zero elements from the tail end of the sequential set.
+    //  * @param q The sequential set.
+    //  */
+    // function _cleanTail(Set storage q) internal {
+    //     uint32 n = uint32(q.data.length);
+    //     while (n > 0 && q.data[--n] == bytes32(0)) {
+    //         q.data.pop();
+    //     }
+    // }
+
+    // /**
+    //  * @dev Removes zero elements from the head of the sequential set, maintaining the set's integrity.
+    //  * @param q The sequential set.
+    //  */
+    // function _cleanHead(Set storage q) internal {
+    //     _cleanTail(q);
+    //     uint32 n = uint32(q.data.length);
+    //     while (n > 0 && q.data[0] == bytes32(0)) {
+    //         delete q.data[0];
+    //         q.data[0] = q.data[--n];
+    //         q.data.pop();
+    //     }
+    //     q.index[q.data[0]] = 1;
+    // }
 }

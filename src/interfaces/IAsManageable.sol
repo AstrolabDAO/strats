@@ -10,7 +10,7 @@ interface IPausable {
     function paused() external view returns (bool);
 }
 
-interface IManageable is IAccessControl, IPausable{
+interface IAsManageable is IAccessControl, IPausable{
     /**
      * @notice Grants a role to an account
      * @param role The role to be granted
@@ -38,10 +38,14 @@ interface IManageable is IAccessControl, IPausable{
      */
     function acceptRole(bytes32 role) external;
 
+    function isAdmin(address _account) external view returns (bool);
+    function isManager(address _account) external view returns (bool);
+    function isKeeper(address _account) external view returns (bool);
+
     // View functions for public state variables
     function KEEPER_ROLE() external view returns (bytes32);
     function MANAGER_ROLE() external view returns (bytes32);
-    function PENDING_PERIOD() external view returns (uint256);
-    function GRACE_PERIOD() external view returns (uint256);
+    function TIMELOCK_PERIOD() external view returns (uint256);
+    function VALIDITY_PERIOD() external view returns (uint256);
     function pendingChange(address account) external view returns (bytes32 role, address replacing, uint256 timestamp);
 }
