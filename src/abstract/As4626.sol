@@ -732,7 +732,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 available = availableBorrowable();
         if (amount > available || (totalLent + amount) > maxLoan) revert AmountTooHigh(amount);
 
-        uint256 fee = amount.bp(fees.flash);
+        uint256 fee = exemptionList[msg.sender] ? 0 : amount.bp(fees.flash);
         uint256 toRepay = amount + fee;
 
         uint256 balanceBefore = underlying.balanceOf(address(this));
