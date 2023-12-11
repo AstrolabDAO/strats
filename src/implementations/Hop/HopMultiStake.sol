@@ -286,7 +286,7 @@ contract HopMultiStake is StrategyV5Chainlink {
      */
     function investedInput(
         uint8 _index
-    ) public view override returns (uint256) {
+    ) internal view override returns (uint256) {
         return
             _stakeToInput(
                 rewardPools[_index][0].balanceOf(address(this)),

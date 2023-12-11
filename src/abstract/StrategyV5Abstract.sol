@@ -36,7 +36,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     // State variables (As4626 extension)
     ISwapper public swapper; // Interface for swapping assets
     address public agent; // Address of the agent
-    address public stratProxy; // Address of the strategy proxy
+    address internal stratProxy; // Address of the strategy proxy
 
     IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
     uint8[8] internal inputDecimals; // Decimals of the input assets

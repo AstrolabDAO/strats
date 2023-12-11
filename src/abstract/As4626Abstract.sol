@@ -140,22 +140,6 @@ abstract contract As4626Abstract is
     function invested() public view virtual returns (uint256) {}
 
     /**
-     * @notice Amount of _index input denominated in underlying
-     * @dev Abstract function to be implemented by the strategy
-     * @param _index Index of the asset
-     * @return Amount of assets
-     */
-    function invested(uint8 _index) public view virtual returns (uint256) {}
-
-    /**
-     * @notice Amount of _index input
-     * @dev Abstract function to be implemented by the strategy
-     * @param _index Index of the asset
-     * @return Amount of assets
-     */
-    function investedInput(uint8 _index) public view virtual returns (uint256) {}
-
-    /**
      * @notice Amount of assets available to non-requested withdrawals (excluding seed)
      * @return Amount denominated in underlying
      */

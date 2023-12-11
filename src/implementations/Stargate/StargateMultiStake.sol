@@ -262,7 +262,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
      */
     function investedInput(
         uint8 _index
-    ) public view override returns (uint256) {
+    ) internal view override returns (uint256) {
         return _stakedInput(_index);
     }
 

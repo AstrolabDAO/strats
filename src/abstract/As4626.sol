@@ -28,7 +28,7 @@ abstract contract As4626 is As4626Abstract {
     receive() external payable {}
 
     /**
-     * @dev Initialize the contract after deployment.
+     * @dev Initialize the contract after deployment
      * @param _fees Fee structure for the contract
      * @param _underlying Address of the underlying ERC20 token
      * @param _feeCollector Address where fees will be collected
@@ -49,6 +49,7 @@ abstract contract As4626 is As4626Abstract {
         last.feeCollection = uint64(block.timestamp);
         last.liquidate = uint64(block.timestamp);
         last.harvest = uint64(block.timestamp);
+        last.invest = uint64(block.timestamp);
     }
 
     /**
@@ -362,6 +363,22 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
+     * @notice Sets the internal slippage
+     * @param _slippageBps array of input tokens
+     */
+    function setMaxSlippageBps(uint16 _slippageBps) public onlyManager {
+        maxSlippageBps = _slippageBps;
+    }
+
+    /**
+     * @dev Sets the maximum loan amount
+     * @param _maxLoan The new maximum loan amount
+     */
+    function setMaxLoan(uint256 _maxLoan) public onlyManager {
+        maxLoan = _maxLoan;
+    }
+
+    /**
      * @notice Set the max amount of total assets that can be deposited
      * @param _maxTotalAssets The maximum amount of assets
      */
@@ -513,15 +530,15 @@ abstract contract As4626 is As4626Abstract {
                 );
     }
 
-    /**
-     * @notice Initiate a deposit request for assets denominated in underlying
-     * @param assets Amount of underlying tokens to deposit
-     * @param operator Address initiating the request
-     */
-    function requestDeposit(
-        uint256 assets,
-        address operator
-    ) external virtual {}
+    // /**
+    //  * @notice Initiate a deposit request for assets denominated in underlying
+    //  * @param assets Amount of underlying tokens to deposit
+    //  * @param operator Address initiating the request
+    //  */
+    // function requestDeposit(
+    //     uint256 assets,
+    //     address operator
+    // ) external virtual {}
 
     /**
      * @notice Initiate a redeem request for shares
@@ -584,15 +601,15 @@ abstract contract As4626 is As4626Abstract {
         return requestRedeem(convertToShares(_amount), operator, owner);
     }
 
-    /**
-     * @notice Cancel a deposit request
-     * @param operator Address initiating the request
-     * @param owner The owner of the shares to be redeemed
-     */
-    function cancelDepositRequest(
-        address operator,
-        address owner
-    ) external virtual {}
+    // /**
+    //  * @notice Cancel a deposit request
+    //  * @param operator Address initiating the request
+    //  * @param owner The owner of the shares to be redeemed
+    //  */
+    // function cancelDepositRequest(
+    //     address operator,
+    //     address owner
+    // ) external virtual {}
 
     /**
      * @notice Cancel a redeem request
@@ -635,16 +652,16 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @dev Returns the total number of redemption requests.
-     * @return The total number of redemption requests.
+     * @dev Returns the total number of redemption requests
+     * @return The total number of redemption requests
      */
     function totalRedemptionRequest() external view returns (uint256) {
         return req.totalRedemption;
     }
 
     /**
-     * @dev Returns the total amount of redemption that can be claimed.
-     * @return The total amount of redemption that can be claimed.
+     * @dev Returns the total amount of redemption that can be claimed
+     * @return The total amount of redemption that can be claimed
      */
     function totalClaimableRedemption() external view returns (uint256) {
         return req.totalClaimableRedemption;
@@ -697,18 +714,9 @@ abstract contract As4626 is As4626Abstract {
      * @notice Get the maximum claimable redemption amount
      * @return The maximum claimable redemption amount
      */
-    function maxClaimableUnderlying() public view returns (uint256) {
+    function maxClaimableUnderlying() internal view returns (uint256) {
         return
-            AsMaths.min(
-                req.totalUnderlying,
-                underlying.balanceOf(address(this)) -
-                    claimableUnderlyingFees -
-                    AsAccounting.unrealizedProfits(
-                        last.harvest,
-                        expectedProfits,
-                        profitCooldown
-                    )
-            );
+            AsMaths.min(req.totalUnderlying, availableClaimable());
     }
 
     /**

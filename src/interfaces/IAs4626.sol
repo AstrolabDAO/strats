@@ -50,8 +50,6 @@ interface IAs4626Abstract is IERC20Permit {
     function asset() external view returns (address);
     function decimals() external view returns (uint8);
     function invested() external view returns (uint256);
-    function invested(uint8 _index) external view returns (uint256);
-    function investedInput(uint8 _index) external view returns (uint256);
     function available() external view returns (uint256);
     function availableClaimable() external view returns (uint256);
     function totalAssets() external view returns (uint256);

@@ -120,14 +120,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
     }
 
     /**
-     * @notice Sets the internal slippage
-     * @param _slippageBps array of input tokens
-     */
-    function setMaxSlippageBps(uint16 _slippageBps) public onlyManager {
-        maxSlippageBps = _slippageBps;
-    }
-
-    /**
      * @notice Retrieves the share price from the strategy via the proxy
      * @dev Calls sharePrice function on the IStrategyV5 contract through stratProxy
      * @return The current share price from the strategy
@@ -175,42 +167,20 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
     }
 
     /**
-     * @dev Returns the preview of the investment amounts for a given underlying amount.
-     * @param _amount The amount to preview the investment for.
-     * @return amounts An array of investment amounts for different tokens.
-     */
-    function previewInvest(
-        uint256 _amount
-    ) public view returns (uint256[8] memory amounts) {
-        return IStrategyV5(stratProxy).previewInvest(_amount);
-    }
-
-    /**
-     * @dev Returns the preview of the liquidation amounts for a given underlying amount.
-     * @param _amount The amount to preview the liquidation for.
-     * @return amounts An array of liquidation amounts for different tokens.
-     */
-    function previewLiquidate(
-        uint256 _amount
-    ) public view returns (uint256[8] memory amounts) {
-        return IStrategyV5(stratProxy).previewInvest(_amount);
-    }
-
-    /**
-     * @dev Requests a rescue for a specific token.
-     * Only the admin can call this function.
-     * @param _token The address of the token to be rescued (use address(1) for native/eth).
+     * @dev Requests a rescue for a specific token
+     * Only the admin can call this function
+     * @param _token The address of the token to be rescued (use address(1) for native/eth)
      */
     function requestRescue(address _token) external override onlyAdmin {
         _requestRescue(_token);
     }
 
     /**
-     * @dev Rescues a specific token.
-     * Only the admin can call this function.
-     * @param _token The address of the token to be rescued (use address(1) for native/eth).
+     * @dev Rescues a specific token by sending it to the rescueRequest.receiver (admin)
+     * Only the admin can call this function
+     * @param _token The address of the token to be rescued (use address(1) for native/eth)
      */
-    function rescue(address _token) external override onlyAdmin {
+    function rescue(address _token) external override onlyManager {
         _rescue(_token);
     }
 }

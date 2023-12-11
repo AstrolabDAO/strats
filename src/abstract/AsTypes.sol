@@ -45,6 +45,7 @@ struct Epoch {
     uint64 feeCollection; // Last fee collection timestamp from the checkpoint
     uint64 liquidate; // Last liquidation timestamp from the checkpoint
     uint64 harvest; // Last harvest timestamp from the checkpoint
+    uint64 invest; // Last invest timestamp from the checkpoint
     // values
     uint256 accountedSharePrice; // Last accounted share price (fee collection) from the checkpoint
     uint256 accountedProfit; // Last accounted profit (fee collection) from the checkpoint 1e8

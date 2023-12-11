@@ -14,29 +14,15 @@ import "../libs/SafeERC20.sol";
  * @author Astrolab DAO
  */
 abstract contract AsRescuable {
+
     using SafeERC20 for IERC20Metadata;
+
     struct RescueRequest {
         uint256 timestamp;
         address receiver;
     }
 
-    event RequestRescue(
-        address indexed token,
-        address indexed receiver,
-        uint256 timestamp
-    );
-    event Rescue(
-        address indexed token,
-        uint256 amount,
-        address indexed receiver,
-        uint256 timestamp
-    );
-
-    error RescueLocked();
-    error RescueExpired();
-    error RescueAlreadyUnlocked();
-
-    mapping(address => RescueRequest) public rescueRequests;
+    mapping(address => RescueRequest) private rescueRequests;
     uint64 constant RESCUE_TIMELOCK = 2 days;
     uint64 constant RESCUE_VALIDITY = 7 days;
 
@@ -73,11 +59,11 @@ abstract contract AsRescuable {
      */
     function _requestRescue(address _token) internal {
         RescueRequest memory req = rescueRequests[_token];
-        if (_isRescueUnlocked(req)) revert RescueAlreadyUnlocked();
+        require(!_isRescueUnlocked(req));
         // set pending rescue request
         req.receiver = msg.sender;
         req.timestamp = block.timestamp;
-        emit RequestRescue(_token, msg.sender, block.timestamp);
+        // emit RequestRescue(_token, msg.sender, block.timestamp);
     }
 
     // to be overriden with the proper access control by inheriting contracts
@@ -97,23 +83,18 @@ abstract contract AsRescuable {
     function _rescue(address _token) internal {
         RescueRequest storage request = rescueRequests[_token];
         // check if rescue is pending
-        if (_isRescueLocked(request)) revert RescueLocked();
-        if (_isRescueExpired(request)) revert RescueExpired();
-            require(request.receiver == msg.sender);
+        require(_isRescueUnlocked(request));
 
-        uint256 amount;
+        // reset timestamp to prevent reentrancy
+        rescueRequests[_token].timestamp = 0;
         // send to receiver
         if (_token == address(1)) {
-            amount = address(this).balance;
-            payable(request.receiver).transfer(amount);
+            payable(request.receiver).transfer(address(this).balance);
         } else {
-            amount = IERC20Metadata(_token).balanceOf(address(this));
-            IERC20Metadata(_token).safeTransfer(request.receiver, amount);
+            IERC20Metadata(_token).safeTransfer(request.receiver, IERC20Metadata(_token).balanceOf(address(this)));
         }
         // reset pending request
-        // delete rescueRequests[_token];
-        request.timestamp = 0;
-        emit Rescue(_token, amount, request.receiver, block.timestamp);
+        delete rescueRequests[_token];
     }
 
     // to be overriden with the proper access control by inheriting contracts

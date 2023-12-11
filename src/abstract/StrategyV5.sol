@@ -153,7 +153,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
             revert AmountTooLow(liquidityAvailable);
 
         last.liquidate = uint64(block.timestamp);
-
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
         return (liquidityAvailable, totalAssets());
     }
@@ -230,6 +229,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         bytes[] memory _params
     ) public onlyManager returns (uint256 investedAmount, uint256 iouReceived) {
         (investedAmount, iouReceived) = _invest(_amounts, _params);
+        last.invest = uint64(block.timestamp);
         emit Invest(investedAmount, block.timestamp);
         return (investedAmount, iouReceived);
     }
@@ -333,6 +333,22 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     function _stakedInput(
         uint8 _index
     ) internal view virtual returns (uint256) {}
+
+    /**
+     * @notice Amount of _index input denominated in underlying
+     * @dev Abstract function to be implemented by the strategy
+     * @param _index Index of the asset
+     * @return Amount of assets
+     */
+    function invested(uint8 _index) public view virtual returns (uint256) {}
+
+    /**
+     * @notice Amount of _index input
+     * @dev Abstract function to be implemented by the strategy
+     * @param _index Index of the asset
+     * @return Amount of assets
+     */
+    function investedInput(uint8 _index) internal view virtual returns (uint256) {}
 
     /**
      * @notice Returns the investment in underlying asset
