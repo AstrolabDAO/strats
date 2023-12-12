@@ -46,7 +46,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         if (agent == address(0)) revert AddressZero();
         _delegateWithSignature(
             agent,
-            "init(((uint64,uint64,uint64,uint64),address,address[3],address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
+            "init(((uint64,uint64,uint64,uint64,uint64),address,address[3],address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
         );
     }
 

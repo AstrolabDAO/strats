@@ -732,6 +732,12 @@ abstract contract As4626 is As4626Abstract {
                 : 0;
     }
 
+    /**
+     * @dev Executes a flash loan by transferring a specified amount of tokens to a receiver contract and executing an operation.
+     * @param receiver The contract that will receive the flash loan tokens and execute the operation.
+     * @param amount The amount of tokens to be borrowed in the flash loan.
+     * @param params Additional parameters to be passed to the receiver contract's executeOperation function.
+     */
     function flashLoanSimple(
         IFlashLoanReceiver receiver,
         uint256 amount,

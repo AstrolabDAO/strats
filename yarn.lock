@@ -30,10 +30,10 @@
   dependencies:
     "@astrolabs/registry" "^1.0.19"
 
-"@astrolabs/registry@^1.0.26":
-  version "1.0.26"
-  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.26.tgz#8f4d2ce6ed82a0ab06de10a8ca465e7f4a35d623"
-  integrity sha512-gG2ceYnH8Tb14ISKMB437sgywwOTQz33GUdiXd4+PS2Wez6sEN5vBUAHGwWlrp9ln7A4AfjRzrjJnRr0xDkEsA==
+"@astrolabs/registry@^1.0.27":
+  version "1.0.27"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.27.tgz#dff1623bb189fc90aa24ab0fb3e9b5befb45e758"
+  integrity sha512-kgXU+U9Avy+i3Fa2Cz+iDjJ4JYYxDJg75b/oQ3jZHt8KkWaqOTdG/bITQ9TdVIyOCn6ocEU/RCJxM/5hpdVdbA==
   dependencies:
     "@astrolabs/registry" "^1.0.19"
 

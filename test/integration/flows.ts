@@ -169,6 +169,7 @@ export const deployStrat = async (
       mgmt: 20, // .2%
       entry: 2, // .02%
       exit: 2, // .02%
+      flash: 2, // .02% << 2.5x cheaper than aave
     },
     initParams[0].fees
   );
@@ -277,7 +278,8 @@ export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
     .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"], 0, -3); // seeded amount
+  return getTxLogData(receipt, ["uint256", "uint256"], 0, -2)
+    ?? getTxLogData(receipt, ["uint256", "uint256"], 0, -3); // on some chains, a last (aggregate) event is emitted
 }
 
 export async function grantManagerRole(
@@ -340,7 +342,7 @@ export async function setupStrat(
   await grantManagerRole(env, env.deployer!.address);
 
   // load the implementation abi, containing the overriding init() (missing from d.strat)
-  // init((uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)'
+  // init((uint64,uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)'
   const proxy = new Contract(strat.address, loadAbi(contract)!, env.deployer);
 
   await setMinLiquidity(env, minLiquidityUsd);

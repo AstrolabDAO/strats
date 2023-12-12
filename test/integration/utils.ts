@@ -465,7 +465,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
       (await getSwapperOutputEstimate(
         "USDC",
         env.wgas.sym,
-        50_005 * 1e6,
+        10_005 * 1e6,
         network.config.chainId!,
         network.config.chainId!
       )) ||

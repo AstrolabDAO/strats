@@ -15,7 +15,7 @@ const desc: IStrategyDesc = {
   version: 1,
   contract: "StargateMultiStake",
   underlying: "USDC",
-  inputs: ["USDCe", "USDT", "DAI"],
+  inputs: ["USDCe", "FRAX", "DAI"],
   inputWeights: [4000, 3000, 2000], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
 };

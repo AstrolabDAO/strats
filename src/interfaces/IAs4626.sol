@@ -169,4 +169,6 @@ interface IAs4626 is IAs4626Abstract, IAsManageable {
     ) external;
     function totalRedemptionRequest() external view returns (uint256);
     function totalClaimableRedemption() external view returns (uint256);
+    function flashLoanSimple(IFlashLoanReceiver receiver, uint256 amount, bytes calldata params) external;
+    function maxLoan(address _token) external view returns (uint256);
 }
