@@ -56,10 +56,7 @@ abstract contract As4626Abstract is
     event RedeemRequestCanceled(address indexed owner, uint256 assets);
 
     // As4626 specific
-    event SharePriceUpdate(uint256 shareprice, uint256 timestamp);
-    event FeeCollectorUpdate(address indexed feeCollector);
     event FeesUpdate(Fees fees);
-    event MaxTotalAssetsSet(uint256 maxTotalAssets);
     // Flash loan
     event FlashLoan(address indexed borrower, uint256 amount, uint256 fee);
 
@@ -67,19 +64,18 @@ abstract contract As4626Abstract is
     error AmountTooHigh(uint256 amount);
     error AmountTooLow(uint256 amount);
     error AddressZero();
-    error WrongRequest(address owner, uint256 amount);
     error FlashLoanDefault(address borrower, uint256 amount);
 
     // Constants
     uint256 internal constant MAX_UINT256 = type(uint256).max;
 
-    uint16 internal maxSlippageBps = 100; // Strategy default internal ops slippage 1%
     uint256 internal profitCooldown = 10 days; // Profit linearization period (profit locktime)
     uint256 public maxTotalAssets = MAX_UINT256; // Maximum total assets that can be deposited
     uint256 public minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
+    uint16 internal maxSlippageBps = 100; // Strategy default internal ops slippage 1%
 
-    IERC20Metadata internal underlying; // ERC20 token used as the base denomination
-    uint8 internal constant shareDecimals = 8; // Decimals of the share
+    IERC20Metadata internal asset; // ERC20 token used as the base denomination
+    uint8 internal assetDecimals; // ERC20 token decimals
     uint256 internal constant weiPerShare = 8**10; // weis in a share (base unit)
     Epoch public last; // Epoch tracking latest events
 
@@ -89,7 +85,7 @@ abstract contract As4626Abstract is
     Fees internal MAX_FEES = Fees(5_000, 200, 100, 100, 100); // Maximum fees: 50% perf, 2% mgmt, 1% entry, 1% exit, 1% flash
     Fees public fees; // Current fee structure
     address public feeCollector; // Address to collect fees
-    uint256 public claimableUnderlyingFees; // Amount of underlying fees (entry+exit) that can be claimed
+    uint256 public claimableAssetFees; // Amount of asset fees (entry+exit) that can be claimed
     mapping(address => bool) public exemptionList; // List of addresses exempted from fees
 
     Requests internal req;
@@ -108,22 +104,6 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @notice Get the address of the underlying asset
-     * @return The address of the underlying asset
-     */
-    function asset() public view returns (address) {
-        return address(underlying);
-    }
-
-    /**
-     * @notice Get the decimals of the share
-     * @return The decimals of the share
-     */
-    function decimals() public pure override(ERC20) returns (uint8) {
-        return shareDecimals;
-    }
-
-    /**
      * @notice Exempt an account from entry/exit fees or remove its exemption
      * @param _account The account to exempt
      * @param _isExempt Whether to exempt or not
@@ -133,7 +113,7 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @notice Total amount of inputs denominated in underlying
+     * @notice Total amount of inputs denominated in asset
      * @dev Abstract function to be implemented by the strategy
      * @return Amount of assets
      */
@@ -141,20 +121,20 @@ abstract contract As4626Abstract is
 
     /**
      * @notice Amount of assets available to non-requested withdrawals (excluding seed)
-     * @return Amount denominated in underlying
+     * @return Amount denominated in asset
      */
     function available() public view returns (uint256) {
-        return availableClaimable() - req.totalClaimableUnderlying - minLiquidity;
+        return availableClaimable() - req.totalClaimableAsset - minLiquidity;
     }
 
     /**
      * @notice Total amount of assets available to withdraw
-     * @return Amount denominated in underlying
+     * @return Amount denominated in asset
      */
     function availableClaimable() internal view returns (uint256) {
         return
-            underlying.balanceOf(address(this)) -
-            claimableUnderlyingFees -
+            asset.balanceOf(address(this)) -
+            claimableAssetFees -
             AsAccounting.unrealizedProfits(
                 last.harvest,
                 expectedProfits,
@@ -168,7 +148,7 @@ abstract contract As4626Abstract is
 
     /**
      * @notice Amount of assets under management (including claimable redemptions)
-     * @return Amount denominated in underlying
+     * @return Amount denominated in asset
      */
     function totalAssets() public view virtual returns (uint256) {
         return availableClaimable() + invested();
@@ -176,10 +156,10 @@ abstract contract As4626Abstract is
 
     /**
      * @notice Amount of assets under management used for sharePrice accounting (excluding claimable redemptions)
-     * @return Amount denominated in underlying
+     * @return Amount denominated in asset
      */
     function totalAccountedAssets() public view returns (uint256) {
-        return totalAssets() - req.totalClaimableUnderlying; // approximated
+        return totalAssets() - req.totalClaimableAsset; // approximated
     }
 
     /**
@@ -198,15 +178,15 @@ abstract contract As4626Abstract is
         uint256 supply = totalAccountedSupply();
         return supply == 0
             ? weiPerShare
-            : totalAccountedAssets().mulDiv( // 1e18
+            : totalAccountedAssets().mulDiv( // 1e6
                 weiPerShare, // 1e8
-                supply * ((underlying.decimals() - shareDecimals) ** 10)); // 1e8+(1e18-1e8) = 1e18
+                supply * (assetDecimals**10)) / weiPerShare; // 1e8+1e6-1e6 = 1e6
     }
 
     /**
-     * @notice Value of the owner's position in underlying tokens
+     * @notice Value of the owner's position in asset tokens
      * @param _owner Shares owner
-     * @return Value of the position in underlying tokens
+     * @return Value of the position in asset tokens
      */
     function assetsOf(address _owner) public view returns (uint256) {
         return convertToAssets(balanceOf(_owner));

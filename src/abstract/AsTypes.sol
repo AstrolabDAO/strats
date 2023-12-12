@@ -13,7 +13,7 @@ struct Fees {
 // StrategyV5 init params
 struct StrategyBaseParams {
     Fees fees;
-    address underlying;
+    address asset;
     address[3] coreAddresses;
     address[] inputs;
     uint16[] inputWeights;
@@ -34,8 +34,8 @@ struct Requests {
     uint256 totalDeposit; // Total amount requested for deposit
     uint256 totalRedemption; // Total amount requested for redemption
     uint256 totalClaimableRedemption; // Total amount claimable for redemption
-    uint256 totalUnderlying; // Total underlying requested
-    uint256 totalClaimableUnderlying; // Total claimable underlying
+    uint256 totalAsset; // Total asset requested
+    uint256 totalClaimableAsset; // Total claimable asset
     mapping(address => Erc7540Request) byOperator; // Mapping of ERC7540 requests by operator
 }
 

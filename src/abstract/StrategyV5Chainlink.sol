@@ -21,9 +21,9 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IChainlinkAggregatorV3 internal underlyingPriceFeed; // Aggregator contract of the underlying asset
+    IChainlinkAggregatorV3 internal assetPriceFeed; // Aggregator contract of the asset asset
     IChainlinkAggregatorV3[8] internal inputPriceFeeds; // Aggregator contract of the inputs
-    uint8 internal underlyingFeedDecimals; // Decimals of the underlying asset
+    uint8 internal assetFeedDecimals; // Decimals of the asset asset
     uint8[8] internal inputFeedDecimals; // Decimals of the input asset
 
     /**
@@ -32,7 +32,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     constructor(string[3] memory _erc20Metadata) StrategyV5(_erc20Metadata) {}
 
     struct ChainlinkParams {
-        address underlyingPriceFeed;
+        address assetPriceFeed;
         address[] inputPriceFeeds;
     }
 
@@ -54,8 +54,8 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _ChainlinkParams Chainlink specific parameters
      */
     function updateChainlink(ChainlinkParams calldata _ChainlinkParams) public onlyAdmin {
-        underlyingPriceFeed = IChainlinkAggregatorV3(_ChainlinkParams.underlyingPriceFeed);
-        underlyingFeedDecimals = underlyingPriceFeed.decimals();
+        assetPriceFeed = IChainlinkAggregatorV3(_ChainlinkParams.assetPriceFeed);
+        assetFeedDecimals = assetPriceFeed.decimals();
 
         for (uint256 i = 0; i < _ChainlinkParams.inputPriceFeeds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
@@ -65,41 +65,41 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     }
 
     /**
-     * @notice Changes the strategy underlying token (automatically pauses the strategy)
-     * @param _underlying Address of the token
-     * @param _swapData Swap callData oldUnderlying->newUnderlying
+     * @notice Changes the strategy asset token (automatically pauses the strategy)
+     * @param _asset Address of the token
+     * @param _swapData Swap callData oldAsset->newAsset
      * @param _priceFeed Address of the Chainlink price feed
      */
-    function updateUnderlying(address _underlying, bytes calldata _swapData, address _priceFeed) external onlyAdmin {
+    function updateAsset(address _asset, bytes calldata _swapData, address _priceFeed) external onlyAdmin {
         if (_priceFeed == address(0)) revert AddressZero();
-        underlyingPriceFeed = IChainlinkAggregatorV3(_priceFeed);
-        underlyingFeedDecimals = underlyingPriceFeed.decimals();
-        _updateUnderlying(_underlying, _swapData);
+        assetPriceFeed = IChainlinkAggregatorV3(_priceFeed);
+        assetFeedDecimals = assetPriceFeed.decimals();
+        _updateAsset(_asset, _swapData);
     }
 
     /**
-     * @notice Computes the underlying/input exchange rate from Chainlink oracle price feeds in bps
-     * @dev Used by invested() to compute input->underlying (base/quote, eg. USDC/BTC not BTC/USDC)
+     * @notice Computes the asset/input exchange rate from Chainlink oracle price feeds in bps
+     * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment
      */
-    function underlyingExchangeRate(uint8 _index) public view returns (uint256) {
-        return ChainlinkUtils.underlyingExchangeRate(
-            [inputPriceFeeds[_index], underlyingPriceFeed], shareDecimals, underlyingFeedDecimals);
+    function assetExchangeRate(uint8 _index) public view returns (uint256) {
+        return ChainlinkUtils.assetExchangeRate(
+            [inputPriceFeeds[_index], assetPriceFeed], decimals(), assetFeedDecimals);
     }
 
     /**
-     * @notice Converts underlying wei amount to input wei amount
+     * @notice Converts asset wei amount to input wei amount
      * @return Input amount in wei
      */
-    function _underlyingToInput(uint256 _amount, uint8 _index) internal view override returns (uint256) {
-        return _amount.mulDiv(10**inputDecimals[_index], underlyingExchangeRate(_index));
+    function _assetToInput(uint256 _amount, uint8 _index) internal view override returns (uint256) {
+        return _amount.mulDiv(10**inputDecimals[_index], assetExchangeRate(_index));
     }
 
     /**
-     * @notice Converts input wei amount to underlying wei amount
-     * @return Underlying amount in wei
+     * @notice Converts input wei amount to asset wei amount
+     * @return Asset amount in wei
      */
-    function _inputToUnderlying(uint256 _amount, uint8 _index) internal view override returns (uint256) {
-        return _amount.mulDiv(underlyingExchangeRate(_index), 10**inputDecimals[_index]);
+    function _inputToAsset(uint256 _amount, uint8 _index) internal view override returns (uint256) {
+        return _amount.mulDiv(assetExchangeRate(_index), 10**inputDecimals[_index]);
     }
 }

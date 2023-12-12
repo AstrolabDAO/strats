@@ -202,7 +202,7 @@ export const deployStrat = async (
     units,
     inputs: [] as SafeContract[],
     rewardTokens: [] as SafeContract[],
-    underlying: {} as SafeContract,
+    asset: {} as SafeContract,
     strat: {} as SafeContract,
   } as IStrategyDeployment);
 
@@ -237,10 +237,10 @@ export async function setMinLiquidity(
   env: Partial<IStrategyDeploymentEnv>,
   usdAmount = 10
 ) {
-  const { strat, underlying } = env.deployment!;
-  const [from, to] = ["USDC", env.deployment!.underlying.sym];
+  const { strat, asset } = env.deployment!;
+  const [from, to] = ["USDC", env.deployment!.asset.sym];
   const exchangeRate = await getSwapperRateEstimate(from, to, 1e12);
-  const seedAmount = underlying.toWei(usdAmount * exchangeRate);
+  const seedAmount = asset.toWei(usdAmount * exchangeRate);
   if ((await strat.minLiquidity()).gte(seedAmount)) {
     console.log(`Skipping setMinLiquidity as minLiquidity == ${seedAmount}`);
   } else {
@@ -258,16 +258,16 @@ export async function setMinLiquidity(
 }
 
 export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
-  const { strat, underlying } = env.deployment!;
-  let amount = underlying.toWei(_amount);
+  const { strat, asset } = env.deployment!;
+  let amount = asset.toWei(_amount);
   if ((await strat.totalAssets()).gte(await strat.minLiquidity())) {
     console.log(`Skipping seedLiquidity as totalAssets > minLiquidity`);
     return BigNumber.from(1);
   }
   if (
-    (await underlying.allowance(env.deployer.address, strat.address)).lt(amount)
+    (await asset.allowance(env.deployer.address, strat.address)).lt(amount)
   )
-    await underlying
+    await asset
       .approve(strat.address, MaxUint256, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
 
@@ -319,7 +319,7 @@ export async function setupStrat(
     libNames.push("PythUtils");
   }
   env.deployment = {
-    underlying: await SafeContract.build(initParams[0].underlying),
+    asset: await SafeContract.build(initParams[0].asset),
     inputs: await Promise.all(
       initParams[0].inputs!.map((input) => SafeContract.build(input))
     ),
@@ -385,18 +385,18 @@ export async function setupStrat(
 }
 
 export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
-  const { strat, underlying } = env.deployment!;
-  const balance = await underlying.balanceOf(env.deployer.address);
-  let amount = underlying.toWei(_amount);
+  const { strat, asset } = env.deployment!;
+  const balance = await asset.balanceOf(env.deployer.address);
+  let amount = asset.toWei(_amount);
 
   if (balance.lt(amount)) {
     console.log(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
   if (
-    (await underlying.allowance(env.deployer.address, strat.address)).lt(amount)
+    (await asset.allowance(env.deployer.address, strat.address)).lt(amount)
   )
-    await underlying
+    await asset
       .approve(strat.address, MaxUint256, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "Before Deposit");
@@ -413,7 +413,7 @@ export async function swapSafeDeposit(
   inputAddress?: string,
   _amount = 10
 ) {
-  const { strat, underlying } = env.deployment!;
+  const { strat, asset } = env.deployment!;
   const depositAsset = new Contract(inputAddress!, erc20Abi, env.deployer);
   const [minSwapOut, minSharesOut] = [1, 1];
   let amount = depositAsset.toWei(_amount);
@@ -426,10 +426,10 @@ export async function swapSafeDeposit(
       .then((tx: TransactionResponse) => tx.wait());
 
   let swapData: any = [];
-  if (underlying.address != depositAsset.address) {
+  if (asset.address != depositAsset.address) {
     const tr = (await getTransactionRequest({
       input: depositAsset.address,
-      output: underlying.address,
+      output: asset.address,
       amountWei: amount.toString(),
       inputChainId: network.config.chainId!,
       payer: strat.address,
@@ -456,10 +456,10 @@ export async function swapSafeDeposit(
 }
 
 export async function preInvest(env: IStrategyDeploymentEnv, _amount = 100) {
-  const { underlying, inputs, strat } = env.deployment!;
+  const { asset, inputs, strat } = env.deployment!;
   const stratLiquidity = await strat.available();
   const [minSwapOut, minIouOut] = [1, 1];
-  let amount = underlying.toWei(_amount);
+  let amount = asset.toWei(_amount);
 
   if (stratLiquidity.lt(amount)) {
     console.log(
@@ -478,14 +478,14 @@ export async function preInvest(env: IStrategyDeploymentEnv, _amount = 100) {
       data: "0x00",
     } as ITransactionRequestWithEstimate;
 
-    // only generate swapData if the input is not the underlying
-    if (underlying.address != inputs[i].address && amounts[i].gt(10)) {
+    // only generate swapData if the input is not the asset
+    if (asset.address != inputs[i].address && amounts[i].gt(10)) {
       console.log("Preparing invest() SwapData from inputs/inputWeights");
       // const weight = env.deployment!.initParams[0].inputWeights[i];
       // if (!weight) throw new Error(`No inputWeight found for input ${i} (${inputs[i].symbol})`);
       // inputAmount = amount.mul(weight).div(10_000).toString()
       tr = (await getTransactionRequest({
-        input: underlying.address,
+        input: asset.address,
         output: inputs[i].address,
         amountWei: amounts[i], // using a 10_000 bp basis (10_000 = 100%)
         inputChainId: network.config.chainId!,
@@ -521,11 +521,11 @@ export async function invest(env: IStrategyDeploymentEnv, _amount = 0) {
 
 // input prices are required to weight out the swaps and create the SwapData array
 export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
-  const { underlying, inputs, strat } = env.deployment!;
+  const { asset, inputs, strat } = env.deployment!;
 
-  let amount = underlying.toWei(_amount);
+  let amount = asset.toWei(_amount);
 
-  const pendingWithdrawalRequest = await strat.totalPendingUnderlyingRequest();
+  const pendingWithdrawalRequest = await strat.totalPendingAssetRequest();
   const invested = await strat["invested()"]();
   const max = invested.gt(pendingWithdrawalRequest)
     ? invested
@@ -567,7 +567,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
     // const weight = env.deployment!.initParams[0].inputWeights[i];
     // const amountOut = amount.mul(weight).div(10_000); // using a 10_000 bp basis (10_000 = 100%)
 
-    // by default input == underlying, no swapData is required
+    // by default input == asset, no swapData is required
     let tr = {
       to: addressZero,
       data: "0x00",
@@ -576,22 +576,22 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
       estimatedOutput: inputs[i].toAmount(amounts[i]),
     } as ITransactionRequestWithEstimate;
 
-    if (underlying.address != inputs[i].address && amounts[i].gt(10)) {
+    if (asset.address != inputs[i].address && amounts[i].gt(10)) {
       // add 1% slippage to the input amount, .1% if stable (2x as switching from ask estimate->bid)
       // NB: in case of a volatility event (eg. news/depeg), the liquidity would be one sided
       // and these estimates would be off. Liquidation would require manual parametrization
       // using more pessimistic amounts (eg. more slippage) in the swapData generation
-      const stablePair = isStablePair(underlying.sym, inputs[i].sym);
+      const stablePair = isStablePair(asset.sym, inputs[i].sym);
       // oracle derivation tolerance (can be found at https://data.chain.link/ for chainlink)
       const derivation = stablePair ? 100 : 1_000; // .1% or 1%
       const slippage = stablePair ? 25 : 250; // .025% or .25%
       amounts[i] = amounts[i].mul(10_000 + derivation).div(10_000);
       swapAmounts[i] = amounts[i].mul(10_000 - slippage).div(10_000);
 
-      // only generate swapData if the input is not the underlying
+      // only generate swapData if the input is not the asset
       tr = (await getTransactionRequest({
         input: inputs[i].address,
-        output: underlying.address,
+        output: asset.address,
         amountWei: swapAmounts[i], // take slippage off so that liquidated LP value > swap input
         inputChainId: network.config.chainId!,
         payer: strat.address, // env.deployer.address
@@ -599,7 +599,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
       })) as ITransactionRequestWithEstimate;
       if (!tr.to)
         throw new Error(
-          `No swapData generated for ${inputs[i].address} -> ${underlying.address}`
+          `No swapData generated for ${inputs[i].address} -> ${asset.address}`
         );
     }
     trs.push(tr);
@@ -611,7 +611,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
     );
   }
   console.log(
-    `Liquidating ${underlying.toAmount(amount)}${underlying.sym}\n` +
+    `Liquidating ${asset.toAmount(amount)}${asset.sym}\n` +
       inputs
         .map(
           (input, i) =>
@@ -620,7 +620,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
             ].toString()}wei), swap amount: ${input.toAmount(
               swapAmounts[i]
             )} (${swapAmounts[i].toString()}wei), est. output: ${trs[i]
-              .estimatedOutput!} ${underlying.sym} (${trs[
+              .estimatedOutput!} ${asset.sym} (${trs[
               i
             ].estimatedOutputWei?.toString()}wei - exchange rate: ${
               trs[i].estimatedExchangeRate
@@ -641,10 +641,10 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
 }
 
 export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
-  const { underlying, inputs, strat } = env.deployment!;
+  const { asset, inputs, strat } = env.deployment!;
   const minAmountOut = 1; // TODO: change with staticCall
   const max = await strat.maxWithdraw(env.deployer.address);
-  let amount = underlying.toWei(_amount);
+  let amount = asset.toWei(_amount);
 
   if (max.lt(10)) {
     console.log(
@@ -671,12 +671,12 @@ export async function requestWithdraw(
   env: IStrategyDeploymentEnv,
   _amount = 50
 ) {
-  const { underlying, inputs, strat } = env.deployment!;
+  const { asset, inputs, strat } = env.deployment!;
   const balance = await strat.balanceOf(env.deployer.address);
-  const pendingRequest = await strat.pendingUnderlyingRequest(
+  const pendingRequest = await strat.pendingAssetRequest(
     env.deployer.address
   );
-  let amount = underlying.toWei(_amount);
+  let amount = asset.toWei(_amount);
 
   if (balance.lt(10)) {
     console.log(
@@ -690,7 +690,7 @@ export async function requestWithdraw(
     amount = balance;
   }
 
-  if (pendingRequest.gte(amount.mul(weiToString(underlying.weiPerUnit)))) {
+  if (pendingRequest.gte(amount.mul(weiToString(asset.weiPerUnit)))) {
     console.log(`Skipping requestWithdraw as pendingRedeemRequest > amount`);
     return BigNumber.from(1);
   }
@@ -708,7 +708,7 @@ export async function requestWithdraw(
 }
 
 export async function preHarvest(env: IStrategyDeploymentEnv) {
-  const { underlying, inputs, rewardTokens, strat } = env.deployment!;
+  const { asset, inputs, rewardTokens, strat } = env.deployment!;
 
   // const rewardTokens = (await strat.rewardTokens()).filter((rt: string) => rt != addressZero);
   const amounts = await strat.rewardsAvailable();
@@ -736,10 +736,10 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
       estimatedExchangeRate: 1,
     } as ITransactionRequestWithEstimate;
 
-    if (rewardTokens[i].address != underlying.address && amounts[i].gt(10)) {
+    if (rewardTokens[i].address != asset.address && amounts[i].gt(10)) {
       tr = (await getTransactionRequest({
         input: rewardTokens[i].address,
-        output: underlying.address,
+        output: asset.address,
         amountWei: amounts[i].sub(amounts[i].div(1_000)), // .1% slippage
         inputChainId: network.config.chainId!,
         payer: strat.address,
@@ -770,7 +770,7 @@ export async function harvest(env: IStrategyDeploymentEnv) {
 }
 
 export async function compound(env: IStrategyDeploymentEnv) {
-  const { underlying, inputs, strat } = env.deployment!;
+  const { asset, inputs, strat } = env.deployment!;
   const [harvestSwapData] = await preHarvest(env);
 
   // harvest static call
@@ -784,7 +784,7 @@ export async function compound(env: IStrategyDeploymentEnv) {
 
   const [investAmounts, investSwapData] = await preInvest(
     env,
-    underlying.toAmount(harvestEstimate.sub(harvestEstimate.div(50)))
+    asset.toAmount(harvestEstimate.sub(harvestEstimate.div(50)))
   ); // 2% slippage
   await logState(env, "Before Compound");
   // only exec if static call is successful

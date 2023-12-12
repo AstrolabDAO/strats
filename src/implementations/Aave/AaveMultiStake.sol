@@ -15,7 +15,7 @@ import "./interfaces/IOracle.sol";
  * @title AaveStrategy - Liquidity providing on Aave
  * @author Astrolab DAO
  * @notice Basic liquidity providing strategy for Aave V3 (https://aave.com/)
- * @dev Underlying->inputs->LPs->inputs->underlying
+ * @dev Asset->inputs->LPs->inputs->asset
  */
 contract AaveMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
@@ -69,13 +69,12 @@ contract AaveMultiStake is StrategyV5Chainlink {
             inputDecimals[i] = inputs[i].decimals();
         }
         inputLength = uint8(_aaveParams.aTokens.length);
-        underlying = IERC20Metadata(_baseParams.underlying);
         setParams(_aaveParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
     /**
-     * @notice Claim rewards from the reward pool and swap them for underlying
+     * @notice Claim rewards from the reward pool and swap them for asset
      * @param _params Swaps calldata
      * @return assetsReceived Amount of assets received
      */
@@ -85,8 +84,8 @@ contract AaveMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Invests the underlying asset into the pool
-     * @param _amounts Amounts of underlying to invest in each input
+     * @notice Invests the asset asset into the pool
+     * @param _amounts Amounts of asset to invest in each input
      * @param _params Swaps calldata
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
@@ -108,9 +107,9 @@ contract AaveMultiStake is StrategyV5Chainlink {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance.
-            if (underlying != inputs[i] && _amounts[i] > 10) {
+            if (asset != inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
-                    _input: address(underlying),
+                    _input: address(asset),
                     _output: address(inputs[i]),
                     _amount: _amounts[i],
                     _params: _params[i]
@@ -166,11 +165,11 @@ contract AaveMultiStake is StrategyV5Chainlink {
                 to: address(this)
             });
 
-            // swap the unstaked tokens (inputs[0]) for the underlying asset if different
-            if (inputs[i] != underlying && toLiquidate > 10) {
+            // swap the unstaked tokens (inputs[0]) for the asset asset if different
+            if (inputs[i] != asset && toLiquidate > 10) {
                 (recovered, ) = swapper.decodeAndSwap({
                     _input: address(inputs[i]),
-                    _output: address(underlying),
+                    _output: address(asset),
                     _amount: _amounts[i],
                     _params: _params[i]
                 });
@@ -181,7 +180,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToUnderlying(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;
@@ -201,15 +200,15 @@ contract AaveMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Returns the investment in underlying asset for the specified input
+     * @notice Returns the investment in asset asset for the specified input
      * @return total Amount invested
      */
     function invested(uint8 _index) public view override returns (uint256) {
-        return _inputToUnderlying(investedInput(_index), _index);
+        return _inputToAsset(investedInput(_index), _index);
     }
 
     /**
-     * @notice Returns the investment in underlying asset for the specified input
+     * @notice Returns the investment in asset asset for the specified input
      * @return total Amount invested
      */
     function investedInput(

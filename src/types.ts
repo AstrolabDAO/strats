@@ -78,7 +78,7 @@ export interface Fees {
 // name, symbol, version
 export type Erc20Metadata = [string, string, string];
 
-// fees, underlying, feeCollector
+// fees, asset, feeCollector
 export type As4626InitParams = [Fees, string, string];
 
 export interface IStrategyDesc {
@@ -86,7 +86,7 @@ export interface IStrategyDesc {
   symbol: string;
   version: number;
   contract: string;
-  underlying: string;
+  asset: string;
   inputs: string[];
   inputWeights: number[];
   seedLiquidityUsd: number;
@@ -94,7 +94,7 @@ export interface IStrategyDesc {
 
 export interface IStrategyBaseParams {
   fees: Fees;
-  underlying: string;
+  asset: string;
   coreAddresses: string[];
   inputs: string[];
   inputWeights: number[];
@@ -103,12 +103,12 @@ export interface IStrategyBaseParams {
 
 export interface IPythParams {
   pyth: string;
-  underlyingPythId: string;
+  assetPythId: string;
   inputPythIds: string[];
 }
 
 export interface IChainlinkParams {
-  underlyingPriceFeed: string;
+  assetPriceFeed: string;
   inputPriceFeeds: string[];
 }
 
@@ -130,7 +130,7 @@ export interface IStrategyDeployment extends IDeployment {
   libraries: { [name: string]: string };
   // product of deployment
   strat: SafeContract;
-  underlying: SafeContract;
+  asset: SafeContract;
   inputs: SafeContract[];
   rewardTokens: SafeContract[];
 }

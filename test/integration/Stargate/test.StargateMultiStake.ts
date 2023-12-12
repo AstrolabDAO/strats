@@ -14,7 +14,7 @@ const desc: IStrategyDesc = {
   symbol: `as.SMS`,
   version: 1,
   contract: "StargateMultiStake",
-  underlying: "USDC",
+  asset: "USDC",
   inputs: ["USDCe", "FRAX", "DAI"],
   inputWeights: [4000, 3000, 2000], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
@@ -57,14 +57,14 @@ describe(`test.${desc.name}`, () => {
       [{
         // base params
         fees: {} as Fees, // fees (use default)
-        underlying: addr.tokens[desc.underlying], // underlying
+        asset: addr.tokens[desc.asset], // asset
         coreAddresses: [], // coreAddresses (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         rewardTokens: [addr.tokens.STG]
       }, {
         // chainlink oracle params
-        underlyingPriceFeed: oracles[`Crypto.${desc.underlying}/USD`],
+        assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params

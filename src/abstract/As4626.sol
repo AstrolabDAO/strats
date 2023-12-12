@@ -30,12 +30,12 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @dev Initialize the contract after deployment
      * @param _fees Fee structure for the contract
-     * @param _underlying Address of the underlying ERC20 token
+     * @param _asset Address of the asset ERC20 token
      * @param _feeCollector Address where fees will be collected
      */
     function init(
         Fees memory _fees,
-        address _underlying,
+        address _asset,
         address _feeCollector
     ) public virtual onlyAdmin {
         // check that the fees are not too high
@@ -43,7 +43,8 @@ abstract contract As4626 is As4626Abstract {
         fees = _fees;
         feeCollector = _feeCollector;
 
-        underlying = IERC20Metadata(_underlying);
+        asset = IERC20Metadata(_asset);
+        assetDecimals = asset.decimals();
         last.accountedSharePrice = weiPerShare;
         last.accountedProfit = weiPerShare;
         last.feeCollection = uint64(block.timestamp);
@@ -53,7 +54,7 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Mints shares to the receiver by depositing underlying tokens
+     * @notice Mints shares to the receiver by depositing asset tokens
      * @param _shares Amount of shares minted to the _receiver
      * @param _receiver Shares receiver
      * @return assets Amount of assets deposited
@@ -72,15 +73,15 @@ abstract contract As4626 is As4626Abstract {
             revert AmountTooHigh(maxDeposit(_receiver));
 
         // Moving value
-        underlying.safeTransferFrom(msg.sender, address(this), assets);
+        asset.safeTransferFrom(msg.sender, address(this), assets);
         _mint(_receiver, _shares);
         emit Deposit(msg.sender, _receiver, assets, _shares);
     }
 
     /**
-     * @notice Mints shares to the receiver by depositing underlying tokens
+     * @notice Mints shares to the receiver by depositing asset tokens
      * @dev Pausing the contract should prevent depositing by setting maxDepositAmount to 0
-     * @param _amount Amount of underlying tokens to deposit
+     * @param _amount Amount of asset tokens to deposit
      * @param _receiver Address that will get the shares
      * @param _minShareAmount Minimum amount of shares to be minted, like slippage on Uniswap
      * @return shares Amount of shares minted to the _receiver
@@ -99,13 +100,13 @@ abstract contract As4626 is As4626Abstract {
         // save totalAssets before transferring
         uint256 assetsAvailable = totalAssets();
         // Moving value
-        underlying.safeTransferFrom(msg.sender, address(this), _amount);
+        asset.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 supply = totalSupply();
 
         // slice the fee from the amount (gas optimized)
         if (!exemptionList[_receiver]) {
             uint256 feeAmount = _amount.bp(fees.entry);
-            claimableUnderlyingFees += feeAmount;
+            claimableAssetFees += feeAmount;
             _amount -= feeAmount;
         }
 
@@ -123,7 +124,7 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Previews the amount of shares that will be minted for a given deposit amount
-     * @param _amount Amount of underlying tokens to deposit
+     * @param _amount Amount of asset tokens to deposit
      * @return shares Amount of shares that will be minted
      */
     function previewDeposit(
@@ -133,9 +134,9 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Mints shares to the receiver by depositing underlying tokens
+     * @notice Mints shares to the receiver by depositing asset tokens
      * @dev Unlike safeDeposit, there's no slippage control here
-     * @param _amount Amount of underlying tokens to deposit
+     * @param _amount Amount of asset tokens to deposit
      * @param _receiver Address that will get the shares
      * @return shares Amount of shares minted to the _receiver
      */
@@ -147,9 +148,9 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Mints shares to the receiver by depositing underlying tokens
+     * @notice Mints shares to the receiver by depositing asset tokens
      * @dev Overloaded version with slippage control
-     * @param _amount Amount of underlying tokens to deposit
+     * @param _amount Amount of asset tokens to deposit
      * @param _receiver Address that will get the shares
      * @param _minShareAmount Minimum amount of shares to be minted, like slippage on Uniswap
      * @return shares Amount of shares minted to the _receiver
@@ -163,9 +164,9 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Withdraw assets denominated in underlying
+     * @notice Withdraw assets denominated in asset
      * @dev Unlike safeWithdraw, there's no slippage control here
-     * @param _amount Amount of underlying tokens to withdraw
+     * @param _amount Amount of asset tokens to withdraw
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
      * @return shares Amount of shares burned
@@ -201,17 +202,17 @@ abstract contract As4626 is As4626Abstract {
         if (claimable >= _shares) {
             req.byOperator[_receiver].shares -= _shares;
             req.totalRedemption -= AsMaths.min(_shares, req.totalRedemption);
-            req.totalUnderlying -= AsMaths.min(
+            req.totalAsset -= AsMaths.min(
                 _shares.mulDiv(request.sharePrice, weiPerShare),
-                req.totalUnderlying
+                req.totalAsset
             );
             req.totalClaimableRedemption -= AsMaths.min(
                 _shares,
                 req.totalClaimableRedemption
             );
-            req.totalClaimableUnderlying -= AsMaths.min(
+            req.totalClaimableAsset -= AsMaths.min(
                 recovered,
-                req.totalClaimableUnderlying
+                req.totalClaimableAsset
             );
         }
 
@@ -225,15 +226,15 @@ abstract contract As4626 is As4626Abstract {
         if (recovered <= _minAmountOut) revert AmountTooLow(recovered);
 
         _burn(_owner, _shares);
-        underlying.safeTransfer(_receiver, recovered);
+        asset.safeTransfer(_receiver, recovered);
         emit Withdraw(msg.sender, _receiver, _owner, recovered, _shares);
         return recovered;
     }
 
     /**
-     * @notice Withdraw assets denominated in underlying
+     * @notice Withdraw assets denominated in asset
      * @dev Beware, there's no slippage control - use safeWithdraw if you want it
-     * @param _amount Amount of underlying tokens to withdraw
+     * @param _amount Amount of asset tokens to withdraw
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
      * @return shares Amount of shares burned
@@ -249,9 +250,9 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Withdraw assets denominated in underlying
+     * @notice Withdraw assets denominated in asset
      * @dev Overloaded version with slippage control
-     * @param _amount Amount of underlying tokens to withdraw
+     * @param _amount Amount of asset tokens to withdraw
      * @param _minAmount The minimum amount of assets we'll accept
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
@@ -269,7 +270,7 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Redeem shares for their underlying value
+     * @notice Redeem shares for their asset value
      * @dev Beware, there's no slippage control - you need to use the overloaded function if you want it
      * @param _shares Amount of shares to redeem
      * @param _receiver Who will get the withdrawn assets
@@ -334,7 +335,7 @@ abstract contract As4626 is As4626Abstract {
         last.accountedSharePrice = price;
         last.accountedProfit = profit;
         last.accountedTotalSupply = totalSupply();
-        claimableUnderlyingFees = 0;
+        claimableAssetFees = 0;
     }
 
     /**
@@ -359,7 +360,6 @@ abstract contract As4626 is As4626Abstract {
     function setFeeCollector(address _feeCollector) external onlyAdmin {
         if (_feeCollector == address(0)) revert AddressZero();
         feeCollector = _feeCollector;
-        emit FeeCollectorUpdate(feeCollector);
     }
 
     /**
@@ -384,7 +384,6 @@ abstract contract As4626 is As4626Abstract {
      */
     function setMaxTotalAssets(uint256 _maxTotalAssets) public onlyAdmin {
         maxTotalAssets = _maxTotalAssets;
-        emit MaxTotalAssetsSet(_maxTotalAssets);
     }
 
     /**
@@ -472,9 +471,9 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Preview how many underlying tokens the caller will get for burning his _shares
+     * @notice Preview how many asset tokens the caller will get for burning his _shares
      * @param _shares Amount of shares that we burn
-     * @return Preview amount of underlying tokens that the caller will get for his shares
+     * @return Preview amount of asset tokens that the caller will get for his shares
      */
     function previewRedeem(uint256 _shares) public view returns (uint256) {
         uint256 price = sharePrice();
@@ -531,8 +530,8 @@ abstract contract As4626 is As4626Abstract {
     }
 
     // /**
-    //  * @notice Initiate a deposit request for assets denominated in underlying
-    //  * @param assets Amount of underlying tokens to deposit
+    //  * @notice Initiate a deposit request for assets denominated in asset
+    //  * @param assets Amount of asset tokens to deposit
     //  * @param operator Address initiating the request
     //  */
     // function requestDeposit(
@@ -552,21 +551,21 @@ abstract contract As4626 is As4626Abstract {
         address owner
     ) public nonReentrant {
         if (owner != msg.sender || shares == 0 || balanceOf(owner) < shares)
-            revert WrongRequest(msg.sender, shares);
+            revert Unauthorized();
 
         Erc7540Request storage request = req.byOperator[operator];
         if (request.operator != operator) request.operator = operator;
 
         uint256 price = sharePrice();
         if (request.shares > 0) {
-            if (request.shares < shares) revert WrongRequest(owner, shares);
+            if (request.shares < shares) revert AmountTooHigh(shares);
 
             req.totalRedemption -= AsMaths.min(
                 req.totalRedemption,
                 request.shares
             );
-            req.totalUnderlying -= AsMaths.min(
-                req.totalUnderlying,
+            req.totalAsset -= AsMaths.min(
+                req.totalAsset,
                 request.shares.mulDiv(request.sharePrice, weiPerShare)
             );
 
@@ -582,14 +581,14 @@ abstract contract As4626 is As4626Abstract {
         request.timestamp = block.timestamp;
 
         req.totalRedemption += shares;
-        req.totalUnderlying += shares.mulDiv(request.sharePrice, weiPerShare);
+        req.totalAsset += shares.mulDiv(request.sharePrice, weiPerShare);
 
         emit RedeemRequest(owner, operator, owner, shares);
     }
 
     /**
-     * @notice Initiate a withdraw request for assets denominated in underlying
-     * @param _amount Amount of underlying tokens to withdraw
+     * @notice Initiate a withdraw request for assets denominated in asset
+     * @param _amount Amount of asset tokens to withdraw
      * @param operator Address initiating the request
      * @param owner The owner of the shares to be redeemed
      */
@@ -621,12 +620,12 @@ abstract contract As4626 is As4626Abstract {
         address owner
     ) external nonReentrant {
         if (owner != msg.sender && operator != msg.sender)
-            revert WrongRequest(msg.sender, 0);
+            revert Unauthorized();
 
         Erc7540Request storage request = req.byOperator[operator];
         uint256 shares = request.shares;
 
-        if (shares == 0) revert WrongRequest(owner, 0);
+        if (shares == 0) revert AmountTooLow(0);
 
         uint256 price = sharePrice();
 
@@ -642,10 +641,10 @@ abstract contract As4626 is As4626Abstract {
         uint256 amount = shares.mulDiv(request.sharePrice, weiPerShare);
 
         req.totalRedemption -= shares;
-        req.totalUnderlying -= amount;
+        req.totalAsset -= amount;
         if (isRequestClaimable(request.timestamp)) {
             req.totalClaimableRedemption -= shares;
-            req.totalClaimableUnderlying -= amount;
+            req.totalClaimableAsset -= amount;
         }
         request.shares = 0;
         emit RedeemRequestCanceled(owner, shares);
@@ -679,11 +678,11 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Get the pending redeem request in underlying for a specific operator
+     * @notice Get the pending redeem request in asset for a specific operator
      * @param operator The operator's address
      * @return Amount of assets pending redemption
      */
-    function pendingUnderlyingRequest(
+    function pendingAssetRequest(
         address operator
     ) external view returns (uint256) {
         Erc7540Request memory request = req.byOperator[operator];
@@ -714,9 +713,9 @@ abstract contract As4626 is As4626Abstract {
      * @notice Get the maximum claimable redemption amount
      * @return The maximum claimable redemption amount
      */
-    function maxClaimableUnderlying() internal view returns (uint256) {
+    function maxClaimableAsset() internal view returns (uint256) {
         return
-            AsMaths.min(req.totalUnderlying, availableClaimable());
+            AsMaths.min(req.totalAsset, availableClaimable());
     }
 
     /**
@@ -749,13 +748,13 @@ abstract contract As4626 is As4626Abstract {
         uint256 fee = exemptionList[msg.sender] ? 0 : amount.bp(fees.flash);
         uint256 toRepay = amount + fee;
 
-        uint256 balanceBefore = underlying.balanceOf(address(this));
+        uint256 balanceBefore = asset.balanceOf(address(this));
         totalLent += amount;
 
-        underlying.safeTransferFrom(address(this), address(receiver), amount);
-        receiver.executeOperation(address(underlying), amount, fee, msg.sender, params);
+        asset.safeTransferFrom(address(this), address(receiver), amount);
+        receiver.executeOperation(address(asset), amount, fee, msg.sender, params);
 
-        if ((underlying.balanceOf(address(this)) - balanceBefore) < toRepay)
+        if ((asset.balanceOf(address(this)) - balanceBefore) < toRepay)
             revert FlashLoanDefault(msg.sender, amount);
 
         emit FlashLoan(msg.sender, amount, fee);

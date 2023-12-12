@@ -37,18 +37,16 @@ interface IAs4626Abstract is IERC20Permit {
     function profitCooldown() external view returns (uint256);
     function maxTotalAssets() external view returns (uint256);
     function minLiquidity() external view returns (uint256);
-    function underlying() external view returns (address);
-    function shareDecimals() external view returns (uint8);
+    function asset() external view returns (address);
+    function decimals() external view returns (uint8);
     function weiPerShare() external view returns (uint256);
     function expectedProfits() external view returns (uint256);
     function maxFees() external view returns (Fees memory);
     function fees() external view returns (Fees memory);
     function feeCollector() external view returns (address);
     function last() external view returns (Epoch memory);
-    function claimableUnderlyingFees() external view returns (uint256);
+    function claimableAssetFees() external view returns (uint256);
     function isExemptFromFees(address account) external view returns (bool);
-    function asset() external view returns (address);
-    function decimals() external view returns (uint8);
     function invested() external view returns (uint256);
     function available() external view returns (uint256);
     function availableClaimable() external view returns (uint256);
@@ -61,16 +59,16 @@ interface IAs4626Abstract is IERC20Permit {
     function convertToShares(uint256 _assets) external view returns (uint256);
     function convertToAssets(uint256 _shares) external view returns (uint256);
     function pendingRedeemRequest(address operator) external view returns (uint256);
-    function pendingUnderlyingRequest(address operator) external view returns (uint256);
+    function pendingAssetRequest(address operator) external view returns (uint256);
     function isRequestClaimable(uint256 requestTimestamp) external view returns (bool);
-    function maxClaimableUnderlying() external view returns (uint256);
+    function maxClaimableAsset() external view returns (uint256);
     function maxRedemptionClaim(address _owner) external view returns (uint256);
 }
 
 interface IAs4626 is IAs4626Abstract, IAsManageable {
     function init(
         Fees memory _fees,
-        address _underlying,
+        address _asset,
         address _feeCollector
     ) external;
 

@@ -13,7 +13,7 @@ const desc: IStrategyDesc = {
   symbol: `as.AAM`,
   version: 1,
   contract: "AaveMultiStake",
-  underlying: "USDC",
+  asset: "USDC",
   inputs: ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
   inputWeights: [2000, 2500, 2000, 2500, 1000, 0], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
@@ -55,14 +55,14 @@ describe(`test.${desc.name}`, () => {
       [{
         // base params
         fees: {} as Fees, // fees (use default)
-        underlying: addr.tokens[desc.underlying], // underlying
+        asset: addr.tokens[desc.asset], // asset
         coreAddresses: [], // coreAddresses (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         rewardTokens: [], // keep unique reward token: HOP
       }, {
         // chainlink oracle params
-        underlyingPriceFeed: oracles[`Crypto.${desc.underlying}/USD`],
+        assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params

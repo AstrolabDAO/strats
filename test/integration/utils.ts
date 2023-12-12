@@ -132,7 +132,7 @@ export async function logState(
   sleepBefore = 0,
   sleepAfter = 0
 ) {
-  const { strat, underlying, inputs, rewardTokens } = env.deployment!;
+  const { strat, asset, inputs, rewardTokens } = env.deployment!;
   if (sleepBefore) {
     console.log(`Sleeping ${sleepBefore}ms before logging state...`);
     await sleep(sleepBefore);
@@ -144,18 +144,18 @@ export async function logState(
       totalAccountedSupply,
       totalAssets,
       totalAccountedAssets,
-      totalClaimableUnderlyingFees,
+      totalClaimableAssetFees,
       available,
       // totalDepositRequest,
       totalRedemptionRequest,
       totalClaimableRedemption,
-      // totalUnderlying, // only available on strat.req() struct
-      // totalClaimableUnderlying, // only available on strat.req() struct
+      // totalAsset, // only available on strat.req() struct
+      // totalClaimableAsset, // only available on strat.req() struct
       rewardsAvailable,
       previewInvest,
       previewLiquidate,
-      stratUnderlyingBalance,
-      deployerUnderlyingBalance,
+      stratAssetBalance,
+      deployerAssetBalance,
       deployerSharesBalance,
     ]: any[] = await env.multicallProvider!.all([
       strat.multi.sharePrice(),
@@ -163,20 +163,20 @@ export async function logState(
       strat.multi.totalAccountedSupply(),
       strat.multi.totalAssets(),
       strat.multi.totalAccountedAssets(),
-      strat.multi.claimableUnderlyingFees(),
+      strat.multi.claimableAssetFees(),
       strat.multi.available(),
       // strat.multicallContract.totalDepositRequest(),
       strat.multi.totalRedemptionRequest(),
       strat.multi.totalClaimableRedemption(),
-      // strat.multicallContract.totalUnderlying(), // only available on strat.req() struct
-      // strat.multicallContract.totalClaimableUnderlying(), // only available on strat.req() struct
+      // strat.multicallContract.totalAsset(), // only available on strat.req() struct
+      // strat.multicallContract.totalClaimableAsset(), // only available on strat.req() struct
       strat.multi.rewardsAvailable(),
       strat.multi.previewInvest(0),
       strat.multi.previewLiquidate(0),
-      underlying.multi.balanceOf(strat.address),
-      underlying.multi.balanceOf(env.deployer!.address),
+      asset.multi.balanceOf(strat.address),
+      asset.multi.balanceOf(env.deployer!.address),
       strat.multi.balanceOf(env.deployer!.address),
-      // await underlyingTokenContract.balanceOf(strategy.address),
+      // await assetTokenContract.balanceOf(strategy.address),
     ]);
 
     const inputsAddresses = inputs.map((input) => input.address);
@@ -193,37 +193,37 @@ export async function logState(
 
     console.log(
       `State ${step ?? ""}:
-    underlying: ${underlying.address}
+    asset: ${asset.address}
     inputs: [${inputsAddresses.join(", ")}]
     rewardTokens: [${rewardsAddresses.join(", ")}]
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
-    totalSuply(): ${underlying.toAmount(totalSupply)} (${totalSupply}wei)
-    totalAccountedSupply(): ${underlying.toAmount(
+    totalSuply(): ${asset.toAmount(totalSupply)} (${totalSupply}wei)
+    totalAccountedSupply(): ${asset.toAmount(
       totalAccountedSupply
     )} (${totalAccountedSupply}wei)
-    totalAssets(): ${underlying.toAmount(totalAssets)} (${totalAssets}wei)
-    totalAccountedAssets(): ${underlying.toAmount(
+    totalAssets(): ${asset.toAmount(totalAssets)} (${totalAssets}wei)
+    totalAccountedAssets(): ${asset.toAmount(
       totalAccountedAssets
     )} (${totalAccountedAssets}wei)
-    totalClaimableUnderlyingFees(): ${underlying.toAmount(
-      totalClaimableUnderlyingFees
-    )} (${totalClaimableUnderlyingFees}wei)
-    invested(): ${underlying.toAmount(invested)} (${invested}wei)\n${inputs
+    totalClaimableAssetFees(): ${asset.toAmount(
+      totalClaimableAssetFees
+    )} (${totalClaimableAssetFees}wei)
+    invested(): ${asset.toAmount(invested)} (${invested}wei)\n${inputs
       .map(
         (input, index) =>
           `      -${input.sym}: ${<any>(
-            underlying.toAmount(investedAmounts[index])
+            asset.toAmount(investedAmounts[index])
           )} (${investedAmounts[index]}wei)`
       )
       .join("\n")}
-    available(): ${available / underlying.weiPerUnit} (${available}wei) (${
+    available(): ${available / asset.weiPerUnit} (${available}wei) (${
       Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
     }%)
     totalRedemptionRequest(): ${
-      totalRedemptionRequest / underlying.weiPerUnit
+      totalRedemptionRequest / asset.weiPerUnit
     } (${totalRedemptionRequest}wei)
     totalClaimableRedemption(): ${
-      totalClaimableRedemption / underlying.weiPerUnit
+      totalClaimableRedemption / asset.weiPerUnit
     } (${totalClaimableRedemption}wei) (${
       Math.round(
         totalRedemptionRequest.lt(10)
@@ -242,7 +242,7 @@ export async function logState(
     previewInvest(0 == available()*.9):\n${inputs
       .map(
         (input, i) =>
-          `      -${input.sym}: ${underlying.toAmount(
+          `      -${input.sym}: ${asset.toAmount(
             previewInvest[i]
           )} (${previewInvest[i].toString()}wei)`
       )
@@ -255,12 +255,12 @@ export async function logState(
           )} (${previewLiquidate[i].toString()}wei)`
       )
       .join("\n")}
-    stratUnderlyingBalance(): ${underlying.toAmount(
-      stratUnderlyingBalance
-    )} (${stratUnderlyingBalance}wei)
-    deployerBalances(shares, underlying): [${underlying.toAmount(
+    stratAssetBalance(): ${asset.toAmount(
+      stratAssetBalance
+    )} (${stratAssetBalance}wei)
+    deployerBalances(shares, asset): [${asset.toAmount(
       deployerSharesBalance
-    )},${underlying.toAmount(deployerUnderlyingBalance)}]
+    )},${asset.toAmount(deployerAssetBalance)}]
     `
     );
     if (sleepAfter) await sleep(sleepAfter);
@@ -443,22 +443,22 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
     return;
   }
 
-  const underlyingSymbol = env.deployment!.underlying.sym;
-  const underlyingAddress = env.deployment!.underlying.address;
-  const minLiquidity = underlyingSymbol.includes("USD") ? 1e8 : 5e16; // 100 USDC or 0.05 ETH
-  const underlyingBalance = await env.deployment!.underlying.balanceOf(
+  const assetSymbol = env.deployment!.asset.sym;
+  const assetAddress = env.deployment!.asset.address;
+  const minLiquidity = assetSymbol.includes("USD") ? 1e8 : 5e16; // 100 USDC or 0.05 ETH
+  const assetBalance = await env.deployment!.asset.balanceOf(
     env.deployer.address
   );
-  if (underlyingBalance.lt(minLiquidity)) {
+  if (assetBalance.lt(minLiquidity)) {
     console.log(
-      `${env.deployer.address} needs at least ${minLiquidity}${underlyingSymbol} => funding required`
+      `${env.deployer.address} needs at least ${minLiquidity}${assetSymbol} => funding required`
     );
     env.needsFunding = true;
   }
 
   if (env.needsFunding) {
     console.log(
-      `Funding ${env.deployer.address} from ${env.gasUsedForFunding}wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${underlyingSymbol}`
+      `Funding ${env.deployer.address} from ${env.gasUsedForFunding}wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`
     );
     let gas =
       env.gasUsedForFunding ||
@@ -472,11 +472,11 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
       0;
     if (!gas) {
       throw new Error(
-        `Failed to get gas estimate for ${env.wgas.sym} => ${underlyingSymbol}`
+        `Failed to get gas estimate for ${env.wgas.sym} => ${assetSymbol}`
       );
     }
     console.log(
-      `Balance before funding: ${underlyingBalance}wei ${underlyingSymbol}`
+      `Balance before funding: ${assetBalance}wei ${assetSymbol}`
     );
     const nativeBalance = await provider.getBalance(env.deployer.address);
     if (nativeBalance.lt(gas)) {
@@ -493,13 +493,13 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
     const received = await fundAccount(
       env,
       gas,
-      underlyingAddress,
+      assetAddress,
       env.deployer.address
     );
     console.log(
-      `Balance after funding: ${underlyingBalance.add(
+      `Balance after funding: ${assetBalance.add(
         received
-      )}wei ${underlyingSymbol} (+${received})`
+      )}wei ${assetSymbol} (+${received})`
     );
   }
 }
@@ -517,7 +517,7 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
       console.log(`Whitelisting oracle access for ${lib}`);
       switch (lib) {
         case "ChainlinkUtils": {
-          const oracles = new Set([params.underlyingPriceFeed, ...params.inputPriceFeeds]);
+          const oracles = new Set([params.assetPriceFeed, ...params.inputPriceFeeds]);
           for (const oracle of oracles) {
             const storageSlot = '0x0000000000000000000000000000000000000000000000000000000000000031';
             // set the storage slot for Chainlink's "checkEnabled" to false, in order to deactivate access control

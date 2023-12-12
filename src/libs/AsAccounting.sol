@@ -88,7 +88,7 @@ library AsAccounting {
 
         assets = self.totalAssets();
         // Convert fees to assets
-        feesAmount = feesRel.mulDiv(assets, AsMaths.PRECISION_BP_BASIS); // 1e8 * 1e? / 1e8 = 1e? (underlying decimals)
+        feesAmount = feesRel.mulDiv(assets, AsMaths.PRECISION_BP_BASIS); // 1e8 * 1e? / 1e8 = 1e? (asset decimals)
         return (assets, price, profit, feesAmount);
     }
 
@@ -107,7 +107,7 @@ library AsAccounting {
         (assets, price, profit, feesAmount) = computeFees(self);
 
         if (profit == 0) return (0, 0, 0, 0);
-        toMint = self.convertToShares(feesAmount + self.claimableUnderlyingFees());
+        toMint = self.convertToShares(feesAmount + self.claimableAssetFees());
         emit FeeCollection(
             self.feeCollector(),
             assets,

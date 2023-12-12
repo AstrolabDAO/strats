@@ -7,7 +7,7 @@ config.solidity!.compilers = [
     settings: {
       optimizer: {
         enabled: true,
-        runs: 140
+        runs: 180
       },
       viaIR: false,
       evmVersion: `paris`

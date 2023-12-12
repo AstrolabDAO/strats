@@ -17,7 +17,7 @@ import "./interfaces/IStakingRewards.sol";
  * @title HopMultiStake - Liquidity providing on Hop (n stable (max 5), eg. USDC+USDT+DAI)
  * @author Astrolab DAO
  * @notice Basic liquidity providing strategy for Hop protocol (https://hop.exchange/)
- * @dev Underlying->input[0]->LP->rewardPools->LP->input[0]->underlying
+ * @dev Asset->input[0]->LP->rewardPools->LP->input[0]->asset
  */
 contract HopMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
@@ -94,14 +94,13 @@ contract HopMultiStake is StrategyV5Chainlink {
         }
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
-        underlying = IERC20Metadata(_baseParams.underlying);
         setParams(_hopParams);
         _setAllowances(MAX_UINT256);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
     /**
-     * @notice Claim rewards from the reward pool and swap them for underlying
+     * @notice Claim rewards from the reward pool and swap them for asset
      * @param _params Swaps calldata
      * @return assetsReceived Amount of assets received
      */
@@ -115,7 +114,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             rewardPools[i][0].getReward();
             // }
         }
-        // swap the rewards back into underlying
+        // swap the rewards back into asset
         for (uint8 i = 0; i < rewardLength; i++) {
             if (rewardTokens[i] == address(0)) break;
             uint256 balance = IERC20Metadata(rewardTokens[i]).balanceOf(
@@ -124,7 +123,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             if (balance < 10) continue;
             (uint256 received, ) = swapper.decodeAndSwap({
                 _input: rewardTokens[i],
-                _output: address(underlying),
+                _output: address(asset),
                 _amount: balance,
                 _params: _params[i]
             });
@@ -134,7 +133,7 @@ contract HopMultiStake is StrategyV5Chainlink {
 
     /**
      * @notice Adds liquidity to the pool, single sided
-     * @param _amount Max amount of underlying to invest
+     * @param _amount Max amount of asset to invest
      * @param _index Index of the input token
      * @return deposited Amount of LP tokens received
      */
@@ -152,8 +151,8 @@ contract HopMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Invests the underlying asset into the pool
-     * @param _amounts Amounts of underlying to invest in each input
+     * @notice Invests the asset asset into the pool
+     * @param _amounts Amounts of asset to invest in each input
      * @param _params Swaps calldata
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
@@ -175,9 +174,9 @@ contract HopMultiStake is StrategyV5Chainlink {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance.
-            if (underlying != inputs[i] && _amounts[i] > 10) {
+            if (asset != inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
-                    _input: address(underlying),
+                    _input: address(asset),
                     _output: address(inputs[i]),
                     _amount: _amounts[i],
                     _params: _params[i]
@@ -233,11 +232,11 @@ contract HopMultiStake is StrategyV5Chainlink {
                 deadline: block.timestamp
             });
 
-            // swap the unstaked tokens (inputs[0]) for the underlying asset if different
-            if (inputs[i] != underlying) {
+            // swap the unstaked tokens (inputs[0]) for the asset asset if different
+            if (inputs[i] != asset) {
                 (recovered, ) = swapper.decodeAndSwap({
                     _input: address(inputs[i]),
-                    _output: address(underlying),
+                    _output: address(asset),
                     _amount: recovered,
                     _params: _params[i]
                 });
@@ -246,7 +245,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToUnderlying(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;
@@ -269,19 +268,19 @@ contract HopMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Returns the investment in underlying asset for the specified input
+     * @notice Returns the investment in asset asset for the specified input
      * @return total Amount invested
      */
     function invested(uint8 _index) public view override returns (uint256) {
         return
-            _stakeToUnderlying(
+            _stakeToAsset(
                 rewardPools[_index][0].balanceOf(address(this)),
                 _index
             );
     }
 
     /**
-     * @notice Returns the investment in underlying asset for the specified input
+     * @notice Returns the investment in asset asset for the specified input
      * @return total Amount invested
      */
     function investedInput(

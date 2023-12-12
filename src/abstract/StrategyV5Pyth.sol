@@ -25,9 +25,8 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
     // Third party contracts
     IPythAggregator internal pyth; // Pyth oracle
-    bytes32 internal underlyingPythId; // Pyth id of the underlying asset
+    bytes32 internal assetPythId; // Pyth id of the asset asset
     bytes32[8] internal inputPythIds; // Pyth id of the inputs
-    uint8 internal underlyingDecimals; // Decimals of the underlying asset
 
     /**
      * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
@@ -36,7 +35,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
     struct PythParams {
         address pyth;
-        bytes32 underlyingPythId;
+        bytes32 assetPythId;
         bytes32[] inputPythIds;
     }
 
@@ -59,8 +58,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      */
     function updatePyth(PythParams calldata _pythParams) public onlyAdmin {
         pyth = IPythAggregator(_pythParams.pyth);
-        underlyingPythId = _pythParams.underlyingPythId;
-        underlyingDecimals = underlying.decimals();
+        assetPythId = _pythParams.assetPythId;
 
         for (uint256 i = 0; i < _pythParams.inputPythIds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
@@ -70,33 +68,32 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     }
 
     /**
-     * @notice Changes the strategy underlying token (automatically pauses the strategy)
-     * @param _underlying Address of the token
-     * @param _swapData Swap callData oldUnderlying->newUnderlying
+     * @notice Changes the strategy asset token (automatically pauses the strategy)
+     * @param _asset Address of the token
+     * @param _swapData Swap callData oldAsset->newAsset
      * @param _pythId Pyth price feed id
      */
-    function updateUnderlying(address _underlying, bytes calldata _swapData, bytes32 _pythId) external onlyAdmin {
+    function updateAsset(address _asset, bytes calldata _swapData, bytes32 _pythId) external onlyAdmin {
         if (_pythId == bytes32(0)) revert AddressZero();
-        underlyingPythId = _pythId;
-        underlyingDecimals = underlying.decimals();
-        _updateUnderlying(_underlying, _swapData);
+        assetPythId = _pythId;
+        _updateAsset(_asset, _swapData);
     }
 
     /**
-     * @notice Computes the underlying/input exchange rate from Pyth oracle price feeds in bps
-     * @dev Used by invested() to compute input->underlying (base/quote, eg. USDC/BTC not BTC/USDC)
+     * @notice Computes the asset/input exchange rate from Pyth oracle price feeds in bps
+     * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment
      */
-    function underlyingExchangeRate(uint8 inputId) public view returns (uint256) {
-        if (inputPythIds[inputId] == underlyingPythId)
-            return weiPerShare; // == weiPerUnit of underlying == 1:1
+    function assetExchangeRate(uint8 inputId) public view returns (uint256) {
+        if (inputPythIds[inputId] == assetPythId)
+            return weiPerShare; // == weiPerUnit of asset == 1:1
         PythStructs.Price memory inputPrice = pyth.getPriceUnsafe(inputPythIds[inputId]);
-        PythStructs.Price memory underlyingPrice = pyth.getPriceUnsafe(underlyingPythId);
+        PythStructs.Price memory assetPrice = pyth.getPriceUnsafe(assetPythId);
         uint256 inputPriceWei = inputPrice.toUint256(inputDecimals[inputId]); // input (quote) price in wei
-        uint256 underlyingPriceWei = underlyingPrice.toUint256(underlyingDecimals); // underlying (base) price in wei
+        uint256 assetPriceWei = assetPrice.toUint256(assetDecimals); // asset (base) price in wei
         uint256 rate = AsMaths.exchangeRate(
-            inputPriceWei, // underlying (base) price in wei
-            underlyingPriceWei, underlyingDecimals); // underlying (base) decimals (rate divider)
+            inputPriceWei, // asset (base) price in wei
+            assetPriceWei, assetDecimals); // asset (base) decimals (rate divider)
         return rate;
     }
 }

@@ -32,7 +32,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
         // setInputs(_params.inputs, _params.inputWeights);
         setRewardTokens(_params.rewardTokens);
         updateSwapper(_params.coreAddresses[1]);
-        As4626.init(_params.fees, _params.underlying, _params.coreAddresses[0]);
+        As4626.init(_params.fees, _params.asset, _params.coreAddresses[0]);
     }
 
     /**
@@ -50,8 +50,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
             if (address(inputs[i]) == address(0)) break;
             inputs[i].approve(swapperAddress, _amount);
         }
-        underlying.approve(swapperAddress, _amount);
-        emit SetSwapperAllowance(_amount);
+        asset.approve(swapperAddress, _amount);
     }
 
     /**
@@ -63,27 +62,26 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
         if (address(swapper) != address(0)) setSwapperAllowance(0);
         swapper = ISwapper(_swapper);
         setSwapperAllowance(MAX_UINT256);
-        emit SwapperUpdate(_swapper);
     }
 
     /**
-     * @notice Changes the strategy underlying token (automatically pauses the strategy)
-     * make sure to update the oracles by calling the appropriate updateUnderlying
-     * @param _underlying Address of the token
-     * @param _swapData Swap callData oldUnderlying->newUnderlying
+     * @notice Changes the strategy asset token (automatically pauses the strategy)
+     * make sure to update the oracles by calling the appropriate updateAsset
+     * @param _asset Address of the token
+     * @param _swapData Swap callData oldAsset->newAsset
      */
-    function updateUnderlying(address _underlying, bytes calldata _swapData) external virtual onlyAdmin {
-        if (_underlying == address(0)) revert AddressZero();
-        if (_underlying == address(underlying)) return;
+    function updateAsset(address _asset, bytes calldata _swapData) external virtual onlyAdmin {
+        if (_asset == address(0)) revert AddressZero();
+        if (_asset == address(asset)) return;
         _pause();
         // slippage is checked within Swapper
         (uint256 received, uint256 spent) = swapper.decodeAndSwapBalance(
-            address(underlying),
-            _underlying,
+            address(asset),
+            _asset,
             _swapData
         );
-        emit UnderlyingUpdate(_underlying, spent, received);
-        underlying = IERC20Metadata(_underlying);
+        asset = IERC20Metadata(_asset);
+        assetDecimals = asset.decimals();
         // last.accountedProfit = 0;
         last.accountedTotalAssets = totalAssets();
         last.accountedTotalSupply = totalSupply();
@@ -138,7 +136,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
     }
 
     /**
-     * @notice Swaps an input token to the underlying token and then safely deposits it
+     * @notice Swaps an input token to the asset token and then safely deposits it
      * @param _input The address of the input token to be swapped
      * @param _amount The amount of the input token to swap
      * @param _receiver The address where the shares from the deposit should be sent
@@ -153,17 +151,17 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
         uint256 _minShareAmount,
         bytes memory _params
     ) external returns (uint256 shares) {
-        uint256 underlyingAmount = _amount;
-        if (_input != address(underlying)) {
+        uint256 assetAmount = _amount;
+        if (_input != address(asset)) {
             // Swap logic
-            (underlyingAmount, ) = swapper.decodeAndSwap(
+            (assetAmount, ) = swapper.decodeAndSwap(
                 _input,
-                address(underlying),
+                address(asset),
                 _amount,
                 _params
             );
         }
-        return safeDeposit(underlyingAmount, _receiver, _minShareAmount);
+        return safeDeposit(assetAmount, _receiver, _minShareAmount);
     }
 
     /**

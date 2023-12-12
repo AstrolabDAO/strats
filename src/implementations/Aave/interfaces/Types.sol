@@ -133,7 +133,7 @@ library DataTypes {
         uint256 amount;
         InterestRateMode interestRateMode;
         uint16 referralCode;
-        bool releaseUnderlying;
+        bool releaseAsset;
         uint256 maxStableRateBorrowSizePercent;
         uint256 reservesCount;
         address oracle;

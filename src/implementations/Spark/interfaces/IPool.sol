@@ -12,7 +12,7 @@ pragma solidity ^0.8.0;
 interface IPool {
   /**
    * @dev Emitted on mintUnbacked()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param user The address initiating the supply
    * @param onBehalfOf The beneficiary of the supplied assets, receiving the aTokens
    * @param amount The amount of supplied assets
@@ -28,7 +28,7 @@ interface IPool {
 
   /**
    * @dev Emitted on backUnbacked()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param backer The address paying for the backing
    * @param amount The amount added as backing
    * @param fee The amount paid in fees
@@ -37,7 +37,7 @@ interface IPool {
 
   /**
    * @dev Emitted on supply()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param user The address initiating the supply
    * @param onBehalfOf The beneficiary of the supply, receiving the aTokens
    * @param amount The amount supplied
@@ -53,16 +53,16 @@ interface IPool {
 
   /**
    * @dev Emitted on withdraw()
-   * @param reserve The address of the underlying asset being withdrawn
+   * @param reserve The address of the asset asset being withdrawn
    * @param user The address initiating the withdrawal, owner of aTokens
-   * @param to The address that will receive the underlying
+   * @param to The address that will receive the asset
    * @param amount The amount to be withdrawn
    */
   event Withdraw(address indexed reserve, address indexed user, address indexed to, uint256 amount);
 
   /**
    * @dev Emitted on borrow() and flashLoan() when debt needs to be opened
-   * @param reserve The address of the underlying asset being borrowed
+   * @param reserve The address of the asset asset being borrowed
    * @param user The address of the user initiating the borrow(), receiving the funds on borrow() or just
    * initiator of the transaction on flashLoan()
    * @param onBehalfOf The address that will be getting the debt
@@ -83,11 +83,11 @@ interface IPool {
 
   /**
    * @dev Emitted on repay()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param user The beneficiary of the repayment, getting his debt reduced
    * @param repayer The address of the user initiating the repay(), providing the funds
    * @param amount The amount repaid
-   * @param useATokens True if the repayment is done using aTokens, `false` if done with underlying asset directly
+   * @param useATokens True if the repayment is done using aTokens, `false` if done with asset asset directly
    */
   event Repay(
     address indexed reserve,
@@ -99,7 +99,7 @@ interface IPool {
 
   /**
    * @dev Emitted on swapBorrowRateMode()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param user The address of the user swapping his rate mode
    * @param interestRateMode The current interest rate mode of the position being swapped: 1 for Stable, 2 for Variable
    */
@@ -111,7 +111,7 @@ interface IPool {
 
   /**
    * @dev Emitted on borrow(), repay() and liquidationCall() when using isolated assets
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @param totalDebt The total isolation mode debt for the reserve
    */
   event IsolationModeTotalDebtUpdated(address indexed asset, uint256 totalDebt);
@@ -125,21 +125,21 @@ interface IPool {
 
   /**
    * @dev Emitted on setUserUseReserveAsCollateral()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param user The address of the user enabling the usage as collateral
    */
   event ReserveUsedAsCollateralEnabled(address indexed reserve, address indexed user);
 
   /**
    * @dev Emitted on setUserUseReserveAsCollateral()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param user The address of the user enabling the usage as collateral
    */
   event ReserveUsedAsCollateralDisabled(address indexed reserve, address indexed user);
 
   /**
    * @dev Emitted on rebalanceStableBorrowRate()
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param user The address of the user for which the rebalance has been executed
    */
   event RebalanceStableBorrowRate(address indexed reserve, address indexed user);
@@ -166,14 +166,14 @@ interface IPool {
 
   /**
    * @dev Emitted when a borrower is liquidated.
-   * @param collateralAsset The address of the underlying asset used as collateral, to receive as result of the liquidation
-   * @param debtAsset The address of the underlying borrowed asset to be repaid with the liquidation
+   * @param collateralAsset The address of the asset asset used as collateral, to receive as result of the liquidation
+   * @param debtAsset The address of the asset borrowed asset to be repaid with the liquidation
    * @param user The address of the borrower getting liquidated
    * @param debtToCover The debt amount of borrowed `asset` the liquidator wants to cover
    * @param liquidatedCollateralAmount The amount of collateral received by the liquidator
    * @param liquidator The address of the liquidator
    * @param receiveAToken True if the liquidators wants to receive the collateral aTokens, `false` if he wants
-   * to receive the underlying collateral asset directly
+   * to receive the asset collateral asset directly
    */
   event LiquidationCall(
     address indexed collateralAsset,
@@ -187,7 +187,7 @@ interface IPool {
 
   /**
    * @dev Emitted when the state of a reserve is updated.
-   * @param reserve The address of the underlying asset of the reserve
+   * @param reserve The address of the asset asset of the reserve
    * @param liquidityRate The next liquidity rate
    * @param stableBorrowRate The next stable borrow rate
    * @param variableBorrowRate The next variable borrow rate
@@ -212,7 +212,7 @@ interface IPool {
 
   /**
    * @notice Mints an `amount` of aTokens to the `onBehalfOf`
-   * @param asset The address of the underlying asset to mint
+   * @param asset The address of the asset asset to mint
    * @param amount The amount to mint
    * @param onBehalfOf The address that will receive the aTokens
    * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
@@ -226,8 +226,8 @@ interface IPool {
   ) external;
 
   /**
-   * @notice Back the current unbacked underlying with `amount` and pay `fee`.
-   * @param asset The address of the underlying asset to back
+   * @notice Back the current unbacked asset with `amount` and pay `fee`.
+   * @param asset The address of the asset asset to back
    * @param amount The amount to back
    * @param fee The amount paid in fees
    * @return The backed amount
@@ -235,9 +235,9 @@ interface IPool {
   function backUnbacked(address asset, uint256 amount, uint256 fee) external returns (uint256);
 
   /**
-   * @notice Supplies an `amount` of underlying asset into the reserve, receiving in return overlying aTokens.
+   * @notice Supplies an `amount` of asset asset into the reserve, receiving in return overlying aTokens.
    * - E.g. User supplies 100 USDC and gets in return 100 aUSDC
-   * @param asset The address of the underlying asset to supply
+   * @param asset The address of the asset asset to supply
    * @param amount The amount to be supplied
    * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
    *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
@@ -250,7 +250,7 @@ interface IPool {
   /**
    * @notice Supply with transfer approval of asset to be supplied done via permit function
    * see: https://eips.ethereum.org/EIPS/eip-2612 and https://eips.ethereum.org/EIPS/eip-713
-   * @param asset The address of the underlying asset to supply
+   * @param asset The address of the asset asset to supply
    * @param amount The amount to be supplied
    * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
    *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
@@ -274,12 +274,12 @@ interface IPool {
   ) external;
 
   /**
-   * @notice Withdraws an `amount` of underlying asset from the reserve, burning the equivalent aTokens owned
+   * @notice Withdraws an `amount` of asset asset from the reserve, burning the equivalent aTokens owned
    * E.g. User has 100 aUSDC, calls withdraw() and receives 100 USDC, burning the 100 aUSDC
-   * @param asset The address of the underlying asset to withdraw
-   * @param amount The underlying amount to be withdrawn
+   * @param asset The address of the asset asset to withdraw
+   * @param amount The asset amount to be withdrawn
    *   - Send the value type(uint256).max in order to withdraw the whole aToken balance
-   * @param to The address that will receive the underlying, same as msg.sender if the user
+   * @param to The address that will receive the asset, same as msg.sender if the user
    *   wants to receive it on his own wallet, or a different address if the beneficiary is a
    *   different wallet
    * @return The final amount withdrawn
@@ -287,12 +287,12 @@ interface IPool {
   function withdraw(address asset, uint256 amount, address to) external returns (uint256);
 
   /**
-   * @notice Allows users to borrow a specific `amount` of the reserve underlying asset, provided that the borrower
+   * @notice Allows users to borrow a specific `amount` of the reserve asset asset, provided that the borrower
    * already supplied enough collateral, or he was given enough allowance by a credit delegator on the
    * corresponding debt token (StableDebtToken or VariableDebtToken)
    * - E.g. User borrows 100 USDC passing as `onBehalfOf` his own address, receiving the 100 USDC in his wallet
    *   and 100 stable/variable debt tokens, depending on the `interestRateMode`
-   * @param asset The address of the underlying asset to borrow
+   * @param asset The address of the asset asset to borrow
    * @param amount The amount to be borrowed
    * @param interestRateMode The interest rate mode at which the user wants to borrow: 1 for Stable, 2 for Variable
    * @param referralCode The code used to register the integrator originating the operation, for potential rewards.
@@ -312,7 +312,7 @@ interface IPool {
   /**
    * @notice Repays a borrowed `amount` on a specific reserve, burning the equivalent debt tokens owned
    * - E.g. User repays 100 USDC, burning 100 variable/stable debt tokens of the `onBehalfOf` address
-   * @param asset The address of the borrowed underlying asset previously borrowed
+   * @param asset The address of the borrowed asset asset previously borrowed
    * @param amount The amount to repay
    * - Send the value type(uint256).max in order to repay the whole debt for `asset` on the specific `debtMode`
    * @param interestRateMode The interest rate mode at of the debt the user wants to repay: 1 for Stable, 2 for Variable
@@ -331,7 +331,7 @@ interface IPool {
   /**
    * @notice Repay with transfer approval of asset to be repaid done via permit function
    * see: https://eips.ethereum.org/EIPS/eip-2612 and https://eips.ethereum.org/EIPS/eip-713
-   * @param asset The address of the borrowed underlying asset previously borrowed
+   * @param asset The address of the borrowed asset asset previously borrowed
    * @param amount The amount to repay
    * - Send the value type(uint256).max in order to repay the whole debt for `asset` on the specific `debtMode`
    * @param interestRateMode The interest rate mode at of the debt the user wants to repay: 1 for Stable, 2 for Variable
@@ -361,7 +361,7 @@ interface IPool {
    * - E.g. User repays 100 USDC using 100 aUSDC, burning 100 variable/stable debt tokens
    * @dev  Passing uint256.max as amount will clean up any residual aToken dust balance, if the user aToken
    * balance is not enough to cover the whole debt
-   * @param asset The address of the borrowed underlying asset previously borrowed
+   * @param asset The address of the borrowed asset asset previously borrowed
    * @param amount The amount to repay
    * - Send the value type(uint256).max in order to repay the whole debt for `asset` on the specific `debtMode`
    * @param interestRateMode The interest rate mode at of the debt the user wants to repay: 1 for Stable, 2 for Variable
@@ -375,7 +375,7 @@ interface IPool {
 
   /**
    * @notice Allows a borrower to swap his debt between stable and variable mode, or vice versa
-   * @param asset The address of the underlying asset borrowed
+   * @param asset The address of the asset asset borrowed
    * @param interestRateMode The current interest rate mode of the position being swapped: 1 for Stable, 2 for Variable
    */
   function swapBorrowRateMode(address asset, uint256 interestRateMode) external;
@@ -386,14 +386,14 @@ interface IPool {
    *     1. Usage ratio is above 95%
    *     2. the current supply APY is below REBALANCE_UP_THRESHOLD * maxVariableBorrowRate, which means that too
    *        much has been borrowed at a stable rate and suppliers are not earning enough
-   * @param asset The address of the underlying asset borrowed
+   * @param asset The address of the asset asset borrowed
    * @param user The address of the user to be rebalanced
    */
   function rebalanceStableBorrowRate(address asset, address user) external;
 
   /**
    * @notice Allows suppliers to enable/disable a specific supplied asset as collateral
-   * @param asset The address of the underlying asset supplied
+   * @param asset The address of the asset asset supplied
    * @param useAsCollateral True if the user wants to use the supply as collateral, false otherwise
    */
   function setUserUseReserveAsCollateral(address asset, bool useAsCollateral) external;
@@ -402,12 +402,12 @@ interface IPool {
    * @notice Function to liquidate a non-healthy position collateral-wise, with Health Factor below 1
    * - The caller (liquidator) covers `debtToCover` amount of debt of the user getting liquidated, and receives
    *   a proportionally amount of the `collateralAsset` plus a bonus to cover market risk
-   * @param collateralAsset The address of the underlying asset used as collateral, to receive as result of the liquidation
-   * @param debtAsset The address of the underlying borrowed asset to be repaid with the liquidation
+   * @param collateralAsset The address of the asset asset used as collateral, to receive as result of the liquidation
+   * @param debtAsset The address of the asset borrowed asset to be repaid with the liquidation
    * @param user The address of the borrower getting liquidated
    * @param debtToCover The debt amount of borrowed `asset` the liquidator wants to cover
    * @param receiveAToken True if the liquidators wants to receive the collateral aTokens, `false` if he wants
-   * to receive the underlying collateral asset directly
+   * to receive the asset collateral asset directly
    */
   function liquidationCall(
     address collateralAsset,
@@ -492,7 +492,7 @@ interface IPool {
    * @notice Initializes a reserve, activating it, assigning an aToken and debt tokens and an
    * interest rate strategy
    * @dev Only callable by the PoolConfigurator contract
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @param aTokenAddress The address of the aToken that will be assigned to the reserve
    * @param stableDebtAddress The address of the StableDebtToken that will be assigned to the reserve
    * @param variableDebtAddress The address of the VariableDebtToken that will be assigned to the reserve
@@ -509,14 +509,14 @@ interface IPool {
   /**
    * @notice Drop a reserve
    * @dev Only callable by the PoolConfigurator contract
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    */
   function dropReserve(address asset) external;
 
   /**
    * @notice Updates the address of the interest rate strategy contract
    * @dev Only callable by the PoolConfigurator contract
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @param rateStrategyAddress The address of the interest rate strategy contract
    */
   function setReserveInterestRateStrategyAddress(
@@ -527,7 +527,7 @@ interface IPool {
   /**
    * @notice Sets the configuration bitmap of the reserve as a whole
    * @dev Only callable by the PoolConfigurator contract
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @param configuration The new configuration bitmap
    */
 //   function setConfiguration(
@@ -537,7 +537,7 @@ interface IPool {
 
   /**
    * @notice Returns the configuration of the reserve
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @return The configuration of the reserve
    */
 //   function getConfiguration(
@@ -555,7 +555,7 @@ interface IPool {
 
   /**
    * @notice Returns the normalized income of the reserve
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @return The reserve's normalized income
    */
   function getReserveNormalizedIncome(address asset) external view returns (uint256);
@@ -569,14 +569,14 @@ interface IPool {
    * If using this function externally, consider that is possible to have an increasing normalized
    * variable debt that is not equivalent to how the variable debt index would be updated in storage
    * (e.g. only updates with non-zero variable debt supply)
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @return The reserve normalized variable debt
    */
   function getReserveNormalizedVariableDebt(address asset) external view returns (uint256);
 
   /**
    * @notice Returns the state and configuration of the reserve
-   * @param asset The address of the underlying asset of the reserve
+   * @param asset The address of the asset asset of the reserve
    * @return The state and configuration data of the reserve
    */
 //   function getReserveData(address asset) external view returns (DataTypes.ReserveData memory);
@@ -584,7 +584,7 @@ interface IPool {
   /**
    * @notice Validates and finalizes an aToken transfer
    * @dev Only callable by the overlying aToken of the `asset`
-   * @param asset The address of the underlying asset of the aToken
+   * @param asset The address of the asset asset of the aToken
    * @param from The user from which the aTokens are transferred
    * @param to The user receiving the aTokens
    * @param amount The amount being transferred/withdrawn
@@ -601,14 +601,14 @@ interface IPool {
   ) external;
 
   /**
-   * @notice Returns the list of the underlying assets of all the initialized reserves
+   * @notice Returns the list of the asset assets of all the initialized reserves
    * @dev It does not include dropped reserves
-   * @return The addresses of the underlying assets of the initialized reserves
+   * @return The addresses of the asset assets of the initialized reserves
    */
   function getReservesList() external view returns (address[] memory);
 
   /**
-   * @notice Returns the address of the underlying asset of a reserve by the reserve id as stored in the DataTypes.ReserveData struct
+   * @notice Returns the address of the asset asset of a reserve by the reserve id as stored in the DataTypes.ReserveData struct
    * @param id The id of the reserve as stored in the DataTypes.ReserveData struct
    * @return The address of the reserve associated with id
    */
@@ -673,7 +673,7 @@ interface IPool {
   /**
    * @notice Resets the isolation mode total debt of the given asset to zero
    * @dev It requires the given asset has zero debt ceiling
-   * @param asset The address of the underlying asset to reset the isolationModeTotalDebt
+   * @param asset The address of the asset asset to reset the isolationModeTotalDebt
    */
   function resetIsolationModeTotalDebt(address asset) external;
 
@@ -722,10 +722,10 @@ interface IPool {
   function rescueTokens(address token, address to, uint256 amount) external;
 
   /**
-   * @notice Supplies an `amount` of underlying asset into the reserve, receiving in return overlying aTokens.
+   * @notice Supplies an `amount` of asset asset into the reserve, receiving in return overlying aTokens.
    * - E.g. User supplies 100 USDC and gets in return 100 aUSDC
    * @dev Deprecated: Use the `supply` function instead
-   * @param asset The address of the underlying asset to supply
+   * @param asset The address of the asset asset to supply
    * @param amount The amount to be supplied
    * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
    *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens

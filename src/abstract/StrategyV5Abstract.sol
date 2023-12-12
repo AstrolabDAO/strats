@@ -26,11 +26,6 @@ abstract contract StrategyV5Abstract is As4626Abstract {
         uint256 liquidityAvailable,
         uint256 timestamp
     );
-    event UnderlyingUpdate(address indexed addr, uint256 spent, uint256 received);
-    event InputUpdate(address indexed addr);
-    event AgentUpdate(address indexed addr);
-    event SwapperUpdate(address indexed addr);
-    event SetSwapperAllowance(uint256 amount);
     error InvalidCalldata();
 
     // State variables (As4626 extension)
@@ -61,11 +56,11 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     }
 
     /**
-     * @notice Calculates the total pending underlying requests based on redemption requests
-     * @dev Converts the total pending redemption requests to their underlying asset value for precision
-     * @return The total amount of underlying assets requested pending redemption
+     * @notice Calculates the total pending asset requests based on redemption requests
+     * @dev Converts the total pending redemption requests to their asset asset value for precision
+     * @return The total amount of asset assets requested pending redemption
      */
-    function totalPendingUnderlyingRequest() public view returns (uint256) {
+    function totalPendingAssetRequest() public view returns (uint256) {
         return convertToAssets(totalPendingRedemptionRequest());
     }
 }
