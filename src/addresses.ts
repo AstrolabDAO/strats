@@ -215,10 +215,10 @@ export const addresses = {
     },
     astrolab: {
       Swapper: "0xc3e5550c1c4ed7acfccd785277c45edf1578da14",
-      StrategyV5Agent: "",
+      StrategyV5Agent: "0x453043535dab7d03d9f231ff06ed08e8c27af75d",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
-      "Astrolab Hop MetaStable": "",
+      "Astrolab Hop MetaStable": "0xed640de00540d8503e453bb8bf1d8657132d3a46",
       "Astrolab Aave MetaStable": "",
     },
     tokens: {

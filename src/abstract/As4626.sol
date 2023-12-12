@@ -42,9 +42,6 @@ abstract contract As4626 is As4626Abstract {
         if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert Unauthorized();
         fees = _fees;
         feeCollector = _feeCollector;
-
-        asset = IERC20Metadata(_asset);
-        assetDecimals = asset.decimals();
         last.accountedSharePrice = weiPerShare;
         last.accountedProfit = weiPerShare;
         last.feeCollection = uint64(block.timestamp);

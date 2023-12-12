@@ -31,6 +31,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
     function init(StrategyBaseParams calldata _params) public onlyAdmin {
         // setInputs(_params.inputs, _params.inputWeights);
         setRewardTokens(_params.rewardTokens);
+        asset = IERC20Metadata(_params.asset);
+        assetDecimals = asset.decimals();
         updateSwapper(_params.coreAddresses[1]);
         As4626.init(_params.fees, _params.asset, _params.coreAddresses[0]);
     }
