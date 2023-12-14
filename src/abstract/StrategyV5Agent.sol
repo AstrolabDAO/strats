@@ -165,7 +165,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
                 _params
             );
         }
-        return safeDeposit(assetAmount, _receiver, _minShareAmount);
+        return safeDeposit(assetAmount, _minShareAmount, _receiver);
     }
 
     /**

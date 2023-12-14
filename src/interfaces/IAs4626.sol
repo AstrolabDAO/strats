@@ -90,8 +90,8 @@ interface IAs4626 is IAs4626Abstract, IAsManageable {
 
     function safeDeposit(
         uint256 _amount,
-        address _receiver,
-        uint256 _minShareAmount
+        uint256 _minShareAmount,
+        address _receiver
     ) external returns (uint256 shares);
 
     function withdraw(

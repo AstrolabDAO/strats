@@ -1,11 +1,11 @@
-import { ethers, network, provider, revertNetwork } from "@astrolabs/hardhat";
+import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { utils as ethersUtils, BigNumber } from "ethers";
+import { BigNumber, utils as ethersUtils } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Hop/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, compound, deposit, harvest, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
-import { ensureFunding, ensureOracleAccess, getEnv, isLive } from "../utils";
+import { IFlow, deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
+import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const desc: IStrategyDesc = {

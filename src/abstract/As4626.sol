@@ -89,16 +89,15 @@ abstract contract As4626 is As4626Abstract {
      * @notice Mints shares to the receiver by depositing asset tokens
      * @dev Pausing the contract should prevent depositing by setting maxDepositAmount to 0
      * @param _amount Amount of asset tokens to deposit
+     * @param _shares Amount of shares minted to the _receiver
      * @param _receiver Address that will get the shares
-     * @param _minShareAmount Minimum amount of shares to be minted (1-slippage)*amount
      * @return shares Amount of shares minted to the _receiver
      */
     function _deposit(
         uint256 _amount,
         uint256 _shares,
-        uint256 _minShareAmount,
         address _receiver
-    ) internal nonReentrant returns (uint256 shares) {
+    ) internal nonReentrant returns (uint256) {
 
         if (_receiver == address(this) || _amount == 0) revert Unauthorized();
         // do not allow minting at a price higher than the current share price
@@ -111,12 +110,10 @@ abstract contract As4626 is As4626Abstract {
         if (!exemptionList[_receiver])
             claimableAssetFees += _amount.revBp(fees.entry);
 
-        if (shares < _minShareAmount)
-            revert AmountTooLow(shares);
-
         // mint shares
-        _mint(_receiver, shares);
-        emit Deposit(msg.sender, _receiver, _amount, shares);
+        _mint(_receiver, _shares);
+        emit Deposit(msg.sender, _receiver, _amount, _shares);
+        return _shares;
     }
 
     /**
@@ -130,23 +127,24 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _receiver
     ) public whenNotPaused returns (uint256 shares) {
-        return _deposit(_amount, convertToShares(_amount).subBp(exemptionList[msg.sender] ? 0 : fees.entry), 1, _receiver);
+        return _deposit(_amount, convertToShares(_amount).subBp(exemptionList[msg.sender] ? 0 : fees.entry), _receiver);
     }
 
     /**
      * @notice Mints shares to the receiver by depositing asset tokens
      * @dev Overloaded version with slippage control
      * @param _amount Amount of asset tokens to deposit
-     * @param _receiver Address that will get the shares
      * @param _minShareAmount Minimum amount of shares to be minted (1-slippage)*amount
+     * @param _receiver Address that will get the shares
      * @return shares Amount of shares minted to the _receiver
      */
     function safeDeposit(
         uint256 _amount,
-        address _receiver,
-        uint256 _minShareAmount
+        uint256 _minShareAmount,
+        address _receiver
     ) public whenNotPaused returns (uint256 shares) {
-        return _deposit(_amount, convertToShares(_amount).subBp(exemptionList[msg.sender] ? 0 : fees.entry), _minShareAmount, _receiver);
+        shares = _deposit(_amount, convertToShares(_amount).subBp(exemptionList[msg.sender] ? 0 : fees.entry), _receiver);
+        if (shares < _minShareAmount) revert AmountTooLow(shares);
     }
 
     /**
@@ -160,7 +158,6 @@ abstract contract As4626 is As4626Abstract {
     function _withdraw(
         uint256 _amount,
         uint256 _shares,
-        uint256 _minAmountOut,
         address _receiver,
         address _owner
     ) internal nonReentrant returns (uint256) {
@@ -198,8 +195,6 @@ abstract contract As4626 is As4626Abstract {
         if (!exemptionList[_owner])
             claimableAssetFees += _amount.revBp(fees.exit);
 
-        if (_amount <= _minAmountOut) revert AmountTooLow(_amount);
-
         _burn(_owner, _shares);
         asset.safeTransfer(_receiver, _amount);
 
@@ -220,25 +215,25 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external whenNotPaused returns (uint256) {
-        return _withdraw(_amount, convertToShares(_amount).addBp(exemptionList[_owner] ? 0 : fees.exit), 1, _receiver, _owner);
+        return _withdraw(_amount, convertToShares(_amount).addBp(exemptionList[_owner] ? 0 : fees.exit), _receiver, _owner);
     }
 
     /**
      * @notice Withdraw assets denominated in asset
      * @dev Overloaded version with slippage control
      * @param _amount Amount of asset tokens to withdraw
-     * @param _minAmount The minimum amount of assets we'll accept
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
-     * @return shares Amount of shares burned
+     * @return amount Amount of shares burned
      */
     function safeWithdraw(
         uint256 _amount,
         uint256 _minAmount,
         address _receiver,
         address _owner
-    ) public whenNotPaused returns (uint256) {
-        return _withdraw(_amount, convertToShares(_amount).addBp(exemptionList[_owner] ? 0 : fees.exit), _minAmount, _receiver, _owner);
+    ) public whenNotPaused returns (uint256 amount) {
+        amount = _withdraw(_amount, convertToShares(_amount).addBp(exemptionList[_owner] ? 0 : fees.exit), _receiver, _owner);
+        if (amount < _minAmount) revert AmountTooLow(amount);
     }
 
     /**
@@ -258,7 +253,6 @@ abstract contract As4626 is As4626Abstract {
             _withdraw(
                 convertToAssets(_shares).subBp(exemptionList[_owner] ? 0 : fees.exit),
                 _shares,
-                1,
                 _receiver,
                 _owner
             )
@@ -279,15 +273,13 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external returns (uint256 assets) {
-        return (
-            _withdraw(
-                convertToAssets(_shares).subBp(exemptionList[_owner] ? 0 : fees.exit),
-                _shares, // _shares
-                _minAmountOut,
-                _receiver, // _receiver
-                _owner // _owner
-            )
+        assets = _withdraw(
+            convertToAssets(_shares).subBp(exemptionList[_owner] ? 0 : fees.exit),
+            _shares, // _shares
+            _receiver, // _receiver
+            _owner // _owner
         );
+        if (assets < _minAmountOut) revert AmountTooLow(assets);
     }
 
     /**
@@ -387,11 +379,11 @@ abstract contract As4626 is As4626Abstract {
         // seed the vault with some assets if it's empty
         setMaxTotalAssets(_maxTotalAssets);
 
-        if (totalSupply() < minLiquidity)
-            deposit(_seedDeposit, msg.sender);
-
         // if the vault is still paused, unpause it
         if (paused()) _unpause();
+
+        if (totalSupply() < minLiquidity)
+            deposit(_seedDeposit, msg.sender);
     }
 
     /**
