@@ -15,7 +15,7 @@ import "../abstract/StrategyV5.sol";
  */
 contract DummyStrategy is StrategyV5 {
 
-    constructor(string[3] memory _erc20Metadata) StrategyV5(_erc20Metadata) {}
+    constructor() StrategyV5() {}
 
     // Struct containing the strategy init parameters
     struct Params { address dummy; }

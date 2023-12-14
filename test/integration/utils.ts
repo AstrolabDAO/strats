@@ -171,7 +171,7 @@ export async function logState(
       // strat.multicallContract.totalAsset(), // only available on strat.req() struct
       // strat.multicallContract.totalClaimableAsset(), // only available on strat.req() struct
       strat.multi.rewardsAvailable(),
-      strat.multi.previewInvest(0),
+      strat.multi.previewInvest(0), 
       strat.multi.previewLiquidate(0),
       asset.multi.balanceOf(strat.address),
       asset.multi.balanceOf(env.deployer!.address),

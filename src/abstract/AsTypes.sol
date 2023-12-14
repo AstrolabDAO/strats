@@ -10,11 +10,25 @@ struct Fees {
     uint64 flash; // Flash loan fee
 }
 
+struct Erc20Metadata {
+    string name;
+    string symbol;
+    uint8 decimals;
+}
+
+struct CoreAddresses {
+    address asset;
+    address feeCollector;
+    address swapper;
+    address agent;
+    // address allocator;
+}
+
 // StrategyV5 init params
 struct StrategyBaseParams {
+    Erc20Metadata erc20Metadata;
+    CoreAddresses coreAddresses;
     Fees fees;
-    address asset;
-    address[3] coreAddresses;
     address[] inputs;
     uint16[] inputWeights;
     address[] rewardTokens;
@@ -34,8 +48,6 @@ struct Requests {
     uint256 totalDeposit; // Total amount requested for deposit
     uint256 totalRedemption; // Total amount requested for redemption
     uint256 totalClaimableRedemption; // Total amount claimable for redemption
-    uint256 totalAsset; // Total asset requested
-    uint256 totalClaimableAsset; // Total claimable asset
     mapping(address => Erc7540Request) byOperator; // Mapping of ERC7540 requests by operator
 }
 

@@ -30,10 +30,10 @@
   dependencies:
     "@astrolabs/registry" "^1.0.19"
 
-"@astrolabs/registry@^1.0.28":
-  version "1.0.28"
-  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.28.tgz#06152401c9419dffbd35cc4cede53e42176091f4"
-  integrity sha512-uIuazBU9lzDRtoeL1+k8EkUO8x6AJ3kbPXxXsobbZZGsbrM99QSs4r1k3kctu2wnf8Z/R6tOs7O5T7pppiWr8g==
+"@astrolabs/registry@^1.0.29":
+  version "1.0.29"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.29.tgz#af0e9549802099f057d9be3d82c3c284bc64f473"
+  integrity sha512-gZBbu7rm2fsQ2csl5duZ1Tx9vixMH+Wk39+fGSnO5e14hVPVCcNR7L55uAajf72wvL4St5ZcxxKSp40+TutWew==
   dependencies:
     "@astrolabs/registry" "^1.0.19"
 
@@ -1770,7 +1770,7 @@ clean-stack@^2.0.0:
   resolved "https://registry.yarnpkg.com/clean-stack/-/clean-stack-2.2.0.tgz#ee8472dbb129e727b31e8a10a427dee9dfe4008b"
   integrity sha512-4diC9HaTE+KRAMWhDhrGOECgWZxoevMc5TlkObMqNSsVU62PYzXZ/SMTjzyGAFF1YusgxGcSWTEXBhp0CPwQ1A==
 
-cli-table3@^0.6.2:
+cli-table3@^0.6.0, cli-table3@^0.6.2:
   version "0.6.3"
   resolved "https://registry.yarnpkg.com/cli-table3/-/cli-table3-0.6.3.tgz#61ab765aac156b52f222954ffc607a6f01dbeeb2"
   integrity sha512-w5Jac5SykAeZJKntOxJCrm63Eg5/4dhMWIcuTbo9rpE+brgaSZo0RuNJZeOyMgsUdhDeojvgyQLmjI+K50ZGyg==
@@ -2835,6 +2835,15 @@ graphemer@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/graphemer/-/graphemer-1.4.0.tgz#fb2f1d55e0e3a1849aeffc90c4fa0dd53a0e66c6"
   integrity sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==
+
+hardhat-contract-sizer@^2.10.0:
+  version "2.10.0"
+  resolved "https://registry.yarnpkg.com/hardhat-contract-sizer/-/hardhat-contract-sizer-2.10.0.tgz#72646f43bfe50e9a5702c9720c9bc3e77d93a2c9"
+  integrity sha512-QiinUgBD5MqJZJh1hl1jc9dNnpJg7eE/w4/4GEnrcmZJJTDbVFNe3+/3Ep24XqISSkYxRz36czcPHKHd/a0dwA==
+  dependencies:
+    chalk "^4.0.0"
+    cli-table3 "^0.6.0"
+    strip-ansi "^6.0.0"
 
 hardhat-deploy@^0.11.14:
   version "0.11.44"

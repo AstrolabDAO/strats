@@ -26,10 +26,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     uint8 internal assetFeedDecimals; // Decimals of the asset asset
     uint8[8] internal inputFeedDecimals; // Decimals of the input asset
 
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
-     */
-    constructor(string[3] memory _erc20Metadata) StrategyV5(_erc20Metadata) {}
+    constructor() StrategyV5() {}
 
     struct ChainlinkParams {
         address assetPriceFeed;

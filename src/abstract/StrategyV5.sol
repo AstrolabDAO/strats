@@ -26,12 +26,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     using AsArrays for bytes[];
     using SafeERC20 for IERC20;
 
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
-     */
-    constructor(
-        string[3] memory _erc20Metadata
-    ) StrategyV5Abstract(_erc20Metadata) {}
+    constructor() StrategyV5Abstract() {}
 
     /**
      * @notice Initialize the strategy
@@ -41,11 +36,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         // setExemption(msg.sender, true);
         // done in As4626 but required for swapper
         stratProxy = address(this);
-        agent = _params.coreAddresses[2];
+        agent = _params.coreAddresses.agent;
         if (agent == address(0)) revert AddressZero();
         _delegateWithSignature(
-            agent,
-            "init(((uint64,uint64,uint64,uint64,uint64),address,address[3],address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
+            agent, // erc20Metadata.................coreAddresses.......................fees....................inputs.inputWeights.rewardTokens
+            "init(((string,string,uint8),(address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
         );
     }
 
@@ -103,10 +98,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function.
      * @param _amounts Amount of inputs to liquidate (in asset)
      * @param _minLiquidity Minimum amount of assets to receive
-     * @param _panic Set to true to ignore slippage when unfolding
+     * @param _panic Set to true to ignore slippage when liquidating
      * @param _params Generic callData (e.g., SwapperParams)
-     * @return liquidityAvailable Amount of assets available to unfold
-     * @return Total assets in the strategy after unfolding
+     * @return liquidityAvailable Amount of assets available to liquidate
      */
     function liquidate(
         uint256[8] calldata _amounts,
@@ -117,42 +111,32 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         external
         onlyKeeper
         nonReentrant
-        returns (uint256 liquidityAvailable, uint256)
+        returns (uint256 liquidityAvailable)
     {
         // pre-liquidation sharePrice
         uint256 price = sharePrice();
-        uint256 assetRequests = totalPendingRedemptionRequest().mulDiv(
-            price,
-            weiPerShare
-        );
+        // In share
+        uint256 pendingRedemption = totalPendingRedemptionRequest();
 
-        _minLiquidity = AsMaths.min(
+        _minLiquidity = AsMaths.max(
             _minLiquidity,
-            assetRequests // pending asset requests
+            pendingRedemption.mulDiv(weiPerAsset, price) // eg. 1e8+1e6-1e8 = 1e6
         );
 
         // liquidate protocol positions
         uint256 liquidated = _liquidate(_amounts, _params);
         uint256 claimable = availableClaimable();
 
-        req.totalClaimableAsset = AsMaths.min(
-            req.totalAsset,
-            req.totalClaimableAsset + liquidated
-        );
+        req.totalClaimableRedemption += pendingRedemption;
+        liquidityAvailable = claimable - req.totalClaimableRedemption.mulDiv(weiPerAsset, price) - minLiquidity;
 
-        req.totalClaimableRedemption = AsMaths.min(
-            req.totalClaimableRedemption,
-            req.totalClaimableAsset.mulDiv(weiPerShare, price)
-        );
-
-        uint256 cash = claimable - req.totalClaimableAsset - minLiquidity;
-
-        if ((cash < _minLiquidity) && !_panic)
+        // check if we have enough cash to repay redemption requests
+        if ((liquidityAvailable < _minLiquidity) && !_panic)
             revert AmountTooLow(liquidityAvailable);
 
         last.liquidate = uint64(block.timestamp);
         emit Liquidate(liquidated, liquidityAvailable, block.timestamp);
-        return (liquidityAvailable, totalAssets());
+        return liquidityAvailable;
     }
 
     /**
@@ -166,7 +150,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
 
     /**
      * @notice Order the withdrawal request in strategies with lock
-     * @param _amount Amount of debt to unfold
+     * @param _amount Amount of debt to liquidate
      * @return assetsRecovered Amount of assets recovered
      */
     function liquidateRequest(

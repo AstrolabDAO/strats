@@ -61,7 +61,7 @@ interface IStrategyV5 is IStrategyV5Abstract {
         uint256 _minLiquidity,
         bool _panic,
         bytes[] memory _params
-    ) external returns (uint256 liquidityAvailable, uint256);
+    ) external returns (uint256 liquidityAvailable);
 
     function liquidateRequest(uint256 _amount) external returns (uint256);
     function rescueToken(address _token, bool _onlyETH) external;

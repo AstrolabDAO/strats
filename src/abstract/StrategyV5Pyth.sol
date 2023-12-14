@@ -28,10 +28,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     bytes32 internal assetPythId; // Pyth id of the asset asset
     bytes32[8] internal inputPythIds; // Pyth id of the inputs
 
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
-     */
-    constructor(string[3] memory _erc20Metadata) StrategyV5(_erc20Metadata) {}
+    constructor() StrategyV5() {}
 
     struct PythParams {
         address pyth;

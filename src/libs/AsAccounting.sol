@@ -22,22 +22,13 @@ library AsAccounting {
     using AsCast for uint256;
     using AsCast for int256;
 
-    event FeeCollection(
-        address indexed collector,
-        uint256 totalAssets,
-        uint256 sharePrice,
-        uint256 profit,
-        uint256 feesAmount,
-        uint256 sharesMinted
-    );
-
     /**
-     * @dev Computes the fees for the given As4626 contract.
-     * @param self The As4626 contract instance.
-     * @return assets The total assets of the contract.
-     * @return price The current share price of the contract.
-     * @return profit The calculated profit since the last fee collection.
-     * @return feesAmount The amount of fees to be collected.
+     * @dev Computes the fees for the given As4626 contract
+     * @param self The As4626 contract instance
+     * @return assets The total assets of the contract
+     * @return price The current share price of the contract
+     * @return profit The calculated profit since the last fee collection
+     * @return feesAmount The amount of fees to be collected
      */
     function computeFees(
         IAs4626 self
@@ -92,39 +83,13 @@ library AsAccounting {
         return (assets, price, profit, feesAmount);
     }
 
-
-    /**
-     * @dev Collects fees from the given `self` contract.
-     * @param self The instance of the `IAs4626` contract.
-     * @return assets The total assets.
-     * @return price The price.
-     * @return profit The profit.
-     * @return toMint The amount to mint.
-     */
-    function collectFees(IAs4626 self) public returns (uint256 assets, uint256 price, uint256 profit, uint256 toMint) {
-        require(self.feeCollector() != address(0) && self.isKeeper(msg.sender));
-        uint256 feesAmount;
-        (assets, price, profit, feesAmount) = computeFees(self);
-
-        if (profit == 0) return (0, 0, 0, 0);
-        toMint = self.convertToShares(feesAmount + self.claimableAssetFees());
-        emit FeeCollection(
-            self.feeCollector(),
-            assets,
-            price,
-            profit, // basis AsMaths.BP_BASIS**2
-            feesAmount,
-            toMint
-        );
-    }
-
     /**
      * @notice Linearization of the accrued profits
      * @dev This is used to calculate the total assets under management
-     * @param lastHarvest Timestamp of the last harvest.
-     * @param expectedProfits Expected profits since the last harvest.
-     * @param profitCooldown Cooldown period for realizing gains.
-     * @return The amount of profits that are not yet realized.
+     * @param lastHarvest Timestamp of the last harvest
+     * @param expectedProfits Expected profits since the last harvest
+     * @param profitCooldown Cooldown period for realizing gains
+     * @return The amount of profits that are not yet realized
      */
     function unrealizedProfits(
         uint256 lastHarvest,
@@ -148,9 +113,9 @@ library AsAccounting {
     }
 
     /**
-     * @notice Check if provided fees are within the allowed maximum fees.
-     * @param _fees Struct containing fee parameters (performance, management, entry, exit, flash fees).
-     * @return Whether the provided fees are within the allowed maximum fees.
+     * @notice Check if provided fees are within the allowed maximum fees
+     * @param _fees Struct containing fee parameters (performance, management, entry, exit, flash fees)
+     * @return Whether the provided fees are within the allowed maximum fees
      */
     function checkFees(
         Fees calldata _fees
@@ -211,7 +176,7 @@ library AsPoolMaths {
 
     /**
      * @notice Computes the amount of liquidity received for a given amount of token1 and price range
-     * @dev Calculates amount1 / (sqrt(upper) - sqrt(lower)).
+     * @dev Calculates amount1 / (sqrt(upper) - sqrt(lower))
      * @param sqrtRatioAX96 A sqrt price representing the first tick boundary
      * @param sqrtRatioBX96 A sqrt price representing the second tick boundary
      * @param amount1 The amount1 being sent in

@@ -2,7 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./ERC20Permit.sol";
+// import "./ERC20Permit.sol";
+import "./ERC20.sol";
 import "./AsManageable.sol";
 import "./AsTypes.sol";
 import "../libs/AsAccounting.sol";
@@ -19,7 +20,7 @@ import "../libs/AsAccounting.sol";
  * @dev Make sure all As4626 state variables here to match proxy/implementation slots
  */
 abstract contract As4626Abstract is
-    ERC20Permit,
+    ERC20,
     AsManageable,
     ReentrancyGuard
 {
@@ -93,12 +94,7 @@ abstract contract As4626Abstract is
     uint256 internal totalLent;
     uint256 public maxLoan = 1e12; // Maximum amount of flash loan allowed (default to 1e12 eg. 1m usdc)
 
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
-     */
-    constructor(
-        string[3] memory _erc20Metadata
-    ) ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
+    constructor() {
         _pause();
     }
 
@@ -106,9 +102,9 @@ abstract contract As4626Abstract is
      * @dev Returns the number of decimal places used for the shares.
      * @return The number of decimal places (8 in this case).
      */
-    function decimals() public pure override returns (uint8) {
-        return 8;
-    }
+    // function decimals() public pure override returns (uint8) {
+    //     return 8;
+    // }
 
     /**
      * @notice Exempt an account from entry/exit fees or remove its exemption
@@ -131,7 +127,9 @@ abstract contract As4626Abstract is
      * @return Amount denominated in asset
      */
     function available() public view returns (uint256) {
-        return availableClaimable() - req.totalClaimableAsset - minLiquidity;
+        return availableClaimable().subMax0(
+            convertToAssets(req.totalClaimableRedemption)
+                + minLiquidity);
     }
 
     /**
@@ -166,7 +164,7 @@ abstract contract As4626Abstract is
      * @return Amount denominated in asset
      */
     function totalAccountedAssets() public view returns (uint256) {
-        return totalAssets() - req.totalClaimableAsset; // approximated
+        return totalAssets() - convertToAssets(req.totalClaimableRedemption); // approximated
     }
 
     /**

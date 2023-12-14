@@ -51,12 +51,11 @@ describe(`test.${desc.name}`, () => {
     env = await setupStrat(
       desc.contract,
       desc.name,
-      [[desc.name, desc.symbol, desc.version.toString()]], // constructor (Erc20Metadata)
       [{
         // base params
+        erc20Metadata: { name: desc.name, symbol: desc.symbol, decimals: 8 }, // erc20Metadata
+        coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
         fees: {} as Fees, // fees (use default)
-        asset: addr.tokens[desc.asset], // asset
-        coreAddresses: [], // coreAddresses (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         rewardTokens: [], // keep unique reward token: HOP

@@ -31,12 +31,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
     uint16[5] internal stakingIds; // pool ids for the staking
     uint256[5] internal lpWeiPerShare;
 
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
-     */
-    constructor(
-        string[3] memory _erc20Metadata
-    ) StrategyV5Chainlink(_erc20Metadata) {}
+    constructor() StrategyV5Chainlink() {}
 
     // Struct containing the strategy init parameters
     struct Params {

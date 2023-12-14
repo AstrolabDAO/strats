@@ -1,4 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
+import "hardhat-contract-sizer";
 import { config } from "@astrolabs/hardhat/dist/hardhat.config";
 
 config.solidity!.compilers = [
@@ -7,13 +8,20 @@ config.solidity!.compilers = [
     settings: {
       optimizer: {
         enabled: true,
-        runs: 100
+        runs: 200
       },
       viaIR: false,
       evmVersion: `paris`
     }
   },
 ];
+(<any>config).contractSizer = {
+    alphaSort: false, // alphabetically sort contracts vs by size
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: false, // throw error if contract size exceeds spurious dragon's bytecode size limit
+    only: [],
+};
 config.paths = {
   // registry
   sources: "./src",

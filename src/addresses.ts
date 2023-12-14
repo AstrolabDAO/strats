@@ -208,17 +208,17 @@ export const addresses = {
     libs: {
       AsMaths: "0x47a84e64a9b50d6f489f9ab58db1ab7a2719c42b",
       AsArrays: "",
-      AsAccounting: "0xceb2aac13906633b28f35f57fab2422043f7cfb8",
+      AsAccounting: "0x9d1f28cf11728d333488815982538270b3b7bf37",
       PythUtils: "",
-      ChainlinkUtils: "0x55b5e5c8541feac305bebde91a7558a1a685fbfd",
+      ChainlinkUtils: "0x9e49770512e47c679b675cf5bb141a7bdbfb28fc",
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0x81a4ece332d60673a578b70cc01137617be883b9",
-      StrategyV5Agent: "",
+      StrategyV5Agent: "0x894d740e62f0bc406d3da9f84d098a01518cd672",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
-      "Astrolab Hop MetaStable": "",
+      "Astrolab Hop MetaStable": "0x3100b6770528d6c1934220d0ebb8c6afd0d41983",
       "Astrolab Aave MetaStable": "",
     },
     tokens: {

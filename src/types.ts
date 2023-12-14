@@ -67,6 +67,21 @@ export class SafeContract extends Contract {
   };
 }
 
+export interface Erc20Metadata {
+  name: string;
+  symbol: string;
+  decimals?: number;
+  version?: string;
+}
+
+export interface CoreAddresses {
+  asset: string;
+  feeCollector?: string;
+  swapper?: string;
+  agent?: string;
+  allocator?: string;
+}
+
 export interface Fees {
   perf: number;
   mgmt: number;
@@ -75,11 +90,8 @@ export interface Fees {
   flash: number;
 }
 
-// name, symbol, version
-export type Erc20Metadata = [string, string, string];
-
 // fees, asset, feeCollector
-export type As4626InitParams = [Fees, string, string];
+export type As4626InitParams = [Erc20Metadata, CoreAddresses, Fees, string, string];
 
 export interface IStrategyDesc {
   name: string;
@@ -93,9 +105,9 @@ export interface IStrategyDesc {
 }
 
 export interface IStrategyBaseParams {
+  erc20Metadata: Erc20Metadata;
+  coreAddresses: CoreAddresses;
   fees: Fees;
-  asset: string;
-  coreAddresses: string[];
   inputs: string[];
   inputWeights: number[];
   rewardTokens: string[];
@@ -122,7 +134,6 @@ export type IStrategyChainlinkParams = [
 
 export interface IStrategyDeployment extends IDeployment {
   // constructor/init params
-  constructorParams: [Erc20Metadata];
   initParams: [IStrategyBaseParams, ...any];
   // compilation/verification dependencies
   swapper: Contract;

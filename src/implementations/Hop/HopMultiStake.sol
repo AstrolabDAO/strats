@@ -31,12 +31,7 @@ contract HopMultiStake is StrategyV5Chainlink {
     mapping(address => address) internal tokenByRewardPool;
     uint8[5] internal tokenIndexes;
 
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, EIP712 version
-     */
-    constructor(
-        string[3] memory _erc20Metadata
-    ) StrategyV5Chainlink(_erc20Metadata) {}
+    constructor() StrategyV5Chainlink() {}
 
     // Struct containing the strategy init parameters
     struct Params {

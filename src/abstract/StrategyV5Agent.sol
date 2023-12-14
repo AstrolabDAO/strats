@@ -22,7 +22,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     using AsMaths for int256;
     using SafeERC20 for IERC20;
 
-    constructor() StrategyV5Abstract(["", "", ""]) {}
+    constructor() StrategyV5Abstract() {}
 
     /**
      * @notice Initialize the strategy
@@ -31,11 +31,11 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     function init(StrategyBaseParams calldata _params) public onlyAdmin {
         // setInputs(_params.inputs, _params.inputWeights);
         setRewardTokens(_params.rewardTokens);
-        asset = IERC20Metadata(_params.asset);
+        asset = IERC20Metadata(_params.coreAddresses.asset);
         assetDecimals = asset.decimals();
         weiPerAsset = 10**assetDecimals;
-        updateSwapper(_params.coreAddresses[1]);
-        As4626.init(_params.fees, _params.asset, _params.coreAddresses[0]);
+        updateSwapper(_params.coreAddresses.swapper);
+        As4626.init(_params.erc20Metadata, _params.coreAddresses, _params.fees);
     }
 
     /**

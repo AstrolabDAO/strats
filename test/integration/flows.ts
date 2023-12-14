@@ -47,7 +47,6 @@ export const deployStrat = async (
   env: Partial<IStrategyDeploymentEnv>,
   name: string,
   contract: string,
-  constructorParams: [Erc20Metadata],
   initParams: [IStrategyBaseParams, ...any],
   libNames = ["AsAccounting"],
   forceVerify = false // check that the contract is verified on etherscan/tenderly
@@ -115,7 +114,6 @@ export const deployStrat = async (
       deployed: env.addresses!.astrolab?.[contractUniqueName] ? true : false,
       address: env.addresses!.astrolab?.[contractUniqueName],
       proxied: ["StrategyV5Agent"],
-      args: constructorParams,
       overrides: getOverrides(env),
       libraries: stratLibs, // External libraries are only used in StrategyV5Agent
     },
@@ -162,6 +160,24 @@ export const deployStrat = async (
     );
   }
 
+  // default erc20Metadata
+  initParams[0].erc20Metadata = merge(
+    {
+      name,
+      decimals: 8,
+    },
+    initParams[0].erc20Metadata
+  );
+
+  // default coreAddresses
+  initParams[0].coreAddresses = merge(
+    {
+      feeCollector: env.deployer!.address, // feeCollector
+      swapper: swapper.address, // Swapper
+      agent: agent.address, // StrategyV5Agent
+    },
+    initParams[0].coreAddresses);
+
   // default fees
   initParams[0].fees = merge(
     {
@@ -174,13 +190,6 @@ export const deployStrat = async (
     initParams[0].fees
   );
 
-  // coreAddresses
-  initParams[0].coreAddresses = [
-    env.deployer!.address, // feeCollector
-    swapper.address, // Swapper
-    agent.address, // StrategyV5Agent
-  ];
-
   // inputs
   if (initParams[0].inputWeights.length == 1)
     // default input weight == 100%
@@ -189,7 +198,6 @@ export const deployStrat = async (
   merge(env.deployment, {
     name: `${name} Stack`,
     contract: "",
-    constructorParams,
     initParams,
     verify: true,
     libraries,
@@ -305,7 +313,6 @@ export async function setupStrat(
   contract: string,
   name: string,
   // below we use hop strategy signature as placeholder
-  constructorParams: [Erc20Metadata],
   initParams: [IStrategyBaseParams, ...any],
   minLiquidityUsd = 10,
   libNames = ["AsAccounting"],
@@ -319,7 +326,7 @@ export async function setupStrat(
     libNames.push("PythUtils");
   }
   env.deployment = {
-    asset: await SafeContract.build(initParams[0].asset),
+    asset: await SafeContract.build(initParams[0].coreAddresses.asset),
     inputs: await Promise.all(
       initParams[0].inputs!.map((input) => SafeContract.build(input))
     ),
@@ -332,7 +339,6 @@ export async function setupStrat(
     env,
     name,
     contract,
-    constructorParams,
     initParams,
     libNames
   );
@@ -662,7 +668,8 @@ export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
   await logState(env, "Before Withdraw");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("safeWithdraw", [amount, minAmountOut, env.deployer.address, env.deployer.address], getOverrides(env))
+    // .safe("safeWithdraw", [amount, minAmountOut, env.deployer.address, env.deployer.address], getOverrides(env))
+    .safeWithdraw(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered

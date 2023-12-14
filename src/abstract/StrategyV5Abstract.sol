@@ -41,10 +41,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     uint8 internal inputLength; // Actual length of the inputs array
     uint8 internal rewardLength; // Actual length of the reward tokens array
 
-    /**
-     * @param _erc20Metadata ERC20Permit constructor data: name, symbol, version
-     */
-    constructor(string[3] memory _erc20Metadata) As4626Abstract(_erc20Metadata) {}
+    constructor() As4626Abstract() {}
 
     /**
      * @notice Calculates the total pending redemption requests
