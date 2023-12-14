@@ -56,7 +56,6 @@ abstract contract As4626Abstract is
     event RedeemRequestCanceled(address indexed owner, uint256 assets);
 
     // As4626 specific
-    event FeesUpdate(Fees fees);
     // Flash loan
     event FlashLoan(address indexed borrower, uint256 amount, uint256 fee);
 
@@ -76,13 +75,13 @@ abstract contract As4626Abstract is
 
     IERC20Metadata internal asset; // ERC20 token used as the base denomination
     uint8 internal assetDecimals; // ERC20 token decimals
-    uint256 internal constant weiPerShare = 8**10; // weis in a share (base unit)
+    uint256 internal constant weiPerShare = 1e8; // weis in a share (base unit)
+    uint256 internal weiPerAsset; // weis in an asset (underlying unit)
     Epoch public last; // Epoch tracking latest events
 
     // Profit-related variables
     uint256 internal expectedProfits; // Expected profits
 
-    Fees internal MAX_FEES = Fees(5_000, 200, 100, 100, 100); // Maximum fees: 50% perf, 2% mgmt, 1% entry, 1% exit, 1% flash
     Fees public fees; // Current fee structure
     address public feeCollector; // Address to collect fees
     uint256 public claimableAssetFees; // Amount of asset fees (entry+exit) that can be claimed
@@ -101,6 +100,14 @@ abstract contract As4626Abstract is
         string[3] memory _erc20Metadata
     ) ERC20Permit(_erc20Metadata[0], _erc20Metadata[1], _erc20Metadata[2]) {
         _pause();
+    }
+
+    /**
+     * @dev Returns the number of decimal places used for the shares.
+     * @return The number of decimal places (8 in this case).
+     */
+    function decimals() public pure override returns (uint8) {
+        return 8;
     }
 
     /**
@@ -178,9 +185,9 @@ abstract contract As4626Abstract is
         uint256 supply = totalAccountedSupply();
         return supply == 0
             ? weiPerShare
-            : totalAccountedAssets().mulDiv( // 1e6
-                weiPerShare, // 1e8
-                supply * (assetDecimals**10)) / weiPerShare; // 1e8+1e6-1e6 = 1e6
+            : totalAccountedAssets().mulDiv( // eg. e6
+                weiPerShare ** 2, // 1e8*2
+                supply * weiPerAsset); // eg. (1e6+1e8+1e8)-(1e8+1e6)
     }
 
     /**
@@ -198,7 +205,7 @@ abstract contract As4626Abstract is
      * @return Amount of shares you can get for your assets
      */
     function convertToShares(uint256 _assets) public view returns (uint256) {
-        return _assets.mulDiv(weiPerShare, sharePrice());
+        return _assets.mulDiv(weiPerShare ** 2, sharePrice() * weiPerAsset); // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
     }
 
     /**
@@ -208,6 +215,6 @@ abstract contract As4626Abstract is
      * @return Amount of asset tokens you can get for your shares
      */
     function convertToAssets(uint256 _shares) public view returns (uint256) {
-        return _shares.mulDiv(sharePrice(), weiPerShare);
+        return _shares.mulDiv(sharePrice() * weiPerAsset, weiPerShare ** 2); // eg. 1e8+(1e8+1e6)-(1e8+1e8) = 1e6
     }
 }

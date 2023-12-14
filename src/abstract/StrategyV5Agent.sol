@@ -17,7 +17,7 @@ import "./AsRescuable.sol";
  * @notice This contract is in charge of executing shared strategy logic (accounting, fees, etc.)
  * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
  */
-contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
+contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     using AsMaths for uint256;
     using AsMaths for int256;
     using SafeERC20 for IERC20;
@@ -33,6 +33,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
         setRewardTokens(_params.rewardTokens);
         asset = IERC20Metadata(_params.asset);
         assetDecimals = asset.decimals();
+        weiPerAsset = 10**assetDecimals;
         updateSwapper(_params.coreAddresses[1]);
         As4626.init(_params.fees, _params.asset, _params.coreAddresses[0]);
     }
@@ -76,14 +77,15 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuable {
         if (_asset == address(0)) revert AddressZero();
         if (_asset == address(asset)) return;
         _pause();
-        // slippage is checked within Swapper
-        (uint256 received, uint256 spent) = swapper.decodeAndSwapBalance(
+        // slippage is checked within Swapper >> no need to use (received, spent)
+        swapper.decodeAndSwapBalance(
             address(asset),
             _asset,
             _swapData
         );
         asset = IERC20Metadata(_asset);
         assetDecimals = asset.decimals();
+        weiPerAsset = 10**assetDecimals;
         // last.accountedProfit = 0;
         last.accountedTotalAssets = totalAssets();
         last.accountedTotalSupply = totalSupply();

@@ -197,8 +197,8 @@ export async function logState(
     inputs: [${inputsAddresses.join(", ")}]
     rewardTokens: [${rewardsAddresses.join(", ")}]
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
-    totalSuply(): ${asset.toAmount(totalSupply)} (${totalSupply}wei)
-    totalAccountedSupply(): ${asset.toAmount(
+    totalSuply(): ${strat.toAmount(totalSupply)} (${totalSupply}wei)
+    totalAccountedSupply(): ${strat.toAmount(
       totalAccountedSupply
     )} (${totalAccountedSupply}wei)
     totalAssets(): ${asset.toAmount(totalAssets)} (${totalAssets}wei)

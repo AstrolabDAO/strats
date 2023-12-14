@@ -402,7 +402,8 @@ export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
   await logState(env, "Before Deposit");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("safeDeposit", [amount, env.deployer.address, 1], getOverrides(env))
+    // .safe("safeDeposit", [amount, env.deployer.address, 1], getOverrides(env))
+    .safeDeposit(amount, env.deployer.address, 1, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Deposit", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);

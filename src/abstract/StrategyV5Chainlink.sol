@@ -84,7 +84,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      */
     function assetExchangeRate(uint8 _index) public view returns (uint256) {
         return ChainlinkUtils.assetExchangeRate(
-            [inputPriceFeeds[_index], assetPriceFeed], decimals(), assetFeedDecimals);
+            [inputPriceFeeds[_index], assetPriceFeed], assetDecimals, assetFeedDecimals);
     }
 
     /**

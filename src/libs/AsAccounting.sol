@@ -149,20 +149,18 @@ library AsAccounting {
 
     /**
      * @notice Check if provided fees are within the allowed maximum fees.
-     * @param _fees Struct containing fee parameters (performance, management, entry, exit fees).
-     * @param _maxFees Struct containing maximum allowed fee parameters.
+     * @param _fees Struct containing fee parameters (performance, management, entry, exit, flash fees).
      * @return Whether the provided fees are within the allowed maximum fees.
      */
     function checkFees(
-        Fees calldata _fees,
-        Fees calldata _maxFees
+        Fees calldata _fees
     ) public pure returns (bool) {
         return
-            _fees.perf <= _maxFees.perf &&
-            _fees.mgmt <= _maxFees.mgmt &&
-            _fees.entry <= _maxFees.entry &&
-            _fees.exit <= _maxFees.exit &&
-            _fees.flash <= _maxFees.flash;
+            _fees.perf <= 5_000 && // 50%
+            _fees.mgmt <= 500 && // 5%
+            _fees.entry <= 200 && // 2%
+            _fees.exit <= 200 && // 2%
+            _fees.flash <= 200; // 2%
     }
 }
 

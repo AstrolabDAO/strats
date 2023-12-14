@@ -39,8 +39,7 @@ abstract contract As4626 is As4626Abstract {
         address _feeCollector
     ) public virtual onlyAdmin {
         // check that the fees are not too high
-        if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert Unauthorized();
-        fees = _fees;
+        setFees(_fees);
         feeCollector = _feeCollector;
         last.accountedSharePrice = weiPerShare;
         last.accountedProfit = weiPerShare;
@@ -108,7 +107,7 @@ abstract contract As4626 is As4626Abstract {
         }
 
         shares = supply == 0
-            ? _amount.mulDiv(sharePrice(), weiPerShare)
+            ? _amount.mulDiv(sharePrice(), weiPerAsset)
             : _amount.mulDiv(supply, assetsAvailable);
 
         if (shares == 0 || shares < _minShareAmount)
@@ -199,9 +198,9 @@ abstract contract As4626 is As4626Abstract {
         if (claimable >= _shares) {
             req.byOperator[_receiver].shares -= _shares;
             req.totalRedemption -= AsMaths.min(_shares, req.totalRedemption);
-            req.totalAsset -= AsMaths.min(
-                _shares.mulDiv(request.sharePrice, weiPerShare),
-                req.totalAsset
+            req.totalAsset -= AsMaths.min( // eg. 1e6
+                _shares.mulDiv(request.sharePrice * weiPerAsset, weiPerShare ** 2), // eg. 1e8+(1e8+1e6)-(1e8+1e8) = 1e6
+                req.totalAsset // eg. 1e6
             );
             req.totalClaimableRedemption -= AsMaths.min(
                 _shares,
@@ -413,10 +412,9 @@ abstract contract As4626 is As4626Abstract {
      * @dev Maximum fees are registered as constants
      * @param _fees.perf Fee on performance
      */
-    function setFees(Fees memory _fees) external onlyAdmin {
-        if (!AsAccounting.checkFees(_fees, MAX_FEES)) revert Unauthorized();
+    function setFees(Fees memory _fees) public onlyAdmin {
+        if (!AsAccounting.checkFees(_fees)) revert Unauthorized();
         fees = _fees;
-        emit FeesUpdate(_fees);
     }
 
     /**
@@ -632,10 +630,10 @@ abstract contract As4626 is As4626Abstract {
             uint256 opportunityCost = shares.mulDiv(
                 price - request.sharePrice,
                 weiPerShare
-            );
+            ); // eg. 1e8+1e8-1e8 = 1e8
             _burn(owner, opportunityCost);
         }
-        uint256 amount = shares.mulDiv(request.sharePrice, weiPerShare);
+        uint256 amount = shares.mulDiv(request.sharePrice * weiPerAsset, weiPerShare ** 2); // eg. 1e8+(1e8+1e6)-(1e8+1e8) = 1e6
 
         req.totalRedemption -= shares;
         req.totalAsset -= amount;
