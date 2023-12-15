@@ -160,11 +160,11 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @notice Amount of assets under management used for sharePrice accounting (excluding claimable redemptions)
+     * @notice Amount of assets under management used for sharePrice accounting (excluding claimable redemptions approximated with previous accounted sharePrice)
      * @return Amount denominated in asset
      */
     function totalAccountedAssets() public view returns (uint256) {
-        return totalAssets() - convertToAssets(req.totalClaimableRedemption); // approximated
+        return totalAssets() - req.totalClaimableRedemption.mulDiv(last.sharePrice * weiPerAsset, weiPerShare ** 2); // eg. (1e8+1e8+1e6)-(1e8+1e8) = 1e6
     }
 
     /**

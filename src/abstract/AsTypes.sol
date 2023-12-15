@@ -54,13 +54,14 @@ struct Requests {
 // Epoch used to by strategies to keep track of latest events
 struct Epoch {
     // dates
-    uint64 feeCollection; // Last fee collection timestamp from the checkpoint
-    uint64 liquidate; // Last liquidation timestamp from the checkpoint
-    uint64 harvest; // Last harvest timestamp from the checkpoint
-    uint64 invest; // Last invest timestamp from the checkpoint
+    uint64 feeCollection; // Last fee collection timestamp
+    uint64 liquidate; // Last liquidation timestamp
+    uint64 harvest; // Last harvest timestamp
+    uint64 invest; // Last invest timestamp
     // values
-    uint256 accountedSharePrice; // Last accounted share price (fee collection) from the checkpoint
-    uint256 accountedProfit; // Last accounted profit (fee collection) from the checkpoint 1e8
-    uint256 accountedTotalAssets; // Last accounted total assets (fee collection) from the checkpoint
-    uint256 accountedTotalSupply; // Last accounted total supply (fee collection) from the checkpoint
+    uint256 sharePrice; // last used share sharePrice (at deposit/withdraw/liquidate time)
+    uint256 accountedSharePrice; // Last accounted share price (at fee collection time)
+    uint256 accountedProfit; // Last accounted profit (fee collection) 1e8
+    uint256 accountedAssets; // Last accounted total assets (fee collection)
+    uint256 accountedSupply; // Last accounted total supply (fee collection)
 }

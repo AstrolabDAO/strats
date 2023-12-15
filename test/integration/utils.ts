@@ -220,10 +220,10 @@ export async function logState(
       Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
     }%)
     totalRedemptionRequest(): ${
-      totalRedemptionRequest / asset.weiPerUnit
+      strat.toAmount(totalRedemptionRequest)
     } (${totalRedemptionRequest}wei)
     totalClaimableRedemption(): ${
-      totalClaimableRedemption / asset.weiPerUnit
+      strat.toAmount(totalClaimableRedemption)
     } (${totalClaimableRedemption}wei) (${
       Math.round(
         totalRedemptionRequest.lt(10)

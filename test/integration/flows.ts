@@ -83,7 +83,9 @@ export const deployStrat = async (
   // exclude implementation specific libraries from agentLibs (eg. oracle libs)
   // as these are specific to the strategy implementation
   const stratLibs = Object.assign({}, libraries);
-  delete stratLibs.AsMaths; // linking not required on the strategy itself
+  // linking not required on the strategy itself for: AsMaths, AsAccounting (used in agent)
+  delete stratLibs.AsMaths;
+  delete stratLibs.AsAccounting;
 
   const agentLibs = Object.assign({}, stratLibs);
   for (const lib of Object.keys(agentLibs)) {
@@ -286,8 +288,7 @@ export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
     .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 2_000);
-  return getTxLogData(receipt, ["uint256", "uint256"], 0, -2)
-    ?? getTxLogData(receipt, ["uint256", "uint256"], 0, -3); // on some chains, a last (aggregate) event is emitted
+  return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted
 }
 
 export async function grantManagerRole(
@@ -317,6 +318,7 @@ export async function setupStrat(
   minLiquidityUsd = 10,
   libNames = ["AsAccounting"],
   env: Partial<IStrategyDeploymentEnv> = {},
+  forceVerify = false,
   addressesOverride?: any
 ): Promise<IStrategyDeploymentEnv> {
   env = await getEnv(env, addressesOverride);
@@ -340,7 +342,8 @@ export async function setupStrat(
     name,
     contract,
     initParams,
-    libNames
+    libNames,
+    forceVerify
   );
 
   const { strat, inputs, rewardTokens } = env.deployment!;

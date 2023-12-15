@@ -87,8 +87,8 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         assetDecimals = asset.decimals();
         weiPerAsset = 10**assetDecimals;
         // last.accountedProfit = 0;
-        last.accountedTotalAssets = totalAssets();
-        last.accountedTotalSupply = totalSupply();
+        last.accountedAssets = totalAssets();
+        last.accountedSupply = totalSupply();
     }
 
     /**

@@ -381,6 +381,7 @@ abstract contract ERC20 is ERC20Abstract {
     ///
     /// Emits a {Transfer} event.
     function _mint(address to, uint256 amount) internal virtual {
+
         _beforeTokenTransfer(address(0), to, amount);
         /// @solidity memory-safe-assembly
         assembly {

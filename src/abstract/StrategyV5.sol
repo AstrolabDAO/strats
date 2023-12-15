@@ -114,13 +114,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         returns (uint256 liquidityAvailable)
     {
         // pre-liquidation sharePrice
-        uint256 price = sharePrice();
+        last.sharePrice = sharePrice();
+
         // In share
         uint256 pendingRedemption = totalPendingRedemptionRequest();
 
         _minLiquidity = AsMaths.max(
             _minLiquidity,
-            pendingRedemption.mulDiv(weiPerAsset, price) // eg. 1e8+1e6-1e8 = 1e6
+            pendingRedemption.mulDiv(weiPerAsset, last.sharePrice) // eg. 1e8+1e6-1e8 = 1e6
         );
 
         // liquidate protocol positions
@@ -128,7 +129,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         uint256 claimable = availableClaimable();
 
         req.totalClaimableRedemption += pendingRedemption;
-        liquidityAvailable = claimable - req.totalClaimableRedemption.mulDiv(weiPerAsset, price) - minLiquidity;
+        liquidityAvailable = claimable - req.totalClaimableRedemption.mulDiv(weiPerAsset, last.sharePrice) - minLiquidity;
 
         // check if we have enough cash to repay redemption requests
         if ((liquidityAvailable < _minLiquidity) && !_panic)

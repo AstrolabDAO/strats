@@ -70,19 +70,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver
     ) public nonReentrant returns (uint256 assets) {
-        uint256 price = sharePrice();
-        assets = _shares.mulDiv(price, weiPerShare);
-
-        if (assets == 0 || _shares == 0) revert AmountTooLow(0);
-        if (_receiver == address(this) || totalAssets() < minLiquidity)
-            revert Unauthorized();
-        if (assets > maxDeposit(_receiver))
-            revert AmountTooHigh(maxDeposit(_receiver));
-
-        // Moving value
-        asset.safeTransferFrom(msg.sender, address(this), assets);
-        _mint(_receiver, _shares);
-        emit Deposit(msg.sender, _receiver, assets, _shares);
+        return _deposit(previewMint(_shares), _shares, _receiver);
     }
 
     /**
@@ -100,8 +88,11 @@ abstract contract As4626 is As4626Abstract {
     ) internal nonReentrant returns (uint256) {
 
         if (_receiver == address(this) || _amount == 0) revert Unauthorized();
+
         // do not allow minting at a price higher than the current share price
-        if (_amount > maxDeposit(address(0)) || _shares > convertToShares(_amount))
+        last.sharePrice = sharePrice();
+
+        if (_amount > maxDeposit(address(0)) || _shares > _amount.mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset))
             revert AmountTooHigh(_amount);
 
         asset.safeTransferFrom(msg.sender, address(this), _amount);
@@ -127,7 +118,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _receiver
     ) public whenNotPaused returns (uint256 shares) {
-        return _deposit(_amount, convertToShares(_amount).subBp(exemptionList[msg.sender] ? 0 : fees.entry), _receiver);
+        return _deposit(_amount, previewDeposit(_amount), _receiver);
     }
 
     /**
@@ -163,11 +154,13 @@ abstract contract As4626 is As4626Abstract {
     ) internal nonReentrant returns (uint256) {
         if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
 
-        uint256 price = sharePrice();
+        Erc7540Request storage request = req.byOperator[_receiver];
+        uint256 claimable = maxRedemptionClaim(_owner);
 
-        // check if burning the shares will bring the totalSupply below the minLiquidity
-        if (_shares >= (totalSupply() - minLiquidity.mulDiv(weiPerShare ** 2, price * weiPerAsset))) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
-            revert Unauthorized();
+        last.sharePrice = sharePrice();
+        uint256 price = (claimable >= _shares)
+            ? AsMaths.min(last.sharePrice, request.sharePrice) // worst of if pre-existing request
+            : last.sharePrice; // current price
 
         // amount/shares cannot be higher than the share price (dictated by the inline convertToAssets below)
         if (_amount >= _shares.mulDiv(price * weiPerAsset, weiPerShare ** 2))
@@ -175,13 +168,6 @@ abstract contract As4626 is As4626Abstract {
 
         if (msg.sender != _owner)
             _spendAllowance(_owner, msg.sender, _shares);
-
-        Erc7540Request storage request = req.byOperator[_receiver];
-        uint256 claimable = maxRedemptionClaim(_owner);
-
-        price = (claimable >= _shares)
-            ? AsMaths.min(price, request.sharePrice) // worst of if pre-existing request
-            : price; // current price
 
         if (claimable >= _shares) {
             req.byOperator[_receiver].shares -= _shares;
@@ -196,6 +182,11 @@ abstract contract As4626 is As4626Abstract {
             claimableAssetFees += _amount.revBp(fees.exit);
 
         _burn(_owner, _shares);
+
+        // check if burning the shares will bring the totalSupply below the minLiquidity
+        if (totalSupply() < minLiquidity.mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset)) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
+            revert Unauthorized();
+
         asset.safeTransfer(_receiver, _amount);
 
         emit Withdraw(msg.sender, _receiver, _owner, _amount, _shares);
@@ -215,7 +206,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external whenNotPaused returns (uint256) {
-        return _withdraw(_amount, convertToShares(_amount).addBp(exemptionList[_owner] ? 0 : fees.exit), _receiver, _owner);
+        return _withdraw(_amount, previewWithdraw(_amount), _receiver, _owner);
     }
 
     /**
@@ -232,7 +223,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) public whenNotPaused returns (uint256 amount) {
-        amount = _withdraw(_amount, convertToShares(_amount).addBp(exemptionList[_owner] ? 0 : fees.exit), _receiver, _owner);
+        amount = _withdraw(_amount, previewWithdraw(_amount), _receiver, _owner);
         if (amount < _minAmount) revert AmountTooLow(amount);
     }
 
@@ -249,14 +240,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external returns (uint256 assets) {
-        return (
-            _withdraw(
-                convertToAssets(_shares).subBp(exemptionList[_owner] ? 0 : fees.exit),
-                _shares,
-                _receiver,
-                _owner
-            )
-        );
+        return _withdraw(previewRedeem(_shares), _shares, _receiver, _owner);
     }
 
     /**
@@ -274,7 +258,7 @@ abstract contract As4626 is As4626Abstract {
         address _owner
     ) external returns (uint256 assets) {
         assets = _withdraw(
-            convertToAssets(_shares).subBp(exemptionList[_owner] ? 0 : fees.exit),
+            previewRedeem(_shares),
             _shares, // _shares
             _receiver, // _receiver
             _owner // _owner
@@ -294,7 +278,7 @@ abstract contract As4626 is As4626Abstract {
         (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) = AsAccounting.computeFees(IAs4626(address(this)));
 
         if (profit == 0) return;
-        uint256 toMint = convertToShares(feesAmount + claimableAssetFees);
+        uint256 toMint = convertToShares(feesAmount + claimableAssetFees); // feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
         emit FeeCollection(
             feeCollector,
             assets,
@@ -305,10 +289,10 @@ abstract contract As4626 is As4626Abstract {
         );
         _mint(feeCollector, toMint);
         last.feeCollection = uint64(block.timestamp);
-        last.accountedTotalAssets = assets;
+        last.accountedAssets = assets;
         last.accountedSharePrice = price;
         last.accountedProfit = profit;
-        last.accountedTotalSupply = totalSupply();
+        last.accountedSupply = totalSupply();
         claimableAssetFees = 0;
     }
 
@@ -381,9 +365,7 @@ abstract contract As4626 is As4626Abstract {
 
         // if the vault is still paused, unpause it
         if (paused()) _unpause();
-
-        if (totalSupply() < minLiquidity)
-            deposit(_seedDeposit, msg.sender);
+        deposit(_seedDeposit, msg.sender);
     }
 
     /**
@@ -430,7 +412,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _shares Amount of shares that we acquire
      * @return shares Amount of asset tokens that the caller should pay
      */
-    function previewMint(uint256 _shares) external view returns (uint256) {
+    function previewMint(uint256 _shares) public view returns (uint256) {
         return convertToAssets(_shares).addBp(exemptionList[msg.sender] ? 0 : fees.entry);
     }
 
@@ -451,7 +433,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _assets How much we want to get
      * @return How many shares will be burnt
      */
-    function previewWithdraw(uint256 _assets) external view returns (uint256) {
+    function previewWithdraw(uint256 _assets) public view returns (uint256) {
         return convertToShares(_assets).addBp(exemptionList[msg.sender] ? 0 : fees.exit);
     }
 
@@ -460,7 +442,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _shares Amount of shares that we burn
      * @return Preview amount of asset tokens that the caller will get for his shares
      */
-    function previewRedeem(uint256 _shares) external view returns (uint256) {
+    function previewRedeem(uint256 _shares) public view returns (uint256) {
         return convertToAssets(_shares).subBp(exemptionList[msg.sender] ? 0 : fees.exit);
     }
 
@@ -528,25 +510,26 @@ abstract contract As4626 is As4626Abstract {
         Erc7540Request storage request = req.byOperator[operator];
         if (request.operator != operator) request.operator = operator;
 
-        uint256 price = sharePrice();
+        last.sharePrice = sharePrice();
         if (request.shares > 0) {
-            if (request.shares < shares) revert AmountTooHigh(shares);
+            if (request.shares > shares)
+                revert AmountTooLow(shares);
 
+            // reinit the request (re-added lower)
             req.totalRedemption -= AsMaths.min(
                 req.totalRedemption,
                 request.shares
             );
             // compute request vwap
             request.sharePrice =
-                ((price * (request.shares - shares)) + (request.sharePrice * request.shares)) /
+                ((last.sharePrice * (shares - request.shares)) + (request.sharePrice * request.shares)) /
                 shares;
         } else {
-            request.sharePrice = price;
+            request.sharePrice = last.sharePrice;
         }
 
         request.shares = shares;
         request.timestamp = block.timestamp;
-
         req.totalRedemption += shares;
 
         emit RedeemRequest(owner, operator, owner, shares);
@@ -594,13 +577,13 @@ abstract contract As4626 is As4626Abstract {
 
         if (shares == 0) revert AmountTooLow(0);
 
-        uint256 price = sharePrice();
+        last.sharePrice = sharePrice();
 
-        if (price > request.sharePrice) {
+        if (last.sharePrice > request.sharePrice) {
             // burn the excess shares from the loss incurred while not farming
             // with the idle funds (opportunity cost)
             uint256 opportunityCost = shares.mulDiv(
-                price - request.sharePrice,
+                last.sharePrice - request.sharePrice,
                 weiPerShare
             ); // eg. 1e8+1e8-1e8 = 1e8
             _burn(owner, opportunityCost);
@@ -706,6 +689,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 amount,
         bytes calldata params
     ) external nonReentrant {
+
         uint256 available = availableBorrowable();
         if (amount > available || (totalLent + amount) > maxLoan) revert AmountTooHigh(amount);
 
