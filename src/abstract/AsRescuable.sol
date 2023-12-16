@@ -58,7 +58,7 @@ abstract contract AsRescuable {
      * @param _token The address of the token to be rescued.
      */
     function _requestRescue(address _token) internal {
-        RescueRequest memory req = rescueRequests[_token];
+        RescueRequest storage req = rescueRequests[_token];
         require(!_isRescueUnlocked(req));
         // set pending rescue request
         req.receiver = msg.sender;
@@ -81,17 +81,17 @@ abstract contract AsRescuable {
      * @notice Emits a Rescue event when a new rescue request is set.
      */
     function _rescue(address _token) internal {
-        RescueRequest storage request = rescueRequests[_token];
+        RescueRequest storage req = rescueRequests[_token];
         // check if rescue is pending
-        require(_isRescueUnlocked(request));
+        require(_isRescueUnlocked(req));
 
         // reset timestamp to prevent reentrancy
         rescueRequests[_token].timestamp = 0;
         // send to receiver
         if (_token == address(1)) {
-            payable(request.receiver).transfer(address(this).balance);
+            payable(req.receiver).transfer(address(this).balance);
         } else {
-            IERC20Metadata(_token).safeTransfer(request.receiver, IERC20Metadata(_token).balanceOf(address(this)));
+            IERC20Metadata(_token).safeTransfer(req.receiver, IERC20Metadata(_token).balanceOf(address(this)));
         }
         // reset pending request
         delete rescueRequests[_token];

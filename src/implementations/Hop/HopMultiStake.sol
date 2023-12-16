@@ -52,6 +52,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             stableRouters[i] = IStableRouter(_params.stableRouters[i]);
             setRewardPools(_params.rewardPools[i], i);
         }
+        _setAllowances(MAX_UINT256);
     }
 
     /**
@@ -90,7 +91,6 @@ contract HopMultiStake is StrategyV5Chainlink {
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
         setParams(_hopParams);
-        _setAllowances(MAX_UINT256);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
@@ -333,7 +333,7 @@ contract HopMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Returns the available HOP rewards
+     * @notice Returns the available rewards
      * @return amounts Array of rewards available for each reward token
      */
     function rewardsAvailable()

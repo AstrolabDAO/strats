@@ -55,19 +55,6 @@ export function getAddresses(s: string) {
   return isAddress(s) ? s : addresses[network.config.chainId!].tokens[s];
 }
 
-
-const networkOverrides: { [name: string]: Overrides } = {
-  "gnosis-mainnet": {
-    gasLimit: 1e7,
-    maxPriorityFeePerGas: 2e9,
-    maxFeePerGas: 4e9,
-    // gasPrice: 4e9,
-  },
-  tenderly: {
-    gasLimit: 1e7,
-  },
-};
-
 type AbiFragment = { name: string; inputs: [{ type: string }] };
 
 // TODO: move to @astrolabs/hardhat/utils
@@ -88,8 +75,27 @@ export function getSelectors(abi: any) {
     signature: i.getSighash(i.functions[signature]),
   }));
 }
+
+const networkOverrides: { [name: string]: Overrides } = {
+  "gnosis-mainnet": {
+    // gasLimit: 1e7,
+    maxPriorityFeePerGas: 5e9,
+    maxFeePerGas: 25e9,
+    // gasPrice: 4e9,
+  },
+  "polygon-mainnet": {
+    maxPriorityFeePerGas: 50e9,
+    maxFeePerGas: 150e9,
+    // gasPrice: 150e9,
+  },
+  tenderly: {
+    gasLimit: 1e7,
+  },
+};
+
 export const getOverrides = (env: Partial<ITestEnv>) =>
-  isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
+  // isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
+  networkOverrides[env.network!.name] ?? {};
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));

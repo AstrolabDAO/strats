@@ -83,14 +83,15 @@ export const deployStrat = async (
   // exclude implementation specific libraries from agentLibs (eg. oracle libs)
   // as these are specific to the strategy implementation
   const stratLibs = Object.assign({}, libraries);
-  // linking not required on the strategy itself for: AsMaths, AsAccounting (used in agent)
-  delete stratLibs.AsMaths;
-  delete stratLibs.AsAccounting;
+
+  delete stratLibs.AsMaths; // not used statically by Agent/Strat
 
   const agentLibs = Object.assign({}, stratLibs);
   for (const lib of Object.keys(agentLibs)) {
     if (isOracleLib(lib)) delete agentLibs[lib];
   }
+
+  // delete stratLibs.AsAccounting; // not used statically by Strat
 
   const units: { [name: string]: IDeploymentUnit } = {
     Swapper: {
@@ -361,7 +362,7 @@ export async function setupStrat(
     console.log(`Skipping init() as ${name} already initialized`);
   } else {
     const initSignature = getInitSignature(contract);
-    await proxy[initSignature](...initParams, getOverrides(env));
+    await (proxy[initSignature](...initParams, getOverrides(env))).then((tx: TransactionResponse) => tx.wait());
   }
 
   const actualInputs: string[] = //inputs.map((input) => input.address);
@@ -836,7 +837,7 @@ export async function testFlow(flow: IFlow) {
   console.log(
     `Running flow ${fn.name}(${params.join(
       ", "
-    )}, elapsedSec (before): ${elapsedSec}, revertState (after): ${revertState})`
+    )}, elapsedSec (before): ${elapsedSec ?? 0}, revertState (after): ${revertState ?? 0})`
   );
   let snapshotId = 0;
 

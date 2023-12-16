@@ -62,7 +62,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
      * @dev Initializes the strategy with the specified parameters.
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Pyth specific parameters
-     * @param _stargateParams Hop specific parameters
+     * @param _stargateParams Stargate specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
@@ -299,7 +299,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Returns the available HOP rewards
+     * @notice Returns the available rewards
      * @return amounts Array of rewards available for each reward token
      */
     function rewardsAvailable()

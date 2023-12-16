@@ -373,7 +373,7 @@ export default merge(addresses, {
         irStrategy: '0x03733F4E008d36f2e37F0080fF1c8DF756622E6F',
         stataToken: '0x37868a45c6741616F9E5a189dC0481AD70056B6a',
       },
-      USDC: {
+      USDCe: {
         aToken: '0x625E7708f30cA75bfd92586e17077590C60eb4cD',
         sToken: '0x307ffe186F84a3bc2613D1eA417A5737D69A7007',
         vToken: '0xFCCf3cAbbe80101232d343252614b6A3eE81C989',
