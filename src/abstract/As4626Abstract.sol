@@ -74,7 +74,7 @@ abstract contract As4626Abstract is
     uint256 public minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
     uint16 internal maxSlippageBps = 100; // Strategy default internal ops slippage 1%
 
-    IERC20Metadata internal asset; // ERC20 token used as the base denomination
+    IERC20Metadata public asset; // ERC20 token used as the base denomination
     uint8 internal assetDecimals; // ERC20 token decimals
     uint256 internal constant weiPerShare = 1e8; // weis in a share (base unit)
     uint256 internal weiPerAsset; // weis in an asset (underlying unit)

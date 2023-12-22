@@ -3,7 +3,8 @@ pragma solidity ^0.8.17;
 
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
-import "./interfaces/IVenus.sol";
+import "./interfaces/IAgave.sol";
+import "../balancer/interfaces/v2/IBalancer.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -11,80 +12,112 @@ import "./interfaces/IVenus.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title VenusMultiStake Strategy - Liquidity providing on Venus
+ * @title AgaveMultiStake Strategy - Liquidity providing on Agave
  * @author Astrolab DAO
- * @notice Liquidity providing strategy for Venus (https://venus.io/)
+ * @notice Liquidity providing strategy for Agave V3 (https://aave.com/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract VenusMultiStake is StrategyV5Chainlink {
+contract AgaveMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IVToken[8] internal vTokens; // LP token/pool
-    uint8[8] internal vTokenDecimals; // Decimals of the LP tokens
-    IUnitroller internal unitroller;
+    IERC20Metadata[8] internal aTokens; // LP token of the pool
+    IPoolAddressesProvider internal poolProvider;
+    IBalancerVault internal balancerVault;
+    bytes32 internal rewardPoolId;
 
     constructor() StrategyV5Chainlink() {}
 
     // Struct containing the strategy init parameters
     struct Params {
-        address[] vTokens;
-        address unitroller; // rewards controller
+        address[] aTokens;
+        address poolProvider;
+        address balancerVault;
+        bytes32 rewardPoolId;
     }
 
     /**
      * @notice Set the strategy specific parameters
      * @param _params Strategy specific parameters
      */
-    function setParams(Params calldata _params) public onlyAdmin {
-        unitroller = IUnitroller(_params.unitroller);
-        for (uint8 i = 0; i < _params.vTokens.length; i++) {
-            vTokens[i] = IVToken(_params.vTokens[i]);
-            vTokenDecimals[i] = vTokens[i].decimals();
-        }
+    function setParams(
+        Params calldata _params
+    ) public onlyAdmin {
+        poolProvider = IPoolAddressesProvider(_params.poolProvider);
+        for (uint8 i = 0; i < _params.aTokens.length; i++)
+            aTokens[i] = IERC20Metadata(_params.aTokens[i]);
         _setAllowances(MAX_UINT256);
     }
 
     /**
-     * @dev Initializes the strategy with the specified parameters.
+     * @dev Initializes the strategy with the specified parameters
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
-     * @param _venusParams Venus specific parameters
+     * @param _aaveParams Agave specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
         ChainlinkParams calldata _chainlinkParams,
-        Params calldata _venusParams
+        Params calldata _aaveParams
     ) external onlyAdmin {
-        for (uint8 i = 0; i < _venusParams.vTokens.length; i++) {
+        for (uint8 i = 0; i < _aaveParams.aTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
             inputDecimals[i] = inputs[i].decimals();
         }
-        rewardLength = uint8(_baseParams.rewardTokens.length);
-        inputLength = uint8(_baseParams.inputs.length);
-        setParams(_venusParams);
+        inputLength = uint8(_aaveParams.aTokens.length);
+        setParams(_aaveParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
+    }
+
+
+    /**
+     * @dev Internal function to get information about the reward LP
+     * @return lp The address of the reward LP
+     * @return tokens An array of token addresses in the LP
+     * @return balances An array of token balances in the LP
+     * @return rewardIndex The index of the AGVE token in the LP
+     */
+    function _getRewardLpInfo() internal view returns (address lp, address[] memory tokens, uint256[] memory balances, uint8 rewardIndex) {
+        (tokens,balances,) = balancerVault.getPoolTokens(rewardPoolId);
+        rewardIndex = tokens[0] == rewardTokens[0] ? 0 : 1; // AGVE index in LP
+        (lp,) = balancerVault.getPool(rewardPoolId);
     }
 
     /**
      * @notice Claim rewards from the reward pool and swap them for asset
      * @param _params Swaps calldata
      * @return assetsReceived Amount of assets received
-     * @dev cf.
-     *  - https://github.com/VenusProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-core-pool/comptroller/Diamond/facets/reward-facet.md#L6
-     *  - https://github.com/VenusProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-isolated-pools/rewards/rewards-distributor.md#L233
      */
     function _harvest(
         bytes[] memory _params
     ) internal override nonReentrant returns (uint256 assetsReceived) {
-        // only supports XVS rewards
-        unitroller.claimVenus(address(this)); // XVS for all markets+vai
+
+        (address lp, address[] memory tokens, , uint8 rewardIndex) = _getRewardLpInfo();
+
+        ExitPoolRequest memory request = ExitPoolRequest({
+            assets: tokens,
+            minAmountsOut: uint256(0).toArray(0),
+            userData: abi.encode(
+                WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                IERC20Metadata(lp).balanceOf(address(this)),
+                rewardIndex),
+            toInternalBalance: false
+        });
+
+        balancerVault.exitPool({
+            poolId: rewardPoolId,
+            sender: address(this),
+            recipient: payable(address(this)),
+            request: request
+        });
+
         assetsReceived = IERC20Metadata(rewardTokens[0]).balanceOf(
             address(this)
         );
+
         if (assetsReceived < 10) return 0;
         if (rewardTokens[0] != address(asset)) {
             (uint256 received, ) = swapper.decodeAndSwap({
@@ -115,11 +148,12 @@ contract VenusMultiStake is StrategyV5Chainlink {
     {
         uint256 toDeposit;
         uint256 spent;
+        IPool pool = IPool(poolProvider.getLendingPool());
 
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            // We deposit the whole asset balance.
+            // We deposit the whole asset balance
             if (asset != inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
                     _input: address(asset),
@@ -135,10 +169,14 @@ contract VenusMultiStake is StrategyV5Chainlink {
                 toDeposit = _amounts[i];
             }
 
-            uint256 iouBefore = vTokens[i].balanceOf(address(this));
-            vTokens[i].mint(toDeposit);
-
-            uint256 supplied = vTokens[i].balanceOf(address(this)) - iouBefore;
+            uint256 iouBefore = aTokens[i].balanceOf(address(this));
+            pool.deposit({
+                asset: address(inputs[i]),
+                amount: toDeposit,
+                onBehalfOf: address(this),
+                referralCode: 0
+            });
+            uint256 supplied = aTokens[i].balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
             if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
@@ -161,17 +199,18 @@ contract VenusMultiStake is StrategyV5Chainlink {
     ) internal override returns (uint256 assetsRecovered) {
         uint256 toLiquidate;
         uint256 recovered;
-        uint256 balance;
 
+        IPool pool = IPool(poolProvider.getLendingPool());
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            balance = vTokens[i].balanceOf(address(this));
+            toLiquidate = _inputToStake(_amounts[i], i);
 
-            // NB: we could use redeemUnderlying() here
-            toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
-
-            vTokens[i].redeem(toLiquidate);
+            pool.withdraw({
+                asset: address(inputs[i]),
+                amount: toLiquidate,
+                to: address(this)
+            });
 
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
@@ -200,8 +239,11 @@ contract VenusMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++)
-            inputs[i].approve(address(vTokens[i]), _amount);
+        IPool pool = IPool(poolProvider.getLendingPool());
+        for (uint8 i = 0; i < inputLength; i++) {
+            inputs[i].approve(address(pool), _amount);
+            aTokens[i].approve(address(pool), _amount);
+        }
     }
 
     /**
@@ -230,9 +272,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(
-            vTokens[_index].exchangeRateStored(),
-            inputDecimals[_index]); // eg. 1e8+1e(36-8)-1e18 = 1e18
+        return _amount; // 1:1 (rebasing, oracle value based)
     }
 
     /**
@@ -243,9 +283,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(
-            inputDecimals[_index],
-            vTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e8
+        return _amount; // 1:1 (rebasing, oracle value based)
     }
 
     /**
@@ -255,7 +293,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
     function _stakedInput(
         uint8 _index
     ) internal view override returns (uint256) {
-        return _stakeToInput(vTokens[_index].balanceOf(address(this)), _index);
+        return aTokens[_index].balanceOf(address(this));
     }
 
     /**
@@ -268,7 +306,11 @@ contract VenusMultiStake is StrategyV5Chainlink {
         override
         returns (uint256[] memory amounts)
     {
-        // only supports XVS rewards
-        return unitroller.venusAccrued(address(this)).toArray();
+        (address lp, , uint256[] memory balances, uint8 rewardIndex) = _getRewardLpInfo();
+        uint256 shareOfSupply = IERC20Metadata(lp).balanceOf(address(this)) * 1e18 / IERC20Metadata(lp).totalSupply(); // 1e18+1e18-1e18 = 1e18
+        uint256 rewardInPool = balances[rewardIndex]; // 1e18
+        uint256[] memory weights = IBalancerManagedPool(lp).getNormalizedWeights();
+        uint256 rewardValueOfPool = rewardInPool * (100 / weights[rewardIndex]); // total value of the pool in reward token 1e18
+        return ((rewardValueOfPool * shareOfSupply).subBp(200) / 1e18).toArray(); // 1e18+1e18-1e18 = 1e18
     }
 }

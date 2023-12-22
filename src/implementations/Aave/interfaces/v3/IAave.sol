@@ -5,11 +5,11 @@ import "./Types.sol";
 import "./IOracle.sol";
 
 /**
- * @title IPool
+ * @title IAtoken
  * @author Aave
  * @notice Defines the basic interface for an Aave Pool.
  **/
-interface IPool {
+interface IAtoken {
     /**
      * @dev Emitted on mintUnbacked()
      * @param reserve The address of the asset asset of the reserve

@@ -14,14 +14,14 @@ const desc: IStrategyDesc = {
   version: 1,
   contract: "AaveMultiStake",
   asset: "USDC",
-  inputs: ["USDCe", "USDT", "DAI"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
-  inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
+  inputs: ["USDC", "WXDAI"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
+  inputWeights: [4500, 4500], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
 };
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
   // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },

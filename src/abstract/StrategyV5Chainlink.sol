@@ -34,7 +34,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     }
 
     /**
-     * @dev Initializes the strategy with the specified parameters.
+     * @dev Initializes the strategy with the specified parameters
      * @param _params StrategyBaseParams struct containing strategy parameters
      * @param _ChainlinkParams Chainlink specific parameters
      */
@@ -98,5 +98,27 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      */
     function _inputToAsset(uint256 _amount, uint8 _index) internal view override returns (uint256) {
         return _amount.mulDiv(assetExchangeRate(_index), 10**inputDecimals[_index]);
+    }
+
+    /**
+     * @dev Converts the specified amount of USD (6 decimals) to the input token at the specified index
+     * @param _amount The amount of tokens to convert
+     * @param _index The index of the input token
+     * @return The converted amount of tokens
+     */
+    function _usdToInput(uint256 _amount, uint8 _index) internal view returns (uint256) {
+        return _amount.mulDiv(10**uint256(inputFeedDecimals[_index]) * inputDecimals[_index],
+            uint256(inputPriceFeeds[_index].latestAnswer()) * 1e6); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
+    }
+
+    /**
+     * @dev Converts the given amount of tokens to USD (6 decimals) using the specified price feed index
+     * @param _amount The amount of tokens to convert
+     * @param _index The index of the price feed to use for conversion
+     * @return The equivalent amount in USD
+     */
+    function _inputToUsd(uint256 _amount, uint8 _index) internal view returns (uint256) {
+        return _amount.mulDiv(uint256(inputPriceFeeds[_index].latestAnswer()) * 1e6,
+            10**uint256(inputFeedDecimals[_index]) * inputDecimals[_index]); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
 }

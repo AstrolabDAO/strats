@@ -116,7 +116,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     ) public onlyManager {
         for (uint8 i = 0; i < _rewardTokens.length; i++) {
             rewardTokens[i] = _rewardTokens[i];
-            rewardTokenIndex[_rewardTokens[i]] = i;
+            rewardTokenIndex[_rewardTokens[i]] = i+1;
         }
         rewardLength = uint8(_rewardTokens.length);
     }

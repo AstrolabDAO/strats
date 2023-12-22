@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
-import "./interfaces/IPool.sol";
-import "./interfaces/IOracle.sol";
+import "./interfaces/IVaultka.sol";
+import "./interfaces/ISingleStaking.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -12,59 +12,60 @@ import "./interfaces/IOracle.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title AaveMultiStake Strategy - Liquidity providing on Aave
+ * @title VaultkaMultiStake Strategy - Liquidity providing on Vaultka
  * @author Astrolab DAO
- * @notice Liquidity providing strategy for Aave V3 (https://aave.com/)
+ * @notice Liquidity providing strategy for Vaultka (https://vaultka.com/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract AaveMultiStake is StrategyV5Chainlink {
+contract VaultkaMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IERC20Metadata[8] internal aTokens; // LP token of the pool
-    IPoolAddressesProvider internal poolProvider;
+    IVaultka[8] internal vaults;
+    // Params
+    uint256 stratLeverage;
 
     constructor() StrategyV5Chainlink() {}
 
     // Struct containing the strategy init parameters
     struct Params {
-        address[] aTokens;
-        address poolProvider;
+        address[] vaults;
+        address[] stakings;
     }
 
     /**
      * @notice Set the strategy specific parameters
      * @param _params Strategy specific parameters
      */
-    function setParams(
-        Params calldata _params
-    ) public onlyAdmin {
-        poolProvider = IPoolAddressesProvider(_params.poolProvider);
-        for (uint8 i = 0; i < _params.aTokens.length; i++)
-            aTokens[i] = IERC20Metadata(_params.aTokens[i]);
+    function setParams(Params calldata _params) public onlyAdmin {
+        // we assume vaults.length == stakings.length
+        for (uint8 i = 0; i < _params.vaults.length; i++) {
+            vaults[i] = IVaultka(_params.vaults[i]);
+            stakings[i] = ISingleStaking(_params.stakings[i]);
+        }
         _setAllowances(MAX_UINT256);
     }
 
     /**
      * @dev Initializes the strategy with the specified parameters.
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
-     * @param _chainlinkParams Pyth specific parameters
-     * @param _aaveParams Aave specific parameters
+     * @param _chainlinkParams Chainlink specific parameters
+     * @param _vaultkaParams Vaultka specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
         ChainlinkParams calldata _chainlinkParams,
-        Params calldata _aaveParams
+        Params calldata _vaultkaParams
     ) external onlyAdmin {
-        for (uint8 i = 0; i < _aaveParams.aTokens.length; i++) {
+        for (uint8 i = 0; i < _vaultkaParams.vaults.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
             inputDecimals[i] = inputs[i].decimals();
         }
-        inputLength = uint8(_aaveParams.aTokens.length);
-        setParams(_aaveParams);
+        inputLength = uint8(_vaultkaParams.vaults.length);
+        setParams(_vaultkaParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
@@ -75,8 +76,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      */
     function _harvest(
         bytes[] memory _params
-    ) internal override nonReentrant returns (uint256 assetsReceived) {
-    }
+    ) internal override nonReentrant returns (uint256 assetsReceived) {}
 
     /**
      * @notice Invests the asset asset into the pool
@@ -96,7 +96,6 @@ contract AaveMultiStake is StrategyV5Chainlink {
     {
         uint256 toDeposit;
         uint256 spent;
-        IPool pool = IPool(poolProvider.getPool());
 
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
@@ -116,19 +115,35 @@ contract AaveMultiStake is StrategyV5Chainlink {
                 investedAmount += _amounts[i];
                 toDeposit = _amounts[i];
             }
+            uint256 expectedIou = _inputToStake(toDeposit, i).subBp(
+                maxSlippageBps
+            );
+            uint256 iouBefore = vaults[i].balanceOf(address(this));
 
-            uint256 iouBefore = aTokens[i].balanceOf(address(this));
-            pool.supply({
-                asset: address(inputs[i]),
-                amount: toDeposit,
-                onBehalfOf: address(this),
-                referralCode: 0
-            });
-            uint256 supplied = aTokens[i].balanceOf(address(this)) - iouBefore;
+            vaults[i].openPosition({
+                _amount: toDeposit,
+                _leverage: stratLeverage,
+                _data: "",
+                _swapSimple: false,
+                _inputAsset: inputs[i]
+            }); // Vodka/Sake
+            vaults[i].openPosition({
+                _token: inputs[i],
+                _amount: toDeposit,
+                _leverage: stratLeverage
+            }); // Alp
+            vaults[i].requestOpenPosition({
+                _amount: toDeposit,
+                _leverage: stratLeverage
+            }); // Rum
+
+            lpBalance = vaults[i].balanceOf(address(this));
+            stakings[i].deposit({pid: vaults[i].MCPID, _amount: lpBalance});
+
+            uint256 supplied = lpBalance - iouBefore;
 
             // unified slippage check (swap+add liquidity)
-            if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
-                revert AmountTooLow(supplied);
+            if (supplied < expectedIou) revert AmountTooLow(supplied);
 
             // TODO: return ious[]
             iouReceived += supplied;
@@ -148,17 +163,19 @@ contract AaveMultiStake is StrategyV5Chainlink {
         uint256 toLiquidate;
         uint256 recovered;
 
-        IPool pool = IPool(poolProvider.getPool());
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             toLiquidate = _inputToStake(_amounts[i], i);
 
-            pool.withdraw({
-                asset: address(inputs[i]),
-                amount: toLiquidate,
-                to: address(this)
-            });
+            stakings[i].withdraw({_pid: vaults[i].MCPID, _amount: toLiquidate});
+            //TODO: Implement withdraw here
+            // vaults[i].withdraw({
+            //     pool: address(pools[i]),
+            //     fundTokenAmount: toLiquidate,
+            //     withdrawalAsset: address(inputs[i]),
+            //     expectedAmountOut: _amounts[i].subBp(maxSlippageBps)
+            // });
 
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
@@ -187,10 +204,9 @@ contract AaveMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        IPool pool = IPool(poolProvider.getPool());
         for (uint8 i = 0; i < inputLength; i++) {
-            inputs[i].approve(address(pool), _amount);
-            aTokens[i].approve(address(pool), _amount);
+            inputs[i].approve(address(vaults[i]), _amount);
+            vaults[i].approve(address(stakings[i]), _amount);
         }
     }
 
@@ -220,7 +236,11 @@ contract AaveMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount; // 1:1 (rebasing, oracle value based)
+        return
+            // _usdToInput(
+            //     _amount.mulDiv(vaults[_index].tokenPrice(), 1e12),
+            //     _index
+            // );
     }
 
     /**
@@ -231,7 +251,11 @@ contract AaveMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount; // 1:1 (rebasing, oracle value based)
+        return
+            // _inputToUsd(_amount, _index).mulDiv(
+            //     1e12 * poolDecimals[_index],
+            //     pools[_index].tokenPrice()
+            // ); // eg. 1e6+1e12+1e18-1e18 = 1e18
     }
 
     /**
@@ -241,7 +265,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
     function _stakedInput(
         uint8 _index
     ) internal view override returns (uint256) {
-        return aTokens[_index].balanceOf(address(this));
+        return _stakeToInput(vaults[_index].balanceOf(address(this)), _index);
     }
 
     /**
@@ -253,6 +277,5 @@ contract AaveMultiStake is StrategyV5Chainlink {
         view
         override
         returns (uint256[] memory amounts)
-    {
-    }
+    {}
 }

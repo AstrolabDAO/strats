@@ -74,7 +74,7 @@ contract HopMultiStake is StrategyV5Chainlink {
     /**
      * @dev Initializes the strategy with the specified parameters.
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
-     * @param _chainlinkParams Pyth specific parameters
+     * @param _chainlinkParams Chainlink specific parameters
      * @param _hopParams Hop specific parameters
      */
     function init(
@@ -350,7 +350,8 @@ contract HopMultiStake is StrategyV5Chainlink {
             if (address(pool) == address(0)) break; // no overflow (static array)
             address rewardToken = tokenByRewardPool[address(rewardPools[i][0])];
             uint8 index = rewardTokenIndex[rewardToken];
-            amounts[index] += pool.earned(address(this));
+            if (index == 0) continue;
+            amounts[index-1] += pool.earned(address(this));
             // }
         }
     }
