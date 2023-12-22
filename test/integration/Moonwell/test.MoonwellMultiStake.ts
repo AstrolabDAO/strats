@@ -2,20 +2,20 @@ import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
-import addresses from "../../../src/implementations/Aave/addresses";
+import addresses from "../../../src/implementations/Moonwell/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
 import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const desc: IStrategyDesc = {
-  name: `Astrolab Aave MetaStable`,
-  symbol: `as.AMS`,
+  name: `Astrolab Moonwell MetaStable`,
+  symbol: `as.MMS`,
   version: 1,
-  contract: "AaveMultiStake",
+  contract: "MoonwellMultiStake",
   asset: "USDC",
-  inputs: ["USDC", "WXDAI"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
-  inputWeights: [4500, 4500], // 90% allocation, 10% cash
+  inputs: ["USDC", "DAI", "USDbC"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
+  inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
 };
 
@@ -35,7 +35,7 @@ const testFlows: Partial<IFlow>[] = [
 describe(`test.${desc.name}`, () => {
 
   const addr = addresses[network.config.chainId!];
-  const protocolAddr = addr.Aave;
+  const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Moonwell[i]);
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
@@ -58,15 +58,15 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        rewardTokens: [],
+        rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // WELL/GLMR/MOVR/MFAM
       }, {
         // chainlink oracle params
         assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params
-        poolProvider: protocolAddr.poolProvider,
-        aTokens: desc.inputs.map(i => protocolAddr[i].aToken),
+        mTokens: desc.inputs.map(input => addr.Moonwell[`m${input}`]),
+        unitroller: protocolAddr.map(i => i.Comptroller),
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy

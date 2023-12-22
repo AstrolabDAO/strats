@@ -25,7 +25,8 @@ export default merge(addresses, {
         sowstETH: "0x26AaB17f27CD1c8d06a0Ad8E4a1Af8B1032171d5",
         soMAI: "0xE7De932d50EfC9ea0a7a409Fc015B4f71443528e",
         Multisig: "0x784B82a27029C9E114b521abcC39D02B3D1DEAf2",
-        SONNEUSDC_LP: "0xc899C4D73ED8dF2eAd1543AB915888B0Bf7d57a2" // velodrome LP
+        SONNEUSDC_LP: "0xc899C4D73ED8dF2eAd1543AB915888B0Bf7d57a2", // velodrome LP
+        rewardTokens: [addresses[10].tokens.SONNE, addresses[10].tokens.OP],
     }
   },
   // base
@@ -38,7 +39,8 @@ export default merge(addresses, {
         sobWETH: "0x5F5c479fe590cD4442A05aE4a941dd991A633B8E",
         sobDAI: "0xb864BA2aab1f53BC3af7AE49a318202dD3fd54C2",
         sobUSDbC: "0x225886C9beb5eeE254F79d58bbD80cf9F200D4d0",
-        sobUSDC: "0xfd68F92B45b633bbe0f475294C1A86aecD62985A"
+        sobUSDC: "0xfd68F92B45b633bbe0f475294C1A86aecD62985A",
+        rewardTokens: [addresses[8453].tokens.SONNE],
     }
   },
 } as { [chainId: number]: { [id: string]: any } });

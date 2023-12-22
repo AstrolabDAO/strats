@@ -1,7 +1,7 @@
 import addresses from "../../addresses";
 import merge from "lodash/merge";
 
-// cf. https://github.com/hop-protocol/hop/blob/develop/packages/core/src/addresses/mainnet.ts
+// cf. https://docs.moonwell.fi/moonwell/protocol-information/contracts
 export default merge(addresses, {
   // base
   8453: {
@@ -18,6 +18,7 @@ export default merge(addresses, {
       mrETH: "​0xcb1dacd30638ae38f2b94ea64f066045b7d45f44​",
       WETHRouter: "​0x31CCFB038771d9bF486Ef7c7f3A9F91bE72124C4​",
       ChainlinkOracle: "​0xEC942bE8A8114bFD0396A5052c36027f2cA6a9d0​",
+      rewardTokens: [addresses[8453].tokens.WELL],
     }
   },
   // moonbeam
@@ -39,7 +40,8 @@ export default merge(addresses, {
       mxcUSDC: "​0x22b1a40e3178fe7c7109efcc247c5bb2b34abe32​",
       mwhETH: "​0xb6c94b3A378537300387B57ab1cC0d2083f9AeaC​",
       mwhWBTC: "​0xaaa20c5a584a9fECdFEDD71E46DA7858B774A9ce​",
-      stkWELL: "​0x8568A675384d761f36eC269D695d6Ce4423cfaB1​"
+      stkWELL: "​0x8568A675384d761f36eC269D695d6Ce4423cfaB1​",
+      rewardTokens: [addresses[1284].tokens.WELL, addresses[1284].tokens.GLMR],
     }
   },
   // moonriver
@@ -61,6 +63,7 @@ export default merge(addresses, {
       mFRAX: "​0x93Ef8B7c6171BaB1C0A51092B2c9da8dc2ba0e9D​",
       mWBTC: "​0x6E745367F4Ad2b3da7339aee65dC85d416614D90​",
       stkWELL: "​0xCd76e63f3AbFA864c53b4B98F57c1aA6539FDa3a​", // staked MFAM
+      rewardTokens: [addresses[1285].tokens.MFAM, addresses[1285].tokens.MOVR],
     }
   }
 } as { [chainId: number]: { [id: string]: any } });

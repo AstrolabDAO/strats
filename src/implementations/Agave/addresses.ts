@@ -42,6 +42,7 @@ export default merge(addresses, {
         // AGVEsDAI_LP: "0x4b1a99467a284cc690e3237bc69105956816f762",
         BalancerVault: "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
         RewardPoolId: "0x388cae2f7d3704c937313d990298ba67d70a3709000200000000000000000026", // GNO/AGVE
+        rewardTokens: [addresses[100].tokens.GNO, addresses[100].tokens.AGVE],
     }
   },
 } as { [chainId: number]: { [id: string]: any } });

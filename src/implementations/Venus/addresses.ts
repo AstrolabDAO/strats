@@ -50,7 +50,8 @@ export default merge(addresses, {
         vUST: "0x78366446547D062f45b4C0f320cDaa6d710D87bb",
         vWBETH: "0x6CFdEc747f37DAf3b87a35a1D9c8AD3063A1A8A0",
         vXRP: "0xB248a295732e0225acd3337607cc01068e3b9c10",
-        vXVS: "0x151B1e2635A717bcDc836ECd6FbB62B674FE3E1D"
+        vXVS: "0x151B1e2635A717bcDc836ECd6FbB62B674FE3E1D",
+        rewardTokens: [addresses[56].tokens.XVS],
       }
     }
   },

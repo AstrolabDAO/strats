@@ -61,6 +61,7 @@ export default merge(addresses, {
         TeamVesting1: "0x05bc2c8310D18dB816264E95383b1C50FC32d297",
         TeamVesting2: "0x2dd5b039a7c54132b8733573a28cd9d1a5fa5328",
         TeamVesting3: "0x71c85f343715c406c58c1e8099f13890f2925c85",
+        rewardTokens: [addresses[42161].tokens.LODE, addresses[42161].tokens.ARB],
     }
   },
 
