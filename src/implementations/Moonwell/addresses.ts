@@ -45,25 +45,25 @@ export default merge(addresses, {
     }
   },
   // moonriver
-  1285: {
-    Moonwell: {
-      Comptroller: "​0x0b7a0EAA884849c6Af7a129e899536dDDcA4905E​",
-      ChainlinkOracle: "​0x892bE716Dcf0A6199677F355f45ba8CC123BAF60​",
-      Maximillion: "​0x1650C0AD9483158f9e240fd58d0E173807A80CcC​",
-      EcosystemReserve: "​0xbA17581Bb6d89954B42fB84294e476e97588908B​",
-      EcosystemReserveController: "​0xD94F826C17e870a6327B7b1de6B43C5a9Ef21044​",
-      GovernorAlpha: "​0x2BE2e230e89c59c8E20E633C524AD2De246e7370​",
-      breakGlassGuardian: "​0x5DeD9d1025a158554Ab19540Ae83182d890Bb8DB​",
-      Timelock: "​0x04e6322D196E0E4cCBb2610dd8B8f2871E160bd7​",
-      mMOVR: "​0x6a1A771C7826596652daDC9145fEAaE62b1cd07f​",
-      mxcKSM: "​0xa0d116513bd0b8f3f14e6ea41556c6ec34688e0f​",
-      mETH: "​0x6503D905338e2ebB550c9eC39Ced525b612E77aE​",
-      mUSDC: "​0xd0670AEe3698F66e2D4dAf071EB9c690d978BFA8​",
-      mUSDT: "​0x36918B66F9A3eC7a59d0007D8458DB17bDffBF21​",
-      mFRAX: "​0x93Ef8B7c6171BaB1C0A51092B2c9da8dc2ba0e9D​",
-      mWBTC: "​0x6E745367F4Ad2b3da7339aee65dC85d416614D90​",
-      stkWELL: "​0xCd76e63f3AbFA864c53b4B98F57c1aA6539FDa3a​", // staked MFAM
-      rewardTokens: [addresses[1285].tokens.MFAM, addresses[1285].tokens.MOVR],
-    }
-  }
+  // 1285: {
+  //   Moonwell: {
+  //     Comptroller: "​0x0b7a0EAA884849c6Af7a129e899536dDDcA4905E​",
+  //     ChainlinkOracle: "​0x892bE716Dcf0A6199677F355f45ba8CC123BAF60​",
+  //     Maximillion: "​0x1650C0AD9483158f9e240fd58d0E173807A80CcC​",
+  //     EcosystemReserve: "​0xbA17581Bb6d89954B42fB84294e476e97588908B​",
+  //     EcosystemReserveController: "​0xD94F826C17e870a6327B7b1de6B43C5a9Ef21044​",
+  //     GovernorAlpha: "​0x2BE2e230e89c59c8E20E633C524AD2De246e7370​",
+  //     breakGlassGuardian: "​0x5DeD9d1025a158554Ab19540Ae83182d890Bb8DB​",
+  //     Timelock: "​0x04e6322D196E0E4cCBb2610dd8B8f2871E160bd7​",
+  //     mMOVR: "​0x6a1A771C7826596652daDC9145fEAaE62b1cd07f​",
+  //     mxcKSM: "​0xa0d116513bd0b8f3f14e6ea41556c6ec34688e0f​",
+  //     mETH: "​0x6503D905338e2ebB550c9eC39Ced525b612E77aE​",
+  //     mUSDC: "​0xd0670AEe3698F66e2D4dAf071EB9c690d978BFA8​",
+  //     mUSDT: "​0x36918B66F9A3eC7a59d0007D8458DB17bDffBF21​",
+  //     mFRAX: "​0x93Ef8B7c6171BaB1C0A51092B2c9da8dc2ba0e9D​",
+  //     mWBTC: "​0x6E745367F4Ad2b3da7339aee65dC85d416614D90​",
+  //     stkWELL: "​0xCd76e63f3AbFA864c53b4B98F57c1aA6539FDa3a​", // staked MFAM
+  //     rewardTokens: [addresses[1285].tokens.MFAM, addresses[1285].tokens.MOVR],
+  //   }
+  // }
 } as { [chainId: number]: { [id: string]: any } });

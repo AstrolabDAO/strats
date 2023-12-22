@@ -422,6 +422,7 @@ export const addresses = {
       axlUSDT: "0xDFd74aF792bC6D45D1803F425CE62Dd16f8Ae038",
       whUSDC: "0x931715FEE2d06333043d11F658C8CE934aC61D0c",
 
+      WELL: "0x511aB53F793683763E5a8829738301368a2411E3",
       FXS: "0x2CC0A9D8047A5011dEfe85328a6f26968C8aaA1C",
       SYN: "0xF44938b0125A6662f9536281aD2CD6c499F22004",
       AXL: "0x467719aD09025FcC6cF6F8311755809d45a5E5f3",
@@ -489,11 +490,17 @@ export const addresses = {
       Pyth: "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a",
     },
     libs: {
-      AsAccounting: "",
+      AsMaths: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
+      AsArrays: "",
+      AsAccounting: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
+      PythUtils: "",
+      ChainlinkUtils: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      RedStoneUtils: "",
     },
     astrolab: {
-      Swapper: "",
-      StrategyV5Agent: "",
+      Swapper: "0x1761ff905292548ff2254620166eabd988e48718",
+      StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
+      "Astrolab Moonwell MetaStable": "0xbe15f86da4800c03fca8f457cff30d6ef9fb7bff",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -513,7 +520,7 @@ export const addresses = {
       SGETH: "0x224D8Fd7aB6AD4c6eb4611Ce56EF35Dec2277F03",
       STG: "0xE3B53AF74a4BF62Ae5511055290838050bf764Df",
       KNC: "0x28fe69Ff6864C1C218878BDCA01482D36B9D57b1",
-      WELL: "0x1c9bFfEe5d6bA4FfB0393E3fA9c2f5BdCfDd6A94",
+      WELL: "0xff8adec2221f9f4d8dfbafa6b9a297d17603493d",
       HOP: "0xc5102fe9359fd9a28f877a67e36b0f050d81a3cc",
       AURA: "0x1509706a6c66CA549ff0cB464de88231DDBe213B",
       SONNE: "0x22a2488fE295047Ba13BD8cCCdBC8361DBD8cf7c",

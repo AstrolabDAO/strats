@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
 import "./interfaces/IAgave.sol";
-import "../balancer/interfaces/v2/IBalancer.sol";
+import "../Balancer/interfaces/v2/IBalancer.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
