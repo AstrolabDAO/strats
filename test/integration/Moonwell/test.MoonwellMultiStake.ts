@@ -14,7 +14,7 @@ const desc: IStrategyDesc = {
   version: 1,
   contract: "MoonwellMultiStake",
   asset: "USDC",
-  inputs: ["USDC", "DAI", "USDbC"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
+inputs: ["USDC", "DAI", /*"USDbC"*/], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
   inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
 };

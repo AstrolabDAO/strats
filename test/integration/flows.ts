@@ -356,7 +356,6 @@ export async function setupStrat(
   const proxy = new Contract(strat.address, loadAbi(contract)!, env.deployer);
 
   await setMinLiquidity(env, minLiquidityUsd);
-  
   // NB: can use await proxy.initialized?.() instead
   if ((await proxy.agent()) != addressZero) {
     console.log(`Skipping init() as ${name} already initialized`);

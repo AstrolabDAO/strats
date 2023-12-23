@@ -500,7 +500,7 @@ export const addresses = {
     astrolab: {
       Swapper: "0x1761ff905292548ff2254620166eabd988e48718",
       StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
-      "Astrolab Moonwell MetaStable": "0xbe15f86da4800c03fca8f457cff30d6ef9fb7bff",
+      "Astrolab Moonwell MetaStable": "0x73f65faefb2be3b7d868300fd5e3a9054e1769a6",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
