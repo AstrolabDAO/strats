@@ -35,7 +35,8 @@ const testFlows: Partial<IFlow>[] = [
 describe(`test.${desc.name}`, () => {
 
   const addr = addresses[network.config.chainId!];
-  const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Sonne[i]);
+  const protocolAddr = addr.Sonne;
+  // const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Sonne[i]);
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
@@ -58,7 +59,7 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // LODE/ARB
+        rewardTokens: protocolAddr.rewardTokens, // SONNE/OP
       }, {
         // chainlink oracle params
         assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
@@ -66,7 +67,7 @@ describe(`test.${desc.name}`, () => {
       }, {
         // strategy specific params
         cTokens: desc.inputs.map(inputs => addr.Sonne[`so${inputs}`]),
-        unitroller: protocolAddr.map(i => i.Comptroller),
+        unitroller: protocolAddr.Comptroller,
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy

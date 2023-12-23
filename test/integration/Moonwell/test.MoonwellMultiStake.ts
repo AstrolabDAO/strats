@@ -61,7 +61,7 @@ describe(`test.${desc.name}`, () => {
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         rewardTokens: protocolAddr.rewardTokens, // WELL/GLMR/MOVR/MFAM
       }, {
-        // chainlink oracle params
+        // chainlink oracle params  
         assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {

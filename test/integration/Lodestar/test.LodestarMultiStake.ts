@@ -21,7 +21,7 @@ const desc: IStrategyDesc = {
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
   // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
@@ -35,7 +35,8 @@ const testFlows: Partial<IFlow>[] = [
 describe(`test.${desc.name}`, () => {
 
   const addr = addresses[network.config.chainId!];
-  const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Lodestar[i]);
+  // const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Lodestar[i]);
+  const protocolAddr = addr.Lodestar;
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
@@ -58,7 +59,7 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // LODE/ARB
+        rewardTokens: protocolAddr.rewardTokens, // LODE/ARB
       }, {
         // chainlink oracle params
         assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
@@ -66,13 +67,14 @@ describe(`test.${desc.name}`, () => {
       }, {
         // strategy specific params
         lTokens: desc.inputs.map(inputs => addr.Lodestar[`l${inputs}`]),
-        unitroller: protocolAddr.map(i => i.Comptroller),
+        unitroller: protocolAddr.Comptroller,
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
       env, // deployment environment
       false, // force verification (after deployment)
     );
+
     assert(ethers.utils.isAddress(env.deployment.strat.address), "Strat not deployed");
     // ensure deployer account is funded if testing
     await ensureFunding(env);

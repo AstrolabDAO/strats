@@ -35,8 +35,8 @@ const testFlows: Partial<IFlow>[] = [
 describe(`test.${desc.name}`, () => {
 
   const addr = addresses[network.config.chainId!];
-  // const protocolAddr = addr.Agave;
-  const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Agave[i]);
+  const protocolAddr = addr.Agave;
+  // const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Agave[i]);
 
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
@@ -60,17 +60,17 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // WELL/GLMR/MOVR/MFAM
+        rewardTokens: protocolAddr.rewardTokens, // GNO/AGVE
       }, {
         // chainlink oracle params
         assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params
-        poolProvider: protocolAddr.map(i => i.LendingPoolAddressesProvider),
+        poolProvider: protocolAddr.LendingPoolAddressesProvider,
         aTokens: desc.inputs.map(input => addr.Agave[`ag${input}`]),
-        balancerVault: protocolAddr.map(i => i.BalancerVault),
-        rewardPoolId: addr.Agave.RewardPoolId,
+        balancerVault: protocolAddr.BalancerVault,
+        rewardPoolId: protocolAddr.RewardPoolId,
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy

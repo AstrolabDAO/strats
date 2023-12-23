@@ -89,7 +89,7 @@ const networkOverrides: { [name: string]: Overrides } = {
     // gasPrice: 150e9,
   },
   tenderly: {
-    gasLimit: 1e7,
+    gasLimit: 1e8,
   },
 };
 
