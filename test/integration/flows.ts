@@ -361,6 +361,7 @@ export async function setupStrat(
     console.log(`Skipping init() as ${name} already initialized`);
   } else {
     const initSignature = getInitSignature(contract);
+    console.log("InitParams : ", initParams)
     await (proxy[initSignature](...initParams, getOverrides(env))).then((tx: TransactionResponse) => tx.wait());
   }
 
