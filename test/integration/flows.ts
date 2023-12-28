@@ -523,7 +523,7 @@ export async function invest(env: IStrategyDeploymentEnv, _amount = 0) {
   await logState(env, "Before Invest");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
+    // .safe("invest(uint256[8],bytes[])", params, getOverrides(env)) // Pass the invest only if the static call passed to avoid losing gas
     .invest(...params, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 2_000);

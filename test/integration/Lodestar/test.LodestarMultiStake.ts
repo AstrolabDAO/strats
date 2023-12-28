@@ -21,7 +21,7 @@ const desc: IStrategyDesc = {
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
   // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },

@@ -153,6 +153,7 @@ export async function logState(
       totalClaimableAssetFees,
       available,
       // totalDepositRequest,
+
       totalRedemptionRequest,
       totalClaimableRedemption,
       // totalAsset, // only available on strat.req() struct
@@ -171,9 +172,12 @@ export async function logState(
       strat.multi.totalAccountedAssets(),
       strat.multi.claimableAssetFees(),
       strat.multi.available(),
+
       // strat.multicallContract.totalDepositRequest(),
+
       strat.multi.totalRedemptionRequest(),
       strat.multi.totalClaimableRedemption(),
+      
       // strat.multicallContract.totalAsset(), // only available on strat.req() struct
       // strat.multicallContract.totalClaimableAsset(), // only available on strat.req() struct
       strat.multi.rewardsAvailable(),
