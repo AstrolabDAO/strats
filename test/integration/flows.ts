@@ -569,7 +569,8 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
-  const amounts = Object.assign([], await strat.previewLiquidate(amount));
+  // const amounts = Object.assign([], await strat.previewLiquidate(amount));
+  const amounts = Object.assign([], await strat.previewLiquidate(5000000));
   const swapAmounts = new Array<BigNumber>(amounts.length).fill(
     BigNumber.from(0)
   );

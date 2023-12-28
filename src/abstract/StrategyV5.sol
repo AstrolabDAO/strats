@@ -126,10 +126,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
 
         // liquidate protocol positions
         uint256 liquidated = _liquidate(_amounts, _params);
-        uint256 claimable = availableClaimable();
 
         req.totalClaimableRedemption += pendingRedemption;
-        liquidityAvailable = claimable - req.totalClaimableRedemption.mulDiv(weiPerAsset, last.sharePrice) - minLiquidity;
+        liquidityAvailable = availableClaimable().subMax0(req.totalClaimableRedemption.mulDiv(weiPerAsset, last.sharePrice)/* + minLiquidity*/);
 
         // check if we have enough cash to repay redemption requests
         if ((liquidityAvailable < _minLiquidity) && !_panic)

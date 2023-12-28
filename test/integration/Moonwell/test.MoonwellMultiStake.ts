@@ -14,7 +14,7 @@ const desc: IStrategyDesc = {
   version: 1,
   contract: [1284, 1285].includes(network.config.chainId!) ? "MoonwellLegacyMultiStake" : "MoonwellMultiStake",
   asset: "USDC",
-  inputs: ["USDC", "FRAX", "xcUSDT"], // xcUSDC
+  inputs: ["USDC", "FRAX", "xcUSDT"], // xcUSDC "xcUSDT"
   // inputs: ["USDC", "DAI", "USDbC"],
   inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
@@ -22,12 +22,12 @@ const desc: IStrategyDesc = {
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [11], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [20], assert: (n: BigNumber) => n.gt(0) },
   { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [9], assert: (n: BigNumber) => n.gt(0) },
-  { fn: requestWithdraw, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [17], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
