@@ -140,35 +140,6 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     }
 
     /**
-     * @notice Swaps an input token to the asset token and then safely deposits it
-     * @param _input The address of the input token to be swapped
-     * @param _amount The amount of the input token to swap
-     * @param _minShareAmount The minimum amount of shares expected from the deposit, used for slippage control
-     * @param _receiver The address where the shares from the deposit should be sent
-     * @param _params Additional swap parameters
-     * @return shares The number of shares received from the deposit
-     */
-    function swapSafeDeposit(
-        address _input,
-        uint256 _amount,
-        uint256 _minShareAmount,
-        address _receiver,
-        bytes memory _params
-    ) external returns (uint256 shares) {
-        uint256 assetAmount = _amount;
-        if (_input != address(asset)) {
-            // Swap logic
-            (assetAmount, ) = swapper.decodeAndSwap(
-                _input,
-                address(asset),
-                _amount,
-                _params
-            );
-        }
-        return safeDeposit(assetAmount, _minShareAmount, _receiver);
-    }
-
-    /**
      * @dev Requests a rescue for a specific token
      * Only the admin can call this function
      * @param _token The address of the token to be rescued (use address(1) for native/eth)

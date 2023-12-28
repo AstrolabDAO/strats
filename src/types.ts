@@ -29,16 +29,20 @@ export class SafeContract extends Contract {
     abi: ReadonlyArray<any> | any[] = erc20Abi,
     signer?: SignerWithAddress
   ): Promise<SafeContract> {
-    signer ||= (await getDeployer()) as SignerWithAddress;
-    const c = new SafeContract(address, abi, signer);
-    c.multi = new MulticallContract(address, abi as any[]);
-    if ("symbol" in c) {
-      // c is a token
-      c.sym = await c.symbol?.();
-      c.scale = await c.decimals?.();
-      c.weiPerUnit = 10 ** c.scale ?? 0;
+    try {
+      signer ||= (await getDeployer()) as SignerWithAddress;
+      const c = new SafeContract(address, abi, signer);
+      c.multi = new MulticallContract(address, abi as any[]);
+      if ("symbol" in c) {
+        // c is a token
+        c.sym = await c.symbol?.();
+        c.scale = await c.decimals?.();
+        c.weiPerUnit = 10 ** c.scale ?? 0;
+      }
+      return c;
+    } catch (error) {
+      throw new Error(`Failed to build contract ${address}: ${error}`);
     }
-    return c;
   }
 
   public safe = async (

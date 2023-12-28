@@ -6,25 +6,26 @@ export default merge(addresses, {
   // base
   8453: {
     Moonwell: {
-      Comptroller: "​0xfBb21d0380beE3312B33c4353c8936a0F13EF26C​",
+      Comptroller: "0xfBb21d0380beE3312B33c4353c8936a0F13EF26C",
       TemporalGovernor: "​0x8b621804a7637b781e2BbD58e256a591F2dF7d51​",
       MultiRewardDistributor: "​0xe9005b078701e2A0948D2EaC43010D35870Ad9d2​",
       mDAI: "0x73b06D8d18De422E269645eaCe15400DE7462417",
       mUSDC: "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22",
-      mUSDbC: "​0x703843C3379b52F9FF486c9f5892218d2a065cC8​",
+      mUSDbC: "0x703843C3379b52F9FF486c9f5892218d2a065cC8",
       mWETH: "​0x628ff693426583D9a7FB391E54366292F509D457​",
       mcbETH: "​0x3bf93770f2d4a794c3d9EBEfBAeBAE2a8f09A5E5​",
       mwstETH: "​0x627Fe393Bc6EdDA28e99AE648fD6fF362514304b​",
       mrETH: "​0xcb1dacd30638ae38f2b94ea64f066045b7d45f44​",
       WETHRouter: "​0x31CCFB038771d9bF486Ef7c7f3A9F91bE72124C4​",
       ChainlinkOracle: "​0xEC942bE8A8114bFD0396A5052c36027f2cA6a9d0​",
+
       rewardTokens: [addresses[8453].tokens.WELL],
     }
   },
   // moonbeam
   1284: {
     Moonwell: {
-      Comptroller: "​0x8E00D5e02E65A19337Cdba98bbA9F84d4186a180​",
+      Comptroller: "0x8E00D5e02E65A19337Cdba98bbA9F84d4186a180",
       ChainlinkOracle: "​0xED301cd3EB27217BDB05C4E9B820a8A3c8B665f9​",
       Maximillion: "​0xe5Ef9310cC7E3437bAD83466675f24FD62A380c3​",
       EcosystemReserve: "​0x7793E08Eb4525309C46C9BA394cE33361A167ba4​",
@@ -35,13 +36,15 @@ export default merge(addresses, {
       mGLMR: "​0x091608f4e4a15335145be0A279483C0f8E4c7955​",
       mxcDOT: "​0xD22Da948c0aB3A27f5570b604f3ADef5F68211C3​",
       mxcUSDT: "​0x42A96C0681B74838eC525AdbD13c37f66388f289​",
-      mFRAX: "​0x1C55649f73CDA2f72CEf3DD6C5CA3d49EFcF484C​",
-      mwhUSDC: "​0x744b1756e7651c6D57f5311767EAFE5E931D615b​",
+      mFRAX: "0x1C55649f73CDA2f72CEf3DD6C5CA3d49EFcF484C",
+      mUSDC: "0x744b1756e7651c6D57f5311767EAFE5E931D615b",
+      mwhUSDC: "0x744b1756e7651c6D57f5311767EAFE5E931D615b",
       mxcUSDC: "​0x22b1a40e3178fe7c7109efcc247c5bb2b34abe32​",
       mwhETH: "​0xb6c94b3A378537300387B57ab1cC0d2083f9AeaC​",
       mwhWBTC: "​0xaaa20c5a584a9fECdFEDD71E46DA7858B774A9ce​",
       stkWELL: "​0x8568A675384d761f36eC269D695d6Ce4423cfaB1​",
-      rewardTokens: [addresses[1284].tokens.WELL, addresses[1284].tokens.GLMR],
+
+      rewardTokens: [addresses[1284].tokens.WELL, addresses[1284].tokens.WGLMR],
     }
   },
   // moonriver
@@ -62,8 +65,8 @@ export default merge(addresses, {
   //     mUSDT: "​0x36918B66F9A3eC7a59d0007D8458DB17bDffBF21​",
   //     mFRAX: "​0x93Ef8B7c6171BaB1C0A51092B2c9da8dc2ba0e9D​",
   //     mWBTC: "​0x6E745367F4Ad2b3da7339aee65dC85d416614D90​",
-  //     stkWELL: "​0xCd76e63f3AbFA864c53b4B98F57c1aA6539FDa3a​", // staked MFAM
-  //     rewardTokens: [addresses[1285].tokens.MFAM, addresses[1285].tokens.MOVR],
+  //     stkWELL: "​0xCd76e63f3AbFA864c53b4B98F57c1aA6539FDa3a​", // staked WELL (MFAM)
+  //     rewardTokens: [addresses[1285].tokens.WELL, addresses[1285].tokens.MOVR], (WELL == MFAM)
   //   }
   // }
 } as { [chainId: number]: { [id: string]: any } });

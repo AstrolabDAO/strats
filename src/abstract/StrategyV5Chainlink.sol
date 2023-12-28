@@ -36,27 +36,27 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     /**
      * @dev Initializes the strategy with the specified parameters
      * @param _params StrategyBaseParams struct containing strategy parameters
-     * @param _ChainlinkParams Chainlink specific parameters
+     * @param _chainlinkParams Chainlink specific parameters
      */
     function _init(
         StrategyBaseParams calldata _params,
-        ChainlinkParams calldata _ChainlinkParams
+        ChainlinkParams calldata _chainlinkParams
     ) internal onlyAdmin {
-        updateChainlink(_ChainlinkParams);
+        updateChainlink(_chainlinkParams);
         StrategyV5._init(_params);
     }
 
     /**
      * @notice Updates the Chainlink oracle and the input Chainlink ids
-     * @param _ChainlinkParams Chainlink specific parameters
+     * @param _chainlinkParams Chainlink specific parameters
      */
-    function updateChainlink(ChainlinkParams calldata _ChainlinkParams) public onlyAdmin {
-        assetPriceFeed = IChainlinkAggregatorV3(_ChainlinkParams.assetPriceFeed);
+    function updateChainlink(ChainlinkParams calldata _chainlinkParams) public onlyAdmin {
+        assetPriceFeed = IChainlinkAggregatorV3(_chainlinkParams.assetPriceFeed);
         assetFeedDecimals = assetPriceFeed.decimals();
 
-        for (uint256 i = 0; i < _ChainlinkParams.inputPriceFeeds.length; i++) {
+        for (uint256 i = 0; i < _chainlinkParams.inputPriceFeeds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
-            inputPriceFeeds[i] = IChainlinkAggregatorV3(_ChainlinkParams.inputPriceFeeds[i]);
+            inputPriceFeeds[i] = IChainlinkAggregatorV3(_chainlinkParams.inputPriceFeeds[i]);
             inputFeedDecimals[i] = inputPriceFeeds[i].decimals();
         }
     }

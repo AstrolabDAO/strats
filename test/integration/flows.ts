@@ -574,6 +574,10 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
     BigNumber.from(0)
   );
 
+  // const balances = await env.multicallProvider!.all(
+  //   inputs.map((input) => input.multi.balanceOf(strat.address))
+  // );
+
   for (const i in inputs) {
     // const weight = env.deployment!.initParams[0].inputWeights[i];
     // const amountOut = amount.mul(weight).div(10_000); // using a 10_000 bp basis (10_000 = 100%)
@@ -587,7 +591,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
       estimatedOutput: inputs[i].toAmount(amounts[i]),
     } as ITransactionRequestWithEstimate;
 
-    if (asset.address != inputs[i].address && amounts[i].gt(10)) {
+    if (asset.address != inputs[i].address) {
       // add 1% slippage to the input amount, .1% if stable (2x as switching from ask estimate->bid)
       // NB: in case of a volatility event (eg. news/depeg), the liquidity would be one sided
       // and these estimates would be off. Liquidation would require manual parametrization
@@ -596,22 +600,27 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
       // oracle derivation tolerance (can be found at https://data.chain.link/ for chainlink)
       const derivation = stablePair ? 100 : 1_000; // .1% or 1%
       const slippage = stablePair ? 25 : 250; // .025% or .25%
+
       amounts[i] = amounts[i].mul(10_000 + derivation).div(10_000);
       swapAmounts[i] = amounts[i].mul(10_000 - slippage).div(10_000);
 
-      // only generate swapData if the input is not the asset
-      tr = (await getTransactionRequest({
-        input: inputs[i].address,
-        output: asset.address,
-        amountWei: swapAmounts[i], // take slippage off so that liquidated LP value > swap input
-        inputChainId: network.config.chainId!,
-        payer: strat.address, // env.deployer.address
-        testPayer: env.addresses.accounts!.impersonate,
-      })) as ITransactionRequestWithEstimate;
-      if (!tr.to)
-        throw new Error(
-          `No swapData generated for ${inputs[i].address} -> ${asset.address}`
-        );
+      if (swapAmounts[i].gt(10)) {
+
+        // only generate swapData if the input is not the asset
+        tr = (await getTransactionRequest({
+          input: inputs[i].address,
+          output: asset.address,
+          amountWei: swapAmounts[i], // take slippage off so that liquidated LP value > swap input
+          inputChainId: network.config.chainId!,
+          payer: strat.address, // env.deployer.address
+          testPayer: env.addresses.accounts!.impersonate,
+          maxSlippage: 5000 // TODO: increase for low liquidity chains (moonbeam/celo/metis/linea...)
+        })) as ITransactionRequestWithEstimate;
+        if (!tr.to)
+          throw new Error(
+            `No swapData generated for ${inputs[i].address} -> ${asset.address}`
+          );
+      }
     }
     trs.push(tr);
     swapData.push(

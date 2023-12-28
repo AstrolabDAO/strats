@@ -33,21 +33,6 @@ interface IStrategyV5 is IStrategyV5Abstract {
         bytes[] memory _params
     ) external returns (uint256 investedAmount, uint256 iouReceived);
 
-    function swapSafeDeposit(
-        address _input,
-        uint256 _amount,
-        uint256 _minShareAmount,
-        address _receiver,
-        bytes memory _params
-    ) external returns (uint256 shares);
-
-    function safeDepositInvest(
-        uint256 _amount,
-        uint256 _minShareAmount,
-        address _receiver,
-        bytes[] memory _params
-    ) external returns (uint256 investedAmount, uint256 iouReceived);
-
     function harvest(bytes[] memory _params) external returns (uint256 amount);
 
     function compound(

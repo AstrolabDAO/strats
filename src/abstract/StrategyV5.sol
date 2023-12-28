@@ -365,7 +365,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
-     * @dev Calculate the excess weight for a given input index.
+     * @dev Calculate the excess weight for a given input index
      * @param _index Index of the input
      * @param _total Total invested amount
      * @return int256 Excess weight (/AsMaths.BP_BASIS)
@@ -381,7 +381,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
-     * @dev Calculate the excess weights for all inputs.
+     * @dev Calculate the excess weights for all inputs
      * @param _total Total invested amount
      * @return excessWeights int256[8] Excess weights for each input
      */
@@ -423,7 +423,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
-     * @dev Preview the amounts that would be liquidated based on the given amount.
+     * @dev Preview the amounts that would be liquidated based on the given amount
      * @param _amount Amount of asset to liquidate with (0 == totalPendingAssetRequest() + allocated.bp(100))
      * @return amounts uint256[8] Previewed liquidation amounts for each input
      */
@@ -447,9 +447,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
-     * @dev Preview the amounts that would be invested based on the given amount.
+     * @dev Preview the amounts that would be invested based on the given amount
      * @param _amount Amount of asset to invest with
-     * @return amounts uint256[8] Previewed investment amounts for each input
+     * @return amounts uint256[8] Previewed investment amounts for each input in asset
      */
     function previewInvest(
         uint256 _amount

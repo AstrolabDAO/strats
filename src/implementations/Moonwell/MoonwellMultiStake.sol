@@ -23,7 +23,6 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
 
     // Third party contracts
     IMToken[8] internal mTokens; // LP token/pool
-    uint8[8] internal mTokenDecimals; // Decimals of the LP tokens
     IUnitroller internal unitroller;
 
     constructor() StrategyV5Chainlink() {}
@@ -42,7 +41,6 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         unitroller = IUnitroller(_params.unitroller);
         for (uint8 i = 0; i < _params.mTokens.length; i++) {
             mTokens[i] = IMToken(_params.mTokens[i]);
-            mTokenDecimals[i] = mTokens[i].decimals();
         }
         _setAllowances(MAX_UINT256);
     }
@@ -51,21 +49,21 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      * @dev Initializes the strategy with the specified parameters.
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
-     * @param _venusParams Sonne specific parameters
+     * @param _moonwellParams Sonne specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
         ChainlinkParams calldata _chainlinkParams,
-        Params calldata _venusParams
+        Params calldata _moonwellParams
     ) external onlyAdmin {
-        for (uint8 i = 0; i < _venusParams.mTokens.length; i++) {
+        for (uint8 i = 0; i < _moonwellParams.mTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
             inputDecimals[i] = inputs[i].decimals();
         }
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
-        setParams(_venusParams);
+        setParams(_moonwellParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
@@ -175,7 +173,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
 
             mTokens[i].redeem(toLiquidate);
-
+            
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
                 (recovered, ) = swapper.decodeAndSwap({
@@ -233,9 +231,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(
-            mTokens[_index].exchangeRateStored(),
-            inputDecimals[_index]); // eg. 1e8+1e(36-8)-1e18 = 1e18
+        return _amount.mulDiv(mTokens[_index].exchangeRateStored(), 1e18);
     }
 
     /**
@@ -246,9 +242,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(
-            inputDecimals[_index],
-            mTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e8
+        return _amount.mulDiv(1e18, mTokens[_index].exchangeRateStored());
     }
 
     /**

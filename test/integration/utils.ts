@@ -461,21 +461,21 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
   );
   if (assetBalance.lt(minLiquidity)) {
     console.log(
-      `${env.deployer.address} needs at least ${minLiquidity}${assetSymbol} => funding required`
+      `${env.deployer.address} needs at least ${minLiquidity}wei ${assetSymbol} => funding required`
     );
     env.needsFunding = true;
   }
 
   if (env.needsFunding) {
     console.log(
-      `Funding ${env.deployer.address} from ${env.gasUsedForFunding}wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`
+      `Funding ${env.deployer.address} from ${env.gasUsedForFunding || "(auto)"}wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`
     );
     let gas =
       env.gasUsedForFunding ||
       (await getSwapperOutputEstimate(
         "USDC",
         env.wgas.sym,
-        10_005 * 1e6,
+        10_0010 * 1e6,
         network.config.chainId!,
         network.config.chainId!
       )) ||

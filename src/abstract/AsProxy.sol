@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/proxy/Proxy.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title AsProxy Abstract - OpenZeppelin standard proxy extension
+ * @title AsProxy Abstract - EIP-897 delegate proxy (OpenZeppelin standard proxy extension)
  * @author Astrolab DAO
  * @dev Make sure all to match proxy/implementation slots when used for UUPS / transparent proxies
  */
@@ -56,5 +56,21 @@ abstract contract AsProxy is Proxy {
      */
     function initialized() public view virtual returns (bool) {
         return _implementation() != address(0);
+    }
+
+    /**
+     * @dev Returns the EIP-897 address of the implementation contract
+     * @return The address of the implementation contract
+     */
+    function implementation() external view virtual returns (address) {
+        return _implementation();
+    }
+
+    /**
+     * @dev Returns the EIP-897 proxy type
+     * @return The proxy type
+     */
+    function proxyType() external pure virtual returns (uint256) {
+        return 2;
     }
 }
