@@ -10,9 +10,12 @@ import {
 } from "ethcall";
 import { erc20Abi } from "abitype/abis";
 
+export type MaybeAwaitable<T> = T | Promise<T>;
+
 export class SafeContract extends Contract {
   public multi: MulticallContract = {} as MulticallContract;
   public sym: string = "";
+  public abi: ReadonlyArray<any> | any[] = [];
   public scale: number = 0;
   public weiPerUnit: number = 0;
 
@@ -22,6 +25,7 @@ export class SafeContract extends Contract {
     signer: SignerWithAddress | ethers.providers.JsonRpcProvider
   ) {
     super(address, abi, signer);
+    this.abi = abi;
   }
 
   public static async build(
@@ -43,6 +47,11 @@ export class SafeContract extends Contract {
     } catch (error) {
       throw new Error(`Failed to build contract ${address}: ${error}`);
     }
+  }
+
+  public async copy(signer: SignerWithAddress=(this.signer as SignerWithAddress)): Promise<SafeContract> {
+    // return Object.assign(this, await SafeContract.build(this.address, this.abi, signer));
+    return await SafeContract.build(this.address, this.abi, signer);
   }
 
   public safe = async (

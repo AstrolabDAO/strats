@@ -22,6 +22,7 @@ import {
   ITestEnv,
   IStrategyBaseParams,
   SafeContract,
+  MaybeAwaitable,
 } from "../../src/types";
 import {
   addressZero,
@@ -37,8 +38,12 @@ import {
   logState,
   sleep,
   isOracleLib,
+  addressOne,
+  logRescue,
+  resolveMaybe,
 } from "./utils";
 import addresses from "../../src/addresses";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 
@@ -72,7 +77,11 @@ export const deployStrat = async (
       } as IDeploymentUnit;
       if (libParams.deployed) {
         console.log(`Using existing ${n} at ${libParams.address}`);
-        lib = await SafeContract.build(address, loadAbi(n) as any[] ?? [], env.deployer!);
+        lib = await SafeContract.build(
+          address,
+          (loadAbi(n) as any[]) ?? [],
+          env.deployer!
+        );
       } else {
         lib = await deploy(libParams);
       }
@@ -179,7 +188,8 @@ export const deployStrat = async (
       swapper: swapper.address, // Swapper
       agent: agent.address, // StrategyV5Agent
     },
-    initParams[0].coreAddresses);
+    initParams[0].coreAddresses
+  );
 
   // default fees
   initParams[0].fees = merge(
@@ -275,9 +285,7 @@ export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
     console.log(`Skipping seedLiquidity as totalAssets > minLiquidity`);
     return BigNumber.from(1);
   }
-  if (
-    (await asset.allowance(env.deployer.address, strat.address)).lt(amount)
-  )
+  if ((await asset.allowance(env.deployer.address, strat.address)).lt(amount))
     await asset
       .approve(strat.address, MaxUint256, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
@@ -290,25 +298,6 @@ export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted
-}
-
-export async function grantManagerRole(
-  env: Partial<IStrategyDeploymentEnv>,
-  address: string
-) {
-  const { strat } = env.deployment!;
-  const roles = await env.multicallProvider!.all([
-    strat.multi.KEEPER_ROLE(),
-    strat.multi.MANAGER_ROLE(),
-  ]);
-  const has = await env.multicallProvider!.all(
-    roles.map((role) => strat.multi.hasRole(role, address))
-  );
-  for (const i in roles)
-    if (!has[i])
-      await strat
-        .grantRole(roles[i], address, getOverrides(env))
-        .then((tx: TransactionResponse) => tx.wait());
 }
 
 export async function setupStrat(
@@ -334,7 +323,9 @@ export async function setupStrat(
       initParams[0].inputs!.map((input) => SafeContract.build(input))
     ),
     rewardTokens: await Promise.all(
-      initParams[0].rewardTokens!.map((rewardToken) => SafeContract.build(rewardToken))
+      initParams[0].rewardTokens!.map((rewardToken) =>
+        SafeContract.build(rewardToken)
+      )
     ),
   } as any;
 
@@ -349,7 +340,9 @@ export async function setupStrat(
 
   const { strat, inputs, rewardTokens } = env.deployment!;
 
-  await grantManagerRole(env, env.deployer!.address);
+  // manager role is not granted instantly, it has to be accepted after 48 hours (deployer de-facto gets it)
+  // here, only KEEPER will be granted at block-time
+  await grantRoles(env, ["MANAGER", "KEEPER"], env.deployer!.address);
 
   // load the implementation abi, containing the overriding init() (missing from d.strat)
   // init((uint64,uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)'
@@ -361,8 +354,10 @@ export async function setupStrat(
     console.log(`Skipping init() as ${name} already initialized`);
   } else {
     const initSignature = getInitSignature(contract);
-    console.log("InitParams : ", initParams)
-    await (proxy[initSignature](...initParams, getOverrides(env))).then((tx: TransactionResponse) => tx.wait());
+    console.log("InitParams : ", initParams);
+    await proxy[initSignature](...initParams, getOverrides(env)).then(
+      (tx: TransactionResponse) => tx.wait()
+    );
   }
 
   const actualInputs: string[] = //inputs.map((input) => input.address);
@@ -384,7 +379,10 @@ export async function setupStrat(
   }
 
   for (const i in rewardTokens) {
-    if (rewardTokens[i].address.toUpperCase() != actualRewardTokens[i].toUpperCase())
+    if (
+      rewardTokens[i].address.toUpperCase() !=
+      actualRewardTokens[i].toUpperCase()
+    )
       throw new Error(
         `RewardToken ${i} address mismatch ${rewardTokens[i].address} != ${actualRewardTokens[i]}`
       );
@@ -403,9 +401,7 @@ export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
     console.log(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
-  if (
-    (await asset.allowance(env.deployer.address, strat.address)).lt(amount)
-  )
+  if ((await asset.allowance(env.deployer.address, strat.address)).lt(amount))
     await asset
       .approve(strat.address, MaxUint256, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
@@ -430,7 +426,9 @@ export async function swapSafeDeposit(
   let amount = depositAsset.toWei(_amount);
 
   if (
-    (await depositAsset.allowance(env.deployer.address, strat.address)).lt(amount)
+    (await depositAsset.allowance(env.deployer.address, strat.address)).lt(
+      amount
+    )
   )
     await depositAsset
       .approve(strat.address, MaxUint256, getOverrides(env))
@@ -453,12 +451,15 @@ export async function swapSafeDeposit(
   }
   await logState(env, "Before SwapSafeDeposit");
   const receipt = await strat
-    .safe("swapSafeDeposit", [
-      depositAsset.address, // input
-      amount, // amount == 100$
-      env.deployer.address, // receiver
-      minSharesOut, // minShareAmount in wei
-      swapData], // swapData
+    .safe(
+      "swapSafeDeposit",
+      [
+        depositAsset.address, // input
+        amount, // amount == 100$
+        env.deployer.address, // receiver
+        minSharesOut, // minShareAmount in wei
+        swapData,
+      ], // swapData
       getOverrides(env)
     )
     .then((tx: TransactionResponse) => tx.wait());
@@ -598,7 +599,6 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
       swapAmounts[i] = amounts[i].mul(10_000 - slippage).div(10_000);
 
       if (swapAmounts[i].gt(10)) {
-
         // only generate swapData if the input is not the asset
         tr = (await getTransactionRequest({
           input: inputs[i].address,
@@ -607,7 +607,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
           inputChainId: network.config.chainId!,
           payer: strat.address, // env.deployer.address
           testPayer: env.addresses.accounts!.impersonate,
-          maxSlippage: 5000 // TODO: increase for low liquidity chains (moonbeam/celo/metis/linea...)
+          maxSlippage: 5000, // TODO: increase for low liquidity chains (moonbeam/celo/metis/linea...)
         })) as ITransactionRequestWithEstimate;
         if (!tr.to)
           throw new Error(
@@ -675,7 +675,13 @@ export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
   // only exec if static call is successful
   const receipt = await strat
     // .safe("safeWithdraw", [amount, minAmountOut, env.deployer.address, env.deployer.address], getOverrides(env))
-    .safeWithdraw(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
+    .safeWithdraw(
+      amount,
+      minAmountOut,
+      env.deployer.address,
+      env.deployer.address,
+      getOverrides(env)
+    )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
@@ -687,9 +693,7 @@ export async function requestWithdraw(
 ) {
   const { asset, inputs, strat } = env.deployment!;
   const balance = await strat.balanceOf(env.deployer.address);
-  const pendingRequest = await strat.pendingAssetRequest(
-    env.deployer.address
-  );
+  const pendingRequest = await strat.pendingAssetRequest(env.deployer.address);
   let amount = asset.toWei(_amount);
 
   if (balance.lt(10)) {
@@ -718,7 +722,10 @@ export async function requestWithdraw(
     )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After RequestWithdraw", 2_000);
-  return getTxLogData(receipt, ["address, address, address, uint256"], 3) ?? BigNumber.from(0); // recovered
+  return (
+    getTxLogData(receipt, ["address, address, address, uint256"], 3) ??
+    BigNumber.from(0)
+  ); // recovered
 }
 
 export async function preHarvest(env: IStrategyDeploymentEnv) {
@@ -729,13 +736,7 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
 
   console.log(
     `Generating harvest swapData for:\n${rewardTokens
-      .map(
-        (rt, i) =>
-          "  - " +
-          rt.sym +
-          ": " +
-          rt.toAmount(amounts[i])
-      )
+      .map((rt, i) => "  - " + rt.sym + ": " + rt.toAmount(amounts[i]))
       .join("\n")}`
   );
 
@@ -791,8 +792,10 @@ export async function compound(env: IStrategyDeploymentEnv) {
   // harvest static call
   let harvestEstimate = BigNumber.from(0);
   try {
-    harvestEstimate = await strat.callStatic
-      .harvest(harvestSwapData, getOverrides(env));
+    harvestEstimate = await strat.callStatic.harvest(
+      harvestSwapData,
+      getOverrides(env)
+    );
   } catch (e) {
     console.error(`Harvest static call failed: probably reverted ${e}`);
   }
@@ -804,12 +807,124 @@ export async function compound(env: IStrategyDeploymentEnv) {
   await logState(env, "Before Compound");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("compound",
+    .safe(
+      "compound",
       [investAmounts, [...harvestSwapData, ...investSwapData]],
-      getOverrides(env))
+      getOverrides(env)
+    )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Compound", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
+}
+
+export async function grantRoles(
+  env: Partial<IStrategyDeploymentEnv>,
+  roles: string[],
+  grantee: MaybeAwaitable<string>=env.deployer!.address,
+  signer: MaybeAwaitable<SignerWithAddress>=env.deployer!
+) {
+  [signer, grantee] = await Promise.all([resolveMaybe(signer), resolveMaybe(grantee)]);
+  const strat = await env.deployment!.strat.copy(signer);
+  // const roleSignatures = roles.map((role) => ethers.utils.id(role));
+  const roleSignatures = await env.multicallProvider!.all(
+    roles.map((role) => strat.multi[`${role}_ROLE`]())
+  );
+  const hasRoles = async () =>
+    env.multicallProvider!.all(
+      roleSignatures.map((role) => strat.multi.hasRole(role, grantee))
+    );
+  const has = await hasRoles();
+  console.log(`${signer.address} roles (before acceptRoles): ${has}`);
+  for (const i in roleSignatures)
+    if (!has[i])
+      await strat
+        .grantRole(roleSignatures[i], grantee, getOverrides(env))
+        .then((tx: TransactionResponse) => tx.wait());
+  console.log(`${signer.address} roles (after acceptRoles): ${await hasRoles()}`);
+  return true;
+}
+
+export async function acceptRoles(
+  env: Partial<IStrategyDeploymentEnv>,
+  roles: string[],
+  signer: MaybeAwaitable<SignerWithAddress>=env.deployer! // == grantee
+) {
+  signer = await resolveMaybe(signer);
+  const strat = await env.deployment!.strat.copy(signer);
+  // const roleSignatures = roles.map((role) => ethers.utils.id(role));
+  const roleSignatures = await env.multicallProvider!.all(
+    roles.map((role) => strat.multi[`${role}_ROLE`]())
+  );
+
+  const hasRoles = async () =>
+    env.multicallProvider!.all(
+      roleSignatures.map((role) => strat.multi.hasRole(role, (signer as SignerWithAddress).address))
+    );
+  const has = await hasRoles();
+  console.log(`${signer.address} roles (before acceptRoles): ${has}`);
+  for (const i in roleSignatures)
+    if (!has[i])
+      await strat
+        .acceptRole(roleSignatures[i], getOverrides(env))
+        .then((tx: TransactionResponse) => tx.wait());
+  console.log(`${signer.address} roles (after acceptRoles): ${await hasRoles()}`);
+  return true;
+}
+
+export async function revokeRoles(
+  env: Partial<IStrategyDeploymentEnv>,
+  roles: string[],
+  deprived: MaybeAwaitable<string>, // == ex-grantee
+  signer: MaybeAwaitable<SignerWithAddress>=env.deployer!
+) {
+  [signer, deprived] = await Promise.all([resolveMaybe(signer), resolveMaybe(deprived)]);
+  const strat = await env.deployment!.strat.copy(signer);
+  // const roleSignatures = roles.map((role) => ethers.utils.id(role));
+  const roleSignatures = await env.multicallProvider!.all(
+    roles.map((role) => strat.multi[`${role}_ROLE`]())
+  );
+  const hasRoles = async () =>
+    env.multicallProvider!.all(
+      roleSignatures.map((role) => strat.multi.hasRole(role, deprived))
+    );
+  const has = await hasRoles();
+  console.log(`${signer.address} roles (before revokeRoles): ${has}`);
+  for (const i in roleSignatures)
+    if (has[i])
+      await strat
+        .revokeRole(roleSignatures[i], deprived, getOverrides(env))
+        .then((tx: TransactionResponse) => tx.wait());
+  console.log(`${signer.address} roles (after revokeRoles): ${await hasRoles()}`);
+  return true;
+}
+
+export async function requestRescue(
+  env: Partial<IStrategyDeploymentEnv>,
+  token: SafeContract,
+  signer: MaybeAwaitable<SignerWithAddress>=env.deployer! // == rescuer
+) {
+  signer = await resolveMaybe(signer);
+  const strat = await env.deployment!.strat.copy(signer);
+  await logRescue(env, token, signer.address, "Before RequestRescue");
+  const receipt = await strat
+    .requestRescue(token, getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+  return true;
+}
+
+export async function rescue(
+  env: Partial<IStrategyDeploymentEnv>,
+  token: SafeContract,
+  signer: MaybeAwaitable<SignerWithAddress>=env.deployer! // == rescuer
+) {
+  signer = await resolveMaybe(signer);
+  const strat = await env.deployment!.strat.copy(signer);
+  await logRescue(env, token, signer.address, "Before Rescue");
+  const receipt = await strat
+    .rescue(token, getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+  await logRescue(env, token, signer.address, "After Rescue");
+  return getTxLogData(receipt, ["uint256"], 0);
 }
 
 export const Flows: { [name: string]: Function } = {
@@ -838,20 +953,28 @@ export async function testFlow(flow: IFlow) {
   const live = isLive(env);
 
   console.log(
-    `Running flow ${fn.name}(${params.join(
-      ", "
-    )}, elapsedSec (before): ${elapsedSec ?? 0}, revertState (after): ${revertState ?? 0})`
+    `Running flow ${fn.name}(${params.join(", ")}, elapsedSec (before): ${
+      elapsedSec ?? 0
+    }, revertState (after): ${revertState ?? 0})`
   );
   let snapshotId = 0;
 
   if (!live) {
     if (revertState) snapshotId = await env.provider.send("evm_snapshot", []);
     if (elapsedSec) {
-      const timeBefore = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
-      await env.provider.send("evm_increaseTime", [ethers.utils.hexValue(elapsedSec)]);
+      const timeBefore = new Date(
+        (await env.provider.getBlock("latest"))?.timestamp * 1000
+      );
+      await env.provider.send("evm_increaseTime", [
+        ethers.utils.hexValue(elapsedSec),
+      ]);
       await env.provider.send("evm_increaseBlocks", ["0x20"]); // evm_mine
-      const timeAfter = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
-      console.log(`⏰🔜 Advanced blocktime by ${elapsedSec}s: ${timeBefore} -> ${timeAfter}`);
+      const timeAfter = new Date(
+        (await env.provider.getBlock("latest"))?.timestamp * 1000
+      );
+      console.log(
+        `⏰🔜 Advanced blocktime by ${elapsedSec}s: ${timeBefore} -> ${timeAfter}`
+      );
     }
   }
   let result;
@@ -864,9 +987,13 @@ export async function testFlow(flow: IFlow) {
 
   // revert the state of the chain to the beginning of this test, not to env.snapshotId
   if (!live && revertState) {
-    const timeBefore = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
+    const timeBefore = new Date(
+      (await env.provider.getBlock("latest"))?.timestamp * 1000
+    );
     await env.provider.send("evm_revert", [snapshotId]);
-    const timeAfter = new Date((await env.provider.getBlock("latest"))?.timestamp * 1000);
+    const timeAfter = new Date(
+      (await env.provider.getBlock("latest"))?.timestamp * 1000
+    );
     console.log(`⏰🔙 Reverted blocktime: ${timeBefore} -> ${timeAfter}`);
   }
 

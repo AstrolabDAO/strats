@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../abstract/AsTypes.sol";
 import "./IERC20Permit.sol";
 import "./IAsManageable.sol";
+import "./IAsRescuable.sol";
 
 /**
  * @title IFlashLoanReceiver
@@ -32,7 +33,7 @@ interface IFlashLoanReceiver {
     ) external returns (bool);
 }
 
-interface IAs4626Abstract is IERC20Permit {
+interface IAs4626Abstract is IERC20Permit, IAsManageable, IAsRescuable, IFlashLoanReceiver {
     function maxSlippageBps() external view returns (uint16);
     function profitCooldown() external view returns (uint256);
     function maxTotalAssets() external view returns (uint256);
@@ -65,7 +66,7 @@ interface IAs4626Abstract is IERC20Permit {
     function maxRedemptionClaim(address _owner) external view returns (uint256);
 }
 
-interface IAs4626 is IAs4626Abstract, IAsManageable {
+interface IAs4626 is IAs4626Abstract {
     function init(
         Fees memory _fees,
         address _asset,
@@ -76,8 +77,6 @@ interface IAs4626 is IAs4626Abstract, IAsManageable {
         uint256 _shares,
         address _receiver
     ) external returns (uint256 assets);
-
-    function rescueToken(address _token, bool _native) external;
 
     function previewDeposit(
         uint256 _amount

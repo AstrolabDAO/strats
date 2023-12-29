@@ -10,6 +10,7 @@ import {
   provider,
   setBalances,
   weiToString,
+  ethers,
 } from "@astrolabs/hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi, wethAbi } from "abitype/abis";
@@ -20,9 +21,14 @@ import {
   BigNumberish,
   Overrides,
 } from "ethers";
-import * as ethers from "ethers";
 import { merge } from "lodash";
-import { IChainlinkParams, IStrategyDeploymentEnv, ITestEnv, SafeContract } from "../../src/types";
+import {
+  IChainlinkParams,
+  IStrategyDeploymentEnv,
+  ITestEnv,
+  MaybeAwaitable,
+  SafeContract,
+} from "../../src/types";
 import addresses, { Addresses } from "../../src/addresses";
 import {
   ISwapperParams,
@@ -38,9 +44,9 @@ import {
 } from "ethcall";
 
 export const addressZero = constants.AddressZero;
+export const addressOne = "0x0000000000000000000000000000000000000001";
 const MaxUint256 = ethers.constants.MaxUint256;
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
-
 
 export function isLive(env: any) {
   const n = env.network ?? network;
@@ -49,6 +55,22 @@ export function isLive(env: any) {
 
 export function isAddress(s: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(s);
+}
+
+export function isAwaitable(o: any): boolean {
+  return typeof o?.then === "function"; // typeof then = "function" for promises
+}
+
+export async function resolveMaybe<T=any>(o: MaybeAwaitable<T>): Promise<T> {
+  return isAwaitable(o) ? await o : o;
+}
+
+export async function signerGetter(index: number): Promise<SignerWithAddress> {
+  return (await ethers.getSigners())[index];
+}
+
+export async function signerAddressGetter(index: number): Promise<string> {
+  return (await signerGetter(index)).address;
 }
 
 export function getAddresses(s: string) {
@@ -131,6 +153,33 @@ export const isOracleLib = (name: string) =>
   ["Pyth", "RedStone", "Chainlink", "Witnet"].some((libname) =>
     name.includes(libname)
   );
+
+export async function logRescue(
+  env: Partial<IStrategyDeploymentEnv>,
+  token: SafeContract,
+  rescuer: string,
+  step?: string
+) {
+  const strat = env.deployment!.strat;
+  let balances: BigNumber[];
+  if (token.address == addressOne) {
+    balances = await env.multicallProvider!.all([
+      env.multicallProvider!.getEthBalance(strat.address),
+      env.multicallProvider!.getEthBalance(rescuer),
+    ]);
+  } else {
+    balances = await env.multicallProvider!.all([
+      token.balanceOf(strat.address),
+      token.balanceOf(rescuer),
+    ]);
+  }
+  console.log(`
+    State ${step ?? ""}:\nRequesting rescue of ${token.address} ${
+      token.sym
+    } (strat balance: ${token.toAmount(
+      balances[0]
+    )}, rescuer balance: ${token.toAmount(balances[1])}})`);
+}
 
 export async function logState(
   env: Partial<IStrategyDeploymentEnv>,
@@ -229,12 +278,12 @@ export async function logState(
     available(): ${available / asset.weiPerUnit} (${available}wei) (${
       Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
     }%)
-    totalRedemptionRequest(): ${
-      strat.toAmount(totalRedemptionRequest)
-    } (${totalRedemptionRequest}wei)
-    totalClaimableRedemption(): ${
-      strat.toAmount(totalClaimableRedemption)
-    } (${totalClaimableRedemption}wei) (${
+    totalRedemptionRequest(): ${strat.toAmount(
+      totalRedemptionRequest
+    )} (${totalRedemptionRequest}wei)
+    totalClaimableRedemption(): ${strat.toAmount(
+      totalClaimableRedemption
+    )} (${totalClaimableRedemption}wei) (${
       Math.round(
         totalRedemptionRequest.lt(10)
           ? 0
@@ -244,9 +293,9 @@ export async function logState(
     rewardsAvailable():\n${rewardTokens
       .map(
         (reward, index) =>
-          `      -${reward.sym}: ${reward.toAmount(
+          `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${
             rewardsAvailable[index]
-          )} (${rewardsAvailable[index]}wei)`
+          }wei)`
       )
       .join("\n")}
     previewInvest(0 == available()*.9):\n${inputs
@@ -372,12 +421,11 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   for (const tr of trs) {
     assert(!!tr?.data);
     console.log(`using request: ${JSON.stringify(tr, null, 2)}`);
-    await ensureWhitelisted(env.deployment!.swapper, [
-      tr.from as string,
-      tr.to!,
-      o.input,
-      o.output,
-    ], env as IStrategyDeploymentEnv);
+    await ensureWhitelisted(
+      env.deployment!.swapper,
+      [tr.from as string, tr.to!, o.input, o.output],
+      env as IStrategyDeploymentEnv
+    );
     const ok = await env.deployment!.swapper.swap(
       input.target ?? input.address,
       output.target ?? output.address,
@@ -468,7 +516,9 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   if (env.needsFunding) {
     console.log(
-      `Funding ${env.deployer.address} from ${env.gasUsedForFunding || "(auto)"}wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`
+      `Funding ${env.deployer.address} from ${
+        env.gasUsedForFunding || "(auto)"
+      }wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`
     );
     let gas =
       env.gasUsedForFunding ||
@@ -485,9 +535,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
         `Failed to get gas estimate for ${env.wgas.sym} => ${assetSymbol}`
       );
     }
-    console.log(
-      `Balance before funding: ${assetBalance}wei ${assetSymbol}`
-    );
+    console.log(`Balance before funding: ${assetBalance}wei ${assetSymbol}`);
     const nativeBalance = await provider.getBalance(env.deployer.address);
     if (nativeBalance.lt(gas)) {
       console.log(
@@ -498,7 +546,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
       await env.provider.send("tenderly_setBalance", [
         [env.deployer.address],
         ethers.utils.hexValue(gas),
-      ])
+      ]);
     }
     const received = await fundAccount(
       env,
@@ -527,11 +575,16 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
       console.log(`Whitelisting oracle access for ${lib}`);
       switch (lib) {
         case "ChainlinkUtils": {
-          const oracles = new Set([params.assetPriceFeed, ...params.inputPriceFeeds]);
+          const oracles = new Set([
+            params.assetPriceFeed,
+            ...params.inputPriceFeeds,
+          ]);
           for (const oracle of oracles) {
-            const storageSlot = '0x0000000000000000000000000000000000000000000000000000000000000031';
+            const storageSlot =
+              "0x0000000000000000000000000000000000000000000000000000000000000031";
             // set the storage slot for Chainlink's "checkEnabled" to false, in order to deactivate access control
-            const newValue = '0x0000000000000000000000000000000000000000000000000000000000000000';
+            const newValue =
+              "0x0000000000000000000000000000000000000000000000000000000000000000";
             // Sending the tenderly_setStorageAt command
             await provider.send("tenderly_setStorageAt", [
               oracle,
@@ -631,19 +684,21 @@ export async function getSwapperEstimate(
 
 export function findSignature(signature: string, abi: any[]): string {
   for (let item of abi) {
-      // Ensure the item is a function and has an 'inputs' field
-      if (item.type === 'function' && item.inputs) {
-          // Construct the function signature string
-          const funcSig = `${item.name}(${item.inputs.map((input: any) => input.type).join(',')})`;
+    // Ensure the item is a function and has an 'inputs' field
+    if (item.type === "function" && item.inputs) {
+      // Construct the function signature string
+      const funcSig = `${item.name}(${item.inputs
+        .map((input: any) => input.type)
+        .join(",")})`;
 
-          // Compute the hash of the function signature
-          const hash = ethers.utils.id(funcSig).substring(0, 10); // utils.id returns the Keccak-256 hash, we only need the first 10 characters
+      // Compute the hash of the function signature
+      const hash = ethers.utils.id(funcSig).substring(0, 10); // utils.id returns the Keccak-256 hash, we only need the first 10 characters
 
-          // Compare the hash with the provided signature
-          if (hash === signature) {
-              return item.name;
-          }
+      // Compare the hash with the provided signature
+      if (hash === signature) {
+        return item.name;
       }
+    }
   }
   throw new Error(`Function signature ${signature} not found in ABI`);
 }

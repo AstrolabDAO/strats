@@ -7,7 +7,6 @@ import "../interfaces/IAs4626.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
-import "./AsRescuable.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__

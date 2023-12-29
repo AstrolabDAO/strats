@@ -4,8 +4,8 @@ import { BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Moonwell/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, deposit, harvest, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
-import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
+import { IFlow, acceptRoles, deposit, grantRoles, harvest, invest, liquidate, requestRescue, requestWithdraw, rescue, revokeRoles, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
+import { ensureFunding, ensureOracleAccess, getEnv, signerAddressGetter, signerGetter } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
@@ -34,15 +34,15 @@ const descByChainId: { [chainId: number]: IStrategyDesc } = {
 const desc = descByChainId[network.config.chainId!];
 
 const testFlows: Partial<IFlow>[] = [
-  // { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) },
+  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [9], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
+  { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [1], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [17], assert: (n: BigNumber) => n.gt(0) },
-  { fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*14, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
