@@ -44,7 +44,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     constructor() As4626Abstract() {}
 
     /**
-     * @notice Calculates the total pending redemption requests
+     * @notice Calculates the total pending redemption requests in shares (1e8)
      * @dev Returns the difference between req.totalClaimableRedemption and req.totalClaimableRedemption
      * @return The total amount of pending redemption requests
      */

@@ -75,8 +75,8 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
     function _harvest(
         bytes[] memory _params
     ) internal virtual override nonReentrant returns (uint256 assetsReceived) {
-        // only supports WELL rewards
-        unitroller.claimReward(address(this)); // WELL for all markets+vai
+
+        unitroller.claimReward(address(this));
         uint256 balance;
 
         for (uint8 i = 0; i < rewardLength; i++) {
@@ -286,6 +286,10 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
                 amounts[index-1] += info.totalAmount;
                 info.totalAmount;
             }
+        }
+
+        for (uint i = 0; i < rewardLength; i++) {
+            amounts[i] += IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
 
         return amounts;

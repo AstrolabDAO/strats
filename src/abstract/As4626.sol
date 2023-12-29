@@ -51,6 +51,7 @@ abstract contract As4626 is As4626Abstract {
         // check that the fees are not too high
         setFees(_fees);
         feeCollector = _coreAddresses.feeCollector;
+        req.redemptionLocktime = 6 hours;
         last.accountedSharePrice = weiPerShare;
         last.accountedProfit = weiPerShare;
         last.feeCollection = uint64(block.timestamp);

@@ -177,11 +177,11 @@ export async function logState(
 
       strat.multi.totalRedemptionRequest(),
       strat.multi.totalClaimableRedemption(),
-      
+
       // strat.multicallContract.totalAsset(), // only available on strat.req() struct
       // strat.multicallContract.totalClaimableAsset(), // only available on strat.req() struct
       strat.multi.rewardsAvailable(),
-      strat.multi.previewInvest(0), 
+      strat.multi.previewInvest(0),
       strat.multi.previewLiquidate(0),
       asset.multi.balanceOf(strat.address),
       asset.multi.balanceOf(env.deployer!.address),
@@ -627,4 +627,23 @@ export async function getSwapperEstimate(
     testPayer: addresses[inputChainId].accounts!.impersonate,
   })) as ITransactionRequestWithEstimate;
   return tr;
+}
+
+export function findSignature(signature: string, abi: any[]): string {
+  for (let item of abi) {
+      // Ensure the item is a function and has an 'inputs' field
+      if (item.type === 'function' && item.inputs) {
+          // Construct the function signature string
+          const funcSig = `${item.name}(${item.inputs.map((input: any) => input.type).join(',')})`;
+
+          // Compute the hash of the function signature
+          const hash = ethers.utils.id(funcSig).substring(0, 10); // utils.id returns the Keccak-256 hash, we only need the first 10 characters
+
+          // Compare the hash with the provided signature
+          if (hash === signature) {
+              return item.name;
+          }
+      }
+  }
+  throw new Error(`Function signature ${signature} not found in ABI`);
 }

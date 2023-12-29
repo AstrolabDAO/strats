@@ -408,16 +408,16 @@ export const addresses = {
       Pyth: "",
     },
     libs: {
-      AsMaths: "0x72324cc7179fc3e9267b410c5a5a349b27e787e1",
+      AsMaths: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
       AsArrays: "",
-      AsAccounting: "0x59b01e31d10a296a716d361cebde6ef937590714",
+      AsAccounting: "0x1761ff905292548ff2254620166eabd988e48718",
       PythUtils: "",
-      ChainlinkUtils: "0xf0db2c19e45ebea9758782f257e83631ebf2fec3",
+      ChainlinkUtils: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      StrategyV5Agent: "0x22a16dbf44294a4b546cb3b654c3fb1a3e401e7e",
+      StrategyV5Agent: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
       "Astrolab Moonwell MetaStable": "",
     },
     tokens: {
@@ -507,17 +507,17 @@ export const addresses = {
       Pyth: "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a",
     },
     libs: {
-      AsMaths: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
+      AsMaths: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
       AsArrays: "",
-      AsAccounting: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      AsAccounting: "0x1761ff905292548ff2254620166eabd988e48718",
       PythUtils: "",
-      ChainlinkUtils: "0x1761ff905292548ff2254620166eabd988e48718",
+      ChainlinkUtils: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
-      "Astrolab Moonwell MetaStable": "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
+      StrategyV5Agent: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
+      "Astrolab Moonwell MetaStable": "0x9c14f9137fc7327f336cc73d4218d310f3faba11",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",

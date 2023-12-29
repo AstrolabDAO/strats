@@ -119,16 +119,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         // In share
         uint256 pendingRedemption = totalPendingRedemptionRequest();
 
-        _minLiquidity = AsMaths.max(
-            _minLiquidity,
-            pendingRedemption.mulDiv(weiPerAsset, last.sharePrice) // eg. 1e8+1e6-1e8 = 1e6
-        );
-
         // liquidate protocol positions
         uint256 liquidated = _liquidate(_amounts, _params);
 
         req.totalClaimableRedemption += pendingRedemption;
-        liquidityAvailable = availableClaimable().subMax0(req.totalClaimableRedemption.mulDiv(weiPerAsset, last.sharePrice)/* + minLiquidity*/);
+
+        // we use availableClaimable() and not availableBorrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
+        liquidityAvailable = availableClaimable().subMax0(req.totalClaimableRedemption.mulDiv(weiPerAsset, last.sharePrice));
 
         // check if we have enough cash to repay redemption requests
         if ((liquidityAvailable < _minLiquidity) && !_panic)
@@ -430,8 +427,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         uint256 _amount
     ) public view returns (uint256[8] memory amounts) {
         uint256 allocated = invested();
-        if (_amount == 0)
-            _amount = AsMaths.min(totalPendingAssetRequest() + allocated.bp(100), allocated); // defaults to requests + 1% offset to buffer flows
+        _amount += AsMaths.min(totalPendingAssetRequest() + allocated.bp(100), allocated); // defaults to requests + 1% offset to buffer flows
+        // excessInput accounts for the weights and the cash available in the strategy
         int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
@@ -454,7 +451,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         uint256 _amount
     ) public view returns (uint256[8] memory amounts) {
         if (_amount == 0)
-            _amount = available().subBp(1_000); // only invest 90% of liquidity for buffered flows
+            _amount = available(); // only invest 90% of liquidity for buffered flows
         int256[8] memory excessInput = _excessInputLiquidity(invested() + _amount);
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover

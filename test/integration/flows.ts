@@ -548,13 +548,6 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
     );
   }
 
-  if (pendingWithdrawalRequest.gt(amount)) {
-    console.log(
-      `Using pendingWithdrawalRequest ${pendingWithdrawalRequest} (> amount ${amount})`
-    );
-    amount = pendingWithdrawalRequest;
-  }
-
   if (max.lt(amount)) {
     console.log(`Using total allocated assets (max) ${max} (< ${amount})`);
     amount = max;
@@ -569,8 +562,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
-  // const amounts = Object.assign([], await strat.previewLiquidate(amount));
-  const amounts = Object.assign([], await strat.previewLiquidate(5000000));
+  const amounts = Object.assign([], await strat.previewLiquidate(amount));
   const swapAmounts = new Array<BigNumber>(amounts.length).fill(
     BigNumber.from(0)
   );
@@ -781,11 +773,12 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
 
 export async function harvest(env: IStrategyDeploymentEnv) {
   const { strat, rewardTokens } = env.deployment!;
-  const params = await preHarvest(env);
+  const [harvestSwapData] = await preHarvest(env);
   await logState(env, "Before Harvest");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("harvest", params, getOverrides(env))
+    // .safe("harvest", params, getOverrides(env))
+    .harvest(harvestSwapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Harvest", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);

@@ -99,8 +99,8 @@ abstract contract As4626Abstract is
     }
 
     /**
-     * @dev Returns the number of decimal places used for the shares.
-     * @return The number of decimal places (8 in this case).
+     * @dev Returns the number of decimal places used for the shares
+     * @return The number of decimal places (8 in this case)
      */
     // function decimals() public pure override returns (uint8) {
     //     return 8;
@@ -127,9 +127,8 @@ abstract contract As4626Abstract is
      * @return Amount denominated in asset
      */
     function available() public view returns (uint256) {
-        return availableClaimable().subMax0(
-            convertToAssets(req.totalClaimableRedemption)
-                + minLiquidity);
+        return availableBorrowable().subMax0(
+            convertToAssets(req.totalClaimableRedemption));
     }
 
     /**
@@ -147,6 +146,10 @@ abstract contract As4626Abstract is
             );
     }
 
+    /**
+     * @dev Calculates the amount of borrowable assets that are currently available
+     * @return The amount of borrowable assets
+     */
     function availableBorrowable() internal view returns (uint256) {
         return availableClaimable() - totalLent;
     }

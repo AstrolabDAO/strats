@@ -46,8 +46,8 @@ struct Erc7540Request {
 struct Requests {
     uint256 redemptionLocktime; // Locktime for redemption requests = 2 days
     uint256 totalDeposit; // Total amount requested for deposit
-    uint256 totalRedemption; // Total amount requested for redemption
-    uint256 totalClaimableRedemption; // Total amount claimable for redemption
+    uint256 totalRedemption; // Total shares requested for redemption (1e8)
+    uint256 totalClaimableRedemption; // Total shares claimable for redemption (1e8)
     mapping(address => Erc7540Request) byOperator; // Mapping of ERC7540 requests by operator
 }
 

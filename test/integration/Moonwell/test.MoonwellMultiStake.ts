@@ -4,32 +4,47 @@ import { BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Moonwell/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, deposit, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
+import { IFlow, deposit, harvest, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
-const desc: IStrategyDesc = {
-  name: `Astrolab Moonwell MetaStable`,
-  symbol: `as.MMS`,
-  version: 1,
-  contract: [1284, 1285].includes(network.config.chainId!) ? "MoonwellLegacyMultiStake" : "MoonwellMultiStake",
-  asset: "USDC",
-  inputs: ["USDC", "FRAX", "xcUSDT"], // xcUSDC "xcUSDT"
-  // inputs: ["USDC", "DAI", "USDbC"],
-  inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
-  seedLiquidityUsd: 10,
+const descByChainId: { [chainId: number]: IStrategyDesc } = {
+  8453: {
+    name: `Astrolab Moonwell MetaStable`,
+    symbol: `as.MMS`,
+    version: 1,
+    contract: "MoonwellMultiStake",
+    asset: "USDC",
+    inputs: ["USDC", "DAI", "USDbC"],
+    inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10
+  },
+  1284: {
+    name: `Astrolab Moonwell MetaStable`,
+    symbol: `as.MMS`,
+    version: 1,
+    contract: "MoonwellLegacyMultiStake",
+    asset: "USDC",
+    inputs: ["USDC", "FRAX", /*"xcUSDT"*/],
+    inputWeights: [4500, 4500, /*3000*/], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10
+  }
 };
 
+const desc = descByChainId[network.config.chainId!];
+
 const testFlows: Partial<IFlow>[] = [
-  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [20], assert: (n: BigNumber) => n.gt(0) },
-  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [9], assert: (n: BigNumber) => n.gt(0) },
-  { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
-  { fn: liquidate, params: [17], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [1], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: withdraw, params: [17], assert: (n: BigNumber) => n.gt(0) },
+  { fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  // { elapsedSec: 60*60*24*14, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
 ];
 
