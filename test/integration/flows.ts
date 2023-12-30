@@ -596,7 +596,7 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
       const slippage = stablePair ? 25 : 250; // .025% or .25%
 
       amounts[i] = amounts[i].mul(10_000 + derivation).div(10_000);
-      swapAmounts[i] = amounts[i].mul(10_000 - slippage).div(10_000);
+      swapAmounts[i] = amounts[i].mul(10_000).div(10_000); // slippage
 
       if (swapAmounts[i].gt(10)) {
         // only generate swapData if the input is not the asset

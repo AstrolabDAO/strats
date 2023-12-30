@@ -168,7 +168,7 @@ export default merge(addresses, {
         StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
         WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
         Pool: {
-          SGETH: "0x28fc411f9e1c480AD312b3d9C60c22b965015c6B",
+          sgETH: "0x28fc411f9e1c480AD312b3d9C60c22b965015c6B",
           USDbC: "0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA",
         },
         LPStakingTime: "0x06Eb48763f117c7Be887296CDcdfad2E4092739C",
@@ -185,7 +185,7 @@ export default merge(addresses, {
         StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
         WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
         Pool: {
-          SGUSDC: "0xc647ce76ec30033aa319d472ae9f4462068f2ad7",
+          sgUSDC: "0xc647ce76ec30033aa319d472ae9f4462068f2ad7",
         },
         LPStaking: "0x224D8Fd7aB6AD4c6eb4611Ce56EF35Dec2277F03",
       },
