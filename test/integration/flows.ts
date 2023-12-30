@@ -100,7 +100,7 @@ export const deployStrat = async (
     if (isOracleLib(lib)) delete agentLibs[lib];
   }
 
-  // delete stratLibs.AsAccounting; // not used statically by Strat
+  delete stratLibs.AsAccounting; // not used statically by Strat
 
   const units: { [name: string]: IDeploymentUnit } = {
     Swapper: {
@@ -645,8 +645,8 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
   await logState(env, "Before Liquidate");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
-    .liquidate(amounts, 1, false, swapData, getOverrides(env))
+    .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
+    // .liquidate(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 2_000);

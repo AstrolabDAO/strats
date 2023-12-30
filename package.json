@@ -31,7 +31,7 @@
     "test-optimism": "yarn hardhat test --network optimism-mainnet --grep 'Astrolab Hop MetaStable'",
     "test-arbitrum": "yarn hardhat test --network arbitrum-mainnet --grep 'Astrolab Hop MetaStable'",
     "test-polygon": "yarn hardhat test --network polygon-mainnet --grep 'Astrolab Stargate MetaStable'",
-    "test-base": "yarn hardhat test --network base-mainnet --grep 'Astrolab Hop MetaStable'",
+    "test-base": "yarn hardhat test test/integration/Moonwell/test.MoonwellMultiStake.ts --network base-mainnet",
     "deploy-gnosis": "yarn hardhat run --network gnosis-mainnet scripts/deploy.ts",
     "deploy-optimism": "yarn hardhat run --network optimism-mainnet scripts/deploy.ts",
     "deploy-arbitrum": "yarn hardhat run --network arbitrum-mainnet scripts/deploy.ts",

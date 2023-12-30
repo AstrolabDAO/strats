@@ -110,6 +110,9 @@ const networkOverrides: { [name: string]: Overrides } = {
     maxFeePerGas: 150e9,
     // gasPrice: 150e9,
   },
+  "base-mainnet": {
+    gasLimit: 5e6,
+  },
   tenderly: {
     gasLimit: 1e8,
   },
