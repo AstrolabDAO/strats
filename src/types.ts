@@ -64,7 +64,8 @@ export class SafeContract extends Contract {
     try {
       await this.callStatic[fn](...params, opts);
     } catch (error) {
-      throw new Error(`${fn} static call failed, tx not sent: ${error}`);
+      const txData = this.interface.encodeFunctionData(fn, params);
+      throw new Error(`${fn} static call failed, tx not sent: ${error}, txData: ${txData}`);
     }
     console.log(`${fn} static call succeeded, sending tx...`);
     return this[fn](...params, opts);
