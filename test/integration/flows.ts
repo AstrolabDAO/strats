@@ -674,14 +674,8 @@ export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
   await logState(env, "Before Withdraw");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("safeWithdraw", [amount, minAmountOut, env.deployer.address, env.deployer.address], getOverrides(env))
-    .safeWithdraw(
-      amount,
-      minAmountOut,
-      env.deployer.address,
-      env.deployer.address,
-      getOverrides(env)
-    )
+    .safe("safeWithdraw", [amount, minAmountOut, env.deployer.address, env.deployer.address], getOverrides(env))
+    // .safeWithdraw(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
