@@ -37,10 +37,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         // done in As4626 but required for swapper
         stratProxy = address(this);
         agent = _params.coreAddresses.agent;
+        wgas = IWETH9(_params.coreAddresses.wgas);
         if (agent == address(0)) revert AddressZero();
         _delegateWithSignature(
-            agent, // erc20Metadata.................coreAddresses.......................fees....................inputs.inputWeights.rewardTokens
-            "init(((string,string,uint8),(address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
+            agent, // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights.rewardTokens
+            "init(((string,string,uint8),(address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
         );
     }
 
@@ -95,7 +96,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     ) internal virtual returns (uint256 assetsRecovered) {}
 
     /**
-     * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function.
+     * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function
      * @param _amounts Amount of inputs to liquidate (in asset)
      * @param _minLiquidity Minimum amount of assets to receive
      * @param _panic Set to true to ignore slippage when liquidating
@@ -483,4 +484,26 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         virtual
         returns (uint256[] memory amounts)
     {}
+
+    /**
+     * @dev Wraps the contract full native balance (the contract does not need gas)
+     * @return amount of native asset wrapped
+     */
+    function _wrapNative() internal virtual returns (uint256 amount) {
+        if (address(asset) == address(0)) {
+            amount = address(this).balance;
+            if (amount > 0)
+                IWETH9(wgas).deposit{value: amount}();
+        }
+    }
+
+    /**
+     * @dev Returns the total token balance of the contract (native+wrapped native if token == address(1))
+     * @return The total balance of the contract
+     */
+    function _balance(address token) internal view virtual returns (uint256) {
+        return (token == address(1) || token == address(wgas)) ?
+            address(this).balance + wgas.balanceOf(address(this)) :
+            IERC20(token).balanceOf(address(this));
+    }
 }

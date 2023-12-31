@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
-import "./interfaces/IMoonwell.sol";
+import "./interfaces/IBenqi.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -11,25 +11,26 @@ import "./interfaces/IMoonwell.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title MoonwellMultiStake Strategy - Liquidity providing on Moonwell (Base & co)
+ * @title BenqiMultiStake Strategy - Liquidity providing on Benqi
  * @author Astrolab DAO
- * @notice Liquidity providing strategy for Moonwell (https://moonwell.fi/)
+ * @notice Liquidity providing strategy for Sonne (https://benqi.fi/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract MoonwellMultiStake is StrategyV5Chainlink {
+contract BenqiMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IMToken[8] internal mTokens; // LP token/pool
+    IQiToken[8] internal qiTokens; // LP token/pool
+    uint8[8] internal qiTokenDecimals; // Decimals of the LP tokens
     IUnitroller internal unitroller;
 
     constructor() StrategyV5Chainlink() {}
 
     // Struct containing the strategy init parameters
     struct Params {
-        address[] mTokens;
+        address[] qiTokens;
         address unitroller; // rewards controller
     }
 
@@ -39,8 +40,9 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      */
     function setParams(Params calldata _params) public onlyAdmin {
         unitroller = IUnitroller(_params.unitroller);
-        for (uint8 i = 0; i < _params.mTokens.length; i++) {
-            mTokens[i] = IMToken(_params.mTokens[i]);
+        for (uint8 i = 0; i < _params.qiTokens.length; i++) {
+            qiTokens[i] = IQiToken(_params.qiTokens[i]);
+            qiTokenDecimals[i] = qiTokens[i].decimals();
         }
         _setAllowances(MAX_UINT256);
     }
@@ -49,21 +51,21 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      * @dev Initializes the strategy with the specified parameters.
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
-     * @param _moonwellParams Sonne specific parameters
+     * @param _benqiParams Sonne specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
         ChainlinkParams calldata _chainlinkParams,
-        Params calldata _moonwellParams
+        Params calldata _benqiParams
     ) external onlyAdmin {
-        for (uint8 i = 0; i < _moonwellParams.mTokens.length; i++) {
+        for (uint8 i = 0; i < _benqiParams.qiTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
             inputDecimals[i] = inputs[i].decimals();
         }
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
-        setParams(_moonwellParams);
+        setParams(_benqiParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
@@ -71,21 +73,28 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      * @notice Claim rewards from the reward pool and swap them for asset
      * @param _params Swaps calldata
      * @return assetsReceived Amount of assets received
+     * @dev cf.
+     *  - https://github.com/SonneProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-core-pool/comptroller/Diamond/facets/reward-facet.md#L6
+     *  - https://github.com/SonneProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-isolated-pools/rewards/rewards-distributor.md#L233
      */
     function _harvest(
         bytes[] memory _params
-    ) internal virtual override nonReentrant returns (uint256 assetsReceived) {
+    ) internal override nonReentrant returns (uint256 assetsReceived) {
 
-        unitroller.claimReward(address(this));
+        unitroller.claimReward(0, address(this)); // QI for all markets
+        unitroller.claimReward(1, address(this)); // WGAS for all markets
+        // wrap native rewards if needed
+        _wrapNative();
+
         uint256 balance;
-
-        for (uint8 i = 0; i < rewardLength; i++) {
+        uint256 received;
+        for (uint8 i = 1; i < rewardLength; i++) {
             balance = IERC20Metadata(rewardTokens[i]).balanceOf(
                 address(this)
             );
+            if (balance < 10) continue;
             if (rewardTokens[i] != address(asset)) {
-                if (balance < 10) return 0;
-                (uint256 received, ) = swapper.decodeAndSwap({
+                (received, ) = swapper.decodeAndSwap({
                     _input: rewardTokens[i],
                     _output: address(asset),
                     _amount: balance,
@@ -136,10 +145,10 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
                 toDeposit = _amounts[i];
             }
 
-            uint256 iouBefore = mTokens[i].balanceOf(address(this));
-            mTokens[i].mint(toDeposit);
+            uint256 iouBefore = qiTokens[i].balanceOf(address(this));
+            qiTokens[i].mint(toDeposit);
 
-            uint256 supplied = mTokens[i].balanceOf(address(this)) - iouBefore;
+            uint256 supplied = qiTokens[i].balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
             if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
@@ -167,13 +176,13 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            balance = mTokens[i].balanceOf(address(this));
+            balance = qiTokens[i].balanceOf(address(this));
 
             // NB: we could use redeemUnderlying() here
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
 
-            mTokens[i].redeem(toLiquidate);
-            
+            qiTokens[i].redeem(toLiquidate);
+
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
                 (recovered, ) = swapper.decodeAndSwap({
@@ -202,7 +211,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++)
-            inputs[i].approve(address(mTokens[i]), _amount);
+            inputs[i].approve(address(qiTokens[i]), _amount);
     }
 
     /**
@@ -231,7 +240,9 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(mTokens[_index].exchangeRateStored(), 1e18);
+        return _amount.mulDiv(
+            qiTokens[_index].exchangeRateStored(),
+            inputDecimals[_index]); // eg. 1e8+1e(36-8)-1e18 = 1e18
     }
 
     /**
@@ -242,7 +253,9 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(1e18, mTokens[_index].exchangeRateStored());
+        return _amount.mulDiv(
+            inputDecimals[_index],
+            qiTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e8
     }
 
     /**
@@ -252,7 +265,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
     function _stakedInput(
         uint8 _index
     ) internal view override returns (uint256) {
-        return _stakeToInput(mTokens[_index].balanceOf(address(this)), _index);
+        return _stakeToInput(qiTokens[_index].balanceOf(address(this)), _index);
     }
 
     /**
@@ -262,35 +275,11 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
     function rewardsAvailable()
         public
         view
-        virtual
         override
         returns (uint256[] memory amounts)
     {
-        IMultiRewardDistributor distributor = IMultiRewardDistributor(
-            unitroller.rewardDistributor()
-        );
-        // return unitroller.rewardAccrued(address(this)).toArray();
-        // return distributor.getOutstandingRewardsForUser(address(this));
-        MultiRewardDistributorCommon.RewardWithMToken[] memory pendingRewards
-            = distributor.getOutstandingRewardsForUser(address(this));
-
-        amounts = new uint256[](rewardLength);
-
-        for (uint i = 0; i < pendingRewards.length; i++) {
-            for (uint j = 0; j < pendingRewards[i].rewards.length; j++) {
-                MultiRewardDistributorCommon.RewardInfo memory info
-                    = pendingRewards[i].rewards[j];
-                address token = info.emissionToken;
-                uint8 index = rewardTokenIndex[token];
-                if (index == 0) continue;
-                amounts[index-1] += info.totalAmount;
-                info.totalAmount;
-            }
-        }
-
-        for (uint i = 0; i < rewardLength; i++)
-            amounts[i] += _balance(rewardTokens[i]);
-
-        return amounts;
+        uint256 mainReward = unitroller.compAccrued(address(this));
+        return rewardLength == 1 ? mainReward.toArray() :
+            mainReward.toArray(_balance(rewardTokens[1]));
     }
 }

@@ -128,9 +128,9 @@ interface IComptrollerLens {
 
     function getCompAddress() external view returns (address);
 
-    function claimReward(address holder) external; // all markets+vai
+    function claimReward(address holder) external;
 
-    function claimRewardAsCollateral(address holder) external; // all markets+vai as collateral (auto LP)
+    function claimRewardAsCollateral(address holder) external;
 
     function claimReward(address holder, address[] memory mTokens) external; // specific markets
 

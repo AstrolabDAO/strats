@@ -246,7 +246,7 @@ export const addresses = {
     },
     tokens: {}
   },
-  // matic
+  // polygon
   137: {
     accounts: {
       impersonate: "0xF977814e90dA44bFA03b6295A0616a897441aceC", // binance
@@ -292,6 +292,7 @@ export const addresses = {
       frxETH: "0xEe327F889d5947c1dc1934Bb208a1E792F953E96",
 
       HOP: "0xc5102fE9359FD9a28f877a67E36B0F050d81a3CC",
+      COMP: "0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c",
       PAXG: "0x553d3D295e0f695B9228246232eDF400ed3560B5",
       LINK: "0xb0897686c545045aFc77CF20eC7A532E3120E0F1",
       MATIC: "0x0000000000000000000000000000000000001010",
@@ -516,10 +517,12 @@ export const addresses = {
     },
     astrolab: {
       Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
-      StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
+      // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
+      StrategyV5Agent: "0x6380fc35d7b95a0457d87b2b69d8a2606af3854d",
       "Astrolab Moonwell MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
       "Astrolab Stargate MetaStable": "",
       "Astrolab Aave MetaStable": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
+      "Astrolab Compound MetaStable": "0xecdd53a61821eee424249e96a435992a3e3753cb",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -541,6 +544,7 @@ export const addresses = {
       KNC: "0x28fe69Ff6864C1C218878BDCA01482D36B9D57b1",
       WELL: "0xFF8adeC2221f9f4D8dfbAFa6B9a297d17603493D",
       HOP: "0xc5102fe9359fd9a28f877a67e36b0f050d81a3cc",
+      COMP: "0x9e1028F5F1D5eDE59748FFceE5532509976840E0",
       AURA: "0x1509706a6c66CA549ff0cB464de88231DDBe213B",
       SONNE: "0x22a2488fE295047Ba13BD8cCCdBC8361DBD8cf7c",
     },

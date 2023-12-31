@@ -17,6 +17,7 @@ struct Erc20Metadata {
 }
 
 struct CoreAddresses {
+    address wgas; // wrapped native (WETH/WAVAX...)
     address asset;
     address feeCollector;
     address swapper;

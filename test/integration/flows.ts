@@ -184,6 +184,7 @@ export const deployStrat = async (
   // default coreAddresses
   initParams[0].coreAddresses = merge(
     {
+      wgas: env.addresses!.tokens.WGAS,
       feeCollector: env.deployer!.address, // feeCollector
       swapper: swapper.address, // Swapper
       agent: agent.address, // StrategyV5Agent
@@ -552,13 +553,6 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
   if (max.lt(amount)) {
     console.log(`Using total allocated assets (max) ${max} (< ${amount})`);
     amount = max;
-  }
-
-  if (amount.lt(10)) {
-    console.log(
-      `Skipping liquidate as amount < 10wei (no liquidation required)`
-    );
-    return BigNumber.from(1);
   }
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];

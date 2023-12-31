@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
+import "../interfaces/IWETH9.sol";
 import "./As4626Abstract.sol";
 
 /**            _             _       _
@@ -29,6 +30,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     error InvalidCalldata();
 
     // State variables (As4626 extension)
+    IWETH9 public wgas; // gas/native wrapper contract
     ISwapper public swapper; // Interface for swapping assets
     address public agent; // Address of the agent
     address internal stratProxy; // Address of the strategy proxy

@@ -80,8 +80,8 @@ contract SonneMultiStake is StrategyV5Chainlink {
     function _harvest(
         bytes[] memory _params
     ) internal override nonReentrant returns (uint256 assetsReceived) {
-        // only supports SONNE rewards
-        unitroller.claimComp(address(this)); // SONNE for all markets+vai
+
+        unitroller.claimComp(address(this)); // claim for all markets
         uint256 balance = IERC20Metadata(rewardTokens[0]).balanceOf(
             address(this)
         );
@@ -270,7 +270,8 @@ contract SonneMultiStake is StrategyV5Chainlink {
         override
         returns (uint256[] memory amounts)
     {
-        // only supports SONNE rewards
-        return unitroller.compAccrued(address(this)).toArray();
+        uint256 mainReward = unitroller.compAccrued(address(this));
+        return rewardLength == 1 ? mainReward.toArray() :
+            mainReward.toArray(_balance(rewardTokens[1]));
     }
 }

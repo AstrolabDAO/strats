@@ -80,8 +80,8 @@ contract VenusMultiStake is StrategyV5Chainlink {
     function _harvest(
         bytes[] memory _params
     ) internal override nonReentrant returns (uint256 assetsReceived) {
-        // only supports XVS rewards
-        unitroller.claimVenus(address(this)); // XVS for all markets+vai
+
+        unitroller.claimVenus(address(this)); // claim for all markets
         assetsReceived = IERC20Metadata(rewardTokens[0]).balanceOf(
             address(this)
         );
@@ -268,7 +268,8 @@ contract VenusMultiStake is StrategyV5Chainlink {
         override
         returns (uint256[] memory amounts)
     {
-        // only supports XVS rewards
-        return unitroller.venusAccrued(address(this)).toArray();
+        uint256 mainReward = unitroller.venusAccrued(address(this));
+        return rewardLength == 1 ? mainReward.toArray() :
+            mainReward.toArray(_balance(rewardTokens[1]));
     }
 }

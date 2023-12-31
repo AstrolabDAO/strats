@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 interface IComptroller {
     function claimReward(uint8 rewardType, address holder) external;
 
-    function claimComp(address holder) external; // all markets+vai
+    function claimComp(address holder) external;
 
     function claimComp(address holder, address[] memory cTokens) external; // specific markets
 

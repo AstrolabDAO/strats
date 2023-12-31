@@ -175,9 +175,9 @@ interface IVAIBalancerVault {
 }
 
 interface IRewardFacet {
-    function claimVenus(address holder) external; // all markets+vai
+    function claimVenus(address holder) external;
 
-    function claimVenusAsCollateral(address holder) external; // all markets+vai as collateral (auto LP)
+    function claimVenusAsCollateral(address holder) external;
 
     function claimVenus(address holder, address[] memory vTokens) external; // specific markets
 

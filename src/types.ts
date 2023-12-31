@@ -89,6 +89,7 @@ export interface Erc20Metadata {
 }
 
 export interface CoreAddresses {
+  wgas: string;
   asset: string;
   feeCollector?: string;
   swapper?: string;

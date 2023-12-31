@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
-import "./interfaces/IMoonwell.sol";
+import "./interfaces/v3/ICompoundV3.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -11,26 +11,26 @@ import "./interfaces/IMoonwell.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title MoonwellMultiStake Strategy - Liquidity providing on Moonwell (Base & co)
+ * @title CompoundV3MultiStake Strategy - Liquidity providing on Compound V3 (Base & co)
  * @author Astrolab DAO
- * @notice Liquidity providing strategy for Moonwell (https://moonwell.fi/)
+ * @notice Liquidity providing strategy for Compound (https://compound.finance/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract MoonwellMultiStake is StrategyV5Chainlink {
+contract CompoundV3MultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IMToken[8] internal mTokens; // LP token/pool
-    IUnitroller internal unitroller;
+    IComet[8] internal cTokens; // LP token/pool
+    ICometRewards public cometRewards;
 
     constructor() StrategyV5Chainlink() {}
 
     // Struct containing the strategy init parameters
     struct Params {
-        address[] mTokens;
-        address unitroller; // rewards controller
+        address[] cTokens;
+        address cometRewards; // rewards controller
     }
 
     /**
@@ -38,9 +38,11 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      * @param _params Strategy specific parameters
      */
     function setParams(Params calldata _params) public onlyAdmin {
-        unitroller = IUnitroller(_params.unitroller);
-        for (uint8 i = 0; i < _params.mTokens.length; i++) {
-            mTokens[i] = IMToken(_params.mTokens[i]);
+        // unitroller = IUnitroller(_params.unitroller);
+        cometRewards = ICometRewards(_params.cometRewards);
+
+        for (uint8 i = 0; i < _params.cTokens.length; i++) {
+            cTokens[i] = IComet(_params.cTokens[i]);
         }
         _setAllowances(MAX_UINT256);
     }
@@ -49,21 +51,21 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      * @dev Initializes the strategy with the specified parameters.
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
-     * @param _moonwellParams Sonne specific parameters
+     * @param _compoundParams Sonne specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
         ChainlinkParams calldata _chainlinkParams,
-        Params calldata _moonwellParams
+        Params calldata _compoundParams
     ) external onlyAdmin {
-        for (uint8 i = 0; i < _moonwellParams.mTokens.length; i++) {
+        for (uint8 i = 0; i < _compoundParams.cTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
             inputDecimals[i] = inputs[i].decimals();
         }
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
-        setParams(_moonwellParams);
+        setParams(_compoundParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
@@ -76,10 +78,10 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         bytes[] memory _params
     ) internal virtual override nonReentrant returns (uint256 assetsReceived) {
 
-        unitroller.claimReward(address(this));
         uint256 balance;
 
         for (uint8 i = 0; i < rewardLength; i++) {
+            cometRewards.claim(address(cTokens[i]), address(this), true);
             balance = IERC20Metadata(rewardTokens[i]).balanceOf(
                 address(this)
             );
@@ -136,10 +138,10 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
                 toDeposit = _amounts[i];
             }
 
-            uint256 iouBefore = mTokens[i].balanceOf(address(this));
-            mTokens[i].mint(toDeposit);
+            uint256 iouBefore = cTokens[i].balanceOf(address(this));
+            cTokens[i].supply(address(inputs[i]), toDeposit);
 
-            uint256 supplied = mTokens[i].balanceOf(address(this)) - iouBefore;
+            uint256 supplied = cTokens[i].balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
             if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
@@ -167,12 +169,12 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            balance = mTokens[i].balanceOf(address(this));
+            balance = cTokens[i].balanceOf(address(this));
 
             // NB: we could use redeemUnderlying() here
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
 
-            mTokens[i].redeem(toLiquidate);
+            cTokens[i].withdraw(address(inputs[i]), toLiquidate);
             
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
@@ -202,7 +204,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++)
-            inputs[i].approve(address(mTokens[i]), _amount);
+            inputs[i].approve(address(cTokens[i]), _amount);
     }
 
     /**
@@ -231,7 +233,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(mTokens[_index].exchangeRateStored(), 1e18);
+        return _amount; // 1:1 (rebasing, oracle value based)
     }
 
     /**
@@ -242,7 +244,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(1e18, mTokens[_index].exchangeRateStored());
+        return _amount; // 1:1 (rebasing, oracle value based)
     }
 
     /**
@@ -252,7 +254,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
     function _stakedInput(
         uint8 _index
     ) internal view override returns (uint256) {
-        return _stakeToInput(mTokens[_index].balanceOf(address(this)), _index);
+        return cTokens[_index].balanceOf(address(this));
     }
 
     /**
@@ -266,30 +268,15 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         override
         returns (uint256[] memory amounts)
     {
-        IMultiRewardDistributor distributor = IMultiRewardDistributor(
-            unitroller.rewardDistributor()
-        );
-        // return unitroller.rewardAccrued(address(this)).toArray();
-        // return distributor.getOutstandingRewardsForUser(address(this));
-        MultiRewardDistributorCommon.RewardWithMToken[] memory pendingRewards
-            = distributor.getOutstandingRewardsForUser(address(this));
-
         amounts = new uint256[](rewardLength);
 
-        for (uint i = 0; i < pendingRewards.length; i++) {
-            for (uint j = 0; j < pendingRewards[i].rewards.length; j++) {
-                MultiRewardDistributorCommon.RewardInfo memory info
-                    = pendingRewards[i].rewards[j];
-                address token = info.emissionToken;
-                uint8 index = rewardTokenIndex[token];
-                if (index == 0) continue;
-                amounts[index-1] += info.totalAmount;
-                info.totalAmount;
-            }
+        for (uint i = 0; i < cTokens.length; i++) {
+            if (address(cTokens[i]) == address(0)) break;
+            amounts[0] = cTokens[i].baseTrackingAccrued(address(cTokens[i]));
         }
-
-        for (uint i = 0; i < rewardLength; i++)
-            amounts[i] += _balance(rewardTokens[i]);
+        for (uint i = 0; i < rewardLength; i++) {
+            amounts[i] += IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
+        }
 
         return amounts;
     }

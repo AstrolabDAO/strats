@@ -1,5 +1,5 @@
 import addresses from "../../addresses";
-import merge from "lodash/merge";;
+import merge from "lodash/merge";
 
 // cf. https://https://docs.aave.com/developers/deployed-contracts/v3-mainnet/
 export default merge(addresses, {

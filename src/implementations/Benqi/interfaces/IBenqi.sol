@@ -3,58 +3,58 @@ pragma solidity ^0.8.0;
 
 interface IComptroller {
     function enterMarkets(
-        address[] calldata cTokens
+        address[] calldata qiTokens
     ) external returns (uint[] memory);
 
-    function exitMarket(address cToken) external returns (uint256);
+    function exitMarket(address qiToken) external returns (uint256);
 
     function mintAllowed(
-        address cToken,
+        address qiToken,
         address minter,
         uint256 mintAmount
     ) external returns (uint256);
 
     function mintVerify(
-        address cToken,
+        address qiToken,
         address minter,
         uint256 mintAmount,
         uint256 mintTokens
     ) external;
 
     function redeemAllowed(
-        address cToken,
+        address qiToken,
         address redeemer,
         uint256 redeemTokens
     ) external returns (uint256);
 
     function redeemVerify(
-        address cToken,
+        address qiToken,
         address redeemer,
         uint256 redeemAmount,
         uint256 redeemTokens
     ) external;
 
     function borrowAllowed(
-        address cToken,
+        address qiToken,
         address borrower,
         uint256 borrowAmount
     ) external returns (uint256);
 
     function borrowVerify(
-        address cToken,
+        address qiToken,
         address borrower,
         uint256 borrowAmount
     ) external;
 
     function repayBorrowAllowed(
-        address cToken,
+        address qiToken,
         address payer,
         address borrower,
         uint256 repayAmount
     ) external returns (uint256);
 
     function repayBorrowVerify(
-        address cToken,
+        address qiToken,
         address payer,
         address borrower,
         uint256 repayAmount,
@@ -62,16 +62,16 @@ interface IComptroller {
     ) external;
 
     function liquidateBorrowAllowed(
-        address cTokenBorrowed,
-        address cTokenCollateral,
+        address qiTokenBorrowed,
+        address qiTokenCollateral,
         address liquidator,
         address borrower,
         uint256 repayAmount
     ) external returns (uint256);
 
     function liquidateBorrowVerify(
-        address cTokenBorrowed,
-        address cTokenCollateral,
+        address qiTokenBorrowed,
+        address qiTokenCollateral,
         address liquidator,
         address borrower,
         uint256 repayAmount,
@@ -79,38 +79,38 @@ interface IComptroller {
     ) external;
 
     function seizeAllowed(
-        address cTokenCollateral,
-        address cTokenBorrowed,
+        address qiTokenCollateral,
+        address qiTokenBorrowed,
         address liquidator,
         address borrower,
         uint256 seizeTokens
     ) external returns (uint256);
 
     function seizeVerify(
-        address cTokenCollateral,
-        address cTokenBorrowed,
+        address qiTokenCollateral,
+        address qiTokenBorrowed,
         address liquidator,
         address borrower,
         uint256 seizeTokens
     ) external;
 
     function transferAllowed(
-        address cToken,
+        address qiToken,
         address src,
         address dst,
         uint256 transferTokens
     ) external returns (uint256);
 
     function transferVerify(
-        address cToken,
+        address qiToken,
         address src,
         address dst,
         uint256 transferTokens
     ) external;
 
     function liquidateCalculateSeizeTokens(
-        address cTokenBorrowed,
-        address cTokenCollateral,
+        address qiTokenBorrowed,
+        address qiTokenCollateral,
         uint256 repayAmount
     ) external view returns (uint, uint256);
 }
@@ -124,30 +124,26 @@ interface IComptrollerLens {
         address
     ) external view returns (uint256, uint256, uint256);
 
-    function getAssetsIn(address) external view returns (ICToken[] memory);
+    function getAssetsIn(address) external view returns (IQiToken[] memory);
 
     function getCompAddress() external view returns (address);
 
-    function claimComp(address holder) external;
+    // legacy (to be used with moonbeam/moonriver comptrollers)
+    function claimReward(uint8 rewardType, address holder) external;
 
-    function claimCompAsCollateral(address holder) external;
+    function claimReward(
+        uint8 rewardType,
+        address holder,
+        address[] memory mTokens
+    ) external;
 
-    function claimComp(address holder, address[] memory cTokens) external; // specific markets
-
-    function claimComp(
+    function claimReward(
+        uint8 rewardType,
         address[] calldata holders,
-        ICToken[] calldata cTokens,
+        IQiToken[] calldata mTokens,
         bool borrowers,
         bool suppliers
-    ) external; // specific markets single/dual side (borrow/supply)
-
-    function claimComp(
-        address[] calldata holders,
-        ICToken[] calldata cTokens,
-        bool borrowers,
-        bool suppliers,
-        bool collateral
-    ) external; // specific markets single/dual side (borrow/supply) + collateral yes/no
+    ) external payable; // specific markets single/dual side (borrow/supply)
 
     function compAccrued(address) external view returns (uint256);
 
@@ -171,7 +167,7 @@ interface IExternalRewardDistributorInterface {
     function rewardTokenExists(address token) external view returns (bool);
 }
 
-interface ICTokenStorage {
+interface IQiTokenStorage {
     function name() external view returns (string memory);
 
     function symbol() external view returns (string memory);
@@ -186,7 +182,7 @@ interface ICTokenStorage {
 
     function interestRateModel() external view returns (address);
 
-    function reserveFactorMantissa() external view returns (uint256);
+    function reserveFaqitorMantissa() external view returns (uint256);
 
     function accrualBlockNumber() external view returns (uint256);
 
@@ -206,7 +202,7 @@ interface ICTokenStorage {
     function protocolSeizeShareMantissa() external view returns (uint256);
 }
 
-interface ICToken is ICTokenStorage {
+interface IQiToken is IQiTokenStorage {
     event AccrueInterest(
         uint256 cashPrior,
         uint256 interestAccumulated,
@@ -232,7 +228,7 @@ interface ICToken is ICTokenStorage {
         address liquidator,
         address borrower,
         uint256 repayAmount,
-        address cTokenCollateral,
+        address qiTokenCollateral,
         uint256 seizeTokens
     );
     event NewPendingAdmin(address oldPendingAdmin, address newPendingAdmin);
@@ -242,12 +238,12 @@ interface ICToken is ICTokenStorage {
         address oldInterestRateModel,
         address newInterestRateModel
     );
-    event NewReserveFactor(
-        uint256 oldReserveFactorMantissa,
-        uint256 newReserveFactorMantissa
+    event NewReserveFaqitor(
+        uint256 oldReserveFaqitorMantissa,
+        uint256 newReserveFaqitorMantissa
     );
     event ReservesAdded(
-        address benefactor,
+        address benefaqitor,
         uint256 addAmount,
         uint256 newTotalReserves
     );
@@ -332,7 +328,7 @@ interface ICToken is ICTokenStorage {
     function liquidateBorrow(
         address borrower,
         uint256 repayAmount,
-        ICToken cTokenCollateral
+        IQiToken qiTokenCollateral
     ) external returns (uint256);
 
     function sweepToken(address token) external;
@@ -349,8 +345,8 @@ interface ICToken is ICTokenStorage {
         IComptroller newComptroller
     ) external returns (uint256);
 
-    function _setReserveFactor(
-        uint256 newReserveFactorMantissa
+    function _setReserveFaqitor(
+        uint256 newReserveFaqitorMantissa
     ) external returns (uint256);
 
     function _reduceReserves(uint256 reduceAmount) external returns (uint256);
