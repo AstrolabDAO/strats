@@ -96,7 +96,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
     {
         uint256 toDeposit;
         uint256 spent;
-        IAtoken pool = IAtoken(poolProvider.getPool());
+        IAavePool pool = IAavePool(poolProvider.getPool());
 
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
@@ -148,7 +148,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
         uint256 toLiquidate;
         uint256 recovered;
 
-        IAtoken pool = IAtoken(poolProvider.getPool());
+        IAavePool pool = IAavePool(poolProvider.getPool());
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
@@ -187,7 +187,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        IAtoken pool = IAtoken(poolProvider.getPool());
+        IAavePool pool = IAavePool(poolProvider.getPool());
         for (uint8 i = 0; i < inputLength; i++) {
             inputs[i].approve(address(pool), _amount);
             aTokens[i].approve(address(pool), _amount);

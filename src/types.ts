@@ -40,8 +40,8 @@ export class SafeContract extends Contract {
       if ("symbol" in c) {
         // c is a token
         c.sym = await c.symbol?.();
-        c.scale = await c.decimals?.();
-        c.weiPerUnit = 10 ** c.scale ?? 0;
+        c.scale = await c.decimals?.() || 8;
+        c.weiPerUnit = 10 ** c.scale;
       }
       return c;
     } catch (error) {

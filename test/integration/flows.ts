@@ -100,7 +100,7 @@ export const deployStrat = async (
     if (isOracleLib(lib)) delete agentLibs[lib];
   }
 
-  delete stratLibs.AsAccounting; // not used statically by Strat
+  // delete stratLibs.AsAccounting; // not used statically by Strat
 
   const units: { [name: string]: IDeploymentUnit } = {
     Swapper: {
@@ -293,8 +293,8 @@ export async function seedLiquidity(env: IStrategyDeploymentEnv, _amount = 10) {
   await logState(env, "Before SeedLiquidity");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
-    .seedLiquidity(amount, MaxUint256, getOverrides(env))
+    .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
+    // .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted
@@ -408,8 +408,8 @@ export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
   await logState(env, "Before Deposit");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
-    .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
+    .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
+    // .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Deposit", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -524,8 +524,8 @@ export async function invest(env: IStrategyDeploymentEnv, _amount = 0) {
   await logState(env, "Before Invest");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("invest(uint256[8],bytes[])", params, getOverrides(env)) // Pass the invest only if the static call passed to avoid losing gas
-    .invest(...params, getOverrides(env))
+    .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
+    // .invest(...params, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -772,8 +772,8 @@ export async function harvest(env: IStrategyDeploymentEnv) {
   await logState(env, "Before Harvest");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("harvest", params, getOverrides(env))
-    .harvest(harvestSwapData, getOverrides(env))
+    .safe("harvest", harvestSwapData, getOverrides(env))
+    // .harvest(harvestSwapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Harvest", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);

@@ -519,7 +519,7 @@ export const addresses = {
       StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
       "Astrolab Moonwell MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
       "Astrolab Stargate MetaStable": "",
-      "Astrolab Aave MetaStable": "",
+      "Astrolab Aave MetaStable": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -584,7 +584,7 @@ export const addresses = {
       USDC: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
       DAI: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
       TUSD: "0x4D15a3A2286D883AF0AA1B3f21367843FAc63E07",
-      // SUSD: "0xA970AF1a584579B618be4d69aD6F73459D112F95", // no liqudity
+      // sUSD: "0xA970AF1a584579B618be4d69aD6F73459D112F95", // no liqudity
       FRAX: "0x17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F",
       MIM: "0xFEa7a6a0B346362BF88A9e4A88416B77a57D6c2A",
       USDD: "0x680447595e8b7b3Aa1B43beB9f6098C79ac2Ab3f",

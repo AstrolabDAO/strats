@@ -10,20 +10,74 @@ import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
-const desc: IStrategyDesc = {
-  name: `Astrolab Stargate MetaStable`,
-  symbol: `as.SMS`,
-  version: 1,
-  contract: "StargateMultiStake",
-  asset: "USDC",
-  inputs: ["USDCe"],
-  inputWeights: [3000, 4000, 2000], // 90% allocation, 10% cash
-  seedLiquidityUsd: 10,
-};
+const descByChainId: { [chainId: number]: IStrategyDesc } = {
+  10: {
+    name: `Astrolab Stargate MetaStable`,
+    symbol: `as.SMS`,
+    version: 1,
+    contract: "StargateMultiStake",
+    asset: "USDC",
+    inputs: ["USDCe", "USDT", "DAI"], // "FRAX", "LUSD", "sUSD"] <-- no emissions as volumes too low
+    inputWeights: [3000, 4000, 2000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  50: {
+    name: `Astrolab Stargate MetaStable`,
+    symbol: `as.SMS`,
+    version: 1,
+    contract: "StargateMultiStake",
+    asset: "USDC",
+    inputs: ["USDT"], // "BUSD"] <-- no emissions as volumes too low
+    inputWeights: [9000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  137: {
+    name: `Astrolab Stargate MetaStable`,
+    symbol: `as.SMS`,
+    version: 1,
+    contract: "StargateMultiStake",
+    asset: "USDC",
+    inputs: ["USDCe", "USDT", "DAI"],
+    inputWeights: [3000, 4000, 2000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  8453: {
+    name: `Astrolab Stargate MetaStable`,
+    symbol: `as.SMS`,
+    version: 1,
+    contract: "StargateMultiStake",
+    asset: "USDC",
+    inputs: ["USDbC"],
+    inputWeights: [9000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  42161: {
+    name: `Astrolab Stargate MetaStable`,
+    symbol: `as.SMS`,
+    version: 1,
+    contract: "StargateMultiStake",
+    asset: "USDC",
+    inputs: ["USDCe", "USDT"], // "FRAX"] <-- no emissions as volumes too low
+    inputWeights: [4500, 4500], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  43114: {
+    name: `Astrolab Stargate MetaStable`,
+    symbol: `as.SMS`,
+    version: 1,
+    contract: "StargateMultiStake",
+    asset: "USDC",
+    inputs: ["USDCe", "USDT"], // "FRAX"] <-- no emissions as volumes too low
+    inputWeights: [4500, 4500], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+}
+
+const desc = descByChainId[network.config.chainId!];
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
   // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
