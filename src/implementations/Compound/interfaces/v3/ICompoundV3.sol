@@ -114,7 +114,7 @@ interface IComet {
     function decimals() external view returns (uint8);
 
     function initializeStorage() external;
-    
+
     function baseTrackingAccrued(address account) external view returns (uint64);
 }
 
@@ -124,10 +124,17 @@ interface IComet {
  * @author Compound
  */
 interface ICometRewards {
-    
+
     struct RewardOwed {
         address token;
         uint owed;
+    }
+
+    struct RewardConfig {
+        address token;
+        uint64 rescaleFactor;
+        bool shouldUpscale;
+        uint256 multiplier;
     }
 
     /**
@@ -156,5 +163,5 @@ interface ICometRewards {
 
     function getRewardOwed(address comet, address account) external returns (RewardOwed memory);
 
-
+    function rewardConfig(address comet) external view returns (RewardConfig memory);
 }

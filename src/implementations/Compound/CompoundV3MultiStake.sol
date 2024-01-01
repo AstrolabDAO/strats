@@ -23,7 +23,8 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
 
     // Third party contracts
     IComet[8] internal cTokens; // LP token/pool
-    ICometRewards public cometRewards;
+    ICometRewards internal cometRewards;
+    ICometRewards.RewardConfig[8] internal rewardConfigs;
 
     constructor() StrategyV5Chainlink() {}
 
@@ -43,12 +44,13 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
 
         for (uint8 i = 0; i < _params.cTokens.length; i++) {
             cTokens[i] = IComet(_params.cTokens[i]);
+            rewardConfigs[i] = cometRewards.rewardConfig(_params.cTokens[i]);
         }
         _setAllowances(MAX_UINT256);
     }
 
     /**
-     * @dev Initializes the strategy with the specified parameters.
+     * @dev Initializes the strategy with the specified parameters
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
      * @param _compoundParams Sonne specific parameters
@@ -70,33 +72,17 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Claim rewards from the reward pool and swap them for asset
-     * @param _params Swaps calldata
-     * @return assetsReceived Amount of assets received
+     * @notice Claim rewards from the third party contracts
+     * @return amounts Array of rewards claimed for each reward token
      */
-    function _harvest(
-        bytes[] memory _params
-    ) internal virtual override nonReentrant returns (uint256 assetsReceived) {
-
-        uint256 balance;
-
+    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+        amounts = new uint256[](rewardLength);
+        for (uint8 i = 0; i < cTokens.length; i++) {
+            if (address(cTokens[i]) == address(0)) break;
+            cometRewards.claim(address(cTokens[i]), address(this), false);
+        }
         for (uint8 i = 0; i < rewardLength; i++) {
-            cometRewards.claim(address(cTokens[i]), address(this), true);
-            balance = IERC20Metadata(rewardTokens[i]).balanceOf(
-                address(this)
-            );
-            if (rewardTokens[i] != address(asset)) {
-                if (balance < 10) return 0;
-                (uint256 received, ) = swapper.decodeAndSwap({
-                    _input: rewardTokens[i],
-                    _output: address(asset),
-                    _amount: balance,
-                    _params: _params[i]
-                });
-                assetsReceived += received;
-            } else {
-                assetsReceived += balance;
-            }
+            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
 
@@ -175,7 +161,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
 
             cTokens[i].withdraw(address(inputs[i]), toLiquidate);
-            
+
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
                 (recovered, ) = swapper.decodeAndSwap({
@@ -270,14 +256,27 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     {
         amounts = new uint256[](rewardLength);
 
-        for (uint i = 0; i < cTokens.length; i++) {
+        for (uint8 i = 0; i < cTokens.length; i++) {
             if (address(cTokens[i]) == address(0)) break;
-            amounts[0] = cTokens[i].baseTrackingAccrued(address(cTokens[i]));
+            amounts[0] += _rebaseAccruedReward(cTokens[i].baseTrackingAccrued(address(this)), i);
         }
-        for (uint i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < rewardLength; i++) {
             amounts[i] += IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
 
         return amounts;
+    }
+
+    /**
+     * @dev Calculates the rebased accrued reward based on the given amount and reward index
+     * @param _amount The amount of reward to be rebased
+     * @param _index The index of the reward configuration
+     * @return The rebased accrued reward
+     */
+    function _rebaseAccruedReward(uint256 _amount, uint8 _index) internal view returns (uint256) {
+        ICometRewards.RewardConfig memory config = rewardConfigs[_index];
+        return config.shouldUpscale ?
+            _amount.mulDiv(config.rescaleFactor, 1e18)
+            : _amount.mulDiv(1e18, config.rescaleFactor);
     }
 }

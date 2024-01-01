@@ -157,14 +157,47 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         return _liquidateRequest(_amount);
     }
 
+    // Claim rewards from the protocol
+    function claimRewards() external virtual onlyKeeper returns (uint256[] memory amounts) {}
+
     /**
-     * @dev Internal function to harvest rewards, to be implemented by strategies
+     * @notice Swap rewards to asset
+     * @param _params Swaps calldata
+     * @return assetsReceived Amount of assets from the swaps
+     */
+    function _swapRewards(bytes[] memory _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
+
+        uint256 balance;
+        uint256 received;
+        for (uint8 i = 1; i < rewardLength; i++) {
+            balance = IERC20Metadata(rewardTokens[i]).balanceOf(
+                address(this)
+            );
+            if (rewardTokens[i] != address(asset) && balance > 10) {
+                (received, ) = swapper.decodeAndSwap({
+                    _input: rewardTokens[i],
+                    _output: address(asset),
+                    _amount: balance,
+                    _params: _params[i]
+                });
+                assetsReceived += received;
+            } else {
+                assetsReceived += balance;
+            }
+        }
+    }
+
+    /**
+     * @dev Internal function to harvest rewards (claim+swap), to be implemented by strategies
      * @param _params Generic callData (e.g., SwapperParams)
      * @return amount Amount of asset assets received (after swap)
      */
     function _harvest(
         bytes[] memory _params
-    ) internal virtual returns (uint256 amount) {}
+    ) internal virtual override nonReentrant returns (uint256 assetsReceived) {
+        claimRewards();
+        return _swapRewards(_params);
+    }
 
     /**
      * @notice Harvest rewards from the protocol
@@ -490,11 +523,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @return amount of native asset wrapped
      */
     function _wrapNative() internal virtual returns (uint256 amount) {
-        if (address(asset) == address(0)) {
-            amount = address(this).balance;
-            if (amount > 0)
-                IWETH9(wgas).deposit{value: amount}();
-        }
+        amount = address(this).balance;
+        if (amount > 0)
+            IWETH9(wgas).deposit{value: amount}();
     }
 
     /**

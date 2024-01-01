@@ -83,6 +83,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
 
         unitroller.claimReward(0, address(this)); // QI for all markets
         unitroller.claimReward(1, address(this)); // WGAS for all markets
+
         // wrap native rewards if needed
         _wrapNative();
 

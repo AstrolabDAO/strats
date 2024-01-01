@@ -518,11 +518,11 @@ export const addresses = {
     astrolab: {
       Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
       // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
-      StrategyV5Agent: "0x6380fc35d7b95a0457d87b2b69d8a2606af3854d",
+      StrategyV5Agent: "",
       "Astrolab Moonwell MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
       "Astrolab Stargate MetaStable": "",
       "Astrolab Aave MetaStable": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
-      "Astrolab Compound MetaStable": "0xecdd53a61821eee424249e96a435992a3e3753cb",
+      "Astrolab CompoundV3 MetaStable": "",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",

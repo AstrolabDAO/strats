@@ -239,6 +239,8 @@ export const deployStrat = async (
       env.deployer
     );
   } else {
+    if (!isLive(env))
+      env.deployment!.export = false;
     await deployAll(env.deployment!);
   }
 
@@ -739,7 +741,7 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
       estimatedExchangeRate: 1,
     } as ITransactionRequestWithEstimate;
 
-    if (rewardTokens[i].address != asset.address && amounts[i].gt(10)) {
+    if (rewardTokens[i].address != asset.address && amounts[i].gt(1e6)) {
       tr = (await getTransactionRequest({
         input: rewardTokens[i].address,
         output: asset.address,
@@ -762,7 +764,7 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
 
 export async function harvest(env: IStrategyDeploymentEnv) {
   const { strat, rewardTokens } = env.deployment!;
-  const [harvestSwapData] = await preHarvest(env);
+  const harvestSwapData = await preHarvest(env);
   await logState(env, "Before Harvest");
   // only exec if static call is successful
   const receipt = await strat
@@ -775,7 +777,7 @@ export async function harvest(env: IStrategyDeploymentEnv) {
 
 export async function compound(env: IStrategyDeploymentEnv) {
   const { asset, inputs, strat } = env.deployment!;
-  const [harvestSwapData] = await preHarvest(env);
+  const harvestSwapData = await preHarvest(env);
 
   // harvest static call
   let harvestEstimate = BigNumber.from(0);

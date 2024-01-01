@@ -183,12 +183,15 @@ Derivatives
 Special thanks to peer aggregators who also open source their strategies
 - [Beefy](https://github.com/beefyfinance/beefy-contracts/tree/master/contracts/BIFI/strategies)
 - [Overnight/USD+](https://github.com/ovnstable/ovnstable-core/tree/master/pkg/strategies)
+- [DefiSaver](https://github.com/defisaver/defisaver-v3-contracts/tree/main)
 - [Origin/OUSD](https://github.com/OriginProtocol/origin-dollar/tree/master/contracts/contracts/strategies)
 - [Vesper](https://github.com/vesperfi/vesper-pools-v2/tree/master/contracts/strategies)
 - [YieldYak](https://github.com/yieldyak/smart-contracts/tree/master/contracts/strategies)
 - [Idle](https://github.com/Idle-Labs/idle-tranches/tree/master/contracts)
+- [Affine](https://github.com/AffineLabs/contracts/tree/master/src/strategies)
 - [ACryptoS](https://github.com/acryptos/acryptos-protocol/tree/main/strategies)
 - [Sushi/Bentobox](https://github.com/sushiswap/strategies)
+
 
 ## Contributing
 Contributions are welcome, the DAO is always open to team up with like-minded builders and strategists.

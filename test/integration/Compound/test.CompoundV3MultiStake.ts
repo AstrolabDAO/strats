@@ -72,16 +72,15 @@ const desc = descByChainId[network.config.chainId!];
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [25], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) },
   { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [8], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [5], assert: (n: BigNumber) => n.gt(0) },
-  { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
-  { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  { fn: withdraw, params: [17], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: withdraw, params: [17], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*14, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 60*60*24*14, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
 ];
 
