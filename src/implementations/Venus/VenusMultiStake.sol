@@ -70,30 +70,19 @@ contract VenusMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Claim rewards from the reward pool and swap them for asset
-     * @param _params Swaps calldata
-     * @return assetsReceived Amount of assets received
+     * @notice Claim rewards from the third party contracts
+     * @return amounts Array of rewards claimed for each reward token
      * @dev cf.
      *  - https://github.com/VenusProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-core-pool/comptroller/Diamond/facets/reward-facet.md#L6
      *  - https://github.com/VenusProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-isolated-pools/rewards/rewards-distributor.md#L233
      */
-    function _harvest(
-        bytes[] memory _params
-    ) internal override nonReentrant returns (uint256 assetsReceived) {
-
+    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+        amounts = new uint256[](rewardLength);
         unitroller.claimVenus(address(this)); // claim for all markets
-        assetsReceived = IERC20Metadata(rewardTokens[0]).balanceOf(
-            address(this)
-        );
-        if (assetsReceived < 10) return 0;
-        if (rewardTokens[0] != address(asset)) {
-            (uint256 received, ) = swapper.decodeAndSwap({
-                _input: rewardTokens[0],
-                _output: address(asset),
-                _amount: assetsReceived,
-                _params: _params[0]
-            });
-            assetsReceived = received;
+        // wrap native rewards if needed
+        _wrapNative();
+        for (uint8 i = 0; i < rewardLength; i++) {
+            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
 

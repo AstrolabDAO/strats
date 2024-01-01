@@ -69,16 +69,6 @@ contract AaveMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Claim rewards from the reward pool and swap them for asset
-     * @param _params Swaps calldata
-     * @return assetsReceived Amount of assets received
-     */
-    function _harvest(
-        bytes[] memory _params
-    ) internal override nonReentrant returns (uint256 assetsReceived) {
-    }
-
-    /**
      * @notice Invests the asset asset into the pool
      * @param _amounts Amounts of asset to invest in each input
      * @param _params Swaps calldata

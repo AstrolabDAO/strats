@@ -158,7 +158,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     // Claim rewards from the protocol
-    function claimRewards() external virtual onlyKeeper returns (uint256[] memory amounts) {}
+    function claimRewards() public virtual onlyKeeper returns (uint256[] memory amounts) {}
 
     /**
      * @notice Swap rewards to asset
@@ -190,11 +190,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     /**
      * @dev Internal function to harvest rewards (claim+swap), to be implemented by strategies
      * @param _params Generic callData (e.g., SwapperParams)
-     * @return amount Amount of asset assets received (after swap)
+     * @return assetsReceived Amount of asset assets received (after swap)
      */
     function _harvest(
         bytes[] memory _params
-    ) internal virtual override nonReentrant returns (uint256 assetsReceived) {
+    ) internal virtual nonReentrant returns (uint256 assetsReceived) {
         claimRewards();
         return _swapRewards(_params);
     }

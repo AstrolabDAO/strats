@@ -70,41 +70,18 @@ contract BenqiMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Claim rewards from the reward pool and swap them for asset
-     * @param _params Swaps calldata
-     * @return assetsReceived Amount of assets received
-     * @dev cf.
-     *  - https://github.com/SonneProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-core-pool/comptroller/Diamond/facets/reward-facet.md#L6
-     *  - https://github.com/SonneProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-isolated-pools/rewards/rewards-distributor.md#L233
+     * @notice Claim rewards from the third party contracts
+     * @return amounts Array of rewards claimed for each reward token
      */
-    function _harvest(
-        bytes[] memory _params
-    ) internal override nonReentrant returns (uint256 assetsReceived) {
-
+    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+        amounts = new uint256[](rewardLength);
         unitroller.claimReward(0, address(this)); // QI for all markets
         unitroller.claimReward(1, address(this)); // WGAS for all markets
 
         // wrap native rewards if needed
         _wrapNative();
-
-        uint256 balance;
-        uint256 received;
-        for (uint8 i = 1; i < rewardLength; i++) {
-            balance = IERC20Metadata(rewardTokens[i]).balanceOf(
-                address(this)
-            );
-            if (balance < 10) continue;
-            if (rewardTokens[i] != address(asset)) {
-                (received, ) = swapper.decodeAndSwap({
-                    _input: rewardTokens[i],
-                    _output: address(asset),
-                    _amount: balance,
-                    _params: _params[i]
-                });
-                assetsReceived += received;
-            } else {
-                assetsReceived += balance;
-            }
+        for (uint8 i = 0; i < rewardLength; i++) {
+            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
 

@@ -722,7 +722,7 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
   const { asset, inputs, rewardTokens, strat } = env.deployment!;
 
   // const rewardTokens = (await strat.rewardTokens()).filter((rt: string) => rt != addressZero);
-  const amounts = await strat.rewardsAvailable();
+  const amounts = await (strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.()) ?? [];
 
   console.log(
     `Generating harvest swapData for:\n${rewardTokens

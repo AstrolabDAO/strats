@@ -95,34 +95,19 @@ contract HopMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Claim rewards from the reward pool and swap them for asset
-     * @param _params Swaps calldata
-     * @return assetsReceived Amount of assets received
+     * @notice Claim rewards from the third party contracts
+     * @return amounts Array of rewards claimed for each reward token
      */
-    function _harvest(
-        bytes[] memory _params
-    ) internal override nonReentrant returns (uint256 assetsReceived) {
-        // claim the rewards
+    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+        amounts = new uint256[](rewardLength);
         for (uint8 i = 0; i < inputLength; i++) {
             // for (uint8 j = 0; j < rewardPools[i].length; j++) {
             if (address(rewardPools[i][0]) == address(0)) break;
             rewardPools[i][0].getReward();
             // }
         }
-        // swap the rewards back into asset
         for (uint8 i = 0; i < rewardLength; i++) {
-            if (rewardTokens[i] == address(0)) break;
-            uint256 balance = IERC20Metadata(rewardTokens[i]).balanceOf(
-                address(this)
-            );
-            if (balance < 10) continue;
-            (uint256 received, ) = swapper.decodeAndSwap({
-                _input: rewardTokens[i],
-                _output: address(asset),
-                _amount: balance,
-                _params: _params[i]
-            });
-            assetsReceived += received;
+            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
 

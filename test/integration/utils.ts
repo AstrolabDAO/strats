@@ -233,7 +233,6 @@ export async function logState(
       totalClaimableRedemption,
       // totalAsset, // only available on strat.req() struct
       // totalClaimableAsset, // only available on strat.req() struct
-      rewardsAvailable,
       previewInvest,
       previewLiquidate,
       stratAssetBalance,
@@ -255,7 +254,6 @@ export async function logState(
 
       // strat.multicallContract.totalAsset(), // only available on strat.req() struct
       // strat.multicallContract.totalClaimableAsset(), // only available on strat.req() struct
-      strat.multi.rewardsAvailable(),
       strat.multi.previewInvest(0),
       strat.multi.previewLiquidate(0),
       asset.multi.balanceOf(strat.address),
@@ -271,7 +269,10 @@ export async function logState(
     // await env.multicallProvider!.all(rewardTokens.map((input, index) => strat.multi.rewardTokens(index)));
 
     // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
-    const invested = await strat["invested()"](); // base function (not overloaded)
+    const [invested, rewardsAvailable] = await Promise.all([
+      strat["invested()"](),
+      (strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.())
+    ]);
     const investedAmounts: BigNumber[] = await env.multicallProvider!.all(
       inputs.map((input, index) => strat.multi.invested(index))
     );
