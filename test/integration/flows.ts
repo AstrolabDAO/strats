@@ -722,7 +722,12 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
   const { asset, inputs, rewardTokens, strat } = env.deployment!;
 
   // const rewardTokens = (await strat.rewardTokens()).filter((rt: string) => rt != addressZero);
-  const amounts = await (strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.()) ?? [];
+  let amounts: BigNumber[];
+  try {
+    amounts = await strat.callStatic.claimRewards?.();
+  } catch (e) { // TODO: make sure this is the correct error (claimRewards not implemented)
+    amounts = await strat.rewardsAvailable?.() ?? [];
+  }
 
   console.log(
     `Generating harvest swapData for:\n${rewardTokens

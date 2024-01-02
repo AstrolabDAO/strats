@@ -165,24 +165,20 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      * @param _params Swaps calldata
      * @return assetsReceived Amount of assets from the swaps
      */
-    function _swapRewards(bytes[] memory _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
+    function _swapRewards(uint256[] memory _balances, bytes[] memory _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
 
-        uint256 balance;
         uint256 received;
         for (uint8 i = 1; i < rewardLength; i++) {
-            balance = IERC20Metadata(rewardTokens[i]).balanceOf(
-                address(this)
-            );
-            if (rewardTokens[i] != address(asset) && balance > 10) {
+            if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
                 (received, ) = swapper.decodeAndSwap({
                     _input: rewardTokens[i],
                     _output: address(asset),
-                    _amount: balance,
+                    _amount: _balances[i],
                     _params: _params[i]
                 });
                 assetsReceived += received;
             } else {
-                assetsReceived += balance;
+                assetsReceived += _balances[i];
             }
         }
     }
