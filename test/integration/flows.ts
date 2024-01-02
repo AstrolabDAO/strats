@@ -527,15 +527,15 @@ export async function invest(env: IStrategyDeploymentEnv, _amount = 0) {
   await logState(env, "Before Invest");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
-    // .invest(...params, getOverrides(env))
+    // .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
+    .invest(...params, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
 // input prices are required to weight out the swaps and create the SwapData array
-export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
+export async function liquidate(env: Partial<IStrategyDeploymentEnv>, _amount = 50) {
   const { asset, inputs, strat } = env.deployment!;
 
   let amount = asset.toWei(_amount);
@@ -649,10 +649,10 @@ export async function liquidate(env: IStrategyDeploymentEnv, _amount = 50) {
   return getTxLogData(receipt, ["uint256", "uint256", "uint256"], 2); // liquidityAvailable
 }
 
-export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
+export async function withdraw(env: Partial<IStrategyDeploymentEnv>, _amount = 50) {
   const { asset, inputs, strat } = env.deployment!;
   const minAmountOut = 1; // TODO: change with staticCall
-  const max = await strat.maxWithdraw(env.deployer.address);
+  const max = await strat.maxWithdraw(env.deployer!.address);
   let amount = asset.toWei(_amount);
 
   if (max.lt(10)) {
@@ -670,7 +670,7 @@ export async function withdraw(env: IStrategyDeploymentEnv, _amount = 50) {
   await logState(env, "Before Withdraw");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("safeWithdraw", [amount, minAmountOut, env.deployer.address, env.deployer.address], getOverrides(env))
+    .safe("safeWithdraw", [amount, minAmountOut, env.deployer!.address, env.deployer!.address], getOverrides(env))
     // .safeWithdraw(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw", 2_000);
@@ -718,7 +718,7 @@ export async function requestWithdraw(
   ); // recovered
 }
 
-export async function preHarvest(env: IStrategyDeploymentEnv) {
+export async function preHarvest(env: Partial<IStrategyDeploymentEnv>) {
   const { asset, inputs, rewardTokens, strat } = env.deployment!;
 
   // const rewardTokens = (await strat.rewardTokens()).filter((rt: string) => rt != addressZero);
@@ -753,7 +753,7 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
         amountWei: amounts[i].sub(amounts[i].div(1_000)), // .1% slippage
         inputChainId: network.config.chainId!,
         payer: strat.address,
-        testPayer: env.addresses.accounts!.impersonate,
+        testPayer: env.addresses!.accounts!.impersonate,
       })) as ITransactionRequestWithEstimate;
     }
     trs.push(tr);
@@ -767,7 +767,7 @@ export async function preHarvest(env: IStrategyDeploymentEnv) {
   return [swapData];
 }
 
-export async function harvest(env: IStrategyDeploymentEnv) {
+export async function harvest(env: Partial<IStrategyDeploymentEnv>) {
   const { strat, rewardTokens } = env.deployment!;
   const harvestSwapData = await preHarvest(env);
   await logState(env, "Before Harvest");
@@ -916,10 +916,80 @@ export async function rescue(
   const strat = await env.deployment!.strat.copy(signer);
   await logRescue(env, token, signer.address, "Before Rescue");
   const receipt = await strat
-    .rescue(token, getOverrides(env))
+    // .rescue(token, getOverrides(env))
+    .safe("rescue", [token], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logRescue(env, token, signer.address, "After Rescue");
   return getTxLogData(receipt, ["uint256"], 0);
+}
+
+export async function collectFees(env: Partial<IStrategyDeploymentEnv>) {
+  const { strat, asset, initParams } = env.deployment!;
+  const feeCollector = await strat.feeCollector(); // initParams[0].coreAddresses.feeCollector;
+  const balancesBefore: BigNumber[] = await env.multicallProvider!.all(
+    asset.multi.balanceOf(feeCollector),
+    strat.multi.balanceOf(feeCollector)
+  );
+  console.log(
+    `FeeCollector balances before: ${asset.toAmount(
+      balancesBefore[0]
+    )} ${asset.sym}, ${strat.toAmount(balancesBefore[1])} ${strat.sym}`
+  );
+  const receipt = await strat
+    // .collectFees(getOverrides(env))
+    .safe("collectFees", [], getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+  const balancesAfter: BigNumber[] = await env.multicallProvider!.all(
+    asset.multi.balanceOf(feeCollector),
+    strat.multi.balanceOf(feeCollector)
+  );
+  console.log(
+    `FeeCollector balances after: ${asset.toAmount(
+      balancesAfter[0]
+    )} ${asset.sym}, ${strat.toAmount(balancesAfter[1])} ${strat.sym}`
+  );
+  // event FeeCollection(
+  //   address indexed collector,
+  //   uint256 totalAssets,
+  //   uint256 sharePrice,
+  //   uint256 profit,
+  //   uint256 feesAmount,
+  //   uint256 sharesMinted
+  // );
+  return getTxLogData(receipt, ["uint256", "uint256", "uint256", "uint256", "uint256"], 3, -2);
+}
+
+export async function emptyStrategy(env: Partial<IStrategyDeploymentEnv>) {
+  const { strat, asset, initParams } = env.deployment!;
+
+  await logState(env, "Before EmptyStrategy");
+  const assetBalanceBefore = await asset.balanceOf(env.deployer!.address);
+
+  // step 0: set max deposit to 0
+  await strat
+    // .setMaxTotalAssets(0, getOverrides(env))
+    .safe("setMaxTotalAssets", [0], getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+
+  // step 1: set minLiquidity to 0
+  await strat
+    // .setMinLiquidity(0, getOverrides(env))
+    .safe("setMinLiquidity", [0], getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+
+  // step 2: harvest+liquidate all invested assets
+  await harvest(env);
+  await liquidate(env, asset.toAmount(await strat.invested()));
+  await collectFees(env);
+
+  // step 3: withdraw all assets
+  await strat
+    // .redeem(strat.balanceOf(env.deployer!.address), getOverrides(env))
+    .safe("redeem", [strat.balanceOf(env.deployer!.address)], getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+
+  await logState(env, "After EmptyStrategy", 2_000);
+  return await (asset.balanceOf(env.deployer!.address).sub(assetBalanceBefore));
 }
 
 export const Flows: { [name: string]: Function } = {

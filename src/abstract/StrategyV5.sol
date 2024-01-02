@@ -168,7 +168,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     function _swapRewards(uint256[] memory _balances, bytes[] memory _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
 
         uint256 received;
-        for (uint8 i = 1; i < rewardLength; i++) {
+        for (uint8 i = 0; i < rewardLength; i++) {
             if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
                 (received, ) = swapper.decodeAndSwap({
                     _input: rewardTokens[i],

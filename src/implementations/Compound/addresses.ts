@@ -77,20 +77,21 @@ export default merge(addresses, {
   // arbitrum
   42161: {
     Compound: {
+      cometRewards: "0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae",
       USDCe: {
         "comet": "0xA5EDBDD9646f8dFF606d7448e414884C7d905dCA",
         "configurator": "0xb21b06D71c75973babdE35b49fFDAc3F82Ad3775",
-        "rewards": "0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae",
         "bridgeReceiver": "0x42480C37B249e33aABaf4c22B20235656bd38068",
-        "bulker": "0xbdE8F31D2DdDA895264e27DD990faB3DC87b372d"
+        "bulker": "0xbdE8F31D2DdDA895264e27DD990faB3DC87b372d",
+        rewardTokens: [addresses[42161].tokens.COMP],
       },
       USDC: {
         "comet": "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf",
         "configurator": "0xb21b06D71c75973babdE35b49fFDAc3F82Ad3775",
-        "rewards": "0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae",
         "bridgeReceiver": "0x42480C37B249e33aABaf4c22B20235656bd38068",
         "bulker": "0xbdE8F31D2DdDA895264e27DD990faB3DC87b372d",
-        "CCTPMessageTransmitter": "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca"
+        "CCTPMessageTransmitter": "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
+        rewardTokens: [addresses[42161].tokens.COMP],
       }
     },
   },

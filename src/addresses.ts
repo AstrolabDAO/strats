@@ -409,17 +409,17 @@ export const addresses = {
       Pyth: "",
     },
     libs: {
-      AsMaths: "",
+      AsMaths: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
       AsArrays: "",
-      AsAccounting: "",
+      AsAccounting: "0x73f65FAEFB2bE3b7d868300fD5E3A9054E1769A6", // PROD
       PythUtils: "",
-      ChainlinkUtils: "",
+      ChainlinkUtils: "0x11656B8F95613b1617A5862d089873ed67E43128", // PROD
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
-      StrategyV5Agent: "",
-      "Astrolab Moonwell MetaStable": "",
+      StrategyV5Agent: "0x98bC71A155A11D516a2f4E675F4CD0DF04aA1d2B", // PROD
+      "Astrolab Moonwell MetaStable": "0x11C8f790d252F4A49cFBFf5766310873898BF5D3", // PROD
     },
     tokens: {
       WGLMR: "0xAcc15dC74880C9944775448304B263D191c6077F",
@@ -518,11 +518,11 @@ export const addresses = {
     astrolab: {
       Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
       // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
-      StrategyV5Agent: "",
+      StrategyV5Agent: "0xbb28c46d61c7df667e2564bf99f7c28aaf004121",
       "Astrolab Moonwell MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
       "Astrolab Stargate MetaStable": "",
       "Astrolab Aave MetaStable": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
-      "Astrolab CompoundV3 MetaStable": "",
+      "Astrolab CompoundV3 MetaStable": "0x402f673d82c073120b8fdf5e62fa92fd6d5e4f2c",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -566,17 +566,18 @@ export const addresses = {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
     libs: {
-      AsMaths: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
+      AsMaths: "",
       AsArrays: "",
-      AsAccounting: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
+      AsAccounting: "",
       PythUtils: "",
-      ChainlinkUtils: "0x9c14f9137fc7327f336cc73d4218d310f3faba11",
+      ChainlinkUtils: "",
       RedStoneUtils: "",
     },
     astrolab: {
-      Swapper: "0x1761ff905292548ff2254620166eabd988e48718",
-      StrategyV5Agent: "0xbe15f86da4800c03fca8f457cff30d6ef9fb7bff",
+      Swapper: "0x9c14f9137fc7327f336cc73d4218d310f3faba11",
+      StrategyV5Agent: "",
       "Astrolab Lodestar MetaStable": "0x503301eb7cfc64162b5ce95cc67b84fbf6df5255",
+      "Astrolab Compound MetaStable": "",
     },
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",

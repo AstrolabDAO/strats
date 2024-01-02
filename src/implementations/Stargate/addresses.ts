@@ -16,7 +16,7 @@ export default merge(addresses, {
       StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
       WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
       Pool: {
-        ETH: "0x101816545F6bd2b1076434B54383a1E633390A2E",
+        WETH: "0x101816545F6bd2b1076434B54383a1E633390A2E",
         USDC: "0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56",
         USDT: "0x38EA452219524Bb87e18dE1C24D3bB59510BD783",
         USDD: "0x692953e758c3669290cb1677180c64183cEe374e",
@@ -123,7 +123,7 @@ export default merge(addresses, {
       StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
       WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
       Pool: {
-        ETH: "0x915A55e36A01285A14f05dE6e81ED9cE89772f8e",
+        WETH: "0x915A55e36A01285A14f05dE6e81ED9cE89772f8e",
         USDCe: "0x892785f33CdeE22A30AEF750F285E18c18040c3e",
         USDT: "0xB6CfcF89a7B22988bfC96632aC2A9D6daB60d641",
         FRAX: "0xaa4BF442F024820B2C28Cd0FD72b82c63e66F56C",
@@ -146,7 +146,7 @@ export default merge(addresses, {
       StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
       WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
       Pool: {
-        ETH: "0xd22363e3762cA7339569F3d33EADe20127D5F98C",
+        WETH: "0xd22363e3762cA7339569F3d33EADe20127D5F98C",
         USDCe: "0xDecC0c09c3B5f6e92EF4184125D5648a66E35298",
         DAI: "0x165137624F1f692e69659f944BF69DE02874ee27",
         FRAX: "0x368605D9C6243A80903b9e326f1Cddde088B8924",
@@ -156,89 +156,89 @@ export default merge(addresses, {
       },
       LPStakingTime: "0x4DeA9e918c6289a52cd469cAC652727B7b412Cd2",
     },
-    // base
-    8453: {
-      Stargate: {
-        Router: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
-        RouterETH: "0x50B6EbC2103BFEc165949CC946d739d5650d7ae4",
-        Bridge: "0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398",
-        Factory: "0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6",
-        StargateToken: "0xE3B53AF74a4BF62Ae5511055290838050bf764Df",
-        StargateFeeLibraryV07: "0x9d1b1669c73b033dfe47ae5a0164ab96df25b944",
-        StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
-        WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
-        Pool: {
-          sgETH: "0x28fc411f9e1c480AD312b3d9C60c22b965015c6B",
-          USDbC: "0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA",
-        },
-        LPStakingTime: "0x06Eb48763f117c7Be887296CDcdfad2E4092739C",
+  },
+  // base
+  8453: {
+    Stargate: {
+      Router: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
+      RouterETH: "0x50B6EbC2103BFEc165949CC946d739d5650d7ae4",
+      Bridge: "0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398",
+      Factory: "0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6",
+      StargateToken: "0xE3B53AF74a4BF62Ae5511055290838050bf764Df",
+      StargateFeeLibraryV07: "0x9d1b1669c73b033dfe47ae5a0164ab96df25b944",
+      StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
+      WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
+      Pool: {
+        WETH: "0x28fc411f9e1c480AD312b3d9C60c22b965015c6B",
+        USDbC: "0x4c80E24119CFB836cdF0a6b53dc23F04F7e652CA",
       },
+      LPStakingTime: "0x06Eb48763f117c7Be887296CDcdfad2E4092739C",
     },
-    // fantom
-    250: {
-      Stargate: {
-        Router: "0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6",
-        Bridge: "0x45A01E4e04F14f7A4a6702c74187c5F6222033cd",
-        Factory: "0x9d1B1669c73b033DFe47ae5a0164Ab96df25B944",
-        StargateToken: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
-        StargateFeeLibraryV07: "0x616a68BD6DAd19e066661C7278611487d4072839",
-        StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
-        WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
-        Pool: {
-          sgUSDC: "0xc647ce76ec30033aa319d472ae9f4462068f2ad7",
-        },
-        LPStaking: "0x224D8Fd7aB6AD4c6eb4611Ce56EF35Dec2277F03",
+  },
+  // fantom
+  250: {
+    Stargate: {
+      Router: "0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6",
+      Bridge: "0x45A01E4e04F14f7A4a6702c74187c5F6222033cd",
+      Factory: "0x9d1B1669c73b033DFe47ae5a0164Ab96df25B944",
+      StargateToken: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
+      StargateFeeLibraryV07: "0x616a68BD6DAd19e066661C7278611487d4072839",
+      StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
+      WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
+      Pool: {
+        USDC: "0xc647ce76ec30033aa319d472ae9f4462068f2ad7",
       },
+      LPStaking: "0x224D8Fd7aB6AD4c6eb4611Ce56EF35Dec2277F03",
     },
-    // linea
-    59144: {
-      Stargate: {
-        Router: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
-        RouterETH: "0x8731d54E9D02c286767d56ac03e8037C07e01e98",
-        Bridge: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
-        Factory: "0xaf54be5b6eec24d6bfacf1cce4eaf680a8239398",
-        StargateToken: "0x808d7c71ad2ba3FA531b068a2417C63106BC0949",
-        StargateFeeLibraryV07: "0x45A01E4e04F14f7A4a6702c74187c5F6222033cd",
-        StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
-        WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
-        Pool: {
-          WETH: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
-        },
-        LPStakingTime: "0x4a364f8c717cAAD9A442737Eb7b8A55cc6cf18D8",
+  },
+  // linea
+  59144: {
+    Stargate: {
+      Router: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
+      RouterETH: "0x8731d54E9D02c286767d56ac03e8037C07e01e98",
+      Bridge: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
+      Factory: "0xaf54be5b6eec24d6bfacf1cce4eaf680a8239398",
+      StargateToken: "0x808d7c71ad2ba3FA531b068a2417C63106BC0949",
+      StargateFeeLibraryV07: "0x45A01E4e04F14f7A4a6702c74187c5F6222033cd",
+      StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
+      WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
+      Pool: {
+        WETH: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
       },
+      LPStakingTime: "0x4a364f8c717cAAD9A442737Eb7b8A55cc6cf18D8",
     },
-    // kava
-    // 2222: {
-    //   Stargate: {
-    //     Router: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
-    //     Bridge: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
-    //     Factory: "0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398",
-    //     StargateToken: "0x83c30eb8bc9ad7C56532895840039E62659896ea",
-    //     StargateFeeLibraryV07: "0x45a01e4e04f14f7a4a6702c74187c5f6222033cd",
-    //     StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
-    //     WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
-    //     Pool: {
-    //       USDT: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
-    //     },
-    //     LPStakingTime: "0x35F78Adf283Fe87732AbC9747d9f6630dF33276C",
-    //   },
-    // },
-    // mantle
-    5000: {
-      Stargate: {
-        Router: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
-        Bridge: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
-        Factory: "0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398",
-        StargateToken: "0x8731d54E9D02c286767d56ac03e8037C07e01e98",
-        StargateFeeLibraryV07: "0x45A01E4e04F14f7A4a6702c74187c5F6222033cd",
-        StargateComposer: "0x296F55F8Fb28E498B858d0BcDA06D955B2Cb3f97",
-        WidgetSwap: "0x06D538690AF257Da524f25D0CD52fD85b1c2173E",
-        Pool: {
-          USDC: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
-          USDT: "0x2b60473a7C41Deb80EDdaafD5560e963440eb632",
-        },
-        LPStakingTime: "0x352d8275AAE3e0c2404d9f68f6cEE084B5bEB3DD",
+  },
+  // kava
+  // 2222: {
+  //   Stargate: {
+  //     Router: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
+  //     Bridge: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
+  //     Factory: "0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398",
+  //     StargateToken: "0x83c30eb8bc9ad7C56532895840039E62659896ea",
+  //     StargateFeeLibraryV07: "0x45a01e4e04f14f7a4a6702c74187c5f6222033cd",
+  //     StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
+  //     WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
+  //     Pool: {
+  //       USDT: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
+  //     },
+  //     LPStakingTime: "0x35F78Adf283Fe87732AbC9747d9f6630dF33276C",
+  //   },
+  // },
+  // mantle
+  5000: {
+    Stargate: {
+      Router: "0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590",
+      Bridge: "0x45f1A95A4D3f3836523F5c83673c797f4d4d263B",
+      Factory: "0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398",
+      StargateToken: "0x8731d54E9D02c286767d56ac03e8037C07e01e98",
+      StargateFeeLibraryV07: "0x45A01E4e04F14f7A4a6702c74187c5F6222033cd",
+      StargateComposer: "0x296F55F8Fb28E498B858d0BcDA06D955B2Cb3f97",
+      WidgetSwap: "0x06D538690AF257Da524f25D0CD52fD85b1c2173E",
+      Pool: {
+        USDC: "0xAad094F6A75A14417d39f04E690fC216f080A41a",
+        USDT: "0x2b60473a7C41Deb80EDdaafD5560e963440eb632",
       },
+      LPStakingTime: "0x352d8275AAE3e0c2404d9f68f6cEE084B5bEB3DD",
     },
-  }
+  },
 } as { [chainId: number]: { [id: string]: any } });

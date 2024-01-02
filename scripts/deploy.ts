@@ -2,10 +2,10 @@ import { deployAll } from "@astrolabs/hardhat";
 
 async function main() {
   await deployAll({
-    name: "AsAccounting",
-    contract: "AsAccounting",
+    name: "AsMaths",
+    contract: "AsMaths",
     verify: true,
-    address: "0x1761FF905292548fF2254620166eabd988e48718",
+    address: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255",
     export: false, // do not export abi+deployment json
   });
 }

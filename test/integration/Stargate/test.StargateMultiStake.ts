@@ -6,7 +6,7 @@ import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Stargate/addresses";
 import stakingIdsByNetwork from "../../../src/implementations/Stargate/staking-ids.json";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
+import { IFlow, deposit, invest, liquidate, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
@@ -47,8 +47,8 @@ const descByChainId: { [chainId: number]: IStrategyDesc } = {
     version: 1,
     contract: "StargateMultiStake",
     asset: "USDC",
-    inputs: ["USDbC"],
-    inputWeights: [9000], // 90% allocation, 10% cash
+    inputs: ["USDbC", "WETH"],
+    inputWeights: [4500, 4500], // 90% allocation, 10% cash
     seedLiquidityUsd: 10,
   },
   42161: {
@@ -77,10 +77,10 @@ const desc = descByChainId[network.config.chainId!];
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [25], assert: (n: BigNumber) => n.gt(0) },
+  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
+  { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { fn: requestWithdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
@@ -89,7 +89,6 @@ const testFlows: Partial<IFlow>[] = [
 ];
 
 describe(`test.${desc.name}`, () => {
-
   const addr = addresses[network.config.chainId!];
   const protocolAddr: { [name: string]: any } = <any>addr.Stargate;
   const stakingIds = (<any>stakingIdsByNetwork)[network.config.chainId!];
@@ -122,7 +121,7 @@ describe(`test.${desc.name}`, () => {
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params
-        lps: desc.inputs.map(i => protocolAddr.Pool[i]), // hop lp token
+        lps: desc.inputs.map(i => protocolAddr.Pool[i]), // lp token
         lpStaker: protocolAddr.LPStaking ?? protocolAddr.LPStakingTime,
         stakingIds: desc.inputs.map(i => stakingIds[i]),
       }] as IStrategyChainlinkParams,
