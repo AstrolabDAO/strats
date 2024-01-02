@@ -79,7 +79,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         amounts = new uint256[](rewardLength);
         for (uint8 i = 0; i < cTokens.length; i++) {
             if (address(cTokens[i]) == address(0)) break;
-            cometRewards.claim(address(cTokens[i]), address(this), false);
+            cometRewards.claim(address(cTokens[i]), address(this), true);
         }
         for (uint8 i = 0; i < rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));

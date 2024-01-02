@@ -191,8 +191,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     function _harvest(
         bytes[] memory _params
     ) internal virtual nonReentrant returns (uint256 assetsReceived) {
-        claimRewards();
-        return _swapRewards(_params);
+        return _swapRewards(claimRewards(), _params);
     }
 
     /**

@@ -12,6 +12,7 @@ import {
 import {
   IFlow,
   acceptRoles,
+  compound,
   deposit,
   grantRoles,
   harvest,
