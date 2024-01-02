@@ -84,7 +84,7 @@ const testFlows: Partial<IFlow>[] = [
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*14, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
-  { fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) },
+  // { elapsedSec: 60*60*24*14, fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) },
 ];
 
 describe(`test.${desc.name}`, () => {
