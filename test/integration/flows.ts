@@ -996,22 +996,22 @@ export async function emptyStrategy(env: Partial<IStrategyDeploymentEnv>) {
   await logState(env, "Before EmptyStrategy");
   const assetBalanceBefore = await asset.balanceOf(env.deployer!.address);
   const deployerAddress = env.deployer!.address;
-  // // step 0: set max deposit to 0 (withdraw-only, retired strategy)
-  // await strat
-  //   // .setMaxTotalAssets(0, getOverrides(env))
-  //   .safe("setMaxTotalAssets", [0], getOverrides(env))
-  //   .then((tx: TransactionResponse) => tx.wait());
+  // step 0: set max deposit to 0 (withdraw-only, retired strategy)
+  await strat
+    // .setMaxTotalAssets(0, getOverrides(env))
+    .safe("setMaxTotalAssets", [0], getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
 
-  // // step 1: set minLiquidity to 0
-  // await strat
-  //   // .setMinLiquidity(0, getOverrides(env))
-  //   .safe("setMinLiquidity", [0], getOverrides(env))
-  //   .then((tx: TransactionResponse) => tx.wait());
+  // step 1: set minLiquidity to 0
+  await strat
+    // .setMinLiquidity(0, getOverrides(env))
+    .safe("setMinLiquidity", [0], getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
 
-  // // step 2: harvest+liquidate all invested assets
-  // await harvest(env);
-  // await liquidate(env, asset.toAmount(await strat["invested()"]()));
-  // await collectFees(env);
+  // step 2: harvest+liquidate all invested assets
+  await harvest(env);
+  await liquidate(env, asset.toAmount(await strat["invested()"]()));
+  await collectFees(env);
 
   // step 3: withdraw all assets
   await strat
