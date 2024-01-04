@@ -57,6 +57,7 @@ export const deployStrat = async (
   libNames = ["AsAccounting"],
   forceVerify = false, // check that the contract is verified on etherscan/tenderly
 ): Promise<IStrategyDeploymentEnv> => {
+
   let [swapper, agent] = [{}, {}] as Contract[];
 
   // strategy dependencies
@@ -131,6 +132,12 @@ export const deployStrat = async (
       libraries: stratLibs, // External libraries are only used in StrategyV5Agent
     },
   };
+
+  if (!isLive(env)) {
+    env.deployment!.export = false;
+    for (const unit of Object.values(units))
+      unit.export = false;
+  }
 
   for (const libName of libNames) {
     units[libName] = {
@@ -240,7 +247,6 @@ export const deployStrat = async (
       env.deployer,
     );
   } else {
-    if (!isLive(env)) env.deployment!.export = false;
     await deployAll(env.deployment!);
   }
 
@@ -844,7 +850,7 @@ export async function grantRoles(
     );
   const has = await hasRoles();
   console.log(`${signer.address} roles (before acceptRoles): ${has}`);
-  for (const i in roleSignatures)
+  for (let i = 0; i < roleSignatures.length; i++)
     if (!has[i])
       await strat
         .grantRole(roleSignatures[i], grantee, getOverrides(env))

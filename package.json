@@ -81,7 +81,7 @@
   },
   "peerDependencies": {},
   "dependencies": {
-    "@astrolabs/hardhat": "^1.0.84",
+    "@astrolabs/hardhat": "^1.0.86",
     "@astrolabs/registry": "^1.0.29",
     "@astrolabs/swapper": "^1.0.17",
     "dotenv": "^16.3.1",
