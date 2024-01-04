@@ -321,7 +321,7 @@ export async function setupStrat(
     libNames.push("PythUtils");
   }
   env.deployment = {
-    asset: await SafeContract.build(initParams[0].coreAddresses.asset),
+    asset: await SafeContract.build(initParams[0].coreAddresses!.asset!),
     inputs: await Promise.all(
       initParams[0].inputs!.map((input) => SafeContract.build(input)),
     ),
@@ -605,7 +605,7 @@ export async function liquidate(
           amountWei: swapAmounts[i], // take slippage off so that liquidated LP value > swap input
           inputChainId: network.config.chainId!,
           payer: strat.address, // env.deployer.address
-          testPayer: env.addresses.accounts!.impersonate,
+          testPayer: env.addresses!.accounts!.impersonate,
           maxSlippage: 5000, // TODO: increase for low liquidity chains (moonbeam/celo/metis/linea...)
         })) as ITransactionRequestWithEstimate;
         if (!tr.to)

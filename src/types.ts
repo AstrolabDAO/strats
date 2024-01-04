@@ -121,7 +121,7 @@ export interface IStrategyDesc {
 
 export interface IStrategyBaseParams {
   erc20Metadata: Erc20Metadata;
-  coreAddresses: CoreAddresses;
+  coreAddresses: Partial<CoreAddresses>;
   fees: Fees;
   inputs: string[];
   inputWeights: number[];

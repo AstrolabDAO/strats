@@ -121,8 +121,9 @@ const networkOverrides: { [name: string]: Overrides } = {
 
 export const getOverrides = (env: Partial<ITestEnv>, nonce?: number|bigint) => {
   const overrides = isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
-  if (nonce)
+  if (nonce) {
     overrides.nonce = BigNumber.from(nonce.toString());
+  }
   return overrides;
 }
 

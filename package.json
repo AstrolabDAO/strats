@@ -47,6 +47,7 @@
     "README.md"
   ],
   "devDependencies": {
+    "@ethersproject/experimental": "^5.7.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.9",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
@@ -80,7 +81,7 @@
   },
   "peerDependencies": {},
   "dependencies": {
-    "@astrolabs/hardhat": "^1.0.82",
+    "@astrolabs/hardhat": "^1.0.84",
     "@astrolabs/registry": "^1.0.29",
     "@astrolabs/swapper": "^1.0.17",
     "dotenv": "^16.3.1",
