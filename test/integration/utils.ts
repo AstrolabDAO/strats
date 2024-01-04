@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import crypto from "crypto";
 import {
   Log,
   TransactionReceipt,
@@ -61,7 +62,7 @@ export function isAwaitable(o: any): boolean {
   return typeof o?.then === "function"; // typeof then = "function" for promises
 }
 
-export async function resolveMaybe<T=any>(o: MaybeAwaitable<T>): Promise<T> {
+export async function resolveMaybe<T = any>(o: MaybeAwaitable<T>): Promise<T> {
   return isAwaitable(o) ? await o : o;
 }
 
@@ -82,7 +83,7 @@ type AbiFragment = { name: string; inputs: [{ type: string }] };
 // TODO: move to @astrolabs/hardhat/utils
 export const getInitSignature = (contract: string) => {
   const fragments = (loadAbi(contract) as AbiFragment[]).filter(
-    (a) => a.name === "init"
+    (a) => a.name === "init",
   );
   const dummy = new Contract(addressZero, fragments, provider!);
   return Object.keys(dummy)
@@ -118,9 +119,12 @@ const networkOverrides: { [name: string]: Overrides } = {
   },
 };
 
-export const getOverrides = (env: Partial<ITestEnv>) =>
-  // isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
-  networkOverrides[env.network!.name] ?? {};
+export const getOverrides = (env: Partial<ITestEnv>, nonce?: number|bigint) => {
+  const overrides = isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
+  if (nonce)
+    overrides.nonce = BigNumber.from(nonce.toString());
+  return overrides;
+}
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -177,14 +181,14 @@ export const isStablePair = (s1: string, s2: string) =>
 
 export const isOracleLib = (name: string) =>
   ["Pyth", "RedStone", "Chainlink", "Witnet"].some((libname) =>
-    name.includes(libname)
+    name.includes(libname),
   );
 
 export async function logRescue(
   env: Partial<IStrategyDeploymentEnv>,
   token: SafeContract,
   rescuer: string,
-  step?: string
+  step?: string,
 ) {
   const strat = env.deployment!.strat;
   let balances: BigNumber[];
@@ -203,7 +207,7 @@ export async function logRescue(
     State ${step ?? ""}:\nRequesting rescue of ${token.address} ${
       token.sym
     } (strat balance: ${token.toAmount(
-      balances[0]
+      balances[0],
     )}, rescuer balance: ${token.toAmount(balances[1])}})`);
 }
 
@@ -211,7 +215,7 @@ export async function logState(
   env: Partial<IStrategyDeploymentEnv>,
   step?: string,
   sleepBefore = 0,
-  sleepAfter = 0
+  sleepAfter = 0,
 ) {
   const { strat, asset, inputs, rewardTokens } = env.deployment!;
   if (sleepBefore) {
@@ -271,10 +275,10 @@ export async function logState(
     // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
     const [invested, rewardsAvailable] = await Promise.all([
       strat["invested()"](),
-      (strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.())
+      strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.(),
     ]);
     const investedAmounts: BigNumber[] = await env.multicallProvider!.all(
-      inputs.map((input, index) => strat.multi.invested(index))
+      inputs.map((input, index) => strat.multi.invested(index)),
     );
 
     console.log(
@@ -285,36 +289,36 @@ export async function logState(
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${strat.toAmount(totalSupply)} (${totalSupply}wei)
     totalAccountedSupply(): ${strat.toAmount(
-      totalAccountedSupply
+      totalAccountedSupply,
     )} (${totalAccountedSupply}wei)
     totalAssets(): ${asset.toAmount(totalAssets)} (${totalAssets}wei)
     totalAccountedAssets(): ${asset.toAmount(
-      totalAccountedAssets
+      totalAccountedAssets,
     )} (${totalAccountedAssets}wei)
     totalClaimableAssetFees(): ${asset.toAmount(
-      totalClaimableAssetFees
+      totalClaimableAssetFees,
     )} (${totalClaimableAssetFees}wei)
     invested(): ${asset.toAmount(invested)} (${invested}wei)\n${inputs
       .map(
         (input, index) =>
           `      -${input.sym}: ${<any>(
             asset.toAmount(investedAmounts[index])
-          )} (${investedAmounts[index]}wei)`
+          )} (${investedAmounts[index]}wei)`,
       )
       .join("\n")}
     available(): ${available / asset.weiPerUnit} (${available}wei) (${
       Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
     }%)
     totalRedemptionRequest(): ${strat.toAmount(
-      totalRedemptionRequest
+      totalRedemptionRequest,
     )} (${totalRedemptionRequest}wei)
     totalClaimableRedemption(): ${strat.toAmount(
-      totalClaimableRedemption
+      totalClaimableRedemption,
     )} (${totalClaimableRedemption}wei) (${
       Math.round(
         totalRedemptionRequest.lt(10)
           ? 0
-          : (totalClaimableRedemption * 100) / totalRedemptionRequest
+          : (totalClaimableRedemption * 100) / totalRedemptionRequest,
       ) / 100
     }%)
     rewardsAvailable():\n${rewardTokens
@@ -322,32 +326,32 @@ export async function logState(
         (reward, index) =>
           `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${
             rewardsAvailable[index]
-          }wei)`
+          }wei)`,
       )
       .join("\n")}
     previewInvest(0 == available()*.9):\n${inputs
       .map(
         (input, i) =>
           `      -${input.sym}: ${asset.toAmount(
-            previewInvest[i]
-          )} (${previewInvest[i].toString()}wei)`
+            previewInvest[i],
+          )} (${previewInvest[i].toString()}wei)`,
       )
       .join("\n")}
     previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
       .map(
         (input, i) =>
           `      -${input.sym}: ${input.toAmount(
-            previewLiquidate[i]
-          )} (${previewLiquidate[i].toString()}wei)`
+            previewLiquidate[i],
+          )} (${previewLiquidate[i].toString()}wei)`,
       )
       .join("\n")}
     stratAssetBalance(): ${asset.toAmount(
-      stratAssetBalance
+      stratAssetBalance,
     )} (${stratAssetBalance}wei)
     deployerBalances(shares, asset): [${asset.toAmount(
-      deployerSharesBalance
+      deployerSharesBalance,
     )},${asset.toAmount(deployerAssetBalance)}]
-    `
+    `,
     );
     if (sleepAfter) await sleep(sleepAfter);
   } catch (e) {
@@ -357,7 +361,7 @@ export async function logState(
 
 export const getEnv = async (
   env: Partial<ITestEnv> = {},
-  addressesOverride?: Addresses
+  addressesOverride?: Addresses,
 ): Promise<ITestEnv> => {
   const addr = (addressesOverride ?? addresses)[network.config.chainId!];
   const deployer = await getDeployer();
@@ -379,7 +383,7 @@ export const getEnv = async (
       needsFunding: false,
       gasUsedForFunding: 0, // denominated in wgas decimal
     },
-    env
+    env,
   );
 };
 
@@ -426,7 +430,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
 
   if (inputBalance.lt(o.amountWei)) {
     console.log(
-      `payer ${o.payer} has not enough balance of ${o.inputChainId}:\n${o.input}, swapping from gasToken to ${o.input}`
+      `payer ${o.payer} has not enough balance of ${o.inputChainId}:\n${o.input}, swapping from gasToken to ${o.input}`,
     );
     await _swap(env, {
       payer: o.payer,
@@ -451,7 +455,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
     await ensureWhitelisted(
       env.deployment!.swapper,
       [tr.from as string, tr.to!, o.input, o.output],
-      env as IStrategyDeploymentEnv
+      env as IStrategyDeploymentEnv,
     );
     const ok = await env.deployment!.swapper.swap(
       input.target ?? input.address,
@@ -460,7 +464,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
       "1",
       tr.to,
       tr.data,
-      { gasLimit: Math.max(Number(tr.gasLimit ?? 0), 50_000_000) }
+      { gasLimit: Math.max(Number(tr.gasLimit ?? 0), 50_000_000) },
     );
     console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
     received = (await output.balanceOf(o.payer)).sub(outputBalanceBeforeSwap);
@@ -474,7 +478,7 @@ export async function fundAccount(
   env: Partial<IStrategyDeploymentEnv>,
   amount: number | BigNumber,
   asset: string,
-  receiver: string
+  receiver: string,
 ): Promise<void> {
   const output = new Contract(asset, erc20Abi, env.deployer!);
   const balanceBefore = await output.balanceOf(receiver);
@@ -498,19 +502,19 @@ export async function fundAccount(
 async function ensureWhitelisted(
   contract: SafeContract | any,
   addresses: string[],
-  env: IStrategyDeploymentEnv
+  env: IStrategyDeploymentEnv,
 ) {
   // check if isWhitelisted and addToWhitelist exist on the contract
   for (const method of ["isWhitelisted", "addToWhitelist"]) {
     if (!(method in contract)) {
       console.error(
-        `Skipping whitelisting as ${method} is not available on ${contract.address}`
+        `Skipping whitelisting as ${method} is not available on ${contract.address}`,
       );
       return;
     }
   }
   const whitelisted = await env.multicallProvider!.all(
-    addresses.map((addr) => contract.multi.isWhitelisted(addr))
+    addresses.map((addr) => contract.multi.isWhitelisted(addr)),
   );
   whitelisted.map(async (isWhitelisted, i) => {
     if (!isWhitelisted) {
@@ -523,7 +527,7 @@ async function ensureWhitelisted(
 export async function ensureFunding(env: IStrategyDeploymentEnv) {
   if (isLive(env)) {
     console.log(
-      `Funding is only applicable to test forks and testnets, not ${env.network.name}`
+      `Funding is only applicable to test forks and testnets, not ${env.network.name}`,
     );
     return;
   }
@@ -532,11 +536,11 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
   const assetAddress = env.deployment!.asset.address;
   const minLiquidity = assetSymbol.includes("USD") ? 1e8 : 5e16; // 100 USDC or 0.05 ETH
   const assetBalance = await env.deployment!.asset.balanceOf(
-    env.deployer.address
+    env.deployer.address,
   );
   if (assetBalance.lt(minLiquidity)) {
     console.log(
-      `${env.deployer.address} needs at least ${minLiquidity}wei ${assetSymbol} => funding required`
+      `${env.deployer.address} needs at least ${minLiquidity}wei ${assetSymbol} => funding required`,
     );
     env.needsFunding = true;
   }
@@ -545,7 +549,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
     console.log(
       `Funding ${env.deployer.address} from ${
         env.gasUsedForFunding || "(auto)"
-      }wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`
+      }wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`,
     );
     let gas =
       env.gasUsedForFunding ||
@@ -554,19 +558,19 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
         env.wgas.sym,
         10_0010 * 1e6,
         network.config.chainId!,
-        network.config.chainId!
+        network.config.chainId!,
       )) ||
       0;
     if (!gas) {
       throw new Error(
-        `Failed to get gas estimate for ${env.wgas.sym} => ${assetSymbol}`
+        `Failed to get gas estimate for ${env.wgas.sym} => ${assetSymbol}`,
       );
     }
     console.log(`Balance before funding: ${assetBalance}wei ${assetSymbol}`);
     const nativeBalance = await provider.getBalance(env.deployer.address);
     if (nativeBalance.lt(gas)) {
       console.log(
-        `Funding ${env.deployer.address} with ${gas}wei ${env.wgas.sym} (gas tokens)`
+        `Funding ${env.deployer.address} with ${gas}wei ${env.wgas.sym} (gas tokens)`,
       );
       // if not enough gas tokens, add it
       // await setBalances(gas, env.deployer.address);
@@ -579,12 +583,12 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
       env,
       gas,
       assetAddress,
-      env.deployer.address
+      env.deployer.address,
     );
     console.log(
       `Balance after funding: ${assetBalance.add(
-        received
-      )}wei ${assetSymbol} (+${received})`
+        received,
+      )}wei ${assetSymbol} (+${received})`,
     );
   }
 }
@@ -592,7 +596,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
   if (isLive(env)) {
     console.log(
-      `Oracle access is only applicable to test forks and testnets, not ${env.network.name}`
+      `Oracle access is only applicable to test forks and testnets, not ${env.network.name}`,
     );
     return;
   }
@@ -629,7 +633,7 @@ export function getTxLogData(
   tx: TransactionReceipt,
   types = ["uint256"],
   outputIndex = 0,
-  logIndex: string | number = -1
+  logIndex: string | number = -1,
 ): any {
   const logs = (tx as any).events || tx.logs;
   let log: Log;
@@ -646,7 +650,7 @@ export function getTxLogData(
     return decoded?.[outputIndex];
   } catch (e) {
     console.error(
-      `Failed to parse log ${e}: tx ${tx.transactionHash} probably reverted`
+      `Failed to parse log ${e}: tx ${tx.transactionHash} probably reverted`,
     );
     return undefined;
   }
@@ -656,12 +660,12 @@ export async function getSwapperRateEstimate(
   from: string,
   to: string,
   inputWei: BigNumberish | bigint,
-  chainId = 1
+  chainId = 1,
 ): Promise<number> {
   return (
     Number(
       (await getSwapperEstimate(from, to, inputWei, chainId))
-        ?.estimatedExchangeRate
+        ?.estimatedExchangeRate,
     ) ?? 0
   );
 }
@@ -671,11 +675,11 @@ export async function getSwapperOutputEstimate(
   to: string,
   inputWei: BigNumberish | bigint,
   chainId = 1,
-  outputChainId?: number
+  outputChainId?: number,
 ): Promise<BigNumber> {
   return BigNumber.from(
     (await getSwapperEstimate(from, to, inputWei, chainId, outputChainId))
-      ?.estimatedOutputWei ?? 0
+      ?.estimatedOutputWei ?? 0,
   );
 }
 
@@ -684,12 +688,12 @@ export async function getSwapperEstimate(
   to: string, // "AVAX"
   inputWei: BigNumberish | bigint,
   inputChainId = 1,
-  outputChainId?: number
+  outputChainId?: number,
 ): Promise<ITransactionRequestWithEstimate | undefined> {
   const [input, output] = [from, to].map((s) => getAddresses(s));
   if (!input || !output)
     throw new Error(
-      `Token ${from} or ${to} not found in addresses.ts:ethereum`
+      `Token ${from} or ${to} not found in addresses.ts:ethereum`,
     );
   if (input == output)
     return {
@@ -728,4 +732,17 @@ export function findSignature(signature: string, abi: any[]): string {
     }
   }
   throw new Error(`Function signature ${signature} not found in ABI`);
+}
+
+export function toNonce(text: string): number {
+  // Hash the text using SHA-256
+  const hash = crypto.createHash("sha256");
+  hash.update(text);
+  // Convert the hash into a hexadecimal string
+  const hexHash = hash.digest("hex");
+  // Convert the hexadecimal hash into an integer
+  // Note: JavaScript can't handle large integers accurately, so we'll take a substring
+  // of the hash and convert it to ensure it fits into a JavaScript number
+  const nonce = parseInt(hexHash.substring(0, 15), 16);
+  return nonce;
 }

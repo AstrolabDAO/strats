@@ -41,6 +41,7 @@ import {
   addressOne,
   logRescue,
   resolveMaybe,
+  toNonce,
 } from "./utils";
 import addresses from "../../src/addresses";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -117,7 +118,7 @@ export const deployStrat = async (
       verify: true,
       deployed: env.addresses!.astrolab?.StrategyV5Agent ? true : false,
       address: env.addresses!.astrolab?.StrategyV5Agent,
-      overrides: getOverrides(env),
+      overrides: getOverrides(env, toNonce(name)),
     },
     [contract]: {
       contract,
@@ -126,7 +127,7 @@ export const deployStrat = async (
       deployed: env.addresses!.astrolab?.[contractUniqueName] ? true : false,
       address: env.addresses!.astrolab?.[contractUniqueName],
       proxied: ["StrategyV5Agent"],
-      overrides: getOverrides(env),
+      overrides: getOverrides(env, toNonce(name)),
       libraries: stratLibs, // External libraries are only used in StrategyV5Agent
     },
   };
