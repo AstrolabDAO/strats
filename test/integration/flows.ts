@@ -851,6 +851,7 @@ export async function grantRoles(
   const has = await hasRoles();
   console.log(`${signer.address} roles (before acceptRoles): ${has}`);
   for (let i = 0; i < roleSignatures.length; i++)
+  // for (const i in roleSignatures)
     if (!has[i])
       await strat
         .grantRole(roleSignatures[i], grantee, getOverrides(env))

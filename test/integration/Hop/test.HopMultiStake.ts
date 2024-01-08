@@ -9,16 +9,51 @@ import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
-const desc: IStrategyDesc = {
-  name: `Astrolab Hop MetaStable`,
-  symbol: `as.HMS`,
-  version: 1,
-  contract: "HopMultiStake",
-  asset: "USDC",
-  inputs: ["USDCe", "DAI", "USDT"],
-  inputWeights: [6000, 1000, 2000], // 90% allocation, 10% cash
-  seedLiquidityUsd: 10,
+const descByChainId: { [chainId: number]: IStrategyDesc } = {
+  10: {
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
+    version: 1,
+    contract: "HopMultiStake",
+    asset: "USDC",
+    inputs: ["USDCe", "USDT", "DAI"],
+    inputWeights: [3500, 3500, 2000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  100: {
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
+    version: 1,
+    contract: "HopMultiStake",
+    asset: "USDC",
+    inputs: ["USDC", "WXDAI", "USDT"],
+    inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  137: {
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
+    version: 1,
+    contract: "HopMultiStake",
+    asset: "USDC",
+    inputs: ["USDCe"],
+    inputWeights: [9000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
+  42161: {
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
+    version: 1,
+    contract: "HopMultiStake",
+    asset: "USDC",
+    inputs: ["USDCe", "USDT", "DAI"],
+    inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  },
 };
+
+const desc = descByChainId[network.config.chainId!];
+
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
@@ -41,7 +76,7 @@ describe(`test.${desc.name}`, () => {
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
-  beforeEach(async () => {});
+  beforeEach(async () => { });
   after(async () => {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
     if (env?.revertState) await revertNetwork(env.snapshotId);

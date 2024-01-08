@@ -26,7 +26,7 @@
     "test-unit": "yarn ts-mocha --timeout 120000 --recursive \"test/unit/**/*.ts\" --exit",
     "test-integration": "yarn ts-mocha --require hardhat/register --timeout 120000 --recursive \"test/integration/**/*.ts\" --exit",
     "build": "tsc --build .",
-    "test-tenderly": "yarn hardhat test test/integration/Lodestar/test.LodestarMultiStake.ts --network tenderly",
+    "test-tenderly": "yarn hardhat test test/integration/Moonwell/test.MoonwellMultiStake.ts --network tenderly",
     "test-gnosis": "yarn hardhat test --network gnosis-mainnet --grep 'Astrolab Aave MetaStable'",
     "test-optimism": "yarn hardhat test --network optimism-mainnet --grep 'Astrolab Hop MetaStable'",
     "test-arbitrum": "yarn hardhat test --network arbitrum-mainnet --grep 'Astrolab Hop MetaStable'",
