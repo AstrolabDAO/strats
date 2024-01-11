@@ -6,7 +6,7 @@ interface IComptroller {
 
     function claimComp(address holder) external;
 
-    function claimComp(address holder, address[] memory cTokens) external; // specific markets
+    function claimComp(address holder, ILToken[] memory cTokens) external; // specific markets
 
     function claimComp(
         address[] calldata holders,

@@ -19,10 +19,11 @@ import "./interfaces/ILodestar.sol";
 contract LodestarMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
+    using AsArrays for address;
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    ILToken[8] internal lTokens; // LP token/pool
+    ILToken[] internal lTokens; // LP token/pool
     uint8[8] internal lTokenDecimals; // Decimals of the LP tokens
     IUnitroller internal unitroller;
 
@@ -40,6 +41,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
      */
     function setParams(Params calldata _params) public onlyAdmin {
         unitroller = IUnitroller(_params.unitroller);
+        lTokens = new ILToken[](_params.lTokens.length);
         for (uint8 i = 0; i < _params.lTokens.length; i++) {
             lTokens[i] = ILToken(_params.lTokens[i]);
             lTokenDecimals[i] = lTokens[i].decimals();
@@ -73,13 +75,20 @@ contract LodestarMultiStake is StrategyV5Chainlink {
      * @notice Claim rewards from the third party contracts
      * @return amounts Array of rewards claimed for each reward token
      */
-    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+    function claimRewards()
+        public
+        override
+        onlyKeeper
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](rewardLength);
         unitroller.claimComp(address(this)); // claim for all markets
         // wrap native rewards if needed
         _wrapNative();
         for (uint8 i = 0; i < rewardLength; i++) {
-            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
+            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(
+                address(this)
+            );
         }
     }
 
@@ -127,8 +136,9 @@ contract LodestarMultiStake is StrategyV5Chainlink {
             uint256 supplied = lTokens[i].balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
-            if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
-                revert AmountTooLow(supplied);
+            if (
+                supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2)
+            ) revert AmountTooLow(supplied);
 
             // TODO: return ious[]
             iouReceived += supplied;
@@ -216,9 +226,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(
-            lTokens[_index].exchangeRateStored(),
-            inputDecimals[_index]); // eg. 1e8+1e(36-8)-1e18 = 1e18
+        return _amount.mulDiv(lTokens[_index].exchangeRateStored(), 1e18);
     }
 
     /**
@@ -229,9 +237,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
         uint256 _amount,
         uint8 _index
     ) internal view override returns (uint256) {
-        return _amount.mulDiv(
-            inputDecimals[_index],
-            lTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e8
+        return _amount.mulDiv(1e18, lTokens[_index].exchangeRateStored());
     }
 
     /**
@@ -255,7 +261,9 @@ contract LodestarMultiStake is StrategyV5Chainlink {
         returns (uint256[] memory amounts)
     {
         uint256 mainReward = unitroller.compAccrued(address(this));
-        return rewardLength == 1 ? mainReward.toArray() :
-            mainReward.toArray(_balance(rewardTokens[1]));
+        return
+            rewardLength == 1
+                ? mainReward.toArray()
+                : mainReward.toArray(_balance(rewardTokens[1]));
     }
 }

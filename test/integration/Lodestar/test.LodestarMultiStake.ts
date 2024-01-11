@@ -4,7 +4,7 @@ import { BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Lodestar/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, deposit, invest, liquidate, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
+import { IFlow, deposit, invest, liquidate, seedLiquidity, setupStrat, testFlow, withdraw, requestWithdraw, harvest } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
@@ -25,14 +25,13 @@ const desc = descByChainId[network.config.chainId!];
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [5000], assert: (n: BigNumber) => n.gt(0) },
   { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [8], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [5], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: withdraw, params: [1000], assert: (n: BigNumber) => n.gt(0) },
   // { fn: requestWithdraw, params: [11], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
 ];
 
@@ -71,7 +70,7 @@ describe(`test.${desc.name}`, () => {
       }, {
         // strategy specific params
         lTokens: desc.inputs.map(inputs => addr.Lodestar[`l${inputs}`]),
-        unitroller: protocolAddr.Comptroller,
+        unitroller: protocolAddr.Unitroller,
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy

@@ -29,7 +29,7 @@
     "test-tenderly": "yarn hardhat test test/integration/Lodestar/test.LodestarMultiStake.ts --network tenderly",
     "test-gnosis": "yarn hardhat test --network gnosis-mainnet --grep 'Astrolab Aave MetaStable'",
     "test-optimism": "yarn hardhat test --network optimism-mainnet --grep 'Astrolab Hop MetaStable'",
-    "test-arbitrum": "yarn hardhat test --network arbitrum-mainnet --grep 'Astrolab Hop MetaStable'",
+    "test-arbitrum": "yarn hardhat test --network arbitrum-mainnet --grep 'Astrolab Lodestar MetaStable'",
     "test-polygon": "yarn hardhat test --network polygon-mainnet --grep 'Astrolab Stargate MetaStable'",
     "test-base": "yarn hardhat test test/integration/Aave/test.AaveV3MultiStake.ts --network base-mainnet",
     "test-moonbeam": "yarn hardhat test test/integration/Moonwell/test.MoonwellMultiStake.ts --network moonbeam-mainnet",

@@ -418,8 +418,8 @@ export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
   await logState(env, "Before Deposit");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
-    .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
+    .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
+    // .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Deposit", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -651,8 +651,8 @@ export async function liquidate(
   await logState(env, "Before Liquidate");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
-    .liquidate(amounts, 1, false, swapData, getOverrides(env))
+    .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
+    // .liquidate(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 2_000);

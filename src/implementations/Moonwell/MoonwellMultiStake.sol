@@ -156,7 +156,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
 
             mTokens[i].redeem(toLiquidate);
-            
+
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
                 (recovered, ) = swapper.decodeAndSwap({

@@ -221,7 +221,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
     ) internal view override returns (uint256) {
         return _amount.mulDiv(
             vTokens[_index].exchangeRateStored(),
-            inputDecimals[_index]); // eg. 1e8+1e(36-8)-1e18 = 1e18
+            1e18); // eg. 1e8+1e(36-8)-1e18 = 1e18
     }
 
     /**
@@ -233,7 +233,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
         uint8 _index
     ) internal view override returns (uint256) {
         return _amount.mulDiv(
-            inputDecimals[_index],
+            1e18,
             vTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e8
     }
 

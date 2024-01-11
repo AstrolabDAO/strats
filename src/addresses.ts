@@ -587,7 +587,7 @@ export const addresses = {
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
       StrategyV5Agent: "0xec95aa67b999a1ccd01d0af3d5ec28f5375800a1",
-      "Astrolab Lodestar MetaStable": "0x2aeb4a62f40257bfc96d5be55519f70db871c744",
+      "Astrolab Lodestar MetaStable": "0xceb2aac13906633b28f35f57fab2422043f7cfb8",
       "Astrolab Compound MetaStable": "",
     },
     tokens: {
