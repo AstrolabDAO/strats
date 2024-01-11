@@ -119,11 +119,8 @@ const networkOverrides: { [name: string]: Overrides } = {
   },
 };
 
-export const getOverrides = (env: Partial<ITestEnv>, nonce?: number|bigint) => {
+export const getOverrides = (env: Partial<ITestEnv>) => {
   const overrides = isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
-  if (nonce) {
-    overrides.nonce = BigNumber.from(nonce.toString());
-  }
   return overrides;
 }
 
@@ -205,8 +202,7 @@ export async function logRescue(
     ]);
   }
   console.log(`
-    State ${step ?? ""}:\nRequesting rescue of ${token.address} ${
-      token.sym
+    State ${step ?? ""}:\nRequesting rescue of ${token.address} ${token.sym
     } (strat balance: ${token.toAmount(
       balances[0],
     )}, rescuer balance: ${token.toAmount(balances[1])}})`);
@@ -290,68 +286,65 @@ export async function logState(
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${strat.toAmount(totalSupply)} (${totalSupply}wei)
     totalAccountedSupply(): ${strat.toAmount(
-      totalAccountedSupply,
-    )} (${totalAccountedSupply}wei)
+        totalAccountedSupply,
+      )} (${totalAccountedSupply}wei)
     totalAssets(): ${asset.toAmount(totalAssets)} (${totalAssets}wei)
     totalAccountedAssets(): ${asset.toAmount(
-      totalAccountedAssets,
-    )} (${totalAccountedAssets}wei)
+        totalAccountedAssets,
+      )} (${totalAccountedAssets}wei)
     totalClaimableAssetFees(): ${asset.toAmount(
-      totalClaimableAssetFees,
-    )} (${totalClaimableAssetFees}wei)
+        totalClaimableAssetFees,
+      )} (${totalClaimableAssetFees}wei)
     invested(): ${asset.toAmount(invested)} (${invested}wei)\n${inputs
-      .map(
-        (input, index) =>
-          `      -${input.sym}: ${<any>(
-            asset.toAmount(investedAmounts[index])
-          )} (${investedAmounts[index]}wei)`,
-      )
-      .join("\n")}
-    available(): ${available / asset.weiPerUnit} (${available}wei) (${
-      Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
-    }%)
+        .map(
+          (input, index) =>
+            `      -${input.sym}: ${<any>(
+              asset.toAmount(investedAmounts[index])
+            )} (${investedAmounts[index]}wei)`,
+        )
+        .join("\n")}
+    available(): ${available / asset.weiPerUnit} (${available}wei) (${Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
+      }%)
     totalRedemptionRequest(): ${strat.toAmount(
-      totalRedemptionRequest,
-    )} (${totalRedemptionRequest}wei)
+        totalRedemptionRequest,
+      )} (${totalRedemptionRequest}wei)
     totalClaimableRedemption(): ${strat.toAmount(
-      totalClaimableRedemption,
-    )} (${totalClaimableRedemption}wei) (${
-      Math.round(
+        totalClaimableRedemption,
+      )} (${totalClaimableRedemption}wei) (${Math.round(
         totalRedemptionRequest.lt(10)
           ? 0
           : (totalClaimableRedemption * 100) / totalRedemptionRequest,
       ) / 100
-    }%)
+      }%)
     rewardsAvailable():\n${rewardTokens
-      .map(
-        (reward, index) =>
-          `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${
-            rewardsAvailable[index]
-          }wei)`,
-      )
-      .join("\n")}
+        .map(
+          (reward, index) =>
+            `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${rewardsAvailable[index]
+            }wei)`,
+        )
+        .join("\n")}
     previewInvest(0 == available()*.9):\n${inputs
-      .map(
-        (input, i) =>
-          `      -${input.sym}: ${asset.toAmount(
-            previewInvest[i],
-          )} (${previewInvest[i].toString()}wei)`,
-      )
-      .join("\n")}
+        .map(
+          (input, i) =>
+            `      -${input.sym}: ${asset.toAmount(
+              previewInvest[i],
+            )} (${previewInvest[i].toString()}wei)`,
+        )
+        .join("\n")}
     previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
-      .map(
-        (input, i) =>
-          `      -${input.sym}: ${input.toAmount(
-            previewLiquidate[i],
-          )} (${previewLiquidate[i].toString()}wei)`,
-      )
-      .join("\n")}
+        .map(
+          (input, i) =>
+            `      -${input.sym}: ${input.toAmount(
+              previewLiquidate[i],
+            )} (${previewLiquidate[i].toString()}wei)`,
+        )
+        .join("\n")}
     stratAssetBalance(): ${asset.toAmount(
-      stratAssetBalance,
-    )} (${stratAssetBalance}wei)
+          stratAssetBalance,
+        )} (${stratAssetBalance}wei)
     deployerBalances(shares, asset): [${asset.toAmount(
-      deployerSharesBalance,
-    )},${asset.toAmount(deployerAssetBalance)}]
+          deployerSharesBalance,
+        )},${asset.toAmount(deployerAssetBalance)}]
     `,
     );
     if (sleepAfter) await sleep(sleepAfter);
@@ -548,8 +541,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   if (env.needsFunding) {
     console.log(
-      `Funding ${env.deployer.address} from ${
-        env.gasUsedForFunding || "(auto)"
+      `Funding ${env.deployer.address} from ${env.gasUsedForFunding || "(auto)"
       }wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`,
     );
     let gas =

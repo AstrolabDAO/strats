@@ -166,6 +166,19 @@ export const addresses = {
     oracles: {
       Pyth: "0x4D7E825f80bDf85e913E0DD2A2D54927e9dE1594",
     },
+    libs: {
+      AsMaths: "",
+      AsArrays: "",
+      AsAccounting: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
+      PythUtils: "",
+      ChainlinkUtils: "0x1761ff905292548ff2254620166eabd988e48718",
+      RedStoneUtils: "",
+    },
+    astrolab: {
+      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
+      StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
+      "Astrolab Venus MetaStable": "0xf3ecad6a4aab1d3e3add9ab61f13cf96e5a5b51f",
+    },
     tokens: {
       WBNB: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
       WGAS: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
@@ -177,7 +190,7 @@ export const addresses = {
       TUSD: "0x40af3827F39D0EAcBF4A168f8D4ee67c121D11c9",
       BUSD: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
       USDD: "0xd17479997F34dd9156Deef8F95A52D81D265be9c",
-
+      USDT: "0x55d398326f99059fF775485246999027B3197955", // Binance-Peg BSC-USD
       LINK: "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
       MATIC: "0xCC42724C6683B7E57334c4E856f4c9965ED682bD",
       AVAX: "0x1CE0c2827e2eF14D5C4f29a091d735A204794041",
@@ -564,17 +577,17 @@ export const addresses = {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
     libs: {
-      AsMaths: "0x503301eb7cfc64162b5ce95cc67b84fbf6df5255",
+      AsMaths: "0x73f65faefb2be3b7d868300fd5e3a9054e1769a6",
       AsArrays: "",
-      AsAccounting: "0x73f65faefb2be3b7d868300fd5e3a9054e1769a6",
+      AsAccounting: "0x11656b8f95613b1617a5862d089873ed67e43128",
       PythUtils: "",
-      ChainlinkUtils: "0x11656b8f95613b1617a5862d089873ed67e43128",
+      ChainlinkUtils: "0x98bc71a155a11d516a2f4e675f4cd0df04aa1d2b",
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
-      StrategyV5Agent: "0xf9cabf33be923257df943e28089ce980f29199ac",
-      "Astrolab Lodestar MetaStable": "0x22a16dbf44294a4b546cb3b654c3fb1a3e401e7e",
+      StrategyV5Agent: "0xafa8b5dc842ef550323413b255efc1ee014b7f60",
+      "Astrolab Lodestar MetaStable": "",
       "Astrolab Compound MetaStable": "",
     },
     tokens: {

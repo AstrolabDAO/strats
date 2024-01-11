@@ -119,7 +119,7 @@ export const deployStrat = async (
       verify: true,
       deployed: env.addresses!.astrolab?.StrategyV5Agent ? true : false,
       address: env.addresses!.astrolab?.StrategyV5Agent,
-      overrides: getOverrides(env, toNonce(name)),
+      overrides: getOverrides(env),
     },
     [contract]: {
       contract,
@@ -128,7 +128,7 @@ export const deployStrat = async (
       deployed: env.addresses!.astrolab?.[contractUniqueName] ? true : false,
       address: env.addresses!.astrolab?.[contractUniqueName],
       proxied: ["StrategyV5Agent"],
-      overrides: getOverrides(env, toNonce(name)),
+      overrides: getOverrides(env),
       libraries: stratLibs, // External libraries are only used in StrategyV5Agent
     },
   };
@@ -841,8 +841,20 @@ export async function grantRoles(
   ]);
   const strat = await env.deployment!.strat.copy(signer);
   // const roleSignatures = roles.map((role) => ethers.utils.id(role));
+  
+  // const roleSignatures = await env.multicallProvider!.all(
+  //   roles.map((role) => strat.multi[`${role}_ROLE`]()),
+  // );
+
   const roleSignatures = await env.multicallProvider!.all(
-    roles.map((role) => strat.multi[`${role}_ROLE`]()),
+    roles.map((role) => {
+      const functionName = `${role}_ROLE`;
+      if (typeof strat.multi[functionName] === 'function') {
+        return strat.multi[functionName]();
+      } else {
+        throw new Error(`Function ${functionName} does not exist on strat.multi`);
+      }
+    }),
   );
   const hasRoles = async () =>
     env.multicallProvider!.all(
@@ -850,8 +862,7 @@ export async function grantRoles(
     );
   const has = await hasRoles();
   console.log(`${signer.address} roles (before acceptRoles): ${has}`);
-  for (let i = 0; i < roleSignatures.length; i++)
-  // for (const i in roleSignatures)
+  for (const i in roleSignatures)
     if (!has[i])
       await strat
         .grantRole(roleSignatures[i], grantee, getOverrides(env))

@@ -39,7 +39,17 @@ As per the [licence](./LICENCE) states, the code is provided as-is and is under 
 
 ## Strategies 🚧
 - [AaveMultiStake](./src/implementations/Aave/AaveMultiStake.sol)
-- [HopMultiStake](./src/implementations/Aave/HopMultiStake.sol)
+- [HopMultiStake](./src/implementations/Hop/HopMultiStake.sol)
+- [LodestarMultiStake](./src/implementations/Lodestar/LodestarMultiStake.sol)
+- [VenusMultiStake](./src/implementations/Venus/VenusMultiStake.sol)
+- [SonneMultiStake](./src/implementations/Sonne/SonneMultiStake.sol)
+- [CompoundV3MultiStake](./src/implementations/Compound/CompoundV3MultiStake.sol)
+- [AaveV3MultiStake](./src/implementations/Aave/AaveV3MultiStake.sol)
+- [MoonwellMultiStake](./src/implementations/Moonwell/MoonwellMultiStake.sol)
+- [MoonwellLegacyMultiStake](./src/implementations/Moonwell/MoonwellLegacyMultiStake.sol)
+- [StargateMultiStake](./src/implementations/Stargate/StargateMultiStake.sol)
+- [AgaveMultiStake](./src/implementations/Agave/AgaveMultiStake.sol)
+- [BenqiMultiStake](./src/implementations/Benqi/BenqiMultiStake.sol)
 - ...
 
 ## Integrated/Watched Protocols 👀
@@ -100,7 +110,7 @@ Primitives
 Derivatives
   - [Morpho](https://github.com/morpho-org)
   - [Gearbox](https://github.com/Gearbox-protocol/core-v3)
-  - [Sturdy](https://github.com/sturdyfi/sturdy-aggregator
+  - [Sturdy](https://github.com/sturdyfi/sturdy-aggregator)
 
 ### Spot DEXs
 Primitives
@@ -135,7 +145,7 @@ Derivatives
 
 ### Derivatives DEXs
 Primitives
-  - [GMX](https://github  .com/gmx-io/gmx-contracts)
+  - [GMX](https://github.com/gmx-io/gmx-contracts)
   - [Gains/gTrade](https://github.com/GainsNetwork/gTrade-v6.1)
   - [MUX](https://github.com/mux-world/mux-protocol)
   - [HMX](https://github.com/HMXOrg/v2-evm)
