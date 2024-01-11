@@ -4,27 +4,31 @@ import { BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Lodestar/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
+import { IFlow, deposit, invest, liquidate, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
-const desc: IStrategyDesc = {
-  name: `Astrolab Lodestar MetaStable`,
-  symbol: `as.LMS`,
-  version: 1,
-  contract: "LodestarMultiStake",
-  asset: "USDC",
-  inputs: ["USDC", "USDCe", "USDT", "DAI"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
-  inputWeights: [2250, 2250, 2250, 2250], // 90% allocation, 10% cash
-  seedLiquidityUsd: 10,
+const descByChainId: { [chainId: number]: IStrategyDesc } = {
+  42161: {
+    name: `Astrolab Lodestar MetaStable`,
+    symbol: `as.LMS`,
+    version: 1,
+    contract: "LodestarMultiStake",
+    asset: "USDC",
+    inputs: ["USDC", "USDCe", "USDT", "DAI"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
+    inputWeights: [2250, 2250, 2250, 2250], // 90% allocation, 10% cash
+    seedLiquidityUsd: 10,
+  }
 };
+
+const desc = descByChainId[network.config.chainId!];
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) },
+  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [8], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: withdraw, params: [5], assert: (n: BigNumber) => n.gt(0) },
   // { fn: requestWithdraw, params: [11], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
@@ -40,7 +44,7 @@ describe(`test.${desc.name}`, () => {
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
-  beforeEach(async () => {});
+  beforeEach(async () => { });
   after(async () => {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
     if (env?.revertState) await revertNetwork(env.snapshotId);

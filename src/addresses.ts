@@ -577,17 +577,17 @@ export const addresses = {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
     libs: {
-      AsMaths: "0x73f65faefb2be3b7d868300fd5e3a9054e1769a6",
+      AsMaths: "0x11c8f790d252f4a49cfbff5766310873898bf5d3",
       AsArrays: "",
-      AsAccounting: "0x11656b8f95613b1617a5862d089873ed67e43128",
+      AsAccounting: "0xf3ecad6a4aab1d3e3add9ab61f13cf96e5a5b51f",
       PythUtils: "",
-      ChainlinkUtils: "0x98bc71a155a11d516a2f4e675f4cd0df04aa1d2b",
+      ChainlinkUtils: "0xc40157087c18ca78c73658242430f4557f1224ca",
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
-      StrategyV5Agent: "0xafa8b5dc842ef550323413b255efc1ee014b7f60",
-      "Astrolab Lodestar MetaStable": "",
+      StrategyV5Agent: "0xec95aa67b999a1ccd01d0af3d5ec28f5375800a1",
+      "Astrolab Lodestar MetaStable": "0x2aeb4a62f40257bfc96d5be55519f70db871c744",
       "Astrolab Compound MetaStable": "",
     },
     tokens: {

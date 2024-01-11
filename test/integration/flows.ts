@@ -133,11 +133,11 @@ export const deployStrat = async (
     },
   };
 
-  if (!isLive(env)) {
-    env.deployment!.export = false;
-    for (const unit of Object.values(units))
-      unit.export = false;
-  }
+  // if (!isLive(env)) {
+  //   env.deployment!.export = false;
+  //   for (const unit of Object.values(units))
+  //     unit.export = false;
+  // }
 
   for (const libName of libNames) {
     units[libName] = {
@@ -364,6 +364,7 @@ export async function setupStrat(
   } else {
     const initSignature = getInitSignature(contract);
     console.log("InitParams : ", initParams);
+    console.log("InitSignature : ", initSignature);
     await proxy[initSignature](...initParams, getOverrides(env)).then(
       (tx: TransactionResponse) => tx.wait(),
     );
@@ -417,8 +418,8 @@ export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
   await logState(env, "Before Deposit");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
-    // .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
+    // .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
+    .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Deposit", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -650,8 +651,8 @@ export async function liquidate(
   await logState(env, "Before Liquidate");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
-    // .liquidate(amounts, 1, false, swapData, getOverrides(env))
+    // .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
+    .liquidate(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 2_000);
