@@ -100,21 +100,18 @@ export const addresses = {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
     libs: {
-      AsMaths: "",
+      AsMaths: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
       AsArrays: "",
-      AsAccounting: "",
+      AsAccounting: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
       PythUtils: "",
-      ChainlinkUtils: "",
+      ChainlinkUtils: "0x9c14f9137fc7327f336cc73d4218d310f3faba11",
       RedStoneUtils: "",
     },
     astrolab: {
-      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      StrategyV5Agent: "",
-      "HopSingleStake.USDC": "",
-      "HopSingleStake.WETH": "",
-      "Astrolab Hop MetaStable": "",
-      "Astrolab Aave Metastable": "",
-      "Astrolab Stargate Metastable": "",
+      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894", // PROD
+      // Swapper: "0xac64a35e398699dd3f22d4ba2252e5153c40fe9c",
+      StrategyV5Agent: "0xbe15f86da4800c03fca8f457cff30d6ef9fb7bff",
+      "Astrolab Sonne MetaStable" : "0xe395a274de8195fad99fbce161c99472bf31b0b2",
     },
     tokens: {
       OP: "0x4200000000000000000000000000000000000042",
@@ -670,6 +667,19 @@ export const addresses = {
     },
     oracles: {
       Pyth: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
+    },
+    libs: {
+      AsMaths: "",
+      AsArrays: "",
+      AsAccounting: "",
+      PythUtils: "",
+      ChainlinkUtils: "",
+      RedStoneUtils: "",
+    },
+    astrolab: {
+      Swapper: "",
+      StrategyV5Agent: "",
+      "Astrolab Benqi MetaStable": "",
     },
     tokens: {
       WBTCe: "0x50b7545627a5162F82A992c33b87aDc75187B218",

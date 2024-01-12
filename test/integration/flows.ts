@@ -534,8 +534,8 @@ export async function invest(env: IStrategyDeploymentEnv, _amount = 0) {
   await logState(env, "Before Invest");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
-    .invest(...params, getOverrides(env))
+    .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
+    // .invest(...params, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -801,7 +801,6 @@ export async function harvest(env: Partial<IStrategyDeploymentEnv>) {
 export async function compound(env: IStrategyDeploymentEnv) {
   const { asset, inputs, strat } = env.deployment!;
   const harvestSwapData = await preHarvest(env);
-
   // harvest static call
   let harvestEstimate = BigNumber.from(0);
   try {
