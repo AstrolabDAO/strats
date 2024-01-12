@@ -29,6 +29,7 @@ export default merge(addresses, {
       Maximillion: "0xd78DEd803b28A5A9C860c2cc7A4d84F611aA4Ef8",
       JumpRateModel: "0xC436F5BC8A8bD9c9e240A2A83D44705Ec87A9D55",
       LinearRateModel: "0xF805e22C81EF330967EEC52f7eDb0C6B31Fd5cCf",
+      rewardTokens: [addresses[43114].tokens.QI, addresses[43114].tokens.WAVAX],
     },
   },
 } as { [chainId: number]: { [id: string]: any } });

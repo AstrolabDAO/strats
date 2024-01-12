@@ -669,20 +669,21 @@ export const addresses = {
       Pyth: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
     },
     libs: {
-      AsMaths: "",
+      AsMaths: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
       AsArrays: "",
-      AsAccounting: "",
+      AsAccounting: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
       PythUtils: "",
-      ChainlinkUtils: "",
+      ChainlinkUtils: "0x1761ff905292548ff2254620166eabd988e48718",
       RedStoneUtils: "",
     },
     astrolab: {
-      Swapper: "",
-      StrategyV5Agent: "",
-      "Astrolab Benqi MetaStable": "",
+      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
+      StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
+      "Astrolab Benqi MetaStable": "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
     },
     tokens: {
       WBTCe: "0x50b7545627a5162F82A992c33b87aDc75187B218",
+      WGAS: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",
       WAVAX: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",
 
       USDTe: "0xc7198437980c041c805a1edcba50c1ce5db95118",
@@ -696,6 +697,7 @@ export const addresses = {
       AAVEe: "0x63a72806098Bd3D9520cC43356dD78afe5D386D9",
       FRAX: "0xD24C2Ad096400B6FBcd2ad8B24E7acBc21A1da64",
       SNXe: "0xbec243c995409e6520d7c41e404da5deba4b209b",
+      QI: "0x8729438EB15e2C8B576fCc6AeCdA6A148776C0F5",
     },
   },
   // linea
