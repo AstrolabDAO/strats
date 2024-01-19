@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-// import "./ERC20Permit.sol";
 import "./ERC20.sol";
 import "./AsManageable.sol";
 import "./AsTypes.sol";
@@ -42,11 +41,6 @@ abstract contract As4626Abstract is
         uint256 shares
     );
     // ERC7540
-    // event DepositRequest(
-    //     address indexed sender,
-    //     address indexed operator,
-    //     uint256 assets
-    // );
     event RedeemRequest(
         address indexed sender,
         address indexed operator,
@@ -97,14 +91,6 @@ abstract contract As4626Abstract is
     constructor() {
         _pause();
     }
-
-    /**
-     * @dev Returns the number of decimal places used for the shares
-     * @return The number of decimal places (8 in this case)
-     */
-    // function decimals() public pure override returns (uint8) {
-    //     return 8;
-    // }
 
     /**
      * @notice Exempt an account from entry/exit fees or remove its exemption

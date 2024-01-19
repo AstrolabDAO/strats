@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.0;
 
-import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
 import "../interfaces/IStrategyV5.sol";
 import "./StrategyV5Abstract.sol";
 import "./AsProxy.sol";
