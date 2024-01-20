@@ -18,11 +18,7 @@ import "../libs/AsAccounting.sol";
  * @notice All As4626 calls are delegated to the agent (StrategyV5Agent)
  * @dev Make sure all As4626 state variables here to match proxy/implementation slots
  */
-abstract contract As4626Abstract is
-    ERC20,
-    AsManageable,
-    ReentrancyGuard
-{
+abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     using AsMaths for uint256;
 
     // Events
@@ -113,8 +109,10 @@ abstract contract As4626Abstract is
      * @return Amount denominated in asset
      */
     function available() public view returns (uint256) {
-        return availableBorrowable().subMax0(
-            convertToAssets(req.totalClaimableRedemption));
+        return
+            availableBorrowable().subMax0(
+                convertToAssets(req.totalClaimableRedemption)
+            );
     }
 
     /**
@@ -123,12 +121,13 @@ abstract contract As4626Abstract is
      */
     function availableClaimable() internal view returns (uint256) {
         return
-            asset.balanceOf(address(this)) -
-            claimableAssetFees -
-            AsAccounting.unrealizedProfits(
-                last.harvest,
-                expectedProfits,
-                profitCooldown
+            asset.balanceOf(address(this)).subMax0(
+                claimableAssetFees +
+                    AsAccounting.unrealizedProfits(
+                        last.harvest,
+                        expectedProfits,
+                        profitCooldown
+                    )
             );
     }
 
@@ -137,7 +136,7 @@ abstract contract As4626Abstract is
      * @return The amount of borrowable assets
      */
     function availableBorrowable() internal view returns (uint256) {
-        return availableClaimable() - totalLent;
+        return availableClaimable();  
     }
 
     /**
@@ -153,7 +152,12 @@ abstract contract As4626Abstract is
      * @return Amount denominated in asset
      */
     function totalAccountedAssets() public view returns (uint256) {
-        return totalAssets() - req.totalClaimableRedemption.mulDiv(last.sharePrice * weiPerAsset, weiPerShare ** 2); // eg. (1e8+1e8+1e6)-(1e8+1e8) = 1e6
+        return
+            totalAssets() -
+            req.totalClaimableRedemption.mulDiv(
+                last.sharePrice * weiPerAsset,
+                weiPerShare ** 2
+            ); // eg. (1e8+1e8+1e6)-(1e8+1e8) = 1e6
     }
 
     /**
@@ -170,11 +174,13 @@ abstract contract As4626Abstract is
      */
     function sharePrice() public view virtual returns (uint256) {
         uint256 supply = totalAccountedSupply();
-        return supply == 0
-            ? weiPerShare
-            : totalAccountedAssets().mulDiv( // eg. e6
-                weiPerShare ** 2, // 1e8*2
-                supply * weiPerAsset); // eg. (1e6+1e8+1e8)-(1e8+1e6)
+        return
+            supply == 0
+                ? weiPerShare
+                : totalAccountedAssets().mulDiv( // eg. e6
+                    weiPerShare ** 2, // 1e8*2
+                    supply * weiPerAsset
+                ); // eg. (1e6+1e8+1e8)-(1e8+1e6)
     }
 
     /**

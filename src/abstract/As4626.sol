@@ -156,8 +156,8 @@ abstract contract As4626 is As4626Abstract {
 
         Erc7540Request storage request = req.byOperator[_receiver];
         uint256 claimable = maxRedemptionClaim(_owner);
-
         last.sharePrice = sharePrice();
+
         uint256 price = (claimable >= _shares)
             ? AsMaths.min(last.sharePrice, request.sharePrice) // worst of if pre-existing request
             : last.sharePrice; // current price
@@ -176,6 +176,10 @@ abstract contract As4626 is As4626Abstract {
                 _shares,
                 req.totalClaimableRedemption
             ); // min 0
+        } else {
+            // if the user has not requested enough shares, check if the vault cash can cover the withdrawal
+            if (_shares > available().mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset))
+                revert AmountTooHigh(_shares);
         }
 
         if (!exemptionList[_owner])
@@ -691,7 +695,7 @@ abstract contract As4626 is As4626Abstract {
     ) external nonReentrant {
 
         uint256 available = availableBorrowable();
-        if (amount > available || (totalLent + amount) > maxLoan) revert AmountTooHigh(amount);
+        if (amount > available || amount > maxLoan) revert AmountTooHigh(amount);
 
         uint256 fee = exemptionList[msg.sender] ? 0 : amount.bp(fees.flash);
         uint256 toRepay = amount + fee;

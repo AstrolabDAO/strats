@@ -516,21 +516,25 @@ export const addresses = {
       Pyth: "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a",
     },
     libs: {
-      AsMaths: "0x78D5ECF1fBd052F7D8914DFBd7e3e5B5cD9aa6BB", // PROD
+      // AsMaths: "0x78D5ECF1fBd052F7D8914DFBd7e3e5B5cD9aa6BB", // PROD
+      AsMaths: "0x86cbd9c8ea72ef293f3c707203d469eae0330be3", 
       AsArrays: "",
-      AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718", // PROD
+      // AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718", // PROD
+      AsAccounting: "0x28f5a6d9d5f45fa678c01f14c6a73c9d58483447", 
       PythUtils: "",
-      ChainlinkUtils: "0x7221EbDd4176b1A21C3C014fd70bAB46E697E272", // PROD
+      // ChainlinkUtils: "0x7221EbDd4176b1A21C3C014fd70bAB46E697E272", // PROD
+      ChainlinkUtils: "0x7221EbDd4176b1A21C3C014fd70bAB46E697E272", 
       RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
       // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
-      StrategyV5Agent: "0x14e3d6cce3e206991d7d1707bfdb6d50448ecb7a",
+      StrategyV5Agent: "0xceb2aac13906633b28f35f57fab2422043f7cfb8",
       "Astrolab Moonwell MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
       "Astrolab Stargate MetaStable": "",
       "Astrolab Aave MetaStable": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
       "Astrolab CompoundV3 MetaStable": "0x629dc47b5fedee66b99f52dce4471453eadfe0b8",
+      "Astrolab Sonne MetaStable": "0x148b692fdf34f9350c1880640391e8d532b1029f",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
