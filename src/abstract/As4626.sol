@@ -653,9 +653,8 @@ abstract contract As4626 is As4626Abstract {
         uint256 requestTimestamp
     ) public view returns (bool) {
         return
-            requestTimestamp <
-            AsMaths.min(
-                block.timestamp - req.redemptionLocktime,
+            block.timestamp >= AsMaths.min(
+                requestTimestamp + req.redemptionLocktime,
                 last.liquidate
             );
     }
