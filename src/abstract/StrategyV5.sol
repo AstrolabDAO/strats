@@ -252,7 +252,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      */
     function _compound(
         uint256[8] calldata _amounts,
-        bytes[] memory _params // rewardTokens(0...n)->underling() / asset()->inputs(0...n) with assetWeights(0...n)
+        bytes[] memory _params // rewardTokens(0...n)->underlying() / asset()->inputs(0...n) with assetWeights(0...n)
     ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
         // we expect the SwapData to cover harvesting + investing
         if (_params.length != (rewardLength + inputLength))

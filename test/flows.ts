@@ -23,7 +23,7 @@ import {
   IStrategyBaseParams,
   SafeContract,
   MaybeAwaitable,
-} from "../../src/types";
+} from "../src/types";
 import {
   addressZero,
   getEnv,
@@ -876,7 +876,7 @@ export async function harvest(env: Partial<IStrategyDeploymentEnv>) {
 
 export async function compound(env: IStrategyDeploymentEnv) {
   const { asset, inputs, strat } = env.deployment!;
-  const harvestSwapData = await preHarvest(env);
+  const [harvestSwapData] = await preHarvest(env);
   // harvest static call
   let harvestEstimate = BigNumber.from(0);
   try {

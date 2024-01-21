@@ -29,8 +29,8 @@ import {
   ITestEnv,
   MaybeAwaitable,
   SafeContract,
-} from "../../src/types";
-import addresses, { Addresses } from "../../src/addresses";
+} from "../src/types";
+import addresses, { Addresses } from "../src/addresses";
 import {
   ISwapperParams,
   swapperParamsToString,
