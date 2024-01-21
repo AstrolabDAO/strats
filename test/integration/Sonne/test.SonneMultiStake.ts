@@ -42,7 +42,8 @@ const testFlows: Partial<IFlow>[] = [
   // { fn: withdraw, params: [1], assert: (n: BigNumber) => n.gt(0) },
   { fn: requestWithdraw, params: [1500], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  { elapsedSec: 60*60*24*2, revertState: false, fn: withdraw, params: [1500], assert: (n: BigNumber) => n.gt(0) },
+  // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
+  { elapsedSec: 30, revertState: false, fn: withdraw, params: [1490], assert: (n: BigNumber) => n.gt(0) }, 
   // { fn: withdraw, params: [500], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
