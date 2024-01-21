@@ -4,14 +4,14 @@ import { BigNumber } from "ethers";
 import chainlinkOracles from "../../../src/chainlink-oracles.json";
 import addresses from "../../../src/implementations/Sonne/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, compound, deposit, harvest, invest, liquidate, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
+import { IFlow, compound, deposit, harvest, invest, liquidate, redeem, requestRedeem, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
   10: {
     name: `Astrolab Sonne MetaStable`,
-    symbol: `as.SMS`,
+    symbol: `as.SOMS`,
     version: 1,
     contract: "SonneMultiStake",
     asset: "USDC",
@@ -21,7 +21,7 @@ const descByChainId: { [chainId: number]: IStrategyDesc } = {
   },
   8453: {
     name: `Astrolab Sonne MetaStable`,
-    symbol: `as.SMS`,
+    symbol: `as.SOMS`,
     version: 1,
     contract: "SonneMultiStake",
     asset: "USDC",
@@ -36,16 +36,19 @@ const desc = descByChainId[network.config.chainId!];
 
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [2000], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [1000], assert: (n: BigNumber) => n.gt(0) },
   { fn: invest, params: [0], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [500], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [1], assert: (n: BigNumber) => n.gt(0) },
-  { fn: requestWithdraw, params: [1500], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: requestWithdraw, params: [1500], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
+  // // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
+  // { elapsedSec: 30, revertState: false, fn: withdraw, params: [1490], assert: (n: BigNumber) => n.gt(0) },
+  { fn: requestRedeem, params: [500], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
-  { elapsedSec: 30, revertState: false, fn: withdraw, params: [1490], assert: (n: BigNumber) => n.gt(0) }, 
+  { fn: redeem, params: [500], assert: (n: BigNumber) => n.gt(0) },
   // { fn: withdraw, params: [500], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
   // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
 ];
 

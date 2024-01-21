@@ -735,6 +735,82 @@ export async function requestWithdraw(
   ); // recovered
 }
 
+export async function redeem(
+  env: Partial<IStrategyDeploymentEnv>,
+  _amount = 50,
+) {
+  const { inputs, strat } = env.deployment!;
+  const minAmountOut = 1; // TODO: change with staticCall
+  const max = await strat.maxRedeem(env.deployer!.address);
+  let amount = strat.toWei(_amount);
+
+  if (max.lt(10)) {
+    console.log(
+      `Skipping redeem as maxRedeem < 10wei (no exit possible at this time)`,
+    );
+    return BigNumber.from(1);
+  }
+
+  if (BigNumber.from(amount).gt(max)) {
+    console.log(`Using maxRedeem ${max} (< ${amount})`);
+    amount = max;
+  }
+
+  await logState(env, "Before Redeem");
+  // only exec if static call is successful
+  const receipt = await strat
+    .safe(
+      "safeRedeem",
+      [amount, minAmountOut, env.deployer!.address, env.deployer!.address],
+      getOverrides(env),
+    )
+    // .safeRedeem(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+  await logState(env, "After Redeem", 2_000);
+  return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
+}
+
+export async function requestRedeem(
+  env: IStrategyDeploymentEnv,
+  _amount = 50,
+) {
+  const { strat } = env.deployment!;
+  const balance = await strat.balanceOf(env.deployer.address);
+  const pendingRequest = await strat.pendingAssetRequest(env.deployer.address);
+  let amount = strat.toWei(_amount);
+
+  if (balance.lt(10)) {
+    console.log(
+      `Skipping requestRedeem as balance < 10wei (user owns no shares)`,
+    );
+    return BigNumber.from(1);
+  }
+
+  if (BigNumber.from(amount).gt(balance)) {
+    console.log(`Using full balance ${balance} (< ${amount})`);
+    amount = balance;
+  }
+
+  if (pendingRequest.gte(amount.mul(weiToString(strat.weiPerUnit)))) {
+    console.log(`Skipping requestRedeem as pendingRedeemRequest > amount`);
+    return BigNumber.from(1);
+  }
+  await logState(env, "Before RequestRedeem");
+  const receipt = await strat
+    .requestRedeem(
+      amount,
+      env.deployer.address,
+      env.deployer.address,
+      getOverrides(env),
+    )
+    .then((tx: TransactionResponse) => tx.wait());
+  await logState(env, "After RequestRedeem", 2_000);
+  return (
+    getTxLogData(receipt, ["address, address, address, uint256"], 3) ??
+    BigNumber.from(0)
+  ); // recovered
+}
+
 export async function preHarvest(env: Partial<IStrategyDeploymentEnv>) {
   const { asset, inputs, rewardTokens, strat } = env.deployment!;
 

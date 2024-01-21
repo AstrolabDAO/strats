@@ -16,14 +16,14 @@ import "@openzeppelin/contracts/proxy/Proxy.sol";
 abstract contract AsProxy is Proxy {
     /**
      * @notice Delegate a call to an implementation contract using a function signature
-     * @param implementation The address of the implementation contract
-     * @param signature The function signature to delegate
+     * @param _implementation The address of the implementation contract
+     * @param _signature The function signature to delegate
      */
     function _delegateWithSignature(
-        address implementation,
-        string memory signature
+        address _implementation,
+        string memory _signature
     ) internal {
-        bytes4 selector = bytes4(keccak256(bytes(signature)));
+        bytes4 selector = bytes4(keccak256(bytes(_signature)));
         assembly {
             // Store selector at the beginning of the calldata
             mstore(0x0, selector)
@@ -31,7 +31,7 @@ abstract contract AsProxy is Proxy {
             calldatacopy(0x4, 0x4, sub(calldatasize(), 0x4))
             let result := delegatecall(
                 gas(),
-                implementation,
+                _implementation,
                 0x0,
                 add(calldatasize(), 0x4),
                 0,

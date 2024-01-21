@@ -99,28 +99,25 @@ export function getSelectors(abi: any) {
   }));
 }
 
-const networkOverrides: { [name: string]: Overrides } = {
-  "gnosis-mainnet": {
+const networkOverrides: { [chainId: number]: Overrides } = {
+  100: {
     // gasLimit: 1e7,
     maxPriorityFeePerGas: 5e9,
     maxFeePerGas: 25e9,
     // gasPrice: 4e9,
   },
-  "polygon-mainnet": {
+  137: {
     maxPriorityFeePerGas: 50e9,
     maxFeePerGas: 150e9,
     // gasPrice: 150e9,
   },
-  "base-mainnet": {
-    gasLimit: 5e6,
-  },
-  tenderly: {
-    gasLimit: 1e8,
+  8453: {
+    gasLimit: 1e7,
   },
 };
 
 export const getOverrides = (env: Partial<ITestEnv>) => {
-  const overrides = isLive(env) ? {} : networkOverrides[env.network!.name] ?? {};
+  const overrides = isLive(env) ? {} : networkOverrides[env.network!.config.chainId!] ?? {};
   return overrides;
 }
 
@@ -458,7 +455,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
       "1",
       tr.to,
       tr.data,
-      { gasLimit: Math.max(Number(tr.gasLimit ?? 0), 50_000_000) },
+      { gasLimit: Math.max(Number(tr.gasLimit ?? 0), getOverrides(env).gasLimit as number) },
     );
     console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
     received = (await output.balanceOf(o.payer)).sub(outputBalanceBeforeSwap);
@@ -610,11 +607,13 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
             const newValue =
               "0x0000000000000000000000000000000000000000000000000000000000000000";
             // Sending the tenderly_setStorageAt command
-            await provider.send("tenderly_setStorageAt", [
-              oracle,
-              storageSlot,
-              newValue,
-            ]);
+            if (env.network.name === "tenderly") {
+              await provider.send("tenderly_setStorageAt", [
+                oracle,
+                storageSlot,
+                newValue,
+              ]);
+            }
           }
         }
       }
