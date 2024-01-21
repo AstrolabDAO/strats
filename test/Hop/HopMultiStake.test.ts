@@ -2,86 +2,66 @@ import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import * as ethers from "ethers";
 import { BigNumber } from "ethers";
-import chainlinkOracles from "../../../src/chainlink-oracles.json";
-import addresses from "../../../src/implementations/Stargate/addresses";
-import stakingIdsByNetwork from "../../../src/implementations/Stargate/staking-ids.json";
-import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { IFlow, deposit, invest, liquidate, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
+import chainlinkOracles from "../../src/chainlink-oracles.json";
+import addresses from "../../src/implementations/Hop/addresses";
+import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
+import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
   10: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
     version: 1,
-    contract: "StargateMultiStake",
+    contract: "HopMultiStake",
     asset: "USDC",
-    inputs: ["USDCe", "USDT", "DAI"], // "FRAX", "LUSD", "sUSD"] <-- no emissions as volumes too low
-    inputWeights: [3000, 4000, 2000], // 90% allocation, 10% cash
+    inputs: ["USDCe", "USDT", "DAI"],
+    inputWeights: [3500, 3500, 2000], // 90% allocation, 10% cash
     seedLiquidityUsd: 10,
   },
-  50: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
+  100: {
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
     version: 1,
-    contract: "StargateMultiStake",
+    contract: "HopMultiStake",
     asset: "USDC",
-    inputs: ["USDT"], // "BUSD"] <-- no emissions as volumes too low
-    inputWeights: [9000], // 90% allocation, 10% cash
+    inputs: ["USDC", "WXDAI", "USDT"],
+    inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
     seedLiquidityUsd: 10,
   },
   137: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
     version: 1,
-    contract: "StargateMultiStake",
+    contract: "HopMultiStake",
     asset: "USDC",
-    inputs: ["USDCe", "USDT", "DAI"],
-    inputWeights: [3000, 4000, 2000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  8453: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDbC", "WETH"],
-    inputWeights: [4500, 4500], // 90% allocation, 10% cash
+    inputs: ["USDCe"],
+    inputWeights: [9000], // 90% allocation, 10% cash
     seedLiquidityUsd: 10,
   },
   42161: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
+    name: `Astrolab Hop MetaStable`,
+    symbol: `as.HMS`,
     version: 1,
-    contract: "StargateMultiStake",
+    contract: "HopMultiStake",
     asset: "USDC",
-    inputs: ["USDCe", "USDT"], // "FRAX"] <-- no emissions as volumes too low
-    inputWeights: [4500, 4500], // 90% allocation, 10% cash
+    inputs: ["USDCe", "USDT", "DAI"],
+    inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
     seedLiquidityUsd: 10,
   },
-  43114: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe", "USDT"], // "FRAX"] <-- no emissions as volumes too low
-    inputWeights: [4500, 4500], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-}
+};
 
 const desc = descByChainId[network.config.chainId!];
 
+
 const testFlows: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [25], assert: (n: BigNumber) => n.gt(0) },
-  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: requestWithdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: requestWithdraw, params: [11], assert: (n: BigNumber) => n.gt(0) },
   // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
   // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
   // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
@@ -90,13 +70,13 @@ const testFlows: Partial<IFlow>[] = [
 ];
 
 describe(`test.${desc.name}`, () => {
+
   const addr = addresses[network.config.chainId!];
-  const protocolAddr: { [name: string]: any } = <any>addr.Stargate;
-  const stakingIds = (<any>stakingIdsByNetwork)[network.config.chainId!];
+  const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Hop[i]);
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
-  beforeEach(async () => {});
+  beforeEach(async () => { });
   after(async () => {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
     if (env?.revertState) await revertNetwork(env.snapshotId);
@@ -115,16 +95,17 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        rewardTokens: [addr.tokens.STG]
+        rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // keep unique reward token: HOP
       }, {
         // chainlink oracle params
         assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params
-        lps: desc.inputs.map(i => protocolAddr.Pool[i]), // lp token
-        lpStaker: protocolAddr.LPStaking ?? protocolAddr.LPStakingTime,
-        stakingIds: desc.inputs.map(i => stakingIds[i]),
+        lpTokens: protocolAddr.map(i => i.lp), // hop lp token
+        rewardPools: protocolAddr.map(i => i.rewardPools), // hop reward pool
+        stableRouters: protocolAddr.map(i => i.swap), // stable swap
+        tokenIndexes: desc.inputs.map(i => 0), // h{INPUT} tokenIndex in pool
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy

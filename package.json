@@ -26,7 +26,8 @@
     "test-unit": "yarn ts-mocha --timeout 120000 --recursive \"test/unit/**/*.ts\" --exit",
     "test-integration": "yarn ts-mocha --require hardhat/register --timeout 120000 --recursive \"test/integration/**/*.ts\" --exit",
     "build": "tsc --build .",
-    "test-tenderly": "yarn hardhat test test/integration/Benqi/test.BenqiMultiStake.ts --network tenderly",
+    "test-tenderly": "yarn hardhat test test/integration/Sonne/test.SonneMultiStake.ts --network tenderly",
+    "test-hardhat": "yarn hardhat test test/integration/Sonne/test.SonneMultiStake.ts --network hardhat",
     "test-gnosis": "yarn hardhat test --network gnosis-mainnet --grep 'Astrolab Aave MetaStable'",
     "test-optimism": "yarn hardhat test --network optimism-mainnet --grep 'Astrolab Hop MetaStable'",
     "test-arbitrum": "yarn hardhat test --network arbitrum-mainnet --grep 'Astrolab Hop MetaStable'",
@@ -81,7 +82,7 @@
   },
   "peerDependencies": {},
   "dependencies": {
-    "@astrolabs/hardhat": "^1.0.86",
+    "@astrolabs/hardhat": "^1.0.89",
     "@astrolabs/registry": "^1.0.29",
     "@astrolabs/swapper": "^1.0.17",
     "@axelar-network/axelar-gmp-sdk-solidity": "^5.6.4",

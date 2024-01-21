@@ -517,13 +517,13 @@ export const addresses = {
     },
     libs: {
       // AsMaths: "0x78D5ECF1fBd052F7D8914DFBd7e3e5B5cD9aa6BB", // PROD
-      AsMaths: "0x86cbd9c8ea72ef293f3c707203d469eae0330be3",
+      AsMaths: "",
       AsArrays: "",
       // AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718", // PROD
-      AsAccounting: "0x28f5a6d9d5f45fa678c01f14c6a73c9d58483447",
+      AsAccounting: "",
       PythUtils: "",
       // ChainlinkUtils: "0x7221EbDd4176b1A21C3C014fd70bAB46E697E272", // PROD
-      ChainlinkUtils: "0x7221EbDd4176b1A21C3C014fd70bAB46E697E272",
+      ChainlinkUtils: "",
       RedStoneUtils: "",
     },
     astrolab: {

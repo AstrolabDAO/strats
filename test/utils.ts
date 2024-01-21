@@ -380,7 +380,7 @@ export const getEnv = async (
 
 async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   if (o.inputChainId != network.config.chainId) {
-    if (network.name.includes("tenderly")) {
+    if (!isLive(env)) {
       console.warn(`Skipping case as not on current network: ${network.name}`);
       return;
     } else {
@@ -591,6 +591,10 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
     return;
   }
   const params = env.deployment!.initParams[1] as IChainlinkParams;
+
+  if (!env.network.name.includes("tenderly"))
+    return;
+
   for (const lib of Object.keys(env.deployment!.units!)) {
     if (isOracleLib(lib)) {
       console.log(`Whitelisting oracle access for ${lib}`);
@@ -607,13 +611,11 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
             const newValue =
               "0x0000000000000000000000000000000000000000000000000000000000000000";
             // Sending the tenderly_setStorageAt command
-            if (env.network.name === "tenderly") {
-              await provider.send("tenderly_setStorageAt", [
-                oracle,
-                storageSlot,
-                newValue,
-              ]);
-            }
+            await provider.send("tenderly_setStorageAt", [
+              oracle,
+              storageSlot,
+              newValue,
+            ]);
           }
         }
       }

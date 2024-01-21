@@ -1,9 +1,9 @@
 import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { BigNumber } from "ethers";
-import chainlinkOracles from "../../../src/chainlink-oracles.json";
-import addresses from "../../../src/implementations/Sonne/addresses";
-import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
+import chainlinkOracles from "../../src/chainlink-oracles.json";
+import addresses from "../../src/implementations/Sonne/addresses";
+import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { IFlow, compound, deposit, harvest, invest, liquidate, redeem, requestRedeem, requestWithdraw, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 

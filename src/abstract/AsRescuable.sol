@@ -87,6 +87,7 @@ abstract contract AsRescuable {
 
         // reset timestamp to prevent reentrancy
         rescueRequests[_token].timestamp = 0;
+
         // send to receiver
         if (_token == address(1)) {
             payable(req.receiver).transfer(address(this).balance);
@@ -95,6 +96,7 @@ abstract contract AsRescuable {
         }
         // reset pending request
         delete rescueRequests[_token];
+        // emit Rescue(_token, req.receiver, block.timestamp);
     }
 
     // to be overriden with the proper access control by inheriting contracts

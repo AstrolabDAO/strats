@@ -1,21 +1,21 @@
 import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import { BigNumber } from "ethers";
-import chainlinkOracles from "../../../src/chainlink-oracles.json";
-import addresses from "../../../src/implementations/Venus/addresses";
-import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
+import chainlinkOracles from "../../src/chainlink-oracles.json";
+import addresses from "../../src/implementations/Agave/addresses";
+import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const desc: IStrategyDesc = {
-  name: `Astrolab Venus MetaStable`,
-  symbol: `as.VMS`,
+  name: `Astrolab Agave MetaStable`,
+  symbol: `as.AGMS`,
   version: 1,
-  contract: "VenusMultiStake",
+  contract: "AgaveMultiStake",
   asset: "USDC",
-  inputs: ["USDC", "DAI", "USDT", "BUSD"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
-  inputWeights: [2250, 2250, 2250, 2250], // 90% allocation, 10% cash
+  inputs: ["USDC", "USDT", "WXDAI"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
+  inputWeights: [3400, 3300, 3300], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
 };
 
@@ -36,8 +36,9 @@ const testFlows: Partial<IFlow>[] = [
 describe(`test.${desc.name}`, () => {
 
   const addr = addresses[network.config.chainId!];
-  const protocolAddr = addr.Venus;
-  // const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Venus[i]);
+  const protocolAddr = addr.Agave;
+  // const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Agave[i]);
+
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
@@ -60,15 +61,17 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        rewardTokens: protocolAddr.rewardTokens, // VXS
+        rewardTokens: protocolAddr.rewardTokens, // GNO/AGVE
       }, {
         // chainlink oracle params
         assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
         inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
       }, {
         // strategy specific params
-        vTokens: desc.inputs.map(inputs => addr.Venus[`v${inputs}`]),
-        unitroller: protocolAddr.Comptroller,
+        poolProvider: protocolAddr.LendingPoolAddressesProvider,
+        aTokens: desc.inputs.map(input => addr.Agave[`ag${input}`]),
+        balancerVault: protocolAddr.BalancerVault,
+        rewardPoolId: protocolAddr.RewardPoolId,
       }] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
