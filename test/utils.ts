@@ -179,31 +179,46 @@ export const isOracleLib = (name: string) =>
     name.includes(libname),
   );
 
-export async function logRescue(
+
+export async function logBalances(
   env: Partial<IStrategyDeploymentEnv>,
-  token: SafeContract,
-  rescuer: string,
+  token: SafeContract | string,
+  receiver: string,
+  payer?: string,
   step?: string,
 ) {
-  const strat = env.deployment!.strat;
+  payer ??= env.deployment!.strat.address;
   let balances: BigNumber[];
-  if (token.address == addressOne) {
+  let tokenId = 0;
+  if (token == addressOne) {
+    tokenId = `native token`
     balances = await env.multicallProvider!.all([
-      env.multicallProvider!.getEthBalance(strat.address),
-      env.multicallProvider!.getEthBalance(rescuer),
+      env.multicallProvider!.getEthBalance(payer),
+      env.multicallProvider!.getEthBalance(receiver),
     ]);
+    console.log(`
+    State ${step ?? ""}:\nBalances of ${tokenId
+    }\n  - payer (eg. rescued strat): ${
+      balances[0]
+    }\n  - receiver (eg. rescuer): ${balances[1]}`);
   } else {
+    if (typeof token === "string")
+      token = new SafeContract(token);
+    tokenId = `${token.sym} (${token.address})`
     balances = await env.multicallProvider!.all([
-      token.balanceOf(strat.address),
-      token.balanceOf(rescuer),
+      token.balanceOf(payer),
+      token.balanceOf(receiver),
     ]);
-  }
-  console.log(`
-    State ${step ?? ""}:\nRequesting rescue of ${token.address} ${token.sym
-    } (strat balance: ${token.toAmount(
+    console.log(`
+    State ${step ?? ""}:\nBalances of ${tokenId
+    }\n  - payer (eg. rescued strat): ${token.toAmount(
       balances[0],
-    )}, rescuer balance: ${token.toAmount(balances[1])}})`);
+    )}\n  - receiver (eg. rescuer): ${token.toAmount(balances[1])}`);
+  }
+  return true;
 }
+
+export const logRescue = logBalances;
 
 export async function logState(
   env: Partial<IStrategyDeploymentEnv>,
@@ -339,7 +354,7 @@ export async function logState(
     stratAssetBalance(): ${asset.toAmount(
           stratAssetBalance,
         )} (${stratAssetBalance}wei)
-    deployerBalances(shares, asset): [${asset.toAmount(
+    deployerBalances(shares, asset): [${strat.toAmount(
           deployerSharesBalance,
         )},${asset.toAmount(deployerAssetBalance)}]
     `,
@@ -455,7 +470,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
       "1",
       tr.to,
       tr.data,
-      { gasLimit: Math.max(Number(tr.gasLimit ?? 0), getOverrides(env).gasLimit as number) },
+      { gasLimit: Math.max(Number(tr.gasLimit ?? 0), (getOverrides(env)?.gasLimit as number) ?? 1e7) },
     );
     console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
     received = (await output.balanceOf(o.payer)).sub(outputBalanceBeforeSwap);
@@ -467,7 +482,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
 
 export async function fundAccount(
   env: Partial<IStrategyDeploymentEnv>,
-  amount: number | BigNumber,
+  amount: number | string | BigNumber,
   asset: string,
   receiver: string,
 ): Promise<void> {

@@ -133,7 +133,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
             if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
                 revert AmountTooLow(supplied);
 
-            // TODO: return ious[]
+            // NB: better return ious[]
             iouReceived += supplied;
         }
     }

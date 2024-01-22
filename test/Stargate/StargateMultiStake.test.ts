@@ -1,93 +1,37 @@
-import { network, revertNetwork } from "@astrolabs/hardhat";
+import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import * as ethers from "ethers";
-import { BigNumber } from "ethers";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Stargate/addresses";
-import stakingIdsByNetwork from "../../src/implementations/Stargate/staking-ids.json";
-import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
-import { IFlow, deposit, invest, liquidate, seedLiquidity, setupStrat, testFlow, withdraw } from "../flows";
+import {
+  Fees,
+  IStrategyChainlinkParams,
+  IStrategyDeploymentEnv,
+  IStrategyDesc,
+} from "../../src/types";
 import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
+import { IFlow, testFlow } from "../flows";
+import { flows } from "../StrategyV5.test";
+
+const baseDesc: IStrategyDesc = {
+  name: `Astrolab Stargate MetaStable`,
+  symbol: `as.SMS`,
+  asset: "USDC",
+  version: 1,
+  contract: "StargateMultiStake",
+  seedLiquidityUsd: 10,
+};
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  10: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe", "USDT", "DAI"], // "FRAX", "LUSD", "sUSD"] <-- no emissions as volumes too low
-    inputWeights: [3000, 4000, 2000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  50: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDT"], // "BUSD"] <-- no emissions as volumes too low
-    inputWeights: [9000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  137: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe", "USDT", "DAI"],
-    inputWeights: [3000, 4000, 2000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  8453: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDbC", "WETH"],
-    inputWeights: [4500, 4500], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  42161: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe", "USDT"], // "FRAX"] <-- no emissions as volumes too low
-    inputWeights: [4500, 4500], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  43114: {
-    name: `Astrolab Stargate MetaStable`,
-    symbol: `as.SMS`,
-    version: 1,
-    contract: "StargateMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe", "USDT"], // "FRAX"] <-- no emissions as volumes too low
-    inputWeights: [4500, 4500], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-}
+  10: { ...baseDesc, inputs: ["USDCe", "USDT", "DAI"], inputWeights: [3000, 4000, 2000] }, // 90% allocation, 10% cash
+  50: { ...baseDesc, inputs: ["USDT"], inputWeights: [9000] },
+  137: { ...baseDesc, inputs: ["USDCe", "USDT", "DAI"], inputWeights: [3000, 4000, 2000] },
+  8453: { ...baseDesc, inputs: ["USDbC", "WETH"], inputWeights: [4500, 4500] },
+  42161: { ...baseDesc, inputs: ["USDCe", "USDT"], inputWeights: [4500, 4500] },
+  43114: { ...baseDesc, inputs: ["USDCe", "USDT"], inputWeights: [4500, 4500] },
+};
 
 const desc = descByChainId[network.config.chainId!];
-
-const testFlows: Partial<IFlow>[] = [
-  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [25], assert: (n: BigNumber) => n.gt(0) },
-  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: requestWithdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
-  // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
-];
 
 describe(`test.${desc.name}`, () => {
   const addr = addresses[network.config.chainId!];
@@ -137,7 +81,7 @@ describe(`test.${desc.name}`, () => {
     await ensureOracleAccess(env);
   });
   describe("Test flow", async () => {
-    (testFlows as IFlow[]).map(f => {
+    (flows as IFlow[]).map(f => {
       it(`Test ${f.fn.name}`, async () => { f.env = env; assert(await testFlow(f)); });
     });
   });

@@ -103,7 +103,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
      * @return investedAmount Amount invested
      * @return iouReceived Amount of LP tokens received
      */
-    // TODO: return ious[]
+    // NB: better return ious[]
     function _invest(
         uint256[8] calldata _amounts, // from previewInvest()
         bytes[] memory _params

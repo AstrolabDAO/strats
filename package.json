@@ -25,7 +25,7 @@
     "prettier": "yarn prettier \"**/*.{js,md,json}\"",
     "test": "yarn ts-mocha --require hardhat/register --timeout 120000 --recursive \"test/**/*.ts\" --exit",
     "build": "tsc --build .",
-    "test-tenderly": "yarn hardhat test test/Sonne/SonneMultiStake.test.ts --network tenderly",
+    "test-tenderly": "yarn hardhat test test/Compound/CompoundV3MultiStake.test.ts --network tenderly",
     "test-hardhat": "yarn hardhat test test/Sonne/SonneMultiStake.test.ts --network hardhat",
     "test-gnosis": "yarn hardhat test --network gnosis-mainnet --grep 'Astrolab Aave MetaStable'",
     "test-optimism": "yarn hardhat test --network optimism-mainnet --grep 'Astrolab Hop MetaStable'",

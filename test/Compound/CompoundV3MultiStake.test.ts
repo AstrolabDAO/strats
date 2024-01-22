@@ -1,6 +1,5 @@
 import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { BigNumber } from "ethers";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Compound/addresses";
 import {
@@ -9,88 +8,33 @@ import {
   IStrategyDeploymentEnv,
   IStrategyDesc,
 } from "../../src/types";
-import {
-  IFlow,
-  acceptRoles,
-  compound,
-  deposit,
-  grantRoles,
-  harvest,
-  invest,
-  liquidate,
-  requestRescue,
-  requestWithdraw,
-  rescue,
-  collectFees,
-  revokeRoles,
-  seedLiquidity,
-  setupStrat,
-  testFlow,
-  withdraw,
-} from "../flows";
-import {
-  ensureFunding,
-  ensureOracleAccess,
-  getEnv,
-  signerAddressGetter,
-  signerGetter,
-} from "../utils";
+import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
+import { IFlow, testFlow } from "../flows";
+import { flows } from "../StrategyV5.test";
+
+const baseDesc: IStrategyDesc = {
+  name: `Astrolab CompoundV3 MetaStable`,
+  symbol: `as.CMS`,
+  asset: "USDC",
+  version: 1,
+  contract: "CompoundV3MultiStake",
+  seedLiquidityUsd: 10,
+};
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  137: {
-    name: `Astrolab CompoundV3 MetaStable`,
-    symbol: `as.MMS`,
-    version: 1,
-    contract: "CompoundV3MultiStake",
-    asset: "USDC",
-    inputs: ["USDCe"],
-    inputWeights: [9000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  8453: {
-    name: `Astrolab CompoundV3 MetaStable`,
-    symbol: `as.MMS`,
-    version: 1,
-    contract: "CompoundV3MultiStake",
-    asset: "USDC",
-    inputs: ["USDbC"],
-    inputWeights: [9000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  42161: {
-    name: `Astrolab CompoundV3 MetaStable`,
-    symbol: `as.MMS`,
-    version: 1,
-    contract: "CompoundV3MultiStake",
-    asset: "USDC",
-    inputs: ["USDC", "USDCe"],
-    inputWeights: [4500, 4500], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
+  137: { ...baseDesc, inputs: ["USDCe"], inputWeights: [9000] }, // 90% allocation, 10% cash
+  8453: { ...baseDesc, inputs: ["USDbC"], inputWeights: [9000] },
+  42161: { ...baseDesc, inputs: ["USDC", "USDCe"], inputWeights: [4500, 4500] },
 };
 
 const desc = descByChainId[network.config.chainId!];
 
-const testFlows: Partial<IFlow>[] = [
-  // { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [8], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [5], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: requestWithdraw, params: [18], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [17], assert: (n: BigNumber) => n.gt(0) },
-  // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
-  // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*14, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*14, fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) },
-];
-
 describe(`test.${desc.name}`, () => {
   const addr = addresses[network.config.chainId!];
-  const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Compound[i]);
+  const protocolAddr: { [name: string]: string }[] = <any>(
+    desc.inputs.map((i) => addr.Compound[i])
+  );
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
@@ -117,7 +61,9 @@ describe(`test.${desc.name}`, () => {
           fees: {} as Fees, // fees (use default)
           inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
           inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-          rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // keep unique reward token: COMP
+          rewardTokens: Array.from(
+            new Set(protocolAddr.map((i) => i.rewardTokens).flat()),
+          ), // keep unique reward token: COMP
         },
         {
           // chainlink oracle params
@@ -144,7 +90,7 @@ describe(`test.${desc.name}`, () => {
     await ensureOracleAccess(env);
   });
   describe("Test flow", async () => {
-    (testFlows as IFlow[]).map((f) => {
+    (flows as IFlow[]).map((f) => {
       it(`Test ${f.fn.name}`, async () => {
         f.env = env;
         assert(await testFlow(f));

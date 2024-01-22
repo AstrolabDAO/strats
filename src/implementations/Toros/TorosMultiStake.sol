@@ -124,7 +124,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
             if (supplied < expectedIou)
                 revert AmountTooLow(supplied);
 
-            // TODO: return ious[]
+            // NB: better return ious[]
             iouReceived += supplied;
         }
     }

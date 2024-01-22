@@ -1,3 +1,5 @@
+// TODO: move generics to @astrolabs/hardhat
+
 import { erc20Abi } from "abitype/abis";
 import { add, get, merge } from "lodash";
 import { Contract, BigNumber } from "ethers";
@@ -39,6 +41,7 @@ import {
   sleep,
   isOracleLib,
   addressOne,
+  logBalances,
   logRescue,
   resolveMaybe,
   toNonce,
@@ -48,7 +51,6 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const MaxUint256 = ethers.constants.MaxUint256;
 
-// TODO: move the already existing libs/contracts logic to @astrolabs/hardhat
 export const deployStrat = async (
   env: Partial<IStrategyDeploymentEnv>,
   name: string,
@@ -241,25 +243,16 @@ export const deployStrat = async (
     !forceVerify
   ) {
     console.log(`Using existing deployment [${name} Stack]`);
-    env.deployment!.strat = await SafeContract.build(
-      env.deployment!.units![contract].address!,
-      loadAbi(contract)! as any[],
-      env.deployer,
-    );
   } else {
     await deployAll(env.deployment!);
   }
 
-  if (!env.deployment!.units![contract].address) {
+  if (!env.deployment!.units![contract].address)
     throw new Error(`Could not deploy ${contract}`);
-  }
 
-  const stratProxyAbi = loadAbi(contract)!; // use "StrategyV5" for generic abi
   env.deployment!.strat = await SafeContract.build(
     env.deployment!.units![contract].address!,
-    stratProxyAbi as any[],
-  );
-  env.deployment = env.deployment;
+    loadAbi(contract) as any[]);
   return env as IStrategyDeploymentEnv;
 };
 
@@ -355,7 +348,7 @@ export async function setupStrat(
 
   // load the implementation abi, containing the overriding init() (missing from d.strat)
   // init((uint64,uint64,uint64,uint64,uint64),address,address[3],address[],uint256[],address[],address,address,address,uint8)'
-  const proxy = new Contract(strat.address, loadAbi(contract)!, env.deployer);
+  const proxy = env.deployment!.strat;
 
   await setMinLiquidity(env, minLiquidityUsd);
   // NB: can use await proxy.initialized?.() instead
@@ -369,6 +362,12 @@ export async function setupStrat(
       (tx: TransactionResponse) => tx.wait(),
     );
   }
+
+  // once the strategy is initialized, rebuild the SafeContract object as symbol and decimals are updated
+  env.deployment!.strat = await SafeContract.build(
+    env.deployment!.units![contract].address!,
+    loadAbi(contract) as any[], // use "StrategyV5" for strat generic abi
+  );
 
   const actualInputs: string[] = //inputs.map((input) => input.address);
     await env.multicallProvider!.all(
@@ -408,20 +407,20 @@ export async function deposit(env: IStrategyDeploymentEnv, _amount = 10) {
   let amount = asset.toWei(_amount);
 
   if (balance.lt(amount)) {
-    console.log(`Using full balance ${balance} (< ${amount})`);
+    console.warn(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
   if ((await asset.allowance(env.deployer.address, strat.address)).lt(amount))
     await asset
       .approve(strat.address, MaxUint256, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "Before Deposit");
+  await logState(env, `Before Deposit ${_amount}`);
   // only exec if static call is successful
   const receipt = await strat
     .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
     // .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Deposit", 2_000);
+  await logState(env, `After Deposit ${_amount}`, 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
@@ -484,7 +483,7 @@ export async function preInvest(env: IStrategyDeploymentEnv, _amount = 100) {
   let amount = asset.toWei(_amount);
 
   if (stratLiquidity.lt(amount)) {
-    console.log(
+    console.warn(
       `Using stratLiquidity as amount (${stratLiquidity} < ${amount})`,
     );
     amount = stratLiquidity;
@@ -563,7 +562,7 @@ export async function liquidate(
   }
 
   if (max.lt(amount)) {
-    console.log(`Using total allocated assets (max) ${max} (< ${amount})`);
+    console.warn(`Using total allocated assets (max) ${max} (< ${amount})`);
     amount = max;
   }
 
@@ -664,19 +663,19 @@ export async function withdraw(
   _amount = 50,
 ) {
   const { asset, inputs, strat } = env.deployment!;
-  const minAmountOut = 1; // TODO: change with staticCall
+  const minAmountOut = 1; // TODO: use callstatic to define accurate minAmountOut
   const max = await strat.maxWithdraw(env.deployer!.address);
   let amount = asset.toWei(_amount);
 
   if (max.lt(10)) {
-    console.log(
+    console.warn(
       `Skipping withdraw as maxWithdraw < 10wei (no exit possible at this time)`,
     );
     return BigNumber.from(1);
   }
 
   if (BigNumber.from(amount).gt(max)) {
-    console.log(`Using maxWithdraw ${max} (< ${amount})`);
+    console.warn(`Using maxWithdraw ${max} (< ${amount})`);
     amount = max;
   }
 
@@ -711,12 +710,12 @@ export async function requestWithdraw(
   }
 
   if (BigNumber.from(amount).gt(balance)) {
-    console.log(`Using full balance ${balance} (< ${amount})`);
+    console.warn(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
 
   if (pendingRequest.gte(amount.mul(weiToString(asset.weiPerUnit)))) {
-    console.log(`Skipping requestWithdraw as pendingRedeemRequest > amount`);
+    console.warn(`Skipping requestWithdraw as pendingRedeemRequest > amount`);
     return BigNumber.from(1);
   }
   await logState(env, "Before RequestWithdraw");
@@ -740,19 +739,19 @@ export async function redeem(
   _amount = 50,
 ) {
   const { inputs, strat } = env.deployment!;
-  const minAmountOut = 1; // TODO: change with staticCall
+  const minAmountOut = 1; // TODO: use callstatic to define accurate minAmountOut
   const max = await strat.maxRedeem(env.deployer!.address);
   let amount = strat.toWei(_amount);
 
   if (max.lt(10)) {
-    console.log(
+    console.warn(
       `Skipping redeem as maxRedeem < 10wei (no exit possible at this time)`,
     );
     return BigNumber.from(1);
   }
 
   if (BigNumber.from(amount).gt(max)) {
-    console.log(`Using maxRedeem ${max} (< ${amount})`);
+    console.warn(`Using maxRedeem ${max} (< ${amount})`);
     amount = max;
   }
 
@@ -780,19 +779,19 @@ export async function requestRedeem(
   let amount = strat.toWei(_amount);
 
   if (balance.lt(10)) {
-    console.log(
+    console.warn(
       `Skipping requestRedeem as balance < 10wei (user owns no shares)`,
     );
     return BigNumber.from(1);
   }
 
   if (BigNumber.from(amount).gt(balance)) {
-    console.log(`Using full balance ${balance} (< ${amount})`);
+    console.warn(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
 
   if (pendingRequest.gte(amount.mul(weiToString(strat.weiPerUnit)))) {
-    console.log(`Skipping requestRedeem as pendingRedeemRequest > amount`);
+    console.warn(`Skipping requestRedeem as pendingRedeemRequest > amount`);
     return BigNumber.from(1);
   }
   await logState(env, "Before RequestRedeem");
@@ -819,7 +818,7 @@ export async function preHarvest(env: Partial<IStrategyDeploymentEnv>) {
   try {
     amounts = await strat.callStatic.claimRewards?.();
   } catch (e) {
-    // TODO: make sure this is the correct error (claimRewards not implemented)
+    // claimRewards not implemented in legacy contracts
     amounts = (await strat.rewardsAvailable?.()) ?? [];
   }
 
@@ -916,33 +915,26 @@ export async function grantRoles(
     resolveMaybe(grantee),
   ]);
   const strat = await env.deployment!.strat.copy(signer);
-  // const roleSignatures = roles.map((role) => ethers.utils.id(role));
-  
-  // const roleSignatures = await env.multicallProvider!.all(
-  //   roles.map((role) => strat.multi[`${role}_ROLE`]()),
-  // );
+  const rolesSignatureCalls = roles.map((role) => strat.multi[`${role}_ROLE`]?.());
 
-  const roleSignatures = await env.multicallProvider!.all(
-    roles.map((role) => {
-      const functionName = `${role}_ROLE`;
-      if (typeof strat.multi[functionName] === 'function') {
-        return strat.multi[functionName]();
-      } else {
-        throw new Error(`Function ${functionName} does not exist on strat.multi`);
-      }
-    }),
-  );
+  for (const i in rolesSignatureCalls)
+    if (!rolesSignatureCalls[i])
+      throw new Error(`Function ${roles[i]}_ROLE does not exist on strat.multi`);
+  const roleSignatures = await env.multicallProvider!.all(rolesSignatureCalls);
+
   const hasRoles = async () =>
     env.multicallProvider!.all(
       roleSignatures.map((role) => strat.multi.hasRole(role, grantee)),
     );
-  const has = await hasRoles();
-  console.log(`${signer.address} roles (before acceptRoles): ${has}`);
+  const hasBefore = await hasRoles();
+  console.log(`${signer.address} roles (before acceptRoles): ${hasBefore}`);
+
   for (const i in roleSignatures)
-    if (!has[i])
+    if (!hasBefore[i])
       await strat
         .grantRole(roleSignatures[i], grantee, getOverrides(env))
         .then((tx: TransactionResponse) => tx.wait());
+
   console.log(
     `${signer.address} roles (after acceptRoles): ${await hasRoles()}`,
   );
@@ -1012,6 +1004,45 @@ export async function revokeRoles(
   return true;
 }
 
+export async function transferAssetsTo(
+  env: Partial<IStrategyDeploymentEnv>,
+  amount: number | string | BigNumber,
+  asset: string,
+  receiver?: string,
+) {
+  amount = weiToString(amount);
+  // the proxy receives the swap proceeds, then transfers back to the receiver
+  const proxy = await env.deployer!.address;
+  // if no receiver, sends it to the strategy
+  receiver ??= await env.deployment!.strat.address;
+  const token = asset != addressOne ? await SafeContract.build(asset) : asset;
+
+  await logBalances(env, token, receiver, proxy, "Before transferAssetsTo");
+  try {
+    if (asset == addressOne) {
+      await env.deployer!.sendTransaction({
+        to: receiver,
+        value: amount,
+      });
+    } else {
+      await fundAccount(
+        env,
+        amount,
+        asset,
+        proxy,
+      );
+      await token
+        .transfer(receiver, amount, getOverrides(env))
+        .then((tx: TransactionResponse) => tx.wait());
+    }
+    await logBalances(env, token, receiver, proxy, "After transferAssetsTo");
+    return true;
+  } catch (e) {
+    console.error(`transferAssetsTo failed: ${e}`);
+    return false;
+  }
+}
+
 export async function requestRescue(
   env: Partial<IStrategyDeploymentEnv>,
   token: SafeContract,
@@ -1019,7 +1050,7 @@ export async function requestRescue(
 ) {
   signer = await resolveMaybe(signer);
   const strat = await env.deployment!.strat.copy(signer);
-  await logRescue(env, token, signer.address, "Before RequestRescue");
+  await logRescue(env, token, signer.address, undefined, "Before RequestRescue");
   const receipt = await strat
     .requestRescue(token, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
@@ -1033,13 +1064,13 @@ export async function rescue(
 ) {
   signer = await resolveMaybe(signer);
   const strat = await env.deployment!.strat.copy(signer);
-  await logRescue(env, token, signer.address, "Before Rescue");
+  await logRescue(env, token, signer.address, undefined, "Before Rescue");
   const receipt = await strat
-    // .rescue(token, getOverrides(env))
     .safe("rescue", [token], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logRescue(env, token, signer.address, "After Rescue");
-  return getTxLogData(receipt, ["uint256"], 0);
+  await logRescue(env, token, signer.address, undefined, "After Rescue");
+  // return getTxLogData(receipt, ["uint256"], 0); // event removed for optimization purposes
+  return true;
 }
 
 export async function collectFees(env: Partial<IStrategyDeploymentEnv>) {
