@@ -69,7 +69,7 @@ abstract contract As4626 is As4626Abstract {
     function mint(
         uint256 _shares,
         address _receiver
-    ) public nonReentrant returns (uint256 assets) {
+    ) public returns (uint256 assets) {
         return _deposit(previewMint(_shares), _shares, _receiver);
     }
 
@@ -272,9 +272,8 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Trigger a fee collection: mints shares to the feeCollector
-     * @dev This function can be called by any keeper
      */
-    function collectFees() external nonReentrant onlyKeeper {
+    function _collectFees() internal nonReentrant {
 
         if (feeCollector == address(0))
             revert AddressZero();
@@ -298,6 +297,13 @@ abstract contract As4626 is As4626Abstract {
         last.accountedProfit = profit;
         last.accountedSupply = totalSupply();
         claimableAssetFees = 0;
+    }
+
+    /**
+     * @notice Trigger a fee collection: mints shares to the feeCollector
+     */
+    function collectFees() external onlyKeeper {
+        _collectFees();
     }
 
     /**

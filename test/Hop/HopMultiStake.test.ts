@@ -1,73 +1,36 @@
-import { network, revertNetwork } from "@astrolabs/hardhat";
+import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import * as ethers from "ethers";
-import { BigNumber } from "ethers";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
-import addresses from "../../src/implementations/Hop/addresses";
-import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
-import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
-import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
+import addresses from "../../src/implementations/Compound/addresses";
+import {
+  Fees,
+  IStrategyChainlinkParams,
+  IStrategyDeploymentEnv,
+  IStrategyDesc,
+} from "../../src/types";
+import { getEnv } from "../utils";
+import { IFlow, testFlow } from "../flows";
+import { setupStrat } from "../flows/StrategyV5";
+import { suite } from "../StrategyV5.test";
+
+const baseDesc: IStrategyDesc = {
+  name: `Astrolab Hop MetaStable`,
+  symbol: `as.HOMS`,
+  asset: "USDC",
+  version: 1,
+  contract: "HopMultiStake",
+  seedLiquidityUsd: 10,
+} as IStrategyDesc;
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  10: {
-    name: `Astrolab Hop MetaStable`,
-    symbol: `as.HMS`,
-    version: 1,
-    contract: "HopMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe", "USDT", "DAI"],
-    inputWeights: [3500, 3500, 2000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  100: {
-    name: `Astrolab Hop MetaStable`,
-    symbol: `as.HMS`,
-    version: 1,
-    contract: "HopMultiStake",
-    asset: "USDC",
-    inputs: ["USDC", "WXDAI", "USDT"],
-    inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  137: {
-    name: `Astrolab Hop MetaStable`,
-    symbol: `as.HMS`,
-    version: 1,
-    contract: "HopMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe"],
-    inputWeights: [9000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
-  42161: {
-    name: `Astrolab Hop MetaStable`,
-    symbol: `as.HMS`,
-    version: 1,
-    contract: "HopMultiStake",
-    asset: "USDC",
-    inputs: ["USDCe", "USDT", "DAI"],
-    inputWeights: [3000, 3000, 3000], // 90% allocation, 10% cash
-    seedLiquidityUsd: 10,
-  },
+  10: { ...baseDesc, inputs: ["USDCe", "USDT", "DAI"], inputWeights: [3500, 3500, 2000] }, // 90% allocation, 10% cash
+  100: { ...baseDesc, inputs: ["USDC", "WXDAI", "USDT"], inputWeights: [3000, 3000, 3000] },
+  137: { ...baseDesc, inputs: ["USDCe"], inputWeights: [9000] },
+  42161: { ...baseDesc, inputs: ["USDCe", "USDT", "DAI"], inputWeights: [3000, 3000, 3000] },
 };
 
 const desc = descByChainId[network.config.chainId!];
-
-
-const testFlows: Partial<IFlow>[] = [
-  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: requestWithdraw, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
-  // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
-];
 
 describe(`test.${desc.name}`, () => {
 
@@ -113,12 +76,9 @@ describe(`test.${desc.name}`, () => {
       false, // force verification (after deployment)
     );
     assert(ethers.utils.isAddress(env.deployment.strat.address), "Strat not deployed");
-    // ensure deployer account is funded if testing
-    await ensureFunding(env);
-    await ensureOracleAccess(env);
   });
   describe("Test flow", async () => {
-    (testFlows as IFlow[]).map(f => {
+    (suite as IFlow[]).map(f => {
       it(`Test ${f.fn.name}`, async () => { f.env = env; assert(await testFlow(f)); });
     });
   });

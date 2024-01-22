@@ -77,6 +77,21 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     }
 
     /**
+     * @notice Changes the strategy input tokens
+     * @param _inputs Array of input token addresses
+     * @param _weights Array of input token weights
+     * @param _pythIds Array of Pyth price feed ids
+     */
+    function setInputs(address[] calldata _inputs, uint16[] calldata _weights, bytes32[] calldata _pythIds) external onlyAdmin {
+        for (uint256 i = 0; i < _inputs.length; i++) {
+            if (address(inputs[i]) == address(0)) break;
+            inputPythIds[i] = _pythIds[i];
+            inputDecimals[i] = inputs[i].decimals();
+        }
+        _setInputs(_inputs, _weights);
+    }
+
+    /**
      * @notice Computes the asset/input exchange rate from Pyth oracle price feeds in bps
      * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment

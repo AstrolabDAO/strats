@@ -2,15 +2,17 @@ import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Stargate/addresses";
+import stakingIdsByNetwork from "../../src/implementations/Stargate/staking-ids.json";
 import {
   Fees,
   IStrategyChainlinkParams,
   IStrategyDeploymentEnv,
   IStrategyDesc,
 } from "../../src/types";
-import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
+import { getEnv } from "../utils";
 import { IFlow, testFlow } from "../flows";
-import { flows } from "../StrategyV5.test";
+import { setupStrat } from "../flows/StrategyV5";
+import { suite } from "../StrategyV5.test";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Stargate MetaStable`,
@@ -19,7 +21,7 @@ const baseDesc: IStrategyDesc = {
   version: 1,
   contract: "StargateMultiStake",
   seedLiquidityUsd: 10,
-};
+} as IStrategyDesc;
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
@@ -76,12 +78,9 @@ describe(`test.${desc.name}`, () => {
       false, // force verification (after deployment)
     );
     assert(ethers.utils.isAddress(env.deployment.strat.address), "Strat not deployed");
-    // ensure deployer account is funded if testing
-    await ensureFunding(env);
-    await ensureOracleAccess(env);
   });
   describe("Test flow", async () => {
-    (flows as IFlow[]).map(f => {
+    (suite as IFlow[]).map(f => {
       it(`Test ${f.fn.name}`, async () => { f.env = env; assert(await testFlow(f)); });
     });
   });

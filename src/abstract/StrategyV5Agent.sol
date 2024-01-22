@@ -83,6 +83,10 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
             _asset,
             _swapData
         );
+        // denomination change >> reset accounted values
+        expectedProfits = 0; // reset trailing profits
+        totalLent = 0; // reset totalLent
+        _collectFees(); // claim pending fees
         asset = IERC20Metadata(_asset);
         assetDecimals = asset.decimals();
         weiPerAsset = 10**assetDecimals;

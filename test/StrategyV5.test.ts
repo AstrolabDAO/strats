@@ -1,17 +1,21 @@
 import { network } from "hardhat";
 import { BigNumber } from "ethers";
 import addresses from "../src/addresses";
-import { IFlow, acceptRoles, compound, deposit, grantRoles, harvest, invest, liquidate, requestRescue, requestWithdraw, rescue, revokeRoles, seedLiquidity, withdraw } from "./flows";
-import { signerAddressGetter, signerGetter } from "./utils";
+import { IFlow } from "./flows";
+import { addressOne, signerAddressGetter, signerGetter } from "./utils";
+import { seedLiquidity, deposit, withdraw, redeem, requestWithdraw, requestRedeem, collectFees } from "./flows/As4626";
+import { grantRoles, acceptRoles, revokeRoles } from "./flows/AsManageable";
+import { transferAssetsTo, requestRescue, rescue } from "./flows/AsRescuable";
+import { invest, liquidate, harvest, compound } from "./flows/StrategyV5";
 
 const weth = addresses[network.config.chainId!].tokens.WETH;
 const day = 60*60*24;
 
-export const flows: Partial<IFlow>[] = [
+export const suite: Partial<IFlow>[] = [
     // ERC4626 test
     { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
-    { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
-    { fn: invest, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
+    { fn: deposit, params: [50000], assert: (n: BigNumber) => n.gt(0) }, // deposit
+    { fn: invest, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
     { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
     { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
     { fn: withdraw, params: [490], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
@@ -27,7 +31,7 @@ export const flows: Partial<IFlow>[] = [
 
     // StrategyV5 tests
     { elapsedSec: day*30, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest all pending rewards
-    { elapsedSec: day*30, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest + invest all pending rewards
+    { elapsedSec: day*60, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest + invest all pending rewards
     { elapsedSec: day*30, revertState: true, fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) }, // collect all pending fees with signer 1 (manager only)
 
     // Manageable tests
@@ -36,11 +40,11 @@ export const flows: Partial<IFlow>[] = [
     { fn: revokeRoles, params: [["KEEPER"], signerAddressGetter(1)] }, // revoke roles from mnemonic signer 2 with signer 1
 
     // Rescuable tests
-    { fn: transferAssetsTo, params: [1e18, addressOne], assert: (n: bool) => n }, // transfer native assets from signer 1 to strat
+    { fn: transferAssetsTo, params: [1e18, addressOne], assert: (n: boolean) => n }, // transfer native assets from signer 1 to strat
     { fn: requestRescue, params: [addressOne] }, // request native assets rescual from signer 1 (manager only) on strat
-    { elapsedSec: day*3, revertState: true, fn: rescue, params: [addressOne], assert: (n: BigNumber) => n.gt(0) } // execute time-locked rescual from signer 1 (manager only)
+    { elapsedSec: day*3, revertState: true, fn: rescue, params: [addressOne], assert: (n: BigNumber) => n.gt(0) }, // execute time-locked rescual from signer 1 (manager only)
 
-    { fn: transferAssetsTo, params: [1e18, weth], assert: (n: bool) => n }, // transfer erc20 assets from signer 1 to strat
+    { fn: transferAssetsTo, params: [1e18, weth], assert: (n: boolean) => n }, // transfer erc20 assets from signer 1 to strat
     { fn: requestRescue, params: [weth] }, // request erc20 assets rescual from signer 1 (manager only) on strat
-    { elapsedSec: day*3, revertState: true, fn: rescue, params: [weth], assert: (n: BigNumber) => n.gt(0) }, // execute time-locked rescual from signer 1 (manager only)
+    { elapsedSec: day*3, revertState: true, fn: rescue, params: [weth], assert: (n: boolean) => n } // execute time-locked rescual from signer 1 (manager only)
 ];

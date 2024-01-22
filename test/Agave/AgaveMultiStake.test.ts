@@ -4,34 +4,27 @@ import { BigNumber } from "ethers";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Agave/addresses";
 import { Fees, IStrategyChainlinkParams, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
-import { IFlow, deposit, seedLiquidity, setupStrat, testFlow } from "../flows";
-import { ensureFunding, ensureOracleAccess, getEnv } from "../utils";
+import { getEnv } from "../utils";
+import { IFlow, testFlow } from "../flows";
+import { setupStrat } from "../flows/StrategyV5";
+import { suite } from "../StrategyV5.test";
 
 // strategy description to be converted into test/deployment params
-const desc: IStrategyDesc = {
+const baseDesc: IStrategyDesc = {
   name: `Astrolab Agave MetaStable`,
   symbol: `as.AGMS`,
   version: 1,
   contract: "AgaveMultiStake",
   asset: "USDC",
-  inputs: ["USDC", "USDT", "WXDAI"], // ["DAI", "sUSD", "LUSD", "USDT", "USDC", "USDCe"],
-  inputWeights: [3400, 3300, 3300], // 90% allocation, 10% cash
   seedLiquidityUsd: 10,
+} as IStrategyDesc;
+
+// strategy description to be converted into test/deployment params
+const descByChainId: { [chainId: number]: IStrategyDesc } = {
+  100: { ...baseDesc, inputs: ["USDC", "USDT", "WXDAI"], inputWeights: [3400, 3300, 3300] },
 };
 
-const testFlows: Partial<IFlow>[] = [
-  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: deposit, params: [1], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: requestWithdraw, params: [11], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // liquidate usually lowers the sharePrice, we hence can't withdraw the full requestWithdraw amount (eg. [10]->[10]), full amounts can be tested with requestRedeem[10]->redeem[10]
-  // { elapsedSec: 30, revertState: true, fn: withdraw, params: [10], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) },
-  // { elapsedSec: 60*60*24*7, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) },
-];
+const desc = descByChainId[network.config.chainId!];
 
 describe(`test.${desc.name}`, () => {
 
@@ -79,12 +72,9 @@ describe(`test.${desc.name}`, () => {
       false, // force verification (after deployment)
     );
     assert(ethers.utils.isAddress(env.deployment.strat.address), "Strat not deployed");
-    // ensure deployer account is funded if testing
-    await ensureFunding(env);
-    await ensureOracleAccess(env);
   });
   describe("Test flow", async () => {
-    (testFlows as IFlow[]).map(f => {
+    (suite as IFlow[]).map(f => {
       it(`Test ${f.fn.name}`, async () => { f.env = env; assert(await testFlow(f)); });
     });
   });

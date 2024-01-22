@@ -136,7 +136,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      * @return The amount of borrowable assets
      */
     function availableBorrowable() internal view returns (uint256) {
-        return availableClaimable();  
+        return availableClaimable();
     }
 
     /**

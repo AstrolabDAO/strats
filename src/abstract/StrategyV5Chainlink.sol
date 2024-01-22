@@ -75,6 +75,21 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     }
 
     /**
+     * @notice Changes the strategy input tokens
+     * @param _inputs Array of input token addresses
+     * @param _weights Array of input token weights
+     * @param _priceFeeds Array of Chainlink price feed addresses
+     */
+    function setInputs(address[] calldata _inputs, uint16[] calldata _weights, address[] calldata _priceFeeds) external onlyAdmin {
+        for (uint256 i = 0; i < _inputs.length; i++) {
+            if (_priceFeeds[i] == address(0)) revert AddressZero();
+            inputPriceFeeds[i] = IChainlinkAggregatorV3(_priceFeeds[i]);
+            inputFeedDecimals[i] = inputPriceFeeds[i].decimals();
+        }
+        _setInputs(_inputs, _weights);
+    }
+
+    /**
      * @notice Computes the asset/input exchange rate from Chainlink oracle price feeds in bps
      * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment

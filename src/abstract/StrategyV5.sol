@@ -75,6 +75,21 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
     }
 
     /**
+     * @notice Changes the strategy input tokens
+     * @param _inputs Array of input token addresses
+     * @param _weights Array of input token weights
+     */
+    function _setInputs(
+        address[] memory _inputs,
+        uint16[] memory _weights
+    ) internal {
+        _delegateWithSignature(
+            agent,
+            "setInputs(address[],uint16[])" // StrategyV5Agent.setInputs(_inputs, _weights)
+        );
+    }
+
+    /**
      * @notice Sets the agent (StrategyV5Agent implementation)
      * @param _agent The new agent address
      */

@@ -1,28 +1,37 @@
-import { assert } from "chai";
-import crypto from "crypto";
 import {
   Log,
   TransactionReceipt,
   TransactionRequest,
-  TransactionResponse,
+  ethers,
   getDeployer,
   loadAbi,
   network,
   provider,
-  setBalances,
-  weiToString,
-  ethers,
+  weiToString
 } from "@astrolabs/hardhat";
+import {
+  ISwapperParams,
+  ITransactionRequestWithEstimate,
+  getAllTransactionRequests,
+  getTransactionRequest,
+  swapperParamsToString,
+} from "@astrolabs/swapper";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi, wethAbi } from "abitype/abis";
+import { assert } from "chai";
+import crypto from "crypto";
 import {
-  Contract,
-  constants,
+  Provider as MulticallProvider
+} from "ethcall";
+import {
   BigNumber,
   BigNumberish,
+  Contract,
   Overrides,
+  constants,
 } from "ethers";
 import { merge } from "lodash";
+import addresses, { Addresses } from "../src/addresses";
 import {
   IChainlinkParams,
   IStrategyDeploymentEnv,
@@ -30,23 +39,10 @@ import {
   MaybeAwaitable,
   SafeContract,
 } from "../src/types";
-import addresses, { Addresses } from "../src/addresses";
-import {
-  ISwapperParams,
-  swapperParamsToString,
-  getAllTransactionRequests,
-  getTransactionRequest,
-  ITransactionRequestWithEstimate,
-} from "@astrolabs/swapper";
-import {
-  Provider as MulticallProvider,
-  Contract as MulticallContract,
-  Call,
-} from "ethcall";
 
 export const addressZero = constants.AddressZero;
 export const addressOne = "0x0000000000000000000000000000000000000001";
-const MaxUint256 = ethers.constants.MaxUint256;
+export const MaxUint256 = ethers.constants.MaxUint256;
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
 
 export function isLive(env: any) {
@@ -189,7 +185,7 @@ export async function logBalances(
 ) {
   payer ??= env.deployment!.strat.address;
   let balances: BigNumber[];
-  let tokenId = 0;
+  let tokenId = "";
   if (token == addressOne) {
     tokenId = `native token`
     balances = await env.multicallProvider!.all([
@@ -203,7 +199,7 @@ export async function logBalances(
     }\n  - receiver (eg. rescuer): ${balances[1]}`);
   } else {
     if (typeof token === "string")
-      token = new SafeContract(token);
+      token = await SafeContract.build(token);
     tokenId = `${token.sym} (${token.address})`
     balances = await env.multicallProvider!.all([
       token.balanceOf(payer),
