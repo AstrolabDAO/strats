@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: agpl-3
+pragma solidity ^0.8.0;
+
 /**
  * @title Uniswap's FixedPoint96
  * @notice see https://en.wikipedia.org/wiki/Q_(number_format)
