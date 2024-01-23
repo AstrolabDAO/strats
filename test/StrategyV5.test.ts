@@ -42,7 +42,7 @@ export const suite: Partial<IFlow>[] = [
   // Rescuable tests
   { fn: transferAssetsTo, params: [1e18, addressOne], assert: (n: boolean) => n }, // transfer native assets from signer 1 to strat
   { fn: requestRescue, params: [addressOne] }, // request native assets rescual from signer 1 (manager only) on strat
-  { elapsedSec: day*3, revertState: true, fn: rescue, params: [addressOne], assert: (n: BigNumber) => n.gt(0) }, // execute time-locked rescual from signer 1 (manager only)
+  { elapsedSec: day*3, revertState: true, fn: rescue, params: [addressOne], assert: (n: boolean) => n }, // execute time-locked rescual from signer 1 (manager only)
 
   { fn: transferAssetsTo, params: [1e18, weth], assert: (n: boolean) => n }, // transfer erc20 assets from signer 1 to strat
   { fn: requestRescue, params: [weth] }, // request erc20 assets rescual from signer 1 (manager only) on strat

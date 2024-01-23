@@ -37,6 +37,30 @@ Besides harvesting/compounding automation (cf. [Astrolab Botnet](https://github.
 Astrolab DAO and its core team members will not be held accountable for losses related to the deployment and use of this repository's codebase.
 As per the [licence](./LICENCE) states, the code is provided as-is and is under active development. The codebase, documentation, and other aspects of the project may be subject to changes and improvements over time.
 
+## Testing
+Testing As4626+StrategyV5 with Hardhat (make sure to set `HARDHAT_CHAIN_ID=42161` in `.env` to run the below test to be successful):
+```bash
+yarn test-hardhat # yarn hardhat test test/Compound/CompoundV3MultiStake.test.ts --network hardhat
+```
+
+Testing As4626+StrategyV5 with Tenderly (make sure to set `TENDERLY_CHAIN_ID=42161` and define your tenderly fork ids in `.env` for the below  test to be successful):
+```bash
+yarn test-tenderly # yarn hardhat test test/Compound/CompoundV3MultiStake.test.ts --network tenderly
+```
+
+The repo imports [@astrolabs/hardhat](https://github.com/AstrolabDAO/hardhat), therefore you can use our generic deployment functions for fine-grain partial deployments of the stack:```typescript
+import { deployAll } from "@astrolabs/hardhat";
+
+async function main() {
+  await deployAll({
+    name: "AsMaths",
+ // deployment unit name    contract: "AsMaths",
+ // contract name    verify: true,
+ // automatically verify on Tenderly or relevant explorer    export: false, // do not export abi+deployment .son
+  });
+}
+```
+
 ## Strategies 🚧
 - [AaveMultiStake](./src/implementations/Aave/AaveMultiStake.sol)
 - [HopMultiStake](./src/implementations/Hop/HopMultiStake.sol)
