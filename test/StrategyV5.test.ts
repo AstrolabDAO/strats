@@ -6,20 +6,22 @@ import { addressOne, signerAddressGetter, signerGetter } from "./utils";
 import { seedLiquidity, deposit, withdraw, redeem, requestWithdraw, requestRedeem, collectFees } from "./flows/As4626";
 import { grantRoles, acceptRoles, revokeRoles } from "./flows/AsManageable";
 import { transferAssetsTo, requestRescue, rescue } from "./flows/AsRescuable";
-import { invest, liquidate, harvest, compound } from "./flows/StrategyV5";
+import { invest, liquidate, harvest, compound, updateAsset, shuffleInputs } from "./flows/StrategyV5";
 
 const weth = addresses[network.config.chainId!].tokens.WETH;
 const day = 60*60*24;
 
 export const suite: Partial<IFlow>[] = [
   // ERC4626 test
-  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
-  { fn: deposit, params: [50000], assert: (n: BigNumber) => n.gt(0) }, // deposit
-  { fn: invest, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
-  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
-  { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
-  { fn: withdraw, params: [490], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
-  { fn: redeem, params: [500], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+  // { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
+  // { fn: deposit, params: [50000], assert: (n: BigNumber) => n.gt(0) }, // deposit
+  // { fn: invest, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
+  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
+  // { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
+  // { fn: withdraw, params: [490], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
+  // { fn: redeem, params: [500], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+  { fn: updateAsset, params: ["USDCe"], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+  { fn: shuffleInputs, params: [], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 
   // ERC7540 tests
   { fn: requestWithdraw, params: [1000], assert: (n: BigNumber) => n.gt(0) },

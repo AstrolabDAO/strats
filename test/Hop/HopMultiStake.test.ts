@@ -1,7 +1,7 @@
 import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
-import addresses from "../../src/implementations/Compound/addresses";
+import addresses from "../../src/implementations/Hop/addresses";
 import {
   Fees,
   IStrategyChainlinkParams,
