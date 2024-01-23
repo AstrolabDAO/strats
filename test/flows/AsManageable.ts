@@ -3,6 +3,14 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { IStrategyDeploymentEnv, MaybeAwaitable } from "../../src/types";
 import { getOverrides, resolveMaybe } from "../utils";
 
+/**
+ * Grants roles to a grantee using the provided environment and signer
+ * @param env - Strategy deployment environment
+ * @param roles - An array of roles to be granted
+ * @param grantee - Grantee's address. Defaults to the deployer's address from the environment
+ * @param signer - Signer. Defaults to the deployer from the environment
+ * @returns Boolean indicating whether the roles were successfully granted
+ */
 export async function grantRoles(
   env: Partial<IStrategyDeploymentEnv>,
   roles: string[],
@@ -44,6 +52,13 @@ export async function grantRoles(
   return true;
 }
 
+/**
+ * Accepts the specified roles for a given environment and signer
+ * @param env - Strategy deployment environment
+ * @param roles - Array of roles to accept
+ * @param signer - Signer with address. Defaults to the deployer/grantee
+ * @returns Boolean indicating whether the roles were accepted successfully
+ */
 export async function acceptRoles(
   env: Partial<IStrategyDeploymentEnv>,
   roles: string[],
@@ -75,6 +90,14 @@ export async function acceptRoles(
   return true;
 }
 
+/**
+ * Revokes the specified roles from a given user
+ * @param env - Strategy deployment environment
+ * @param roles - Array of roles to revoke
+ * @param deprived - Ex-grantee (user) from whom the roles will be revoked
+ * @param signer - Signer with address. Defaults to the deployer from the environment
+ * @returns Boolean indicating whether the roles were successfully revoked
+ */
 export async function revokeRoles(
   env: Partial<IStrategyDeploymentEnv>,
   roles: string[],

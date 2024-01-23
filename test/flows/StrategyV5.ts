@@ -1,41 +1,51 @@
 import {
-    IDeploymentUnit,
-    TransactionResponse,
-    deploy,
-    deployAll,
-    loadAbi,
-    network
+  IDeploymentUnit,
+  TransactionResponse,
+  deploy,
+  deployAll,
+  loadAbi,
+  network,
 } from "@astrolabs/hardhat";
 import {
-    ITransactionRequestWithEstimate,
-    getTransactionRequest,
+  ITransactionRequestWithEstimate,
+  getTransactionRequest,
 } from "@astrolabs/swapper";
 import * as ethers from "ethers";
 import { BigNumber, Contract } from "ethers";
 import { merge, shuffle } from "lodash";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
 import {
-    IStrategyBaseParams,
-    IStrategyDeployment,
-    IStrategyDeploymentEnv,
-    SafeContract
+  IStrategyBaseParams,
+  IStrategyDeployment,
+  IStrategyDeploymentEnv,
+  SafeContract,
 } from "../../src/types";
 import {
-    addressZero,
-    ensureFunding,
-    ensureOracleAccess,
-    getEnv,
-    getInitSignature,
-    getOverrides,
-    getTxLogData,
-    isLive,
-    isOracleLib,
-    isStablePair,
-    logState
+  addressZero,
+  ensureFunding,
+  ensureOracleAccess,
+  getEnv,
+  getInitSignature,
+  getOverrides,
+  getTxLogData,
+  isLive,
+  isOracleLib,
+  isStablePair,
+  logState,
 } from "../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
 
+/**
+ * Deploys a strategy with the given parameters
+ * @param env - Strategy deployment environment
+ * @param name - Name of the strategy
+ * @param contract - Contract name
+ * @param initParams - Initialization parameters for the strategy
+ * @param libNames - Names of the libraries required by the strategy
+ * @param forceVerify - A flag indicating whether to check if the contract is verified on etherscan/tenderly
+ * @returns Strategy deployment environment
+ */
 export const deployStrat = async (
   env: Partial<IStrategyDeploymentEnv>,
   name: string,
@@ -241,6 +251,18 @@ export const deployStrat = async (
   return env as IStrategyDeploymentEnv;
 };
 
+/**
+ * Sets up a strategy deployment environment
+ * @param contract - Strategy contract name
+ * @param name - Name of the strategy
+ * @param initParams - Initialization parameters for the strategy
+ * @param minLiquidityUsd - Minimum liquidity in USD
+ * @param libNames - Names of the libraries used by the strategy
+ * @param env - Strategy deployment environment
+ * @param forceVerify - A flag indicating whether to force verification
+ * @param addressesOverride - Overridden addresses
+ * @returns Strategy deployment environment
+ */
 export async function setupStrat(
   contract: string,
   name: string,
@@ -348,6 +370,12 @@ export async function setupStrat(
   return fullEnv;
 }
 
+/**
+ * Pre-investment function that computes the amounts and swap data for an on-chain invest call
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to invest (default: 100)
+ * @returns Array containing the calculated amounts and swap data
+ */
 export async function preInvest(
   env: Partial<IStrategyDeploymentEnv>,
   _amount = 100,
@@ -401,7 +429,12 @@ export async function preInvest(
   return [amounts, swapData];
 }
 
-// input prices are required to weight out the swaps and create the SwapData array
+/**
+ * Executes the on-chain investment of a strategy (cash to protocol)
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to invest (default: 0 will invest all available liquidity)
+ * @returns Invested amount as a BigNumber
+ */
 export async function invest(
   env: Partial<IStrategyDeploymentEnv>,
   _amount = 0,
@@ -418,10 +451,15 @@ export async function invest(
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
-// input prices are required to weight out the swaps and create the SwapData array
+/**
+ * Executes the on-chain liquidation of a strategy (protocol to cash)
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to liquidate (default: 0 will liquidate all required liquidity)
+ * @returns Liquidity available after liquidation
+ */
 export async function liquidate(
   env: Partial<IStrategyDeploymentEnv>,
-  _amount = 50,
+  _amount = 0,
 ): Promise<BigNumber> {
   const { asset, inputs, strat } = env.deployment!;
 
@@ -529,6 +567,11 @@ export async function liquidate(
   return getTxLogData(receipt, ["uint256", "uint256", "uint256"], 2); // liquidityAvailable
 }
 
+/**
+ * Generates harvest swap data for the given strategy
+ * @param env - Strategy deployment environment
+ * @returns Array of swapData strings
+ */
 export async function preHarvest(
   env: Partial<IStrategyDeploymentEnv>,
 ): Promise<string[]> {
@@ -581,6 +624,11 @@ export async function preHarvest(
   return swapData;
 }
 
+/**
+ * Executes the strategy on-chain harvest (claim pending rewards + swap to underlying asset)
+ * @param env The strategy deployment environment
+ * @returns Amount of rewards harvested
+ */
 export async function harvest(
   env: Partial<IStrategyDeploymentEnv>,
 ): Promise<BigNumber> {
@@ -589,12 +637,17 @@ export async function harvest(
   await logState(env, "Before Harvest");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("harvest", harvestSwapData, getOverrides(env))
+    .safe("harvest", [harvestSwapData], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Harvest", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
+/**
+ * Executes the strategy on-chain compound (harvest + invest)
+ * @param env - Strategy deployment environment
+ * @returns Compound result as a BigNumber
+ */
 export async function compound(
   env: IStrategyDeploymentEnv,
 ): Promise<BigNumber> {
@@ -628,6 +681,16 @@ export async function compound(
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
+/**
+ * Empties/retires a strategy by performing the following steps:
+ * 1. Sets the maximum total assets to 0 (withdraw-only, retired strategy)
+ * 2. Sets the minimum liquidity to 0
+ * 3. Harvests and liquidates all invested assets
+ * 4. Collects fees
+ * 5. Withdraws all assets
+ * @param env - Strategy deployment environment
+ * @returns Difference in asset balance before and after executing the empty strategy
+ */
 export async function emptyStrategy(
   env: Partial<IStrategyDeploymentEnv>,
 ): Promise<BigNumber> {
@@ -671,6 +734,14 @@ export async function emptyStrategy(
   return await asset.balanceOf(deployerAddress).sub(assetBalanceBefore);
 }
 
+/**
+ * Pre-update generates swap data for the strategy on-chain underlying asset update
+ * @param env - Partial strategy deployment environment
+ * @param from - Address of the previous underlying asset (to swap from)
+ * @param to - Address of the new underlying asset (to swap to)
+ * @param amount - Amount of the asset to swap from (usually the strategy balance)
+ * @returns Encoded swap data
+ */
 export async function preUpdateAsset(
   env: Partial<IStrategyDeploymentEnv>,
   from: string,
@@ -705,6 +776,12 @@ export async function preUpdateAsset(
   );
 }
 
+/**
+ * Updates the underlying asset of a strategy (critical)
+ * @param env - Strategy deployment environment
+ * @param to - Address of the new underlying asset
+ * @returns Updated balance of the new asset
+ */
 export async function updateAsset(
   env: Partial<IStrategyDeploymentEnv>,
   to: string,
@@ -737,6 +814,13 @@ export async function updateAsset(
     : BigNumber.from(0);
 }
 
+/**
+ * Updates the inputs and weights of a strategy (critical)
+ * @param env - Strategy deployment environment
+ * @param inputs - New inputs to be set
+ * @param weights - Corresponding weights for the new inputs
+ * @returns BigNumber representing the result of the update
+ */
 export async function updateInputs(
   env: Partial<IStrategyDeploymentEnv>,
   inputs: string[],
@@ -827,6 +911,11 @@ export async function updateInputs(
   return await invest(env, 0);
 }
 
+/**
+ * Shuffles the inputs of a strategy and sets random weights to it
+ * @param env - Strategy deployment environment
+ * @returns Rebalanced amounts as a BigNumber
+ */
 export async function shuffleInputs(
   env: Partial<IStrategyDeploymentEnv>,
 ): Promise<BigNumber> {
@@ -848,6 +937,12 @@ export async function shuffleInputs(
   return await updateInputs(env, randomInputs, randomWeights);
 }
 
+/**
+ * Updates the input weights of a strategy
+ * @param env - Strategy deployment environment
+ * @param weights - New weights to be set
+ * @returns Boolean indicating whether the input weights were successfully updated
+ */
 export async function updateInputWeights(
   env: Partial<IStrategyDeploymentEnv>,
   weights: number[],
@@ -874,6 +969,11 @@ export async function updateInputWeights(
   return true;
 }
 
+/**
+ * Shuffles the input weights of a strategy
+ * @param env - Strategy deployment environment
+ * @returns Boolean indicating whether the shuffling was successful
+ */
 export async function shuffleInputWeights(
   env: Partial<IStrategyDeploymentEnv>,
 ): Promise<boolean> {
@@ -889,6 +989,11 @@ export async function shuffleInputWeights(
   return await updateInputWeights(env, randomWeights);
 }
 
+/**
+ * Shuffles the weights, rebalances the strategy, and returns Result
+ * @param env - Strategy deployment environment
+ * @returns Rebalanced amounts as a BigNumber
+ */
 export async function shuffleWeightsRebalance(
   env: Partial<IStrategyDeploymentEnv>,
 ): Promise<BigNumber> {

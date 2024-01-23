@@ -16,7 +16,7 @@ import { getEnv } from "../utils";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Lodestar MetaStable`,
-  symbol: `as.LMS`,
+  symbol: `as.LOMS`,
   asset: "USDC",
   version: 1,
   contract: "LodestarMultiStake",

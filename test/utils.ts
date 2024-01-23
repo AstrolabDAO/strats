@@ -76,7 +76,11 @@ export function getAddresses(s: string) {
 
 type AbiFragment = { name: string; inputs: [{ type: string }] };
 
-// TODO: move to @astrolabs/hardhat/utils
+/**
+ * Retrieves the signature of the initialization function for a given contract
+ * @param contract - Contract address or name
+ * @returns The signature of the initialization function
+ */
 export const getInitSignature = (contract: string) => {
   const fragments = (loadAbi(contract) as AbiFragment[]).filter(
     (a) => a.name === "init",
@@ -87,6 +91,11 @@ export const getInitSignature = (contract: string) => {
     .sort((s1, s2) => s2.length - s1.length)?.[0];
 };
 
+/**
+ * Retrieves all the selectors for a contract
+ * @param abi - ABI of the contract
+ * @returns The selectors of the contract
+ */
 export function getSelectors(abi: any) {
   const i = new ethers.utils.Interface(abi);
   return Object.keys(i.functions).map((signature) => ({
@@ -95,6 +104,10 @@ export function getSelectors(abi: any) {
   }));
 }
 
+/**
+ * Overrides for different network chain IDs
+ * @type {Object.<number, Overrides>}
+ */
 const networkOverrides: { [chainId: number]: Overrides } = {
   100: {
     // gasLimit: 1e7,
@@ -112,6 +125,13 @@ const networkOverrides: { [chainId: number]: Overrides } = {
   },
 };
 
+
+/**
+ * Retrieves the overrides based on the provided environment
+ * @param env - Partial ITestEnv object representing the environment
+ * @returns The overrides object
+ * @dev No overrides are used for live environments (mainnets)
+ */
 export const getOverrides = (env: Partial<ITestEnv>) => {
   const overrides = isLive(env) ? {} : networkOverrides[env.network!.config.chainId!] ?? {};
   return overrides;
@@ -170,12 +190,24 @@ export const isStable = (s: string) =>
 export const isStablePair = (s1: string, s2: string) =>
   isStable(s1) && isStable(s2);
 
+/**
+ * Checks if the given string contains the name of an oracle library
+ * @param name - Name of the oracle
+ * @returns True if the oracle matches
+ */
 export const isOracleLib = (name: string) =>
   ["Pyth", "RedStone", "Chainlink", "Witnet"].some((libname) =>
     name.includes(libname),
   );
 
-
+/**
+ * Logs the balances of the given token for the given addresses
+ * @param env - Partial ITestEnv object representing the environment
+ * @param token - Token address or symbol
+ * @param receiver - Address of the receiver
+ * @param payer - Address of the payer
+ * @param step - Step of the test
+ */
 export async function logBalances(
   env: Partial<IStrategyDeploymentEnv>,
   token: SafeContract | string,
@@ -211,11 +243,17 @@ export async function logBalances(
       balances[0],
     )}\n  - receiver (eg. rescuer): ${token.toAmount(balances[1])}`);
   }
-  return true;
 }
 
 export const logRescue = logBalances;
 
+/**
+ * Logs the state of the given strategy deployment environment
+ * @param env - Strategy deployment environment
+ * @param step - Step of the test
+ * @param sleepBefore - Number of milliseconds to sleep before logging state
+ * @param sleepAfter - Number of milliseconds to sleep after logging state
+ */
 export async function logState(
   env: Partial<IStrategyDeploymentEnv>,
   step?: string,
@@ -361,6 +399,12 @@ export async function logState(
   }
 }
 
+/**
+ * Completes the given strategy deployment environment
+ * @param env - Strategy deployment environment
+ * @param addressesOverride - Optional addresses override
+ * @returns Completed strategy deployment environment
+ */
 export const getEnv = async (
   env: Partial<ITestEnv> = {},
   addressesOverride?: Addresses,
@@ -389,6 +433,12 @@ export const getEnv = async (
   );
 };
 
+/**
+ * Swaps tokens using the specified parameters
+ * @param env - Strategy deployment environment
+ * @param o - Swapper parameters
+ * @returns The swap proceeds
+ */
 async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   if (o.inputChainId != network.config.chainId) {
     if (!isLive(env)) {
@@ -476,6 +526,14 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   assert(received.gt(1));
 }
 
+/**
+ * Funds the specified account with the given amount of a specified asset
+ * @param env - Strategy deployment environment
+ * @param amount - Amount to fund the account with
+ * @param asset - Asset to fund the account with
+ * @param receiver - Address of the account to fund
+ * @returns The funding proceeds (amount received)
+ */
 export async function fundAccount(
   env: Partial<IStrategyDeploymentEnv>,
   amount: number | string | BigNumber,
@@ -501,6 +559,13 @@ export async function fundAccount(
   return balanceAfter.sub(balanceBefore);
 }
 
+/**
+ * Ensures that the given addresses are whitelisted by the contract
+ * If the contract does not have the required whitelisting methods, an error is logged and the function returns
+ * @param contract - Contract instance or object
+ * @param addresses - Addresses to be whitelisted
+ * @param env - Strategy deployment environment
+ */
 async function ensureWhitelisted(
   contract: SafeContract | any,
   addresses: string[],
@@ -526,6 +591,10 @@ async function ensureWhitelisted(
   });
 }
 
+/**
+ * Ensures that the funding is sufficient for the given strategy deployment environment (deployer funded with gas tokens and strategy underlying)
+ * @param env The strategy deployment environment
+ */
 export async function ensureFunding(env: IStrategyDeploymentEnv) {
   if (isLive(env)) {
     console.log(
@@ -594,6 +663,14 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
   }
 }
 
+/**
+ * Ensures oracle access for the given strategy deployment environment
+ * For the "ChainlinkUtils" library, it sets the storage slot for Chainlink's "checkEnabled" to false,
+ * deactivating access control
+ * @param env - Strategy deployment environment
+ * @returns A promise that resolves once the oracle access has been ensured
+ * @dev Only applicable to test environment
+ */
 export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
   if (isLive(env)) {
     console.log(
@@ -634,6 +711,14 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
   }
 }
 
+/**
+ * Retrieves the data from a transaction log (used as flows return value)
+ * @param tx - Transaction receipt
+ * @param types - An array of types to decode the log data
+ * @param outputIndex - Index of the decoded data to return
+ * @param logIndex - Index or event name of the log to retrieve
+ * @returns The decoded data from the log, or undefined if not found/parsing failure
+ */
 export function getTxLogData(
   tx: TransactionReceipt,
   types = ["uint256"],
@@ -661,6 +746,14 @@ export function getTxLogData(
   }
 }
 
+/**
+ * Calculates the estimated exchange rate for swapping tokens
+ * @param from The token to swap from
+ * @param to The token to swap to
+ * @param inputWei The amount of tokens to swap
+ * @param chainId The chain ID (default: 1)
+ * @returns The estimated exchange rate as a number
+ */
 export async function getSwapperRateEstimate(
   from: string,
   to: string,
@@ -675,6 +768,15 @@ export async function getSwapperRateEstimate(
   );
 }
 
+/**
+ * Calculates the estimated output amount for a given swap transaction
+ * @param from - Token to swap from
+ * @param to - Token to swap to
+ * @param inputWei - Input amount in wei
+ * @param chainId - Chain ID
+ * @param outputChainId - Output chain ID (optional)
+ * @returns The estimated output amount in wei
+ */
 export async function getSwapperOutputEstimate(
   from: string,
   to: string,
@@ -688,6 +790,16 @@ export async function getSwapperOutputEstimate(
   );
 }
 
+/**
+ * Calculates the estimated transaction details for swapping tokens
+ * @param from - Token to swap from
+ * @param to - Token to swap to
+ * @param inputWei - Amount of tokens to swap in wei
+ * @param inputChainId - Chain ID of the input token
+ * @param outputChainId - Chain ID of the output token. If not provided, it defaults to the input chain ID
+ * @returns - Estimated transaction details or undefined if the tokens are the same
+ * @throws An error if either the input or output token is not found in addresses.ts:ethereum
+ */
 export async function getSwapperEstimate(
   from: string, // "USDC"
   to: string, // "AVAX"
@@ -718,6 +830,13 @@ export async function getSwapperEstimate(
   return tr;
 }
 
+/**
+ * Finds a function name in the given ABI (Application Binary Interface) based on its signature
+ * @param signature - Function signature to search for
+ * @param abi - ABI array to search in
+ * @returns The name of the function matching the provided signature
+ * @throws Error if the function signature is not found in the ABI
+ */
 export function findSignature(signature: string, abi: any[]): string {
   for (let item of abi) {
     // Ensure the item is a function and has an 'inputs' field
@@ -739,6 +858,11 @@ export function findSignature(signature: string, abi: any[]): string {
   throw new Error(`Function signature ${signature} not found in ABI`);
 }
 
+/**
+ * Converts a given text into a nonce (used for nonce determinism)
+ * @param text - Text to be converted into a nonce
+ * @returns The nonce as a number
+ */
 export function toNonce(text: string): number {
   // Hash the text using SHA-256
   const hash = crypto.createHash("sha256");
@@ -746,8 +870,7 @@ export function toNonce(text: string): number {
   // Convert the hash into a hexadecimal string
   const hexHash = hash.digest("hex");
   // Convert the hexadecimal hash into an integer
-  // Note: JavaScript can't handle large integers accurately, so we'll take a substring
-  // of the hash and convert it to ensure it fits into a JavaScript number
+  // NB: we use a hash substring to as js big numeric management is inacurate
   const nonce = parseInt(hexHash.substring(0, 15), 16);
   return nonce;
 }

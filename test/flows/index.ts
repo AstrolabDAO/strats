@@ -13,6 +13,11 @@ export interface IFlow {
   assert: Function;
 }
 
+/**
+ * Executes a test flow (suite unit)
+ * @param flow - The flow object containing the necessary parameters for the test
+ * @returns A promise that resolves with the result of the test flow
+ */
 export async function testFlow(flow: IFlow): Promise<any> {
   let { env, elapsedSec, revertState, fn, params, assert } = flow;
   const live = isLive(env);
@@ -24,6 +29,7 @@ export async function testFlow(flow: IFlow): Promise<any> {
   );
   let snapshotId = 0;
 
+  // TODO: move this to @astrolabs/hardhat
   if (!live) {
     if (revertState) snapshotId = await env.provider.send("evm_snapshot", []);
     if (elapsedSec) {
@@ -33,7 +39,11 @@ export async function testFlow(flow: IFlow): Promise<any> {
       await env.provider.send("evm_increaseTime", [
         ethers.utils.hexValue(elapsedSec),
       ]);
-      await env.provider.send("evm_increaseBlocks", ["0x20"]); // evm_mine
+      if (env.network.name.includes("tenderly")) {
+        await env.provider.send("evm_increaseBlocks", ["0x20"]);
+      } else { // ganache
+        await env.provider.send("evm_mine", []);
+      }
       const timeAfter = new Date(
         (await env.provider.getBlock("latest"))?.timestamp * 1000,
       );

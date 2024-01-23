@@ -15,7 +15,7 @@ import { suite } from "../StrategyV5.test";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Moonwell MetaStable`,
-  symbol: `as.MMS`,
+  symbol: `as.MOMS`,
   asset: "USDC",
   version: 1,
   contract: "MoonwellMultiStake",

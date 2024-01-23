@@ -21,6 +21,12 @@ import {
   logState
 } from "../utils";
 
+/**
+ * Sets the minimum liquidity for a strategy deployment
+ * @param env - Strategy deployment environment
+ * @param usdAmount - Amount in USD to set as the minimum liquidity (default: 10)
+ * @returns Seed amount in BigNumber
+ */
 export async function setMinLiquidity(
   env: Partial<IStrategyDeploymentEnv>,
   usdAmount = 10,
@@ -45,6 +51,12 @@ export async function setMinLiquidity(
   return seedAmount;
 }
 
+/**
+ * Seeds a strategy liquidity and activates deposits
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount of liquidity to seed (default: 10)
+ * @returns Amount of liquidity seeded
+ */
 export async function seedLiquidity(
   env: IStrategyDeploymentEnv,
   _amount = 10,
@@ -70,6 +82,12 @@ export async function seedLiquidity(
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted
 }
 
+/**
+ * Deposits a specified amount of assets into a strategy
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to deposit (default: 10)
+ * @returns Amount deposited as a BigNumber
+ */
 export async function deposit(
   env: IStrategyDeploymentEnv,
   _amount = 10,
@@ -96,6 +114,13 @@ export async function deposit(
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
+/**
+ * Swaps from asset to inputAddress and safe deposit for a given strategy deployment environment
+ * @param env - Strategy deployment environment
+ * @param inputAddress - Input address for the deposit asset
+ * @param _amount - Amount to deposit (default is 10)
+ * @returns Amount of shares received
+ */
 export async function swapSafeDeposit(
   env: IStrategyDeploymentEnv,
   inputAddress?: string,
@@ -148,6 +173,12 @@ export async function swapSafeDeposit(
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
+/**
+ * Withdraws a specified amount from the strategy deployment environment
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to withdraw (default: 50)
+ * @returns Amount withdrawn as a BigNumber
+ */
 export async function withdraw(
   env: Partial<IStrategyDeploymentEnv>,
   _amount = 50,
@@ -183,6 +214,12 @@ export async function withdraw(
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
 }
 
+/**
+ * Requests a withdrawal of a specified amount from the strategy contract
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to withdraw (default: 50)
+ * @returns Amount withdrawn as a BigNumber
+ */
 export async function requestWithdraw(
   env: IStrategyDeploymentEnv,
   _amount = 50,
@@ -224,6 +261,12 @@ export async function requestWithdraw(
   ); // recovered
 }
 
+/**
+ * Redeems a specified amount of tokens using the given strategy deployment environment
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount of tokens to redeem (default: 50)
+ * @returns Amount of tokens redeemed
+ */
 export async function redeem(
   env: Partial<IStrategyDeploymentEnv>,
   _amount = 50,
@@ -259,6 +302,12 @@ export async function redeem(
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
 }
 
+/**
+ * Requests redemption of a specified amount of assets from the strategy
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount of assets to redeem (default: 50)
+ * @returns Amount of redeemed assets as a BigNumber
+ */
 export async function requestRedeem(
   env: IStrategyDeploymentEnv,
   _amount = 50,
@@ -300,6 +349,11 @@ export async function requestRedeem(
   ); // recovered
 }
 
+/**
+ * Collects fees for a strategy
+ * @param env - Strategy deployment environment
+ * @returns Total fees collected as a BigNumber
+ */
 export async function collectFees(
   env: Partial<IStrategyDeploymentEnv>,
 ): Promise<BigNumber> {
