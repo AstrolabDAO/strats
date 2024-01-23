@@ -48,15 +48,16 @@ Testing As4626+StrategyV5 with Tenderly (make sure to set `TENDERLY_CHAIN_ID=421
 yarn test-tenderly # yarn hardhat test test/Compound/CompoundV3MultiStake.test.ts --network tenderly
 ```
 
-The repo imports [@astrolabs/hardhat](https://github.com/AstrolabDAO/hardhat), therefore you can use our generic deployment functions for fine-grain partial deployments of the stack:```typescript
+The repo imports [@astrolabs/hardhat](https://github.com/AstrolabDAO/hardhat), therefore you can use our generic deployment functions for fine-grain partial deployments of the stack:
+```typescript
 import { deployAll } from "@astrolabs/hardhat";
 
 async function main() {
   await deployAll({
-    name: "AsMaths",
- // deployment unit name    contract: "AsMaths",
- // contract name    verify: true,
- // automatically verify on Tenderly or relevant explorer    export: false, // do not export abi+deployment .son
+    name: "AsMaths", // deployment unit name
+    contract: "AsMaths", // contract name
+    verify: true, // automatically verify on Tenderly or relevant explorer
+    export: false, // do not export abi+deployment .son
   });
 }
 ```
