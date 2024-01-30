@@ -55,7 +55,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         assetFeedDecimals = assetPriceFeed.decimals();
 
         for (uint256 i = 0; i < _chainlinkParams.inputPriceFeeds.length; i++) {
-            if (address(inputs[i]) == address(0)) break;
+            if (address(_inputs[i]) == address(0)) break;
             inputPriceFeeds[i] = IChainlinkAggregatorV3(_chainlinkParams.inputPriceFeeds[i]);
             inputFeedDecimals[i] = inputPriceFeeds[i].decimals();
         }
@@ -76,17 +76,18 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
 
     /**
      * @notice Changes the strategy input tokens
-     * @param _inputs Array of input token addresses
+     * @param _newInputs Array of input token addresses
      * @param _weights Array of input token weights
      * @param _priceFeeds Array of Chainlink price feed addresses
+     * @dev called from Strategy implementation
      */
-    function setInputs(address[] calldata _inputs, uint16[] calldata _weights, address[] calldata _priceFeeds) external onlyAdmin {
-        for (uint256 i = 0; i < _inputs.length; i++) {
+    function _setInputs(address[] calldata _newInputs, uint16[] calldata _weights, address[] calldata _priceFeeds) internal virtual onlyAdmin {
+        for (uint256 i = 0; i < _newInputs.length; i++) {
             if (_priceFeeds[i] == address(0)) revert AddressZero();
             inputPriceFeeds[i] = IChainlinkAggregatorV3(_priceFeeds[i]);
             inputFeedDecimals[i] = inputPriceFeeds[i].decimals();
         }
-        _setInputs(_inputs, _weights);
+        _setInputs(_newInputs, _weights);
     }
 
     /**
@@ -104,7 +105,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @return Input amount in wei
      */
     function _assetToInput(uint256 _amount, uint8 _index) internal view override returns (uint256) {
-        return _amount.mulDiv(10**inputDecimals[_index], assetExchangeRate(_index));
+        return _amount.mulDiv(10**_inputDecimals[_index], assetExchangeRate(_index));
     }
 
     /**
@@ -112,7 +113,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @return Asset amount in wei
      */
     function _inputToAsset(uint256 _amount, uint8 _index) internal view override returns (uint256) {
-        return _amount.mulDiv(assetExchangeRate(_index), 10**inputDecimals[_index]);
+        return _amount.mulDiv(assetExchangeRate(_index), 10**_inputDecimals[_index]);
     }
 
     /**
@@ -122,7 +123,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @return The converted amount of tokens
      */
     function _usdToInput(uint256 _amount, uint8 _index) internal view returns (uint256) {
-        return _amount.mulDiv(10**uint256(inputFeedDecimals[_index]) * inputDecimals[_index],
+        return _amount.mulDiv(10**uint256(inputFeedDecimals[_index]) * _inputDecimals[_index],
             uint256(inputPriceFeeds[_index].latestAnswer()) * 1e6); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
 
@@ -134,6 +135,6 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      */
     function _inputToUsd(uint256 _amount, uint8 _index) internal view returns (uint256) {
         return _amount.mulDiv(uint256(inputPriceFeeds[_index].latestAnswer()) * 1e6,
-            10**uint256(inputFeedDecimals[_index]) * inputDecimals[_index]); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
+            10**uint256(inputFeedDecimals[_index]) * _inputDecimals[_index]); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
 }

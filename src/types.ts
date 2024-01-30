@@ -1,9 +1,9 @@
-import { IDeployment, getDeployer } from "@astrolabs/hardhat";
+import { IDeployment, getDeployer, network } from "@astrolabs/hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, Contract, providers } from "ethers";
 import * as ethers from "ethers";
 import { Network } from "hardhat/types";
-import { NetworkAddresses } from "./addresses";
+import { NetworkAddresses, findSymbolByAddress } from "./addresses";
 import {
   Provider as MulticallProvider,
   Contract as MulticallContract,
@@ -18,6 +18,7 @@ export class SafeContract extends Contract {
   public abi: ReadonlyArray<any> | any[] = [];
   public scale: number = 0;
   public weiPerUnit: number = 0;
+  public static cache: { [id: string]: SafeContract } = {};
 
   constructor(
     address: string,
@@ -31,18 +32,25 @@ export class SafeContract extends Contract {
   public static async build(
     address: string,
     abi: ReadonlyArray<any> | any[] = erc20Abi,
+    override=false,
     signer?: SignerWithAddress
   ): Promise<SafeContract> {
     try {
       signer ||= (await getDeployer()) as SignerWithAddress;
+      const id = `${network.config!.chainId}:${address}:${signer!.address}`;
+
+      if (!override && (id in SafeContract.cache))
+        return SafeContract.cache[id];
+
       const c = new SafeContract(address, abi, signer);
       c.multi = new MulticallContract(address, abi as any[]);
       if ("symbol" in c) {
         // c is a token
-        c.sym = await c.symbol?.();
+        c.sym = findSymbolByAddress(c.address, network.config!.chainId!) ?? await c.symbol?.();
         c.scale = await c.decimals?.() || 8;
         c.weiPerUnit = 10 ** c.scale;
       }
+      SafeContract.cache[id] = c;
       return c;
     } catch (error) {
       throw new Error(`Failed to build contract ${address}: ${error}`);
@@ -51,7 +59,7 @@ export class SafeContract extends Contract {
 
   public async copy(signer: SignerWithAddress=(this.signer as SignerWithAddress)): Promise<SafeContract> {
     // return Object.assign(this, await SafeContract.build(this.address, this.abi, signer));
-    return await SafeContract.build(this.address, this.abi, signer);
+    return await SafeContract.build(this.address, this.abi, false, signer);
   }
 
   public safe = async (

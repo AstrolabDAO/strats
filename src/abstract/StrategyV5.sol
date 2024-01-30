@@ -39,7 +39,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         wgas = IWETH9(_params.coreAddresses.wgas);
         if (agent == address(0)) revert AddressZero();
         _delegateWithSignature(
-            agent, // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights.rewardTokens
+            agent, // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights._rewardTokens
             "init(((string,string,uint8),(address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
         );
     }
@@ -76,11 +76,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
 
     /**
      * @notice Changes the strategy input tokens
-     * @param _inputs Array of input token addresses
+     * @param _newInputs Array of input token addresses
      * @param _weights Array of input token weights
      */
     function _setInputs(
-        address[] memory _inputs,
+        address[] memory _newInputs,
         uint16[] memory _weights
     ) internal {
         _delegateWithSignature(
@@ -183,9 +183,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
 
         uint256 received;
         for (uint8 i = 0; i < rewardLength; i++) {
-            if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
+            if (_rewardTokens[i] != address(asset) && _balances[i] > 10) {
                 (received, ) = swapper.decodeAndSwap({
-                    _input: rewardTokens[i],
+                    _input: _rewardTokens[i],
                     _output: address(asset),
                     _amount: _balances[i],
                     _params: _params[i]
@@ -267,7 +267,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
      */
     function _compound(
         uint256[8] calldata _amounts,
-        bytes[] memory _params // rewardTokens(0...n)->underlying() / asset()->inputs(0...n) with assetWeights(0...n)
+        bytes[] memory _params // _rewardTokens(0...n)->underlying() / asset()->inputs(0...n) with assetWeights(0...n)
     ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
         // we expect the SwapData to cover harvesting + investing
         if (_params.length != (rewardLength + inputLength))
@@ -416,7 +416,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         if (_total == 0) _total = invested();
         return
             int256(invested(_index).mulDiv(AsMaths.BP_BASIS, _total)) -
-            int256(uint256(inputWeights[_index]));
+            int256(uint256(_inputWeights[_index]));
     }
 
     /**
@@ -445,7 +445,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         if (_total == 0) _total = invested();
         return
             int256(investedInput(_index)) -
-            int256(_assetToInput(_total.mulDiv(uint256(inputWeights[_index]), AsMaths.BP_BASIS), _index));
+            int256(_assetToInput(_total.mulDiv(uint256(_inputWeights[_index]), AsMaths.BP_BASIS), _index));
     }
 
     /**
@@ -546,4 +546,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
             address(this).balance + wgas.balanceOf(address(this)) :
             IERC20(token).balanceOf(address(this));
     }
+
+    /**
+     * @dev Returns an array of LP tokens associated with the strategy if applicable
+     * @return An array of LP token addresses
+     */
+    function lpTokens() external view virtual returns (address[8] memory) {}
 }

@@ -35,7 +35,7 @@ contract MoonwellLegacyMultiStake is MoonwellMultiStake {
         // wrap native rewards if needed
         _wrapNative();
         for (uint8 i = 0; i < rewardLength; i++) {
-            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
+            amounts[i] = IERC20Metadata(_rewardTokens[i]).balanceOf(address(this));
         }
     }
 

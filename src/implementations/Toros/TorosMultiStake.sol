@@ -61,9 +61,9 @@ contract TorosMultiStake is StrategyV5Chainlink {
         Params calldata _torosParams
     ) external onlyAdmin {
         for (uint8 i = 0; i < _torosParams.pools.length; i++) {
-            inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
-            inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
+            _inputWeights[i] = _baseParams.inputWeights[i];
+            _inputDecimals[i] = _inputs[i].decimals();
         }
         inputLength = uint8(_torosParams.pools.length);
         setParams(_torosParams);
@@ -93,16 +93,16 @@ contract TorosMultiStake is StrategyV5Chainlink {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance.
-            if (asset != inputs[i] && _amounts[i] > 10) {
+            if (asset != _inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
                     _input: address(asset),
-                    _output: address(inputs[i]),
+                    _output: address(_inputs[i]),
                     _amount: _amounts[i],
                     _params: _params[i]
                 });
                 investedAmount += spent;
                 // pick up any input dust (eg. from previous liquidate()), not just the swap output
-                toDeposit = inputs[i].balanceOf(address(this));
+                toDeposit = _inputs[i].balanceOf(address(this));
             } else {
                 investedAmount += _amounts[i];
                 toDeposit = _amounts[i];
@@ -112,9 +112,9 @@ contract TorosMultiStake is StrategyV5Chainlink {
 
             dHedgeSwapper.deposit({
                 pool: address(pools[i]),
-                depositAsset: address(inputs[i]),
+                depositAsset: address(_inputs[i]),
                 amount: toDeposit,
-                poolDepositAsset: address(inputs[i]),
+                poolDepositAsset: address(_inputs[i]),
                 expectedLiquidityMinted: expectedIou
             });
 
@@ -150,14 +150,14 @@ contract TorosMultiStake is StrategyV5Chainlink {
             dHedgeSwapper.withdraw({
                 pool: address(pools[i]),
                 fundTokenAmount: toLiquidate,
-                withdrawalAsset: address(inputs[i]),
+                withdrawalAsset: address(_inputs[i]),
                 expectedAmountOut: _amounts[i].subBp(maxSlippageBps)
             });
 
-            // swap the unstaked tokens (inputs[0]) for the asset asset if different
-            if (inputs[i] != asset && toLiquidate > 10) {
+            // swap the unstaked tokens (_inputs[0]) for the asset asset if different
+            if (_inputs[i] != asset && toLiquidate > 10) {
                 (recovered, ) = swapper.decodeAndSwap({
-                    _input: address(inputs[i]),
+                    _input: address(_inputs[i]),
                     _output: address(asset),
                     _amount: _amounts[i],
                     _params: _params[i]
@@ -177,12 +177,12 @@ contract TorosMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Set allowances for third party contracts (except rewardTokens)
+     * @notice Set allowances for third party contracts (except _rewardTokens)
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++) {
-            inputs[i].approve(address(dHedgeSwapper), _amount);
+            _inputs[i].approve(address(dHedgeSwapper), _amount);
         }
     }
 

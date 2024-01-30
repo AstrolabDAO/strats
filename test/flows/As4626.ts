@@ -343,8 +343,9 @@ export async function requestRedeem(
     )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After RequestRedeem", 2_000);
+
   return (
-    getTxLogData(receipt, ["address, address, address, uint256"], 3) ??
+    getTxLogData(receipt, ["address, address, address, uint256"], 4) ??
     BigNumber.from(0)
   ); // recovered
 }

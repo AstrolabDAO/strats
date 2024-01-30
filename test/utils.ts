@@ -31,7 +31,7 @@ import {
   constants,
 } from "ethers";
 import { merge } from "lodash";
-import addresses, { Addresses } from "../src/addresses";
+import addresses, { Addresses, symbolByAddresses } from "../src/addresses";
 import {
   IChainlinkParams,
   IStrategyDeploymentEnv,
@@ -103,6 +103,15 @@ export function getSelectors(abi: any) {
     signature: i.getSighash(i.functions[signature]),
   }));
 }
+
+/**
+ * Checks if two arrays are equal
+ * @param a - The first array
+ * @param b - The second array
+ * @returns True if the arrays are equal, false otherwise
+ */
+export const arraysEqual = (a: any[], b: any[]) =>
+  a === b || (a && b && a.length === b.length && a.every((val, idx) => val === b[idx]));
 
 /**
  * Overrides for different network chain IDs
@@ -260,12 +269,13 @@ export async function logState(
   sleepBefore = 0,
   sleepAfter = 0,
 ) {
-  const { strat, asset, inputs, rewardTokens } = env.deployment!;
+  const { strat } = env.deployment!;
   if (sleepBefore) {
     console.log(`Sleeping ${sleepBefore}ms before logging state...`);
     await sleep(sleepBefore);
   }
   try {
+    const asset = await SafeContract.build(await strat.asset());
     const [
       sharePrice,
       totalSupply,
@@ -293,7 +303,6 @@ export async function logState(
       strat.multi.totalAccountedAssets(),
       strat.multi.claimableAssetFees(),
       strat.multi.available(),
-
       // strat.multicallContract.totalDepositRequest(),
 
       strat.multi.totalRedemptionRequest(),
@@ -309,11 +318,29 @@ export async function logState(
       // await assetTokenContract.balanceOf(strategy.address),
     ]);
 
-    const inputsAddresses = inputs.map((input) => input.address);
-    // await env.multicallProvider!.all(inputs.map((input, index) => strat.multi.inputs(index)));
+    const emptyAddress = "0x0000000000000000000000000000000000000000";
+    let arrayLength = 0;
+    // const inputAddresses = inputs.map((input) => input.address);
 
-    const rewardsAddresses = rewardTokens.map((reward) => reward.address);
-    // await env.multicallProvider!.all(rewardTokens.map((input, index) => strat.multi.rewardTokens(index)));
+    const inputIndexes = [...Array(8)];
+    let [inputData, weightData, rewardData] = await env.multicallProvider!.all([
+      strat.multi.inputs(),
+      strat.multi.inputWeights(),
+      strat.multi.rewardTokens()
+    ]) as [string[], BigNumber[], string[]];
+    let lastInputIndex = inputData.findIndex((input) => input == emptyAddress);
+    const lastRewardIndex = rewardData.findIndex((reward) => reward == emptyAddress);
+
+    if (lastInputIndex < 0) lastInputIndex = inputIndexes.length; // max 8 inputs (if no empty address found)
+
+    const [inputAddresses, inputWeights, rewardAddresses] = [
+      inputData.slice(0, lastInputIndex),
+      weightData.slice(0, lastInputIndex).map((w: BigNumber) => w.toNumber()),
+      rewardData.slice(0, lastRewardIndex),
+    ] as [string[], number[], string[]];
+
+    const inputs = await Promise.all(inputAddresses.map(input => SafeContract.build(input)));
+    const rewards = await Promise.all(rewardAddresses.map(reward => SafeContract.build(reward)));
 
     // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
     const [invested, rewardsAvailable] = await Promise.all([
@@ -321,14 +348,15 @@ export async function logState(
       strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.(),
     ]);
     const investedAmounts: BigNumber[] = await env.multicallProvider!.all(
-      inputs.map((input, index) => strat.multi.invested(index)),
+      inputAddresses.map((input, index) => strat.multi.invested(index)),
     );
 
     console.log(
       `State ${step ?? ""}:
-    asset: ${asset.address}
-    inputs: [${inputsAddresses.join(", ")}]
-    rewardTokens: [${rewardsAddresses.join(", ")}]
+    asset: ${asset.sym} (${asset.address})
+    inputs: [${inputs.map((input) => input.sym + " (" + input.address).join("), ")})]
+    inputWeights: [${inputWeights.join(", ")}]
+    rewardTokens: [${rewards.map((reward) => reward.sym + " (" + reward.address).join("), ")})]
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${strat.toAmount(totalSupply)} (${totalSupply}wei)
     totalAccountedSupply(): ${strat.toAmount(
@@ -343,10 +371,10 @@ export async function logState(
       )} (${totalClaimableAssetFees}wei)
     invested(): ${asset.toAmount(invested)} (${invested}wei)\n${inputs
         .map(
-          (input, index) =>
-            `      -${input.sym}: ${<any>(
-              asset.toAmount(investedAmounts[index])
-            )} (${investedAmounts[index]}wei)`,
+          (input, i) =>
+              `     -${input.sym}: ${<any>(
+              asset.toAmount(investedAmounts[i])
+            )} (${investedAmounts[i]}wei)`,
         )
         .join("\n")}
     available(): ${available / asset.weiPerUnit} (${available}wei) (${Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
@@ -362,10 +390,10 @@ export async function logState(
           : (totalClaimableRedemption * 100) / totalRedemptionRequest,
       ) / 100
       }%)
-    rewardsAvailable():\n${rewardTokens
+    rewardsAvailable():\n${rewards
         .map(
-          (reward, index) =>
-            `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${rewardsAvailable[index]
+          (reward, i) =>
+            `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[i])} (${rewardsAvailable[i]
             }wei)`,
         )
         .join("\n")}
@@ -421,7 +449,7 @@ export const getEnv = async (
       blockNumber: await provider.getBlockNumber(),
       snapshotId: live ? 0 : await provider.send("evm_snapshot", []),
       revertState: false,
-      wgas: await SafeContract.build(addr.tokens.WGAS, wethAbi, env.deployer!),
+      wgas: await SafeContract.build(addr.tokens.WGAS, wethAbi),
       addresses: addr,
       deployer: deployer as SignerWithAddress,
       provider: provider,

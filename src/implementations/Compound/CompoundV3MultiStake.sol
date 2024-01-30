@@ -22,7 +22,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IComet[8] internal cTokens; // LP token/pool
+    address[8] internal cTokens; // LP token/pool
     ICometRewards internal cometRewards;
     ICometRewards.RewardConfig[8] internal rewardConfigs;
 
@@ -43,7 +43,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         cometRewards = ICometRewards(_params.cometRewards);
 
         for (uint8 i = 0; i < _params.cTokens.length; i++) {
-            cTokens[i] = IComet(_params.cTokens[i]);
+            cTokens[i] = _params.cTokens[i];
             rewardConfigs[i] = cometRewards.rewardConfig(_params.cTokens[i]);
         }
         _setAllowances(MAX_UINT256);
@@ -61,9 +61,9 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         Params calldata _compoundParams
     ) external onlyAdmin {
         for (uint8 i = 0; i < _compoundParams.cTokens.length; i++) {
-            inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
-            inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
+            _inputWeights[i] = _baseParams.inputWeights[i];
+            _inputDecimals[i] = _inputs[i].decimals();
         }
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
@@ -72,17 +72,45 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     }
 
     /**
+     * @notice Changes the strategy input tokens
+     * @param _newInputs Array of input token addresses
+     * @param _cTokens Array of cTokens addresses
+     * @param _weights Array of input token weights
+     * @param _priceFeeds Array of Chainlink price feed addresses
+     */
+    function setInputs(
+        address[] calldata _newInputs,
+        address[] memory _cTokens,
+        uint16[] calldata _weights,
+        address[] calldata _priceFeeds
+    ) external onlyAdmin {
+        for (uint256 i = 0; i < _inputs.length; i++) {
+            cTokens[i] = _cTokens[i];
+            rewardConfigs[i] = cometRewards.rewardConfig(_cTokens[i]);
+        }
+        _setAllowances(MAX_UINT256);
+        _setInputs(_newInputs, _weights, _priceFeeds);
+    }
+
+    /**
      * @notice Claim rewards from the third party contracts
      * @return amounts Array of rewards claimed for each reward token
      */
-    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+    function claimRewards()
+        public
+        override
+        onlyKeeper
+        returns (uint256[] memory amounts)
+    {
         amounts = new uint256[](rewardLength);
         for (uint8 i = 0; i < cTokens.length; i++) {
-            if (address(cTokens[i]) == address(0)) break;
-            cometRewards.claim(address(cTokens[i]), address(this), true);
+            if (cTokens[i] == address(0)) break;
+            cometRewards.claim(cTokens[i], address(this), true);
         }
         for (uint8 i = 0; i < rewardLength; i++) {
-            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
+            amounts[i] = IERC20Metadata(_rewardTokens[i]).balanceOf(
+                address(this)
+            );
         }
     }
 
@@ -109,29 +137,30 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance.
-            if (asset != inputs[i] && _amounts[i] > 10) {
+            if (asset != _inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
                     _input: address(asset),
-                    _output: address(inputs[i]),
+                    _output: address(_inputs[i]),
                     _amount: _amounts[i],
                     _params: _params[i]
                 });
                 investedAmount += spent;
                 // pick up any input dust (eg. from previous liquidate()), not just the swap output
-                toDeposit = inputs[i].balanceOf(address(this));
+                toDeposit = _inputs[i].balanceOf(address(this));
             } else {
                 investedAmount += _amounts[i];
                 toDeposit = _amounts[i];
             }
 
-            uint256 iouBefore = cTokens[i].balanceOf(address(this));
-            cTokens[i].supply(address(inputs[i]), toDeposit);
-
-            uint256 supplied = cTokens[i].balanceOf(address(this)) - iouBefore;
+            IComet cToken = IComet(cTokens[i]);
+            uint256 iouBefore = cToken.balanceOf(address(this));
+            cToken.supply(address(_inputs[i]), toDeposit);
+            uint256 supplied = cToken.balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
-            if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
-                revert AmountTooLow(supplied);
+            if (
+                supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2)
+            ) revert AmountTooLow(supplied);
 
             // NB: better return ious[]
             iouReceived += supplied;
@@ -155,17 +184,17 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            balance = cTokens[i].balanceOf(address(this));
+            IComet cToken = IComet(cTokens[i]);
+            balance = cToken.balanceOf(address(this));
 
             // NB: we could use redeemUnderlying() here
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
+            cToken.withdraw(address(_inputs[i]), toLiquidate);
 
-            cTokens[i].withdraw(address(inputs[i]), toLiquidate);
-
-            // swap the unstaked tokens (inputs[0]) for the asset asset if different
-            if (inputs[i] != asset && toLiquidate > 10) {
+            // swap the unstaked tokens (_inputs[0]) for the asset asset if different
+            if (_inputs[i] != asset && toLiquidate > 10) {
                 (recovered, ) = swapper.decodeAndSwap({
-                    _input: address(inputs[i]),
+                    _input: address(_inputs[i]),
                     _output: address(asset),
                     _amount: _amounts[i],
                     _params: _params[i]
@@ -185,12 +214,20 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Set allowances for third party contracts (except rewardTokens)
+     * @notice Set allowances for third party contracts (except _rewardTokens)
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++)
-            inputs[i].approve(address(cTokens[i]), _amount);
+            _inputs[i].approve(cTokens[i], _amount);
+    }
+
+    /**
+     * @dev Returns the addresses of the cTokens
+     * @return An array of cTokens
+     */
+    function lpTokens() external view override returns (address[8] memory) {
+        return cTokens;
     }
 
     /**
@@ -240,7 +277,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     function _stakedInput(
         uint8 _index
     ) internal view override returns (uint256) {
-        return cTokens[_index].balanceOf(address(this));
+        return IComet(cTokens[_index]).balanceOf(address(this));
     }
 
     /**
@@ -258,10 +295,15 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
 
         for (uint8 i = 0; i < cTokens.length; i++) {
             if (address(cTokens[i]) == address(0)) break;
-            amounts[0] += _rebaseAccruedReward(cTokens[i].baseTrackingAccrued(address(this)), i);
+            amounts[0] += _rebaseAccruedReward(
+                IComet(cTokens[i]).baseTrackingAccrued(address(this)),
+                i
+            );
         }
         for (uint8 i = 0; i < rewardLength; i++) {
-            amounts[i] += IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
+            amounts[i] += IERC20Metadata(_rewardTokens[i]).balanceOf(
+                address(this)
+            );
         }
 
         return amounts;
@@ -273,10 +315,14 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      * @param _index The index of the reward configuration
      * @return The rebased accrued reward
      */
-    function _rebaseAccruedReward(uint256 _amount, uint8 _index) internal view returns (uint256) {
+    function _rebaseAccruedReward(
+        uint256 _amount,
+        uint8 _index
+    ) internal view returns (uint256) {
         ICometRewards.RewardConfig memory config = rewardConfigs[_index];
-        return config.shouldUpscale ?
-            _amount.mulDiv(config.rescaleFactor, 1e18)
-            : _amount.mulDiv(1e18, config.rescaleFactor);
+        return
+            config.shouldUpscale
+                ? _amount.mulDiv(config.rescaleFactor, 1e18)
+                : _amount.mulDiv(1e18, config.rescaleFactor);
     }
 }

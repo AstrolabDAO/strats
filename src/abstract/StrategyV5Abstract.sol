@@ -35,16 +35,39 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     address public agent; // Address of the agent
     address internal stratProxy; // Address of the strategy proxy
 
-    IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
-    uint8[8] internal inputDecimals; // Decimals of the input assets
-    uint16[8] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)
-    address[8] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
+    IERC20Metadata[8] internal _inputs; // Array of ERC20 tokens used as inputs
+    uint8[8] internal _inputDecimals; // Decimals of the input assets
+    uint16[8] internal _inputWeights; // Array of input weights weights in basis points (100% = 10_000)
+    address[8] internal _rewardTokens; // Array of reward tokens harvested at compound and liquidate times
     mapping(address => uint8) internal rewardTokenIndex; // to keep track of reward token indexes eg. to be aggregated
     uint8 internal inputLength; // Actual length of the inputs array
     uint8 internal rewardLength; // Actual length of the reward tokens array
 
     constructor() As4626Abstract() {}
 
+    /**
+     * @dev Returns an array of IERC20Metadata representing the inputs of the strategy
+     * @return An array of IERC20Metadata representing the inputs of the strategy
+     */
+    function inputs() public view returns (IERC20Metadata[8] memory) {
+        return _inputs;
+    }
+
+    /**
+     * @dev Returns the input weights of the strategy
+     * @return An array of uint8 representing the input weights
+     */
+    function inputWeights() public view returns (uint16[8] memory) {
+        return _inputWeights;
+    }
+
+    /**
+     * @dev Returns an array of reward tokens.
+     * @return An array of reward token addresses.
+     */
+    function rewardTokens() public view returns (address[8] memory) {
+        return _rewardTokens;
+    }
     /**
      * @notice Calculates the total pending redemption requests in shares (1e8)
      * @dev Returns the difference between req.totalClaimableRedemption and req.totalClaimableRedemption

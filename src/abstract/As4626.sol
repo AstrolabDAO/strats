@@ -273,14 +273,14 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Trigger a fee collection: mints shares to the feeCollector
      */
-    function _collectFees() internal nonReentrant {
+    function _collectFees() internal nonReentrant returns (uint256) {
 
         if (feeCollector == address(0))
             revert AddressZero();
 
         (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) = AsAccounting.computeFees(IAs4626(address(this)));
 
-        if (profit == 0) return;
+        if (profit == 0) return 0;
         uint256 toMint = convertToShares(feesAmount + claimableAssetFees); // feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
         emit FeeCollection(
             feeCollector,
@@ -297,13 +297,14 @@ abstract contract As4626 is As4626Abstract {
         last.accountedProfit = profit;
         last.accountedSupply = totalSupply();
         claimableAssetFees = 0;
+        return toMint;
     }
 
     /**
      * @notice Trigger a fee collection: mints shares to the feeCollector
      */
-    function collectFees() external onlyKeeper {
-        _collectFees();
+    function collectFees() external onlyKeeper returns (uint256) {
+        return _collectFees();
     }
 
     /**

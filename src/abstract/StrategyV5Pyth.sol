@@ -58,9 +58,8 @@ abstract contract StrategyV5Pyth is StrategyV5 {
         assetPythId = _pythParams.assetPythId;
 
         for (uint256 i = 0; i < _pythParams.inputPythIds.length; i++) {
-            if (address(inputs[i]) == address(0)) break;
+            if (address(_inputs[i]) == address(0)) break;
             inputPythIds[i] = _pythParams.inputPythIds[i];
-            inputDecimals[i] = inputs[i].decimals();
         }
     }
 
@@ -78,17 +77,16 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
     /**
      * @notice Changes the strategy input tokens
-     * @param _inputs Array of input token addresses
+     * @param _newInputs Array of input token addresses
      * @param _weights Array of input token weights
      * @param _pythIds Array of Pyth price feed ids
      */
-    function setInputs(address[] calldata _inputs, uint16[] calldata _weights, bytes32[] calldata _pythIds) external onlyAdmin {
-        for (uint256 i = 0; i < _inputs.length; i++) {
-            if (address(inputs[i]) == address(0)) break;
+    function setInputs(address[] calldata _newInputs, uint16[] calldata _weights, bytes32[] calldata _pythIds) external onlyAdmin {
+        for (uint256 i = 0; i < _newInputs.length; i++) {
+            if (address(_newInputs[i]) == address(0)) break;
             inputPythIds[i] = _pythIds[i];
-            inputDecimals[i] = inputs[i].decimals();
         }
-        _setInputs(_inputs, _weights);
+        _setInputs(_newInputs, _weights);
     }
 
     /**
@@ -101,7 +99,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
             return weiPerShare; // == weiPerUnit of asset == 1:1
         PythStructs.Price memory inputPrice = pyth.getPriceUnsafe(inputPythIds[inputId]);
         PythStructs.Price memory assetPrice = pyth.getPriceUnsafe(assetPythId);
-        uint256 inputPriceWei = inputPrice.toUint256(inputDecimals[inputId]); // input (quote) price in wei
+        uint256 inputPriceWei = inputPrice.toUint256(_inputDecimals[inputId]); // input (quote) price in wei
         uint256 assetPriceWei = assetPrice.toUint256(assetDecimals); // asset (base) price in wei
         uint256 rate = AsMaths.exchangeRate(
             inputPriceWei, // asset (base) price in wei

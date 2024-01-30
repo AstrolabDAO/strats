@@ -25,7 +25,7 @@ contract HopMultiStake is StrategyV5Chainlink {
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IERC20Metadata[5] internal lpTokens; // LP token of the pool
+    IERC20Metadata[5] internal hToken; // LP token of the pool
     IStableRouter[5] internal stableRouters; // SaddleSwap
     IStakingRewards[5][4] internal rewardPools; // Reward pool
     mapping(address => address) internal tokenByRewardPool;
@@ -35,7 +35,7 @@ contract HopMultiStake is StrategyV5Chainlink {
 
     // Struct containing the strategy init parameters
     struct Params {
-        address[] lpTokens;
+        address[] hToken;
         address[][] rewardPools;
         address[] stableRouters;
         uint8[] tokenIndexes;
@@ -46,8 +46,8 @@ contract HopMultiStake is StrategyV5Chainlink {
      * @param _params Strategy parameters
      */
     function setParams(Params calldata _params) public onlyAdmin {
-        for (uint8 i = 0; i < _params.lpTokens.length; i++) {
-            lpTokens[i] = IERC20Metadata(_params.lpTokens[i]);
+        for (uint8 i = 0; i < _params.hToken.length; i++) {
+            hToken[i] = IERC20Metadata(_params.hToken[i]);
             tokenIndexes[i] = _params.tokenIndexes[i];
             stableRouters[i] = IStableRouter(_params.stableRouters[i]);
             setRewardPools(_params.rewardPools[i], i);
@@ -82,11 +82,11 @@ contract HopMultiStake is StrategyV5Chainlink {
         ChainlinkParams calldata _chainlinkParams,
         Params calldata _hopParams
     ) external onlyAdmin {
-        for (uint8 i = 0; i < _hopParams.lpTokens.length; i++) {
+        for (uint8 i = 0; i < _hopParams.hToken.length; i++) {
             // these can be set externally by setInputs()
-            inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
-            inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
+            _inputWeights[i] = _baseParams.inputWeights[i];
+            _inputDecimals[i] = _inputs[i].decimals();
         }
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
@@ -107,7 +107,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             // }
         }
         for (uint8 i = 0; i < rewardLength; i++) {
-            amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
+            amounts[i] = IERC20Metadata(_rewardTokens[i]).balanceOf(address(this));
         }
     }
 
@@ -154,16 +154,16 @@ contract HopMultiStake is StrategyV5Chainlink {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance.
-            if (asset != inputs[i] && _amounts[i] > 10) {
+            if (asset != _inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
                     _input: address(asset),
-                    _output: address(inputs[i]),
+                    _output: address(_inputs[i]),
                     _amount: _amounts[i],
                     _params: _params[i]
                 });
                 investedAmount += spent;
                 // pick up any input dust (eg. from previous liquidate()), not just the swap output
-                toDeposit = inputs[i].balanceOf(address(this));
+                toDeposit = _inputs[i].balanceOf(address(this));
             } else {
                 investedAmount += _amounts[i];
                 toDeposit = _amounts[i];
@@ -206,16 +206,16 @@ contract HopMultiStake is StrategyV5Chainlink {
             rewardPools[i][0].withdraw(toLiquidate);
 
             recovered = stableRouters[i].removeLiquidityOneToken({
-                tokenAmount: lpTokens[i].balanceOf(address(this)),
+                tokenAmount: hToken[i].balanceOf(address(this)),
                 tokenIndex: tokenIndexes[i],
                 minAmount: 1, // slippage is checked after swap
                 deadline: block.timestamp
             });
 
-            // swap the unstaked tokens (inputs[0]) for the asset asset if different
-            if (inputs[i] != asset) {
+            // swap the unstaked tokens (_inputs[0]) for the asset asset if different
+            if (_inputs[i] != asset) {
                 (recovered, ) = swapper.decodeAndSwap({
-                    _input: address(inputs[i]),
+                    _input: address(_inputs[i]),
                     _output: address(asset),
                     _amount: recovered,
                     _params: _params[i]
@@ -233,16 +233,16 @@ contract HopMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @notice Set allowances for third party contracts (except rewardTokens)
+     * @notice Set allowances for third party contracts (except _rewardTokens)
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++) {
-            inputs[i].approve(address(stableRouters[i]), _amount);
-            lpTokens[i].approve(address(stableRouters[i]), _amount);
+            _inputs[i].approve(address(stableRouters[i]), _amount);
+            hToken[i].approve(address(stableRouters[i]), _amount);
             // for (uint8 j = 0; j < rewardPools[i].length; j++) {
             if (address(rewardPools[i][0]) == address(0)) break; // no overflow (static array)
-            lpTokens[i].approve(address(rewardPools[i][0]), _amount);
+            hToken[i].approve(address(rewardPools[i][0]), _amount);
             // }
         }
     }
@@ -284,7 +284,7 @@ contract HopMultiStake is StrategyV5Chainlink {
         return
             _amount.mulDiv(
                 stableRouters[_index].getVirtualPrice(),
-                10 ** (36 - inputDecimals[_index])
+                10 ** (36 - _inputDecimals[_index])
             ); // 1e18 == lpToken[i] decimals
     }
 
@@ -298,7 +298,7 @@ contract HopMultiStake is StrategyV5Chainlink {
     ) internal view override returns (uint256) {
         return
             _amount.mulDiv(
-                10 ** (36 - inputDecimals[_index]),
+                10 ** (36 - _inputDecimals[_index]),
                 stableRouters[_index].getVirtualPrice()
             );
     }

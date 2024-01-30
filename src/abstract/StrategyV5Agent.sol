@@ -46,12 +46,12 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         address swapperAddress = address(swapper);
 
         for (uint256 i = 0; i < rewardLength; i++) {
-            if (rewardTokens[i] == address(0)) break;
-            IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
+            if (_rewardTokens[i] == address(0)) break;
+            IERC20Metadata(_rewardTokens[i]).approve(swapperAddress, _amount);
         }
         for (uint256 i = 0; i < inputLength; i++) {
-            if (address(inputs[i]) == address(0)) break;
-            inputs[i].approve(swapperAddress, _amount);
+            if (address(_inputs[i]) == address(0)) break;
+            _inputs[i].approve(swapperAddress, _amount);
         }
         asset.approve(swapperAddress, _amount);
     }
@@ -90,39 +90,45 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         asset = IERC20Metadata(_asset);
         assetDecimals = asset.decimals();
         weiPerAsset = 10**assetDecimals;
-        // last.accountedProfit = 0;
         last.accountedAssets = totalAssets();
         last.accountedSupply = totalSupply();
+        address swapperAddress = address(swapper);
+        IERC20Metadata(_asset).approve(swapperAddress, MAX_UINT256);
     }
 
     /**
      * @notice Sets the input tokens (strategy internals), make sure to liquidate() them first
-     * @param _inputs array of input tokens
+     * @param _newInputs array of input tokens
      * @param _weights array of input weights
      */
     function setInputs(
-        address[] calldata _inputs,
-        uint16[] calldata _weights
+        address[] memory _newInputs,
+        uint16[] memory _weights
     ) public onlyManager {
-        for (uint8 i = 0; i < _inputs.length; i++) {
-            inputs[i] = IERC20Metadata(_inputs[i]);
-            inputWeights[i] = _weights[i];
+        address swapperAddress = address(swapper);
+        for (uint8 i = 0; i < _newInputs.length; i++) {
+            _inputs[i] = IERC20Metadata(_newInputs[i]);
+            _inputDecimals[i] = _inputs[i].decimals();
+            _inputWeights[i] = _weights[i];
+            _inputs[i].approve(swapperAddress, MAX_UINT256);
         }
-        inputLength = uint8(_inputs.length);
+        inputLength = uint8(_newInputs.length);
     }
 
     /**
      * @notice Sets the reward tokens
-     * @param _rewardTokens array of reward tokens
+     * @param _rewards array of reward tokens
      */
     function setRewardTokens(
-        address[] calldata _rewardTokens
+        address[] calldata _rewards
     ) public onlyManager {
-        for (uint8 i = 0; i < _rewardTokens.length; i++) {
-            rewardTokens[i] = _rewardTokens[i];
-            rewardTokenIndex[_rewardTokens[i]] = i+1;
+        address swapperAddress = address(swapper);
+        for (uint8 i = 0; i < _rewards.length; i++) {
+            _rewardTokens[i] = _rewards[i];
+            rewardTokenIndex[_rewards[i]] = i+1;
+            IERC20Metadata(_rewardTokens[i]).approve(swapperAddress, MAX_UINT256);
         }
-        rewardLength = uint8(_rewardTokens.length);
+        rewardLength = uint8(_rewards.length);
     }
 
     /**

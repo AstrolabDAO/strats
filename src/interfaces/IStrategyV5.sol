@@ -16,6 +16,8 @@ interface IStrategyV5Abstract is IAs4626 {
 
     function rewardTokens() external view returns (address[8] memory);
 
+    function lpTokens() external view returns (address[8] memory);
+
     function inputLength() external view returns (uint8);
 
     function rewardLength() external view returns (uint8);
