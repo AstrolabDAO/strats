@@ -49,7 +49,7 @@ struct Requests {
     uint256 totalDeposit; // Total amount requested for deposit
     uint256 totalRedemption; // Total shares requested for redemption (1e8)
     uint256 totalClaimableRedemption; // Total shares claimable for redemption (1e8)
-    mapping(address => Erc7540Request) byOperator; // Mapping of ERC7540 requests by operator
+    mapping(address => Erc7540Request) byOwner; // Mapping of ERC7540 requests by owner
 }
 
 // Epoch used to by strategies to keep track of latest events

@@ -122,7 +122,7 @@ const networkOverrides: { [chainId: number]: Overrides } = {
   },
   8453: {
     gasLimit: 1e7,
-  },
+  }
 };
 
 
@@ -234,8 +234,8 @@ export async function logBalances(
       token = await SafeContract.build(token);
     tokenId = `${token.sym} (${token.address})`
     balances = await env.multicallProvider!.all([
-      token.balanceOf(payer),
-      token.balanceOf(receiver),
+      token.multi.balanceOf(payer),
+      token.multi.balanceOf(receiver),
     ]);
     console.log(`
     State ${step ?? ""}:\nBalances of ${tokenId
@@ -453,6 +453,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   const amountWei = BigNumber.from(o.amountWei as any);
   o.amountWei = amountWei;
   o.inputChainId ??= network.config.chainId!;
+  o.outputChainId ??= o.inputChainId;
 
   let input: Contract;
   const nativeBalance = await provider.getBalance(o.payer);
@@ -475,7 +476,10 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   } else {
     input = new Contract(o.input, erc20Abi, env.deployer);
   }
-
+  if (o.inputChainId == o.outputChainId && o.input == o.output) {
+    console.log(`input == output, skipping swap`);
+    return;
+  }
   console.log(swapperParamsToString(o));
 
   let inputBalance = await input.balanceOf(o.payer);

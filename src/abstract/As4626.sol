@@ -154,7 +154,7 @@ abstract contract As4626 is As4626Abstract {
     ) internal nonReentrant returns (uint256) {
         if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
 
-        Erc7540Request storage request = req.byOperator[_receiver];
+        Erc7540Request storage request = req.byOwner[_owner];
         uint256 claimable = maxRedemptionClaim(_owner);
         last.sharePrice = sharePrice();
 
@@ -170,7 +170,7 @@ abstract contract As4626 is As4626Abstract {
             _spendAllowance(_owner, msg.sender, _shares);
 
         if (claimable >= _shares) {
-            req.byOperator[_receiver].shares -= _shares;
+            req.byOwner[_owner].shares -= _shares;
             req.totalRedemption -= AsMaths.min(_shares, req.totalRedemption); // min 0
             req.totalClaimableRedemption -= AsMaths.min(
                 _shares,
@@ -505,25 +505,27 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Initiate a redeem request for shares
-     * @param shares Amount of shares to redeem
-     * @param operator Address initiating the request
-     * @param owner The owner of the shares to be redeemed
+     * @param _shares Amount of shares to redeem
+     * @param _operator Address initiating the request
+     * @param _owner The owner of the shares to be redeemed
      */
     function requestRedeem(
-        uint256 shares,
-        address operator,
-        address owner
+        uint256 _shares,
+        address _operator,
+        address _owner
     ) public nonReentrant {
-        if (owner != msg.sender || shares == 0 || balanceOf(owner) < shares)
+        if (_operator != msg.sender || (_owner != msg.sender && allowance(_owner, _operator) < _shares))
             revert Unauthorized();
+        if (_shares == 0 || balanceOf(_owner) < _shares)
+            revert AmountTooLow(_shares);
 
-        Erc7540Request storage request = req.byOperator[operator];
-        if (request.operator != operator) request.operator = operator;
+        Erc7540Request storage request = req.byOwner[_owner];
+        if (request.operator != _operator) request.operator = _operator;
 
         last.sharePrice = sharePrice();
         if (request.shares > 0) {
-            if (request.shares > shares)
-                revert AmountTooLow(shares);
+            if (request.shares > _shares)
+                revert AmountTooLow(_shares);
 
             // reinit the request (re-added lower)
             req.totalRedemption -= AsMaths.min(
@@ -532,17 +534,17 @@ abstract contract As4626 is As4626Abstract {
             );
             // compute request vwap
             request.sharePrice =
-                ((last.sharePrice * (shares - request.shares)) + (request.sharePrice * request.shares)) /
-                shares;
+                ((last.sharePrice * (_shares - request.shares)) + (request.sharePrice * request.shares)) /
+                _shares;
         } else {
             request.sharePrice = last.sharePrice;
         }
 
-        request.shares = shares;
+        request.shares = _shares;
         request.timestamp = block.timestamp;
-        req.totalRedemption += shares;
+        req.totalRedemption += _shares;
 
-        emit RedeemRequest(owner, operator, owner, shares);
+        emit RedeemRequest(_owner, _operator, _owner, _shares);
     }
 
     /**
@@ -571,40 +573,43 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Cancel a redeem request
-     * @param operator Address initiating the request
-     * @param owner The owner of the shares to be redeemed
+     * @param _operator Address initiating the request
+     * @param _owner The owner of the shares to be redeemed
      */
     function cancelRedeemRequest(
-        address operator,
-        address owner
+        address _operator,
+        address _owner
     ) external nonReentrant {
-
-        if (owner != msg.sender && operator != msg.sender)
-            revert Unauthorized();
-
-        Erc7540Request storage request = req.byOperator[operator];
+        Erc7540Request storage request = req.byOwner[_owner];
         uint256 shares = request.shares;
 
+        if (_operator != msg.sender || (_owner != msg.sender && allowance(_owner, _operator) < shares))
+            revert Unauthorized();
         if (shares == 0) revert AmountTooLow(0);
 
         last.sharePrice = sharePrice();
-
+        uint256 opportunityCost = 0;
         if (last.sharePrice > request.sharePrice) {
             // burn the excess shares from the loss incurred while not farming
             // with the idle funds (opportunity cost)
-            uint256 opportunityCost = shares.mulDiv(
+            opportunityCost = shares.mulDiv(
                 last.sharePrice - request.sharePrice,
                 weiPerShare
             ); // eg. 1e8+1e8-1e8 = 1e8
-            _burn(owner, opportunityCost);
+            _burn(_owner, opportunityCost);
         }
 
         req.totalRedemption -= shares;
         if (isRequestClaimable(request.timestamp))
             req.totalClaimableRedemption -= shares;
 
+        // Adjust the operator's allowance after burning shares, only if the operator is different from the owner
+        if (opportunityCost > 0 && _owner != msg.sender) {
+            uint256 currentAllowance = allowance(_owner, _operator);
+            _approve(_owner, _operator, currentAllowance - shares);
+        }
         request.shares = 0;
-        emit RedeemRequestCanceled(owner, shares);
+        emit RedeemRequestCanceled(_owner, shares);
     }
 
     /**
@@ -624,25 +629,25 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Get the pending redeem request for a specific operator
-     * @param operator The operator's address
+     * @notice Get the pending redeem request for a specific owner
+     * @param _owner The owner's address
      * @return Amount of shares pending redemption
      */
     function pendingRedeemRequest(
-        address operator
+        address _owner
     ) external view returns (uint256) {
-        return req.byOperator[operator].shares;
+        return req.byOwner[_owner].shares;
     }
 
     /**
-     * @notice Get the pending redeem request in asset for a specific operator
-     * @param operator The operator's address
+     * @notice Get the pending redeem request in asset for a specific owner
+     * @param _owner The owner's address
      * @return Amount of assets pending redemption
      */
     function pendingAssetRequest(
-        address operator
+        address _owner
     ) external view returns (uint256) {
-        Erc7540Request memory request = req.byOperator[operator];
+        Erc7540Request memory request = req.byOwner[_owner];
         return
             request.shares.mulDiv(
                 AsMaths.min(request.sharePrice, sharePrice()), // worst of
@@ -680,7 +685,7 @@ abstract contract As4626 is As4626Abstract {
      * @return The maximum redemption claim for the owner
      */
     function maxRedemptionClaim(address _owner) public view returns (uint256) {
-        Erc7540Request memory request = req.byOperator[_owner];
+        Erc7540Request memory request = req.byOwner[_owner];
         return
             isRequestClaimable(request.timestamp)
                 ? AsMaths.min(request.shares, req.totalClaimableRedemption)
