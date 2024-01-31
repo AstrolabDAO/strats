@@ -153,11 +153,11 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      */
     function totalAccountedAssets() public view returns (uint256) {
         return
-            totalAssets() -
+            totalAssets().subMax0(
             req.totalClaimableRedemption.mulDiv(
                 last.sharePrice * weiPerAsset,
                 weiPerShare ** 2
-            ); // eg. (1e8+1e8+1e6)-(1e8+1e8) = 1e6
+            )); // eg. (1e8+1e8+1e6)-(1e8+1e8) = 1e6
     }
 
     /**
