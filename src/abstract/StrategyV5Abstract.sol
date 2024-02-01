@@ -27,13 +27,16 @@ abstract contract StrategyV5Abstract is As4626Abstract {
         uint256 liquidityAvailable,
         uint256 timestamp
     );
-    error InvalidCalldata();
+
+    // Errors
+    error InvalidOrStaleValue(uint256 updateTime, int256 value);
 
     // State variables (As4626 extension)
     IWETH9 public wgas; // gas/native wrapper contract
     ISwapper public swapper; // Interface for swapping assets
     address public agent; // Address of the agent
     address internal stratProxy; // Address of the strategy proxy
+    uint256 public priceFeedValidity = 1 days; // Price feed validity period
 
     IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
     uint8[8] internal inputDecimals; // Decimals of the input assets

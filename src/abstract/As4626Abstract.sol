@@ -55,6 +55,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     error AmountTooLow(uint256 amount);
     error AddressZero();
     error FlashLoanDefault(address borrower, uint256 amount);
+    error InvalidCalldata();
 
     // Constants
     uint256 internal constant MAX_UINT256 = type(uint256).max;

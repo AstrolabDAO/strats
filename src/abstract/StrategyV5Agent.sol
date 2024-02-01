@@ -126,6 +126,16 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     }
 
     /**
+     * @dev Sets the validity duration for the price feed
+     * @param _validity The new validity duration in seconds
+     * Requirements:
+     * - Only the admin can call this function.
+     */
+    function setPriceFeedValidity(uint256 _validity) external onlyAdmin {
+        priceFeedValidity = _validity;
+    }
+
+    /**
      * @notice Retrieves the share price from the strategy via the proxy
      * @dev Calls sharePrice function on the IStrategyV5 contract through stratProxy
      * @return The current share price from the strategy

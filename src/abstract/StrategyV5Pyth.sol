@@ -17,7 +17,6 @@ import "../interfaces/IPyth.sol";
  * @notice Extended by strategies requiring price feeds (https://pyth.network/)
  */
 abstract contract StrategyV5Pyth is StrategyV5 {
-
     using AsMaths for uint256;
     using SafeERC20 for IERC20;
     using PythUtils for PythStructs.Price;
@@ -55,10 +54,17 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      */
     function updatePyth(PythParams calldata _pythParams) public onlyAdmin {
         pyth = IPythAggregator(_pythParams.pyth);
+        if (!pyth.priceFeedExists(_pythParams.assetPythId))
+            revert InvalidCalldata();
+
         assetPythId = _pythParams.assetPythId;
 
         for (uint256 i = 0; i < _pythParams.inputPythIds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
+
+            if (!pyth.priceFeedExists( _pythParams.inputPythIds[i]))
+                revert InvalidCalldata();
+
             inputPythIds[i] = _pythParams.inputPythIds[i];
             inputDecimals[i] = inputs[i].decimals();
         }
@@ -70,7 +76,11 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @param _swapData Swap callData oldAsset->newAsset
      * @param _pythId Pyth price feed id
      */
-    function updateAsset(address _asset, bytes calldata _swapData, bytes32 _pythId) external onlyAdmin {
+    function updateAsset(
+        address _asset,
+        bytes calldata _swapData,
+        bytes32 _pythId
+    ) external onlyAdmin {
         if (_pythId == bytes32(0)) revert AddressZero();
         assetPythId = _pythId;
         _updateAsset(_asset, _swapData);
@@ -82,7 +92,11 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @param _weights Array of input token weights
      * @param _pythIds Array of Pyth price feed ids
      */
-    function setInputs(address[] calldata _inputs, uint16[] calldata _weights, bytes32[] calldata _pythIds) external onlyAdmin {
+    function setInputs(
+        address[] calldata _inputs,
+        uint16[] calldata _weights,
+        bytes32[] calldata _pythIds
+    ) external onlyAdmin {
         for (uint256 i = 0; i < _inputs.length; i++) {
             if (address(inputs[i]) == address(0)) break;
             inputPythIds[i] = _pythIds[i];
@@ -96,16 +110,20 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment
      */
-    function assetExchangeRate(uint8 inputId) public view returns (uint256) {
-        if (inputPythIds[inputId] == assetPythId)
-            return weiPerShare; // == weiPerUnit of asset == 1:1
-        PythStructs.Price memory inputPrice = pyth.getPriceUnsafe(inputPythIds[inputId]);
-        PythStructs.Price memory assetPrice = pyth.getPriceUnsafe(assetPythId);
+    function assetExchangeRate(uint8 inputId, uint256 validity) public view returns (uint256) {
+        if (inputPythIds[inputId] == assetPythId) return weiPerShare; // == weiPerUnit of asset == 1:1
+        (PythStructs.Price memory inputPrice, PythStructs.Price memory assetPrice) = (
+            pyth.getPrice(inputPythIds[inputId]),
+            pyth.getPrice(assetPythId)
+        );
+        require(
+            block.timestamp <= (inputPrice.publishTime + validity) &&
+            block.timestamp <= (assetPrice.publishTime + validity)
+        , "Stale price");
+
         uint256 inputPriceWei = inputPrice.toUint256(inputDecimals[inputId]); // input (quote) price in wei
         uint256 assetPriceWei = assetPrice.toUint256(assetDecimals); // asset (base) price in wei
-        uint256 rate = AsMaths.exchangeRate(
-            inputPriceWei, // asset (base) price in wei
-            assetPriceWei, assetDecimals); // asset (base) decimals (rate divider)
+        uint256 rate = inputPriceWei.exchangeRate(assetPriceWei, assetDecimals); // asset (base) decimals (rate divider)
         return rate;
     }
 }

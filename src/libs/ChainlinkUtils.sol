@@ -9,7 +9,6 @@ import "./AsMaths.sol";
  * @dev Utilities related to Chainlink oracle contracts
  */
 library ChainlinkUtils {
-
     using AsMaths for uint256;
 
     /**
@@ -18,24 +17,25 @@ library ChainlinkUtils {
      * @param _priceFeeds Chainlink oracle price feeds [quote,base] eg. [input,asset]
      * @return The amount available for investment
      */
-    function assetExchangeRate(IChainlinkAggregatorV3[2] calldata _priceFeeds, uint8 _baseDecimals, uint8 _baseFeedDecimals) public view returns (uint256) {
-
+    function assetExchangeRate(
+        IChainlinkAggregatorV3[2] calldata _priceFeeds,
+        uint8 _baseDecimals,
+        uint8 _baseFeedDecimals,
+        uint256 validityPeriod
+    ) public view returns (uint256) {
         if (address(_priceFeeds[0]) == address(_priceFeeds[1]))
             return 10 ** uint256(_baseDecimals); // == weiPerUnit of asset == 1:1
+        (, int256 quotePrice, , uint quoteUpdateTime, ) = _priceFeeds[0].latestRoundData();
+        (, int256 basePrice, , uint baseUpdateTime, ) = _priceFeeds[1].latestRoundData();
 
-        (uint256 quotePrice, uint256 basePrice) = (
-            uint256(_priceFeeds[0].latestAnswer()),
-            uint256(_priceFeeds[1].latestAnswer())
-        );
-        uint256 rate = quotePrice.exchangeRate(basePrice, _baseFeedDecimals); // in _baseFeedDecimals
+        require(
+            quotePrice > 0 && block.timestamp <= (quoteUpdateTime + validityPeriod) &&
+            basePrice > 0 && block.timestamp <= (baseUpdateTime + validityPeriod),
+            "Stale price");
 
-        if (_baseDecimals == _baseFeedDecimals) {
-            return rate; // same decimals >> no conversion needed
-        } else if (_baseDecimals > _baseFeedDecimals) {
-            // negative feed vs token decimalsOffset >> multiply by 10^(-decimalsOffset)
-            return rate * 10**uint256(_baseDecimals - _baseFeedDecimals);
-        } else {
-            return rate / 10**uint256(_baseFeedDecimals - _baseDecimals);
-        }
+        uint256 rate = uint256(quotePrice).exchangeRate(uint256(basePrice), _baseFeedDecimals); // in _baseFeedDecimals
+        return _baseDecimals >= _baseFeedDecimals ?
+            rate * 10 ** uint256(_baseDecimals - _baseFeedDecimals) :
+            rate / 10 ** uint256(_baseFeedDecimals - _baseDecimals);
     }
 }

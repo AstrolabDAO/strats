@@ -16,7 +16,6 @@ import "./StrategyV5.sol";
  * @notice Extended by strategies requiring price feeds (https://data.chain.link/)
  */
 abstract contract StrategyV5Chainlink is StrategyV5 {
-
     using AsMaths for uint256;
     using SafeERC20 for IERC20;
 
@@ -50,13 +49,19 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @notice Updates the Chainlink oracle and the input Chainlink ids
      * @param _chainlinkParams Chainlink specific parameters
      */
-    function updateChainlink(ChainlinkParams calldata _chainlinkParams) public onlyAdmin {
-        assetPriceFeed = IChainlinkAggregatorV3(_chainlinkParams.assetPriceFeed);
+    function updateChainlink(
+        ChainlinkParams calldata _chainlinkParams
+    ) public onlyAdmin {
+        assetPriceFeed = IChainlinkAggregatorV3(
+            _chainlinkParams.assetPriceFeed
+        );
         assetFeedDecimals = assetPriceFeed.decimals();
 
         for (uint256 i = 0; i < _chainlinkParams.inputPriceFeeds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
-            inputPriceFeeds[i] = IChainlinkAggregatorV3(_chainlinkParams.inputPriceFeeds[i]);
+            inputPriceFeeds[i] = IChainlinkAggregatorV3(
+                _chainlinkParams.inputPriceFeeds[i]
+            );
             inputFeedDecimals[i] = inputPriceFeeds[i].decimals();
         }
     }
@@ -67,7 +72,11 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _swapData Swap callData oldAsset->newAsset
      * @param _priceFeed Address of the Chainlink price feed
      */
-    function updateAsset(address _asset, bytes calldata _swapData, address _priceFeed) external onlyAdmin {
+    function updateAsset(
+        address _asset,
+        bytes calldata _swapData,
+        address _priceFeed
+    ) external onlyAdmin {
         if (_priceFeed == address(0)) revert AddressZero();
         assetPriceFeed = IChainlinkAggregatorV3(_priceFeed);
         assetFeedDecimals = assetPriceFeed.decimals();
@@ -80,7 +89,11 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _weights Array of input token weights
      * @param _priceFeeds Array of Chainlink price feed addresses
      */
-    function setInputs(address[] calldata _inputs, uint16[] calldata _weights, address[] calldata _priceFeeds) external onlyAdmin {
+    function setInputs(
+        address[] calldata _inputs,
+        uint16[] calldata _weights,
+        address[] calldata _priceFeeds
+    ) external onlyAdmin {
         for (uint256 i = 0; i < _inputs.length; i++) {
             if (_priceFeeds[i] == address(0)) revert AddressZero();
             inputPriceFeeds[i] = IChainlinkAggregatorV3(_priceFeeds[i]);
@@ -95,24 +108,43 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @return The amount available for investment
      */
     function assetExchangeRate(uint8 _index) public view returns (uint256) {
-        return ChainlinkUtils.assetExchangeRate(
-            [inputPriceFeeds[_index], assetPriceFeed], assetDecimals, assetFeedDecimals);
+        return
+            ChainlinkUtils.assetExchangeRate(
+                [inputPriceFeeds[_index], assetPriceFeed],
+                assetDecimals,
+                assetFeedDecimals,
+                priceFeedValidity
+            );
     }
 
     /**
      * @notice Converts asset wei amount to input wei amount
      * @return Input amount in wei
      */
-    function _assetToInput(uint256 _amount, uint8 _index) internal view override returns (uint256) {
-        return _amount.mulDiv(10**inputDecimals[_index], assetExchangeRate(_index));
+    function _assetToInput(
+        uint256 _amount,
+        uint8 _index
+    ) internal view override returns (uint256) {
+        return
+            _amount.mulDiv(
+                10 ** inputDecimals[_index],
+                assetExchangeRate(_index)
+            );
     }
 
     /**
      * @notice Converts input wei amount to asset wei amount
      * @return Asset amount in wei
      */
-    function _inputToAsset(uint256 _amount, uint8 _index) internal view override returns (uint256) {
-        return _amount.mulDiv(assetExchangeRate(_index), 10**inputDecimals[_index]);
+    function _inputToAsset(
+        uint256 _amount,
+        uint8 _index
+    ) internal view override returns (uint256) {
+        return
+            _amount.mulDiv(
+                assetExchangeRate(_index),
+                10 ** inputDecimals[_index]
+            );
     }
 
     /**
@@ -121,9 +153,19 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _index The index of the input token
      * @return The converted amount of tokens
      */
-    function _usdToInput(uint256 _amount, uint8 _index) internal view returns (uint256) {
-        return _amount.mulDiv(10**uint256(inputFeedDecimals[_index]) * inputDecimals[_index],
-            uint256(inputPriceFeeds[_index].latestAnswer()) * 1e6); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
+    function _usdToInput(
+        uint256 _amount,
+        uint8 _index
+    ) internal view returns (uint256) {
+        (, int256 price, , uint256 updateTime, ) = inputPriceFeeds[_index]
+            .latestRoundData();
+        if (block.timestamp > (updateTime + priceFeedValidity))
+            revert InvalidOrStaleValue(updateTime, price);
+        return
+            _amount.mulDiv(
+                10 ** (uint256(inputFeedDecimals[_index]) + inputDecimals[_index] - 6),
+                uint256(price)
+            ); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
 
     /**
@@ -132,8 +174,18 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _index The index of the price feed to use for conversion
      * @return The equivalent amount in USD
      */
-    function _inputToUsd(uint256 _amount, uint8 _index) internal view returns (uint256) {
-        return _amount.mulDiv(uint256(inputPriceFeeds[_index].latestAnswer()) * 1e6,
-            10**uint256(inputFeedDecimals[_index]) * inputDecimals[_index]); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
+    function _inputToUsd(
+        uint256 _amount,
+        uint8 _index
+    ) internal view returns (uint256) {
+        (, int256 price, , uint256 updateTime, ) = inputPriceFeeds[_index]
+            .latestRoundData();
+        if (block.timestamp > (updateTime + priceFeedValidity))
+            revert InvalidOrStaleValue(updateTime, price);
+        return
+            _amount.mulDiv(
+                uint256(price),
+                10 ** uint256(inputFeedDecimals[_index] + inputDecimals[_index] - 6)
+            ); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
 }

@@ -9,6 +9,7 @@ import "./AsMaths.sol";
  * @dev Utilities related to Pyth oracle contracts
  */
 library PythUtils {
+    using AsMaths for uint256;
 
     /**
      * @notice Converts a Pyth price to a uint256 value with the specified target decimals.
@@ -21,21 +22,14 @@ library PythUtils {
         PythStructs.Price memory price,
         uint8 targetDecimals
     ) public pure returns (uint256) {
-        if (price.price < 0 || price.expo > 0 || price.expo < -255) {
-            revert("Invalid Pyth price");
-        }
 
-        uint8 priceDecimals = uint8(uint32(-1 * price.expo));
+        require (price.price >= 0 && price.expo <= 0 && price.expo > -256, "Invalid price");
 
-        if (targetDecimals >= priceDecimals) {
-            return
-                uint(uint64(price.price)) *
-                10 ** uint32(targetDecimals - priceDecimals);
-        } else {
-            return
-                uint(uint64(price.price)) /
-                10 ** uint32(priceDecimals - targetDecimals);
-        }
+        uint8 priceDecimals = uint8(uint32(-price.expo));
+        uint64 basePrice = uint64(price.price);
+        return targetDecimals >= priceDecimals ?
+            basePrice * 10 ** uint32(targetDecimals - priceDecimals) :
+            basePrice / 10 ** uint32(priceDecimals - targetDecimals);
     }
 
     /**
@@ -53,6 +47,6 @@ library PythUtils {
             toUint256(prices[0], decimals[0]),
             toUint256(prices[1], decimals[1])
         ];
-        return AsMaths.exchangeRate(pricesWei[0], pricesWei[1], decimals[1]);
+        return pricesWei[0].exchangeRate(pricesWei[1], decimals[1]);
     }
 }
