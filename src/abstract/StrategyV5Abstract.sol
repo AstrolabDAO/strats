@@ -63,6 +63,6 @@ abstract contract StrategyV5Abstract is As4626Abstract {
      * @return The total amount of asset assets requested pending redemption
      */
     function totalPendingAssetRequest() public view returns (uint256) {
-        return convertToAssets(totalPendingRedemptionRequest());
+        return convertToAssets(totalPendingRedemptionRequest(), false);
     }
 }
