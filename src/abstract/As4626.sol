@@ -290,15 +290,20 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Trigger a fee collection: mints shares to the feeCollector
      */
-    function _collectFees() internal nonReentrant {
+    function _collectFees() internal nonReentrant returns (uint256 toMint) {
 
         if (feeCollector == address(0))
             revert AddressZero();
 
         (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) = AsAccounting.computeFees(IAs4626(address(this)));
 
-        if (profit == 0) return;
-        uint256 toMint = convertToShares(feesAmount + claimableAssetFees, false); // feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
+        // sum up all fees: feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
+        toMint = convertToShares(feesAmount + claimableAssetFees, false);
+
+        // do not mint nor emit event if there are no fees to collect
+        if (toMint == 0)
+            return 0;
+
         emit FeeCollection(
             feeCollector,
             assets,
@@ -319,8 +324,8 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Trigger a fee collection: mints shares to the feeCollector
      */
-    function collectFees() external onlyKeeper {
-        _collectFees();
+    function collectFees() external onlyKeeper returns (uint256) {
+        return _collectFees();
     }
 
     /**
@@ -535,7 +540,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _operator,
         address _owner
-    ) public nonReentrant {
+    ) public nonReentrant whenNotPaused {
         if (_operator != msg.sender || (_owner != msg.sender && allowance(_owner, _operator) < _shares))
             revert Unauthorized();
         if (_shares == 0 || balanceOf(_owner) < _shares)

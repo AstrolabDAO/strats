@@ -69,30 +69,41 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
 
     /**
      * @notice Changes the strategy asset token (automatically pauses the strategy)
-     * make sure to update the oracles by calling the appropriate updateAsset
+     * make sure to update the oracles by calling eg. StrategyV5Chainlink/Pyth.updateAsset()
+     * if the new asset has a different price (USD denominated), this will cause a sharePrice() sudden change
      * @param _asset Address of the token
      * @param _swapData Swap callData oldAsset->newAsset
      */
     function updateAsset(address _asset, bytes calldata _swapData) external virtual onlyAdmin {
+
         if (_asset == address(0)) revert AddressZero();
         if (_asset == address(asset)) return;
+
+        // check if there are pending redemptions
+        // liquidate() should be called first to ensure rebasing
+        if (req.totalRedemption > 0) revert Unauthorized();
+
+        // pre-emptively pause the strategy for manual checks
         _pause();
+
         // slippage is checked within Swapper >> no need to use (received, spent)
         swapper.decodeAndSwapBalance(
             address(asset),
             _asset,
             _swapData
         );
-        // denomination change >> reset accounted values
+
+        // reset all cached accounted values as a denomination change might change the accounting basis
         expectedProfits = 0; // reset trailing profits
-        totalLent = 0; // reset totalLent
-        _collectFees(); // claim pending fees
+        totalLent = 0; // reset totalLent (broken analytics)
+        _collectFees(); // claim all pending fees to reset claimableAssetFees
         asset = IERC20Metadata(_asset);
         assetDecimals = asset.decimals();
         weiPerAsset = 10**assetDecimals;
-        // last.accountedProfit = 0;
         last.accountedAssets = totalAssets();
         last.accountedSupply = totalSupply();
+        address swapperAddress = address(swapper);
+        IERC20Metadata(_asset).approve(swapperAddress, MAX_UINT256);
     }
 
     /**
@@ -104,9 +115,12 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         address[] calldata _inputs,
         uint16[] calldata _weights
     ) public onlyAdmin {
+        address swapperAddress = address(swapper);
         for (uint8 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
+            inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
+            inputs[i].approve(swapperAddress, MAX_UINT256);
         }
         inputLength = uint8(_inputs.length);
     }

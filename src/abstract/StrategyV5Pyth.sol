@@ -100,7 +100,6 @@ abstract contract StrategyV5Pyth is StrategyV5 {
         for (uint256 i = 0; i < _inputs.length; i++) {
             if (address(inputs[i]) == address(0)) break;
             inputPythIds[i] = _pythIds[i];
-            inputDecimals[i] = inputs[i].decimals();
         }
         _setInputs(_inputs, _weights);
     }
