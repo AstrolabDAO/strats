@@ -98,7 +98,7 @@ library AsMaths {
         uint256 amount,
         uint256 basisPoints
     ) internal pure returns (uint256) {
-        return mulDiv(amount, BP_BASIS, BP_BASIS + basisPoints);
+        return mulDiv(amount, BP_BASIS, BP_BASIS - basisPoints);
     }
 
     /**
@@ -111,7 +111,7 @@ library AsMaths {
         uint256 amount,
         uint256 basisPoints
     ) internal pure returns (uint256) {
-        return mulDiv(amount, BP_BASIS, BP_BASIS - basisPoints);
+        return mulDiv(amount, BP_BASIS, BP_BASIS + basisPoints);
     }
 
     /**

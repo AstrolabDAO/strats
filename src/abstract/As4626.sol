@@ -193,6 +193,15 @@ abstract contract As4626 is As4626Abstract {
 
         asset.safeTransfer(_receiver, _amount);
 
+        uint256 newSupply = totalAccountedSupply();
+
+        uint256 totalValueBefore = last.sharePrice * (newSupply + _shares);
+        uint256 totalValueAfter = totalValueBefore - (_shares * price);
+
+        // re-calculate the sharePrice dynamically to avoid sharePrice() distortion
+        if (newSupply > 1)
+            last.sharePrice = totalValueAfter / newSupply;
+
         emit Withdraw(msg.sender, _receiver, _owner, _amount, _shares);
         return _amount;
     }
@@ -437,7 +446,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _owner
     ) public view returns (uint256 shares) {
-        return convertToShares(_amount, false).subBp(exemptionList[_owner] ? 0 : fees.entry);
+        return convertToShares(_amount, false).revSubBp(exemptionList[_owner] ? 0 : fees.entry);
     }
 
     /**
@@ -458,7 +467,7 @@ abstract contract As4626 is As4626Abstract {
      * @return Preview amount of asset tokens that the caller will get for his shares
      */
     function previewRedeem(uint256 _shares, address _owner) public view returns (uint256) {
-        return convertToAssets(_shares, false).subBp(exemptionList[_owner] ? 0 : fees.exit);
+        return convertToAssets(_shares, false).revSubBp(exemptionList[_owner] ? 0 : fees.exit);
     }
 
     /**
