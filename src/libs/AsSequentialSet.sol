@@ -140,6 +140,7 @@ library AsSequentialSet {
      */
     function remove(Set storage q, bytes32 o) internal {
         uint32 i = q.index[o];
+        q.index[o] = 0;
         require(i > 0, "Element not found");
         removeAt(q, i - 1);
     }
