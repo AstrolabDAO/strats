@@ -99,7 +99,7 @@ abstract contract As4626 is As4626Abstract {
 
         // slice the fee from the amount (gas optimized)
         if (!exemptionList[_receiver])
-            claimableAssetFees += _amount.revBp(fees.entry);
+            claimableAssetFees += _amount.bp(fees.entry);
 
         // mint shares
         _mint(_receiver, _shares);
