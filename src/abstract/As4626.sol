@@ -95,14 +95,22 @@ abstract contract As4626 is As4626Abstract {
         if (_amount > maxDeposit(address(0)) || _shares > _amount.mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset))
             revert AmountTooHigh(_amount);
 
+        uint256 vaultAssets = asset.balanceOf(address(this));
         asset.safeTransferFrom(msg.sender, address(this), _amount);
 
         // slice the fee from the amount (gas optimized)
         if (!exemptionList[_receiver])
             claimableAssetFees += _amount.bp(fees.entry);
 
-        // mint shares
+        // reuse the vaulAssets variable to save gas
+        uint256 received = asset.balanceOf(address(this)) - vaultAssets;
+
+        // if received amount is less than the requested amount, mint proportionally less shares
+        if (received < _amount)
+           _shares = _shares.mulDiv(received, _amount);
+
         _mint(_receiver, _shares);
+
         emit Deposit(msg.sender, _receiver, _amount, _shares);
         return _shares;
     }
