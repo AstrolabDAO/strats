@@ -103,7 +103,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     function setInputs(
         address[] calldata _inputs,
         uint16[] calldata _weights
-    ) public onlyManager {
+    ) public onlyAdmin {
         for (uint8 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
             inputWeights[i] = _weights[i];
