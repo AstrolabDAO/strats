@@ -69,7 +69,7 @@ abstract contract As4626 is As4626Abstract {
     function mint(
         uint256 _shares,
         address _receiver
-    ) public returns (uint256 assets) {
+    ) public whenNotPaused returns (uint256 assets) {
         return _deposit(previewMint(_shares), _shares, _receiver);
     }
 
@@ -243,7 +243,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver,
         address _owner
-    ) external returns (uint256 assets) {
+    ) external whenNotPaused returns (uint256 assets) {
         return _withdraw(previewRedeem(_shares), _shares, _receiver, _owner);
     }
 
@@ -260,7 +260,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minAmountOut,
         address _receiver,
         address _owner
-    ) external returns (uint256 assets) {
+    ) external whenNotPaused returns (uint256 assets) {
         assets = _withdraw(
             previewRedeem(_shares),
             _shares, // _shares
@@ -501,7 +501,7 @@ abstract contract As4626 is As4626Abstract {
     // function requestDeposit(
     //     uint256 assets,
     //     address operator
-    // ) external virtual {}
+    // ) external virtual whenNotPaused {}
 
     /**
      * @notice Initiate a redeem request for shares
