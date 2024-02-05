@@ -726,19 +726,17 @@ abstract contract As4626 is As4626Abstract {
         bytes calldata params
     ) external nonReentrant {
 
-        uint256 available = availableBorrowable();
-        if (amount > available || amount > maxLoan) revert AmountTooHigh(amount);
+        if (amount > availableBorrowable() || amount > maxLoan) revert AmountTooHigh(amount);
 
         uint256 fee = exemptionList[msg.sender] ? 0 : amount.bp(fees.flash);
-        uint256 toRepay = amount + fee;
-
         uint256 balanceBefore = asset.balanceOf(address(this));
+
         totalLent += amount;
 
-        asset.safeTransferFrom(address(this), address(receiver), amount);
+        asset.safeTransfer(address(receiver), amount);
         receiver.executeOperation(address(asset), amount, fee, msg.sender, params);
 
-        if ((asset.balanceOf(address(this)) - balanceBefore) < toRepay)
+        if ((asset.balanceOf(address(this)) - balanceBefore) < fee)
             revert FlashLoanDefault(msg.sender, amount);
 
         emit FlashLoan(msg.sender, amount, fee);
