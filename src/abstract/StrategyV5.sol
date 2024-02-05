@@ -140,8 +140,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
         req.totalClaimableRedemption += pendingRedemption;
 
         // we use availableClaimable() and not availableBorrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
-        liquidityAvailable = availableClaimable().subMax0(req.totalClaimableRedemption.mulDiv(weiPerAsset, last.sharePrice));
-
+        liquidityAvailable = availableClaimable().subMax0(req.totalClaimableRedemption.mulDiv(last.sharePrice * weiPerAsset, weiPerShare ** 2));
         // check if we have enough cash to repay redemption requests
         if ((liquidityAvailable < _minLiquidity) && !_panic)
             revert AmountTooLow(liquidityAvailable);
