@@ -69,8 +69,8 @@ abstract contract As4626 is As4626Abstract {
     function mint(
         uint256 _shares,
         address _receiver
-    ) public whenNotPaused returns (uint256 assets) {
-        return _deposit(previewMint(_shares), _shares, _receiver);
+    ) public returns (uint256 assets) {
+        return _deposit(previewMint(_shares, _receiver), _shares, _receiver);
     }
 
     /**
@@ -126,7 +126,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _receiver
     ) public whenNotPaused returns (uint256 shares) {
-        return _deposit(_amount, previewDeposit(_amount), _receiver);
+        return _deposit(_amount, previewDeposit(_amount, _receiver), _receiver);
     }
 
     /**
@@ -142,7 +142,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minShareAmount,
         address _receiver
     ) public whenNotPaused returns (uint256 shares) {
-        shares = _deposit(_amount, convertToShares(_amount, false).subBp(exemptionList[msg.sender] ? 0 : fees.entry), _receiver);
+        shares = _deposit(_amount, convertToShares(_amount, false).subBp(exemptionList[_receiver] ? 0 : fees.entry), _receiver);
         if (shares < _minShareAmount) revert AmountTooLow(shares);
     }
 
@@ -227,7 +227,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external whenNotPaused returns (uint256) {
-        return _withdraw(_amount, previewWithdraw(_amount), _receiver, _owner);
+        return _withdraw(_amount, previewWithdraw(_amount, _owner), _receiver, _owner);
     }
 
     /**
@@ -244,7 +244,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) public whenNotPaused returns (uint256 amount) {
-        amount = _withdraw(_amount, previewWithdraw(_amount), _receiver, _owner);
+        amount = _withdraw(_amount, previewWithdraw(_amount, _owner), _receiver, _owner);
         if (amount < _minAmount) revert AmountTooLow(amount);
     }
 
@@ -260,8 +260,8 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver,
         address _owner
-    ) external whenNotPaused returns (uint256 assets) {
-        return _withdraw(previewRedeem(_shares), _shares, _receiver, _owner);
+    ) external returns (uint256 assets) {
+        return _withdraw(previewRedeem(_shares, _owner), _shares, _receiver, _owner);
     }
 
     /**
@@ -279,7 +279,7 @@ abstract contract As4626 is As4626Abstract {
         address _owner
     ) external whenNotPaused returns (uint256 assets) {
         assets = _withdraw(
-            previewRedeem(_shares),
+            previewRedeem(_shares, _owner),
             _shares, // _shares
             _receiver, // _receiver
             _owner // _owner
@@ -442,24 +442,31 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Preview how much asset tokens the caller has to pay to acquire x shares
      * @param _shares Amount of shares that we acquire
-     * @param _owner The owner of the shares to be redeemed
+     * @param _receiver The owner of the shares to be redeemed
      * @return shares Amount of asset tokens that the caller should pay
      */
-    function previewMint(uint256 _shares, address _owner) public view returns (uint256) {
-        return convertToAssets(_shares, true).addBp(exemptionList[_owner] ? 0 : fees.entry);
+    function previewMint(uint256 _shares, address _receiver) public view returns (uint256) {
+        return convertToAssets(_shares, true).addBp(exemptionList[_receiver] ? 0 : fees.entry);
     }
 
     /**
      * @notice Previews the amount of shares that will be minted for a given deposit amount
      * @param _amount Amount of asset tokens to deposit
-     * @param _owner The owner of the shares to be redeemed
+     * @param _receiver The future owner of the shares to be minted
      * @return shares Amount of shares that will be minted
      */
-    function previewDeposit(
-        uint256 _amount,
-        address _owner
-    ) public view returns (uint256 shares) {
-        return convertToShares(_amount, false).revSubBp(exemptionList[_owner] ? 0 : fees.entry);
+    function previewDeposit(uint256 _amount, address _receiver) public view returns (uint256 shares) {
+        return convertToShares(_amount, false).revSubBp(exemptionList[_receiver] ? 0 : fees.entry);
+    }
+
+    /**
+     * @notice Previews the amount of shares that will be minted for a given deposit amount
+     * @dev Use previewWithdraw(uint256 _assets, address _receiver) to get the exact fee exempted amount
+     * @param _amount Amount of asset tokens to deposit
+     * @return shares Amount of shares that will be minted
+     */
+    function previewDeposit(uint256 _amount) external view returns (uint256 shares) {
+        return previewDeposit(_amount, address(0));
     }
 
     /**
@@ -471,6 +478,16 @@ abstract contract As4626 is As4626Abstract {
      */
     function previewWithdraw(uint256 _assets, address _owner) public view returns (uint256) {
         return convertToShares(_assets, true).addBp(exemptionList[_owner] ? 0 : fees.exit);
+    }
+
+    /**
+     * @notice Preview how many shares the caller needs to burn to get his assets back
+     * @dev Use previewWithdraw(uint256 _assets, address _owner) to get the exact fee exempted amount
+     * @param _assets How much we want to get
+     * @return How many shares will be burnt
+     */
+    function previewWithdraw(uint256 _assets) external view returns (uint256) {
+        return previewWithdraw(_assets, address(0));
     }
 
     /**
