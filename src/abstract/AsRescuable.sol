@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "../libs/SafeERC20.sol";
+import "./AsRescuableAbstract.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -13,16 +14,10 @@ import "../libs/SafeERC20.sol";
  * @title AsRescuable Abstract - Token rescue extension for payable contracts
  * @author Astrolab DAO
  */
-abstract contract AsRescuable {
+abstract contract AsRescuable is AsRescuableAbstract {
 
     using SafeERC20 for IERC20Metadata;
 
-    struct RescueRequest {
-        uint256 timestamp;
-        address receiver;
-    }
-
-    mapping(address => RescueRequest) private rescueRequests;
     uint64 constant RESCUE_TIMELOCK = 2 days;
     uint64 constant RESCUE_VALIDITY = 7 days;
 

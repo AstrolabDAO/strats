@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/IStrategyV5.sol";
 import "./StrategyV5Abstract.sol";
+import "./AsRescuableAbstract.sol";
 import "./AsProxy.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/AsArrays.sol";
@@ -19,7 +20,7 @@ import "../libs/AsMaths.sol";
  * @notice All StrategyV5 calls are delegated to the agent (StrategyV5Agent)
  * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
  */
-abstract contract StrategyV5 is StrategyV5Abstract, AsProxy {
+abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy {
     using AsMaths for uint256;
     using AsMaths for int256;
     using AsArrays for bytes[];
