@@ -450,6 +450,17 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
+     * @notice Preview how much asset tokens the caller has to pay to acquire x shares
+     * @dev Use previewMint(uint256 _shares, address _receiver) to get the exact fee exempted Amount
+     * @dev This function is the ERC4626 one
+     * @param _shares Amount of shares that we acquire
+     * @return shares Amount of asset tokens that the caller should pay
+     */
+    function previewMint(uint256 _shares) external view returns (uint256) {
+        return previewMint(_shares, address(0));
+    }
+
+    /**
      * @notice Previews the amount of shares that will be minted for a given deposit amount
      * @param _amount Amount of asset tokens to deposit
      * @param _receiver The future owner of the shares to be minted
@@ -461,7 +472,7 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Previews the amount of shares that will be minted for a given deposit amount
-     * @dev Use previewWithdraw(uint256 _assets, address _receiver) to get the exact fee exempted Amount
+     * @dev Use previewDeposit(uint256 _amount, address _receiver) to get the exact fee exempted Amount
      * @dev This function is the ERC4626 one
      * @param _amount Amount of asset tokens to deposit
      * @return shares Amount of shares that will be minted
@@ -484,6 +495,7 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Preview how many shares the caller needs to burn to get his assets back
      * @dev Use previewWithdraw(uint256 _assets, address _owner) to get the exact fee exempted amount
+     * @dev This function is the ERC4626 one
      * @param _assets How much we want to get
      * @return How many shares will be burnt
      */
@@ -499,6 +511,17 @@ abstract contract As4626 is As4626Abstract {
      */
     function previewRedeem(uint256 _shares, address _owner) public view returns (uint256) {
         return convertToAssets(_shares, false).revSubBp(exemptionList[_owner] ? 0 : fees.exit);
+    }
+
+    /**
+     * @notice Preview how many asset tokens the caller will get for burning his _shares
+     * @dev Use previewRedeem(uint256 _shares, address _owner) to get the exact fee exempted amount
+     * @dev This function is the ERC4626 one
+     * @param _shares Amount of shares that we burn
+     * @return Preview amount of asset tokens that the caller will get for his shares
+     */
+    function previewRedeem(uint256 _shares) external view returns (uint256) {
+        return previewRedeem(_shares, address(0));
     }
 
     /**
