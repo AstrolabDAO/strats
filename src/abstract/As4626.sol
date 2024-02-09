@@ -98,12 +98,12 @@ abstract contract As4626 is As4626Abstract {
         uint256 vaultAssets = asset.balanceOf(address(this));
         asset.safeTransferFrom(msg.sender, address(this), _amount);
 
-        // slice the fee from the amount (gas optimized)
-        if (!exemptionList[_receiver])
-            claimableAssetFees += _amount.bp(fees.entry);
-
         // reuse the vaulAssets variable to save gas
         uint256 received = asset.balanceOf(address(this)) - vaultAssets;
+
+        // slice the fee from the amount received (gas optimized)
+        if (!exemptionList[_receiver])
+            claimableAssetFees += received.bp(fees.entry);
 
         // if received amount is less than the requested amount, mint proportionally less shares
         if (received < _amount)
