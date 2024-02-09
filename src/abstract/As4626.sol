@@ -69,7 +69,7 @@ abstract contract As4626 is As4626Abstract {
     function mint(
         uint256 _shares,
         address _receiver
-    ) public returns (uint256 assets) {
+    ) public whenNotPaused returns (uint256 assets) {
         return _deposit(previewMint(_shares, _receiver), _shares, _receiver);
     }
 
@@ -260,7 +260,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver,
         address _owner
-    ) external returns (uint256 assets) {
+    ) external whenNotPaused returns (uint256 assets) {
         return _withdraw(previewRedeem(_shares, _owner), _shares, _receiver, _owner);
     }
 
@@ -461,7 +461,8 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Previews the amount of shares that will be minted for a given deposit amount
-     * @dev Use previewWithdraw(uint256 _assets, address _receiver) to get the exact fee exempted amount
+     * @dev Use previewWithdraw(uint256 _assets, address _receiver) to get the exact fee exempted Amount
+     * @dev This function is the ERC4626 one
      * @param _amount Amount of asset tokens to deposit
      * @return shares Amount of shares that will be minted
      */
