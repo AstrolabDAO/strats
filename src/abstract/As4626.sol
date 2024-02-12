@@ -103,7 +103,7 @@ abstract contract As4626 is As4626Abstract {
 
         // slice the fee from the amount received (gas optimized)
         if (!exemptionList[_receiver])
-            claimableAssetFees += received.bp(fees.entry);
+            claimableAssetFees += received.revBp(fees.entry);
 
         // if received amount is less than the requested amount, mint proportionally less shares
         if (received < _amount)
