@@ -20,6 +20,7 @@ export const suite: Partial<IFlow>[] = [
   { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
   { fn: withdraw, params: [490], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
   { fn: redeem, params: [500], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+
   // ERC7540 tests
   { fn: requestWithdraw, params: [1000], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
@@ -47,7 +48,6 @@ export const suite: Partial<IFlow>[] = [
   { fn: requestRescue, params: [weth] }, // request erc20 assets rescual from signer 1 (manager only) on strat
   { elapsedSec: day*3, revertState: true, fn: rescue, params: [weth], assert: (n: boolean) => n } // execute time-locked rescual from signer 1 (manager only)
 
-  // WIP tests
   // { fn: updateAsset, params: ["USDCe"], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
   // { fn: shuffleInputs, params: [], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 ];
