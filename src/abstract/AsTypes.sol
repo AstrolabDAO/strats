@@ -41,6 +41,7 @@ struct Erc7540Request {
     uint256 sharePrice; // Share price at request time
     address operator; // Request owner (can claim the owner's request)
     uint256 shares; // Amount of shares in the request
+    uint256 requestId; // Request ID
 }
 
 // ERC7540 Requests used by strategies to manage asynchronous deposits and redemptions

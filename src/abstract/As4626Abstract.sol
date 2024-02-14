@@ -80,6 +80,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     mapping(address => bool) public exemptionList; // List of addresses exempted from fees
 
     Requests internal req;
+    uint256 internal requestId; // redeem request id
 
     // Flash loan
     uint256 internal totalLent;

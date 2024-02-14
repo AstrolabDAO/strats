@@ -134,7 +134,7 @@ interface ICometRewards {
         address token;
         uint64 rescaleFactor;
         bool shouldUpscale;
-        // uint256 multiplier;
+        uint256 multiplier;
     }
 
     /**

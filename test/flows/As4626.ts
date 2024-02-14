@@ -251,6 +251,7 @@ export async function requestWithdraw(
       amount,
       env.deployer.address,
       env.deployer.address,
+      "0x",
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
@@ -339,6 +340,7 @@ export async function requestRedeem(
       amount,
       env.deployer.address,
       env.deployer.address,
+      "0x",
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());

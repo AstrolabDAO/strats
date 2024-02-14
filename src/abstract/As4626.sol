@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./As4626Abstract.sol";
 import "./AsTypes.sol";
 import "../interfaces/IAs4626.sol";
+import "../interfaces/IERC7540RedeemReceiver.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
@@ -582,8 +583,9 @@ abstract contract As4626 is As4626Abstract {
     function requestRedeem(
         uint256 _shares,
         address _operator,
-        address _owner
-    ) public nonReentrant whenNotPaused {
+        address _owner,
+        bytes memory _data
+    ) public nonReentrant whenNotPaused returns (uint256 _requestId) {
         if (_operator != msg.sender || (_owner != msg.sender && allowance(_owner, _operator) < _shares))
             revert Unauthorized();
         if (_shares == 0 || balanceOf(_owner) < _shares)
@@ -610,25 +612,36 @@ abstract contract As4626 is As4626Abstract {
             request.sharePrice = last.sharePrice;
         }
 
+        requestId = ++_requestId;
+        request.requestId = _requestId;
         request.shares = _shares;
         request.timestamp = block.timestamp;
         req.totalRedemption += _shares;
 
+        if(_data.length != 0) {
+        // the caller contract must return the bytes4 value "0x0102fde4"
+            if(IERC7540RedeemReceiver(msg.sender).onERC7540RedeemReceived(_operator, _owner, _requestId, _data) != 0x0102fde4)
+                revert Unauthorized();
+        }
         emit RedeemRequest(_owner, _operator, _owner, _shares);
+        return requestId;
     }
 
     /**
      * @notice Initiate a withdraw request for assets denominated in asset
      * @param _amount Amount of asset tokens to withdraw
-     * @param operator Address initiating the request
-     * @param owner The owner of the shares to be redeemed
+     * @param _operator Address initiating the request
+     * @param _owner The owner of the shares to be redeemed
+     * @param _data Additional data
+     * @return requestId The ID of the withdraw request
      */
     function requestWithdraw(
         uint256 _amount,
-        address operator,
-        address owner
-    ) external {
-        return requestRedeem(convertToShares(_amount, false), operator, owner);
+        address _operator,
+        address _owner,
+        bytes memory _data
+    ) external returns (uint256) {
+        return requestRedeem(convertToShares(_amount, false), _operator, _owner, _data);
     }
 
     // /**
