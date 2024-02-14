@@ -63,7 +63,7 @@ interface IAs4626Abstract is IERC20Permit, IAsManageable, IAsRescuable, IFlashLo
     function pendingAssetRequest(address operator) external view returns (uint256);
     function isRequestClaimable(uint256 requestTimestamp) external view returns (bool);
     function maxClaimableAsset() external view returns (uint256);
-    function maxRedemptionClaim(address _owner) external view returns (uint256);
+    function claimableRedeemRequest(address _owner) external view returns (uint256);
 }
 
 interface IAs4626 is IAs4626Abstract {

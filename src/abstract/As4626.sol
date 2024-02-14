@@ -164,7 +164,7 @@ abstract contract As4626 is As4626Abstract {
         if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
 
         Erc7540Request storage request = req.byOwner[_owner];
-        uint256 claimable = maxRedemptionClaim(_owner);
+        uint256 claimable = claimableRedeemRequest(_owner);
         last.sharePrice = sharePrice();
 
         uint256 price = (claimable >= _shares)
@@ -558,7 +558,7 @@ abstract contract As4626 is As4626Abstract {
                 : AsMaths.min(
                     balanceOf(msg.sender),
                     AsMaths.max(
-                        maxRedemptionClaim(_owner),
+                        claimableRedeemRequest(_owner),
                         convertToShares(available(), false)
                     )
                 );
@@ -571,8 +571,10 @@ abstract contract As4626 is As4626Abstract {
     //  */
     // function requestDeposit(
     //     uint256 assets,
-    //     address operator
-    // ) external virtual whenNotPaused {}
+    //     address operator,
+    //     address _owner,
+    //     bytes memory _data
+    // ) external virtual nonReentrant whenNotPaused returns (uint256 _requestId) {}
 
     /**
      * @notice Initiate a redeem request for shares
@@ -652,7 +654,7 @@ abstract contract As4626 is As4626Abstract {
     // function cancelDepositRequest(
     //     address operator,
     //     address owner
-    // ) external virtual {}
+    // ) external virtual nonReentrant {}
 
     /**
      * @notice Cancel a redeem request
@@ -767,7 +769,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _owner The owner's address
      * @return The maximum redemption claim for the owner
      */
-    function maxRedemptionClaim(address _owner) public view returns (uint256) {
+    function claimableRedeemRequest(address _owner) public view returns (uint256) {
         Erc7540Request memory request = req.byOwner[_owner];
         return
             isRequestClaimable(request.timestamp)
