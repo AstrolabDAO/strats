@@ -61,7 +61,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     uint256 internal constant MAX_UINT256 = type(uint256).max;
 
     uint256 internal profitCooldown = 10 days; // Profit linearization period (profit locktime)
-    uint256 public maxTotalAssets = MAX_UINT256; // Maximum total assets that can be deposited
+    uint256 public maxTotalAssets = 0; // Maximum total assets that can be deposited
     uint256 public minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
     uint16 internal maxSlippageBps = 100; // Strategy default internal ops slippage 1%
 
