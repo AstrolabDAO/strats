@@ -614,7 +614,7 @@ abstract contract As4626 is As4626Abstract {
             request.sharePrice = last.sharePrice;
         }
 
-        requestId = ++_requestId;
+        _requestId = ++requestId;
         request.requestId = _requestId;
         request.shares = _shares;
         request.timestamp = block.timestamp;
@@ -626,7 +626,6 @@ abstract contract As4626 is As4626Abstract {
                 revert Unauthorized();
         }
         emit RedeemRequest(_owner, _operator, _owner, _shares);
-        return requestId;
     }
 
     /**
