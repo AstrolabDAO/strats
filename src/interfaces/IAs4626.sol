@@ -137,6 +137,7 @@ interface IAs4626 is IAs4626Abstract {
     function previewMint(uint256 _shares) external view returns (uint256);
     function previewWithdraw(uint256 _assets) external view returns (uint256);
     function previewRedeem(uint256 _shares) external view returns (uint256);
+    function previewRedeem(uint256 _shares, address _owner) external view returns (uint256);
     function maxDeposit(address) external view returns (uint256);
     function maxMint(address) external view returns (uint256);
 

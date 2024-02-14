@@ -20,10 +20,9 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IChainlinkAggregatorV3 internal assetFeed; // Aggregator contract of the asset asset
-    mapping (address => IChainlinkAggregatorV3) feedByAsset;
-    mapping (address => uint8) internal decimalsByFeed;
-    mapping (address => uint256) public validityByFeed; // Price feed validity periods by oracle address
+    mapping (address => IChainlinkAggregatorV3) public feedByAsset;
+    mapping (IChainlinkAggregatorV3 => uint8) internal decimalsByFeed;
+    mapping (IChainlinkAggregatorV3 => uint256) public validityByFeed; // Price feed validity periods by oracle address
 
     constructor() StrategyV5() {}
 
@@ -53,10 +52,10 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _feed The pricefeed address for the token
      * @param _validity The new validity duration in seconds
      */
-    function setPriceFeed(address _address, address _feed, uint256 _validity) public onlyAdmin {
-        feedByAsset[_address] = IChainlinkAggregatorV3(_feed);
+    function setPriceFeed(address _address, IChainlinkAggregatorV3 _feed, uint256 _validity) public onlyAdmin {
+        feedByAsset[_address] = _feed;
         decimalsByFeed[_feed] = feedByAsset[_address].decimals();
-        validityByFeed[_feed] = _validity;
+        validityByFeed[feedByAsset[_address]] = _validity;
     }
 
     /**
@@ -66,10 +65,10 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     function updateChainlink(
         ChainlinkParams calldata _chainlinkParams
     ) public onlyAdmin {
-        setPriceFeed(address(asset), _chainlinkParams.assetFeed, _chainlinkParams.assetFeedValidity);
+        setPriceFeed(address(asset), IChainlinkAggregatorV3(_chainlinkParams.assetFeed), _chainlinkParams.assetFeedValidity);
         for (uint256 i = 0; i < _chainlinkParams.inputFeeds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
-            setPriceFeed(address(inputs[i]), _chainlinkParams.inputFeeds[i], _chainlinkParams.inputFeedValidities[i]);
+            setPriceFeed(address(inputs[i]), IChainlinkAggregatorV3(_chainlinkParams.inputFeeds[i]), _chainlinkParams.inputFeedValidities[i]);
         }
     }
 
@@ -78,16 +77,22 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _asset Address of the token
      * @param _swapData Swap callData oldAsset->newAsset
      * @param _feed Address of the Chainlink price feed
+     * @param _validity Validity period in seconds for the price fee
      */
     function updateAsset(
         address _asset,
         bytes calldata _swapData,
-        address _feed,
+        IChainlinkAggregatorV3 _feed,
         uint256 _validity
     ) external onlyAdmin {
-        if (_feed == address(0)) revert AddressZero();
+        if (address(_feed) == address(0)) revert AddressZero();
+        // Price of the old asset
+        IChainlinkAggregatorV3 retiredFeed = feedByAsset[address(asset)];
+        uint256 retiredPrice = ChainlinkUtils.getPriceUsd(retiredFeed, validityByFeed[retiredFeed], 18);
         setPriceFeed(_asset, _feed, _validity);
-        _updateAsset(_asset, _swapData);
+        uint256 newPrice = ChainlinkUtils.getPriceUsd(_feed, _validity, 18);
+        uint256 rate = retiredPrice.exchangeRate(newPrice, decimals);
+        _updateAsset(_asset, _swapData, rate);
     }
 
     /**
@@ -95,17 +100,17 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @param _inputs Array of input token addresses
      * @param _weights Array of input token weights
      * @param _feeds Array of Chainlink price feed addresses
-     * @dev First call of the flow
+     * @param _validities Array of Chainlink price feed validity periods
      */
     function setInputs(
         address[] calldata _inputs,
         uint16[] calldata _weights,
         address[] calldata _feeds,
         uint256[] calldata _validities
-    ) external onlyAdmin {
+    ) internal onlyAdmin {
         for (uint256 i = 0; i < _inputs.length; i++) {
             if (_feeds[i] == address(0)) revert AddressZero();
-            setPriceFeed(_inputs[i], _feeds[i], _validities[i]);
+            setPriceFeed(_inputs[i], IChainlinkAggregatorV3(_feeds[i]), _validities[i]);
         }
         _setInputs(_inputs, _weights);
     }
@@ -115,19 +120,20 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment
      */
-    function assetExchangeRate(uint8 _index) public view returns (uint256) {
+    function exchangeRate(uint8 _index) public view returns (uint256) {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         return
-            ChainlinkUtils.assetExchangeRate(
-                [feed, assetFeed],
-                assetDecimals,
-                decimalsByFeed[address(feed)],
-                validityByFeed[address(feed)]
+            ChainlinkUtils.exchangeRate(
+                [feed, feedByAsset[address(asset)]],
+                [inputDecimals[_index], assetDecimals],
+                [validityByFeed[feed], validityByFeed[feedByAsset[address(asset)]]]
             );
     }
 
     /**
      * @notice Converts asset wei amount to input wei amount
+     * @param _amount Asset amount in wei
+     * @param _index The index of the input token
      * @return Input amount in wei
      */
     function _assetToInput(
@@ -137,12 +143,14 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         return
             _amount.mulDiv(
                 10 ** inputDecimals[_index],
-                assetExchangeRate(_index)
+                exchangeRate(_index)
             );
     }
 
     /**
      * @notice Converts input wei amount to asset wei amount
+     * @param _amount Input amount in wei
+     * @param _index The index of the input token
      * @return Asset amount in wei
      */
     function _inputToAsset(
@@ -151,7 +159,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     ) internal view override returns (uint256) {
         return
             _amount.mulDiv(
-                assetExchangeRate(_index),
+                exchangeRate(_index),
                 10 ** inputDecimals[_index]
             );
     }
@@ -168,11 +176,11 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     ) internal view returns (uint256) {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         (, int256 price, , uint256 updateTime, ) = feed.latestRoundData();
-        if (block.timestamp > (updateTime + validityByFeed[address(feed)]))
+        if (block.timestamp > (updateTime + validityByFeed[feed]))
             revert InvalidOrStaleValue(updateTime, price);
         return
             _amount.mulDiv(
-                10 ** (uint256(decimalsByFeed[address(feed)]) + inputDecimals[_index] - 6),
+                10 ** (uint256(decimalsByFeed[feed]) + inputDecimals[_index] - 6),
                 uint256(price)
             ); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
@@ -189,12 +197,12 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     ) internal view returns (uint256) {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         (, int256 price, , uint256 updateTime, ) = feed.latestRoundData();
-        if (block.timestamp > (updateTime + validityByFeed[address(feed)]))
+        if (block.timestamp > (updateTime + validityByFeed[feed]))
             revert InvalidOrStaleValue(updateTime, price);
         return
             _amount.mulDiv(
                 uint256(price),
-                10 ** uint256(decimalsByFeed[address(feed)] + inputDecimals[_index] - 6)
+                10 ** uint256(decimalsByFeed[feed] + inputDecimals[_index] - 6)
             ); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
 }

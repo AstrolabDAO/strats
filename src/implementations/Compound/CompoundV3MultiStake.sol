@@ -22,7 +22,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     using SafeERC20 for IERC20;
 
     // Third party contracts
-    IComet[8] internal cTokens; // LP token/pool
+    address[8] public cTokens; // LP token/pool
     ICometRewards internal cometRewards;
     ICometRewards.RewardConfig[8] internal rewardConfigs;
 
@@ -43,7 +43,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         cometRewards = ICometRewards(_params.cometRewards);
 
         for (uint8 i = 0; i < _params.cTokens.length; i++) {
-            cTokens[i] = IComet(_params.cTokens[i]);
+            cTokens[i] = _params.cTokens[i];
             rewardConfigs[i] = cometRewards.rewardConfig(_params.cTokens[i]);
         }
         _setAllowances(MAX_UINT256);
@@ -69,6 +69,28 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         inputLength = uint8(_baseParams.inputs.length);
         setParams(_compoundParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
+    }
+
+    /**
+     * @notice Changes the strategy input tokens
+     * @param _newInputs Array of input token addresses
+     * @param _cTokens Array of cTokens addresses
+     * @param _weights Array of input token weights
+     * @param _priceFeeds Array of Chainlink price feed addresses
+     */
+    function setInputs(
+        address[] calldata _newInputs,
+        address[] calldata _cTokens,
+        uint16[] calldata _weights,
+        address[] calldata _priceFeeds,
+        uint256[] calldata _validities
+    ) external onlyAdmin {
+        for (uint256 i = 0; i < _cTokens.length; i++) {
+            cTokens[i] = _cTokens[i];
+            rewardConfigs[i] = cometRewards.rewardConfig(_cTokens[i]);
+        }
+        _setAllowances(MAX_UINT256);
+        setInputs(_newInputs, _weights, _priceFeeds, _validities);
     }
 
     /**
@@ -124,10 +146,11 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
                 toDeposit = _amounts[i];
             }
 
-            uint256 iouBefore = cTokens[i].balanceOf(address(this));
-            cTokens[i].supply(address(inputs[i]), toDeposit);
+            IComet cToken = IComet(cTokens[i]);
+            uint256 iouBefore = cToken.balanceOf(address(this));
+            cToken.supply(address(inputs[i]), toDeposit);
 
-            uint256 supplied = cTokens[i].balanceOf(address(this)) - iouBefore;
+            uint256 supplied = cToken.balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
             if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
@@ -155,12 +178,13 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            balance = cTokens[i].balanceOf(address(this));
+            IComet cToken = IComet(cTokens[i]);
+            balance = cToken.balanceOf(address(this));
 
             // NB: we could use redeemUnderlying() here
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
 
-            cTokens[i].withdraw(address(inputs[i]), toLiquidate);
+            cToken.withdraw(address(inputs[i]), toLiquidate);
 
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
             if (inputs[i] != asset && toLiquidate > 10) {
@@ -240,7 +264,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     function _stakedInput(
         uint8 _index
     ) internal view override returns (uint256) {
-        return cTokens[_index].balanceOf(address(this));
+        return IComet(cTokens[_index]).balanceOf(address(this));
     }
 
     /**
@@ -258,7 +282,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
 
         for (uint8 i = 0; i < cTokens.length; i++) {
             if (address(cTokens[i]) == address(0)) break;
-            amounts[0] += _rebaseAccruedReward(cTokens[i].baseTrackingAccrued(address(this)), i);
+            amounts[0] += _rebaseAccruedReward(IComet(cTokens[i]).baseTrackingAccrued(address(this)), i);
         }
         for (uint8 i = 0; i < rewardLength; i++) {
             amounts[i] += IERC20Metadata(rewardTokens[i]).balanceOf(address(this));

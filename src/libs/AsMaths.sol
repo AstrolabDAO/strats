@@ -849,9 +849,9 @@ library AsMaths {
     /**
      * @notice Calculates the exchange rate in bps (10_000 == 100%) between two prices (in wei)
      * @dev Reverts if either value is zero
-     * @param p1 Base currency price in wei
-     * @param p2 Quote currency price in wei
-     * @param d2 Quote decimal places for the second price
+     * @param p1 Quote currency price in wei
+     * @param p2 Base currency price in wei
+     * @param d2 Base decimal places for the second price
      * @return Exchange rate (in bps * 10 ** base decimals)
      */
     function exchangeRate(

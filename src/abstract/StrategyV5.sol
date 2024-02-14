@@ -67,11 +67,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _updateAsset(
         address _asset,
-        bytes calldata _swapData
+        bytes calldata _swapData,
+        uint256 _priceFactor
     ) internal {
         _delegateWithSignature(
             agent,
-            "updateAsset(address,bytes)" // StrategyV5Agent.updateAsset(_asset, _swapData)
+            "updateAsset(address,bytes,uint256)" // StrategyV5Agent.updateAsset(_asset, _swapData, _priceFactor)
         );
     }
 
@@ -81,8 +82,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _weights Array of input token weights
      */
     function _setInputs(
-        address[] memory _inputs,
-        uint16[] memory _weights
+        address[] calldata _inputs,
+        uint16[] calldata _weights
     ) internal {
         _delegateWithSignature(
             agent,

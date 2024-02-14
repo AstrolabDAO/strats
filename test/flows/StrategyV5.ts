@@ -22,6 +22,7 @@ import {
 } from "../../src/types";
 import {
   addressZero,
+  arraysEqual,
   ensureFunding,
   ensureOracleAccess,
   getEnv,
@@ -35,6 +36,10 @@ import {
 } from "../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
+import { findSymbolByAddress } from "../../src/addresses";
+import compoundAddresses from "../../src/implementations/Compound/addresses";
+
+export const indexes = Array.from({ length: 8 }, (_, index) => index);
 
 /**
  * Deploys a strategy with the given parameters
@@ -91,9 +96,9 @@ export const deployStrat = async (
   // as these are specific to the strategy implementation
   const stratLibs = Object.assign({}, libraries);
 
-  delete stratLibs.AsMaths; // not used statically by Agent/Strat
-
   const agentLibs = Object.assign({}, stratLibs);
+  delete agentLibs.AsMaths; // not used statically by Agent/Strat
+
   for (const lib of Object.keys(agentLibs)) {
     if (isOracleLib(lib)) delete agentLibs[lib];
   }
@@ -796,19 +801,24 @@ export async function updateAsset(
     return balance;
   }
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
-  const feed = oracles[`Crypto.${to}/USD`];
+  const toSymbol = findSymbolByAddress(to, network.config.chainId!);
+  if (!toSymbol) {
+    throw new Error(`No symbol found for address: ${to}`);
+  }
+  const feed = oracles[`Crypto.${toSymbol}/USD`];
   const swapData = await preUpdateAsset(env, from, to, balance);
   await logState(env, "Before UpdateAsset");
   const receipt = await strat
     .safe(
-      "updateAsset(address,bytes,address)",
-      [to, swapData, feed],
+      "updateAsset(address,bytes,address,uint256)",
+      [to, swapData, feed, 86400],
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After UpdateAsset", 2_000);
   // no event is emitted for optimization purposes, manual check
   const updated = await strat.asset();
+  console.log("Updated asset: ", updated);
   return updated == to
     ? await toToken.balanceOf(strat.address)
     : BigNumber.from(0);
@@ -819,50 +829,89 @@ export async function updateAsset(
  * @param env - Strategy deployment environment
  * @param inputs - New inputs to be set
  * @param weights - Corresponding weights for the new inputs
+ * @param reorder - whether to reorder the inputs on existing (for testing purposes)
  * @returns BigNumber representing the result of the update
  */
 export async function updateInputs(
   env: Partial<IStrategyDeploymentEnv>,
   inputs: string[],
   weights: number[],
+  reorder: boolean = true,
+  lpTokens: string[],
 ): Promise<BigNumber> {
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
-  const [currentInputs, currentWeights] = (await env.multicallProvider!.all([
-    strat.multi.inputs(),
-    strat.multi.inputWeights(),
-  ])) as [string[], number[]];
+  const emptyAddress = "0x0000000000000000000000000000000000000000";
+  const inputIndexes = [...Array(8)];
+  const inputData = await env.multicallProvider!.all(
+    indexes.map((i) => strat.multi.inputs(i)),
+  );
+  const weightData = await env.multicallProvider!.all(
+    indexes.map((i) => strat.multi.inputWeights(i)),
+  );
+  const lpData = await env.multicallProvider!.all(
+    indexes.map((i) => strat.multi.cTokens(i)),
+  );
+  // const [inputData, weightData, lpData] = (await env.multicallProvider!.all([
+  //   strat.multi.inputs(),
+  //   strat.multi.inputWeights(),
+  //   strat.multi.lpTokens(),
+  // ])) as [string[], BigNumber[], string[]];
+
+  let lastInputIndex = inputData.findIndex((input) => input == emptyAddress);
+
+  if (lastInputIndex < 0) lastInputIndex = inputIndexes.length; // max 8 inputs (if no empty address found)
+
+  const [currentInputs, currentWeights, currentLpTokens] = [
+    inputData.slice(0, lastInputIndex),
+    weightData.slice(0, lastInputIndex),
+    lpData.slice(0, lastInputIndex),
+  ] as [string[], number[], string[]];
 
   // step 2: Initialize final inputs and weights arrays
-  const orderedInputs: string[] = new Array<string>(inputs.length).fill("");
-  const orderedWeights: number[] = new Array<number>(inputs.length);
+  let orderedInputs: string[] = new Array<string>(inputs.length).fill("");
+  let orderedWeights: number[] = new Array<number>(inputs.length);
+  let orederedLpTokens: string[] = new Array<string>(inputs.length).fill("");
 
   const leftovers: string[] = [];
 
-  // step 3: Keep existing inputs in their original order if they are still present
-  for (let i = 0; i < inputs.length; i++) {
-    const prevIndex = currentInputs.indexOf(inputs[i]);
-    if (prevIndex >= inputs.length || prevIndex < 0) {
-      leftovers.push(inputs[i]);
-      continue;
-    }
+  if (reorder) {
+    // step 3: Keep existing inputs in their original order if they are still present
+    for (let i = 0; i < inputs.length; i++) {
+      const prevIndex = currentInputs.indexOf(inputs[i]);
+      if (prevIndex >= inputs.length || prevIndex < 0) {
+        leftovers.push(inputs[i]);
+        continue;
+      }
 
-    if (inputs.length > prevIndex) {
-      orderedInputs[prevIndex] = currentInputs[prevIndex];
-      orderedWeights[prevIndex] = weights[i];
+      if (inputs.length > prevIndex) {
+        orderedInputs[prevIndex] = currentInputs[prevIndex];
+        orderedWeights[prevIndex] = weights[i];
+        orederedLpTokens[prevIndex] = lpTokens[i];
+      }
     }
+  } else {
+    orderedInputs = inputs;
+    orderedWeights = weights;
+    orederedLpTokens = lpTokens;
   }
-
   // TODO: add support for Pyth (only supports Chainlink)
-  const currentFeeds = currentInputs.map((i) => oracles[`Crypto.${i}/USD`]);
-  const newFeeds = orderedInputs.map((i) => oracles[`Crypto.${i}/USD`]);
+  const oldSymbol = currentInputs.map((i) =>
+    findSymbolByAddress(i, network.config.chainId!),
+  );
+  const newSymbol = inputs.map((i) =>
+    findSymbolByAddress(i, network.config.chainId!),
+  );
+  const currentFeeds = oldSymbol.map((i) => oracles[`Crypto.${i}/USD`]);
+  const newFeeds = newSymbol.map((i) => oracles[`Crypto.${i}/USD`]);
 
   // step 4: Infill + backfill with leftovers
   for (let i = 0; i < leftovers.length; i++) {
     const fillIndex = orderedInputs.indexOf("");
     orderedInputs[fillIndex] = leftovers[i];
     orderedWeights[fillIndex] = weights[currentInputs.indexOf(leftovers[i])];
+    orederedLpTokens[fillIndex] = lpTokens[currentInputs.indexOf(leftovers[i])];
   }
 
   console.log(`
@@ -872,21 +921,31 @@ export async function updateInputs(
     raw inputs: [${inputs.join(", ")}] weights: [${weights.join(", ")}]
     ord inputs: [${orderedInputs.join(", ")}] weights: [${orderedWeights.join(
       ", ",
-    )}]
+    )}], reorder flag at: [${reorder}]
+    prev feeds: [${currentFeeds.join(", ")}]
+    ordered feeds: [${newFeeds.join(", ")}]
     `);
 
   // step 5: Set new input weights with current inputs to liquidate it all
+  // NB: different signature for StratV5Pyth
+  console.log(currentInputs, "currentInputs");
+  console.log(currentLpTokens, "currentLpTokens");
+  console.log(currentWeights, "currentWeights");
   let receipt = await strat
     .safe(
-      "setInputs",
+      "setInputs(address[],address[],uint16[],address[],uint256[])",
       [
         currentInputs,
-        currentInputs.map((i) => {
-          const index = inputs.indexOf(i);
-          // reduce exposure to 0 for removed inputs (liquidate)
-          return index > -1 ? weights[index] : 0;
-        }),
+        currentLpTokens,
+        [0, 4500],
+        // currentWeights.map((_, i) => {
+        //   const index = orderedInputs.indexOf(currentInputs[i]);
+        //   // reduce exposure to 0 for removed inputs (liquidate)
+        //   // update weights for existing inputs (start rebalancing)
+        //   return index > -1 ? orderedWeights[index] : 0;
+        // }),
         currentFeeds,
+        [86400, 86400],
       ],
       getOverrides(env),
     )
@@ -900,8 +959,8 @@ export async function updateInputs(
   console.log(`Setting new inputs...`);
   receipt = await strat
     .safe(
-      "setInputs(address[],uint16[],address[])", // StrategyV5Chainlink overload with feeds
-      [orderedInputs, orderedWeights, newFeeds],
+      "setInputs(address[],address[],uint16[],address[],uint256[])",
+      [orderedInputs, lpTokens, orderedWeights, newFeeds,[86400,86400]],
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
@@ -914,27 +973,76 @@ export async function updateInputs(
 /**
  * Shuffles the inputs of a strategy and sets random weights to it
  * @param env - Strategy deployment environment
+ * @param weights - New weights to be set (for testing purposes)
+ * @param reorder - whether to reorder the inputs on existing (for testing purposes)
  * @returns Rebalanced amounts as a BigNumber
+ * @dev Not entirely generic yet, tailored for Compoundv3 forks
  */
 export async function shuffleInputs(
   env: Partial<IStrategyDeploymentEnv>,
+  weights?: number[],
+  reorder = true,
 ): Promise<BigNumber> {
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
-  const [currentInputs, currentWeights] = (await env.multicallProvider!.all([
-    strat.multi.inputs(),
-    strat.multi.inputWeights(),
-  ])) as [string[], number[]];
+  const emptyAddress = "0x0000000000000000000000000000000000000000";
+  const inputIndexes = [...Array(8)];
+
+  const inputData = await env.multicallProvider!.all(
+    indexes.map((i) => strat.multi.inputs(i)),
+  );
+  const weightData = await env.multicallProvider!.all(
+    indexes.map((i) => strat.multi.inputWeights(i)),
+  );
+  // const [inputData, weightData] = (await env.multicallProvider!.all(
+  //   indexes.map((i) =>
+  //   strat.multi.inputs(i)
+  //   strat.multi.inputWeights(i),
+  // ))) as [string[], BigNumber[]];
+
+  let lastInputIndex = inputData.findIndex((input) => input == emptyAddress);
+
+  if (lastInputIndex < 0) lastInputIndex = inputIndexes.length; // max 8 inputs (if no empty address found)
+
+  let [currentInputs, currentWeights] = [
+    inputData.slice(0, lastInputIndex),
+    weightData.slice(0, lastInputIndex),
+  ] as [string[], number[]];
+
+  if (weights) currentWeights = weights;
+
+  console.log(currentInputs, currentWeights);
 
   // step 2: randomly reorder inputs and set random weights adding up to the same cumsum
   console.log(`Shuffling inputs...`);
-  const [randomInputs, randomWeights] = [
+  let [randomInputs, randomWeights] = [
     shuffle(currentInputs),
     shuffle(currentWeights),
   ];
+  // shuffle again if the result is the same for one of the arrays
+  while (arraysEqual(randomInputs, currentInputs)) {
+    randomInputs = shuffle(currentInputs);
+  }
+  while (arraysEqual(randomWeights, currentWeights)) {
+    // if there are two inputs and the weights are the same, break
+    if (randomWeights.length == 2 && randomWeights[0] == randomWeights[1])
+      break;
+    randomWeights = shuffle(currentWeights);
+  }
+  console.log(randomInputs, randomWeights);
+
+  // For Compound only
+  const symbol = randomInputs.map((i) =>
+    findSymbolByAddress(i, network.config.chainId!),
+  );
+  console.log("The symbol to search for: ", symbol);
+  const cTokens = symbol.map(
+    (i) => compoundAddresses[network.config.chainId!].Compound[i!].comet,
+  );
+  console.log("The cTokens we found after shuffle: ", cTokens);
 
   // step 3: return updateInputs with the above
-  return await updateInputs(env, randomInputs, randomWeights);
+  return await updateInputs(env, randomInputs, randomWeights, reorder, cTokens);
 }
 
 /**
@@ -1008,3 +1116,7 @@ export async function shuffleWeightsRebalance(
   // step 3: invest
   return await invest(env, 0);
 }
+// function findSymbolByAddress(to: string, arg1: number) {
+//   throw new Error("Function not implemented.");
+// }
+

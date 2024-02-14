@@ -24,9 +24,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
     // Third party contracts
     IPythAggregator internal pyth; // Pyth oracle
-    bytes32 internal assetFeed; // Pyth id of the asset asset
-    bytes32[8] internal inputFeeds; // Pyth id of the inputs
-    mapping (address => bytes32) feedByAsset; // PythId by asset
+    mapping (address => bytes32) public feedByAsset; // PythId by asset
     mapping (bytes32 => uint256) public validityByFeed; // Price feed validity periods by oracle address
 
     constructor() StrategyV5() {}
@@ -36,7 +34,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
         bytes32 assetFeed;
         uint256 assetValidity;
         bytes32[] inputFeeds;
-        uint256[] inputValidities;
+        uint256[] inputFeedValidities;
     }
 
     /**
@@ -71,14 +69,10 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      */
     function updatePyth(PythParams calldata _pythParams) public onlyAdmin {
         pyth = IPythAggregator(_pythParams.pyth);
-        if (!pyth.priceFeedExists(_pythParams.assetFeed))
-            revert InvalidCalldata();
-
-        assetFeed = _pythParams.assetFeed;
-
+        setPriceFeed(address(asset), _pythParams.assetFeed, _pythParams.assetValidity);
         for (uint256 i = 0; i < _pythParams.inputFeeds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
-            setPriceFeed(address(inputs[i]), _pythParams.inputFeeds[i], _pythParams.inputValidities[i]);
+            setPriceFeed(address(inputs[i]), _pythParams.inputFeeds[i], _pythParams.inputFeedValidities[i]);
         }
     }
 
@@ -87,15 +81,33 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @param _asset Address of the token
      * @param _swapData Swap callData oldAsset->newAsset
      * @param _feed Pyth price feed id
+     * @param _validity The new validity duration in seconds
      */
     function updateAsset(
         address _asset,
         bytes calldata _swapData,
-        bytes32 _feed
+        bytes32 _feed,
+        uint256 _validity
     ) external onlyAdmin {
         if (_feed == bytes32(0)) revert AddressZero();
-        assetFeed = _feed;
-        _updateAsset(_asset, _swapData);
+
+        bytes32 assetFeed = feedByAsset[address(asset)];
+        uint256 retiredPrice = PythUtils.getPriceUsd(
+            pyth,
+            assetFeed,
+            validityByFeed[assetFeed],
+            18);
+
+        setPriceFeed(_asset, _feed, _validity);
+
+        uint256 newPrice = PythUtils.getPriceUsd(
+            pyth,
+            _feed,
+            validityByFeed[_feed],
+            18); // same base as prior price
+
+        uint256 rate = retiredPrice.exchangeRate(newPrice, decimals);
+        _updateAsset(_asset, _swapData, rate);
     }
 
     /**
@@ -103,39 +115,18 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @param _inputs Array of input token addresses
      * @param _weights Array of input token weights
      * @param _feeds Array of Pyth price feed ids
+     * @param _validities Array of Pyth price feed validity periods
      */
     function setInputs(
         address[] calldata _inputs,
         uint16[] calldata _weights,
-        bytes32[] calldata _feeds
+        bytes32[] calldata _feeds,
+        uint256[] calldata _validities
     ) external onlyAdmin {
         for (uint256 i = 0; i < _inputs.length; i++) {
             if (address(inputs[i]) == address(0)) break;
-            inputFeeds[i] = _feeds[i];
+            setPriceFeed(_inputs[i], _feeds[i], _validities[i]);
         }
         _setInputs(_inputs, _weights);
-    }
-
-    /**
-     * @notice Computes the asset/input exchange rate from Pyth oracle price feeds in bps
-     * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
-     * @return The amount available for investment
-     */
-    function assetExchangeRate(uint8 _index) public view returns (uint256) {
-        if (inputFeeds[_index] == assetFeed) return weiPerShare; // == weiPerUnit of asset == 1:1
-        (PythStructs.Price memory inputPrice, PythStructs.Price memory assetPrice) = (
-            pyth.getPrice(inputFeeds[_index]),
-            pyth.getPrice(assetFeed)
-        );
-        require(
-            block.timestamp <= (inputPrice.publishTime + validityByFeed[inputFeeds[_index]])
-             &&
-            block.timestamp <= (assetPrice.publishTime + validityByFeed[assetFeed])
-        , "Stale price");
-
-        uint256 inputPriceWei = inputPrice.toUint256(inputDecimals[_index]); // input (quote) price in wei
-        uint256 assetPriceWei = assetPrice.toUint256(assetDecimals); // asset (base) price in wei
-        uint256 rate = inputPriceWei.exchangeRate(assetPriceWei, assetDecimals); // asset (base) decimals (rate divider)
-        return rate;
     }
 }

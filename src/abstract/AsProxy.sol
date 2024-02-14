@@ -33,7 +33,7 @@ abstract contract AsProxy is Proxy {
                 gas(),
                 _implementation,
                 0x0,
-                add(calldatasize(), 0x4),
+                calldatasize(),
                 0,
                 0
             )

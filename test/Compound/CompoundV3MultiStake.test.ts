@@ -24,6 +24,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
+  1: { ...baseDesc, inputs: ["USDC", "WETH"], inputWeights: [4500, 4500] }, // 90% allocation, 10% cash
   137: { ...baseDesc, inputs: ["USDCe"], inputWeights: [9000] }, // 90% allocation, 10% cash
   8453: { ...baseDesc, inputs: ["USDbC"], inputWeights: [9000] },
   42161: { ...baseDesc, inputs: ["USDC", "USDCe"], inputWeights: [4500, 4500] },
@@ -68,8 +69,10 @@ describe(`test.${desc.name}`, () => {
         },
         {
           // chainlink oracle params
-          assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
-          inputPriceFeeds: desc.inputs.map((i) => oracles[`Crypto.${i}/USD`]),
+          assetFeed: oracles[`Crypto.${desc.asset}/USD`],
+          assetFeedValidity: 86400,
+          inputFeeds: desc.inputs.map((i) => oracles[`Crypto.${i}/USD`]),
+          inputFeedValidities: desc.inputs.map((i) => 86400),
         },
         {
           // strategy specific params

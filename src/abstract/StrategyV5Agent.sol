@@ -73,8 +73,9 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
      * if the new asset has a different price (USD denominated), this will cause a sharePrice() sudden change
      * @param _asset Address of the token
      * @param _swapData Swap callData oldAsset->newAsset
+     * @param _priceFactor Multiplier of (old asset price * 1e18) / (new asset price)
      */
-    function updateAsset(address _asset, bytes calldata _swapData) external virtual onlyAdmin {
+    function updateAsset(address _asset, bytes calldata _swapData, uint256 _priceFactor) external virtual onlyAdmin {
 
         if (_asset == address(0)) revert AddressZero();
         if (_asset == address(asset)) return;
@@ -102,6 +103,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         weiPerAsset = 10**assetDecimals;
         last.accountedAssets = totalAssets();
         last.accountedSupply = totalSupply();
+        last.sharePrice = last.sharePrice.mulDiv(_priceFactor, 1e18); // multiply then debase
         address swapperAddress = address(swapper);
         IERC20Metadata(_asset).approve(swapperAddress, MAX_UINT256);
     }

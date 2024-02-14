@@ -12,31 +12,42 @@ library ChainlinkUtils {
     using AsMaths for uint256;
 
     /**
+     * @dev Retrieves the latest price in USD from Chainlink's aggregator
+     * @param _feed Chainlink aggregator contract
+     * @param _validity Validity period in seconds for the retrieved price
+     * @param _targetDecimals Decimals to convert the retrieved price to
+     * @return Latest price in USD
+     * @dev Throws an error if the retrieved price is not positive or if the validity period has expired
+     */
+    function getPriceUsd(IChainlinkAggregatorV3 _feed, uint256 _validity, uint8 _targetDecimals) internal view returns (uint256) {
+        (, int256 basePrice, , uint updateTime, ) = _feed.latestRoundData();
+        uint8 feedDecimals = _feed.decimals();
+        require(basePrice > 0 && block.timestamp <= (updateTime + _validity), "Stale price");
+
+        // debase pyth feed decimals to target decimals
+        return _targetDecimals >= feedDecimals ?
+            uint256(basePrice) * 10 ** uint32(_targetDecimals - feedDecimals) :
+            uint256(basePrice) / 10 ** uint32(feedDecimals - _targetDecimals);
+    }
+
+    /**
      * @notice Computes the input/asset exchange rate from Chainlink oracle price feeds in _baseDecimals
      * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @param _feeds Chainlink oracle price feeds [quote,base] eg. [input,asset]
-     * @return The amount available for investment
+     * @param _decimals Decimals of the price feeds [quote,base] eg. [input,asset]
+     * @param _validities Validity periods for the price feeds [quote,base] eg. [input,asset]
+     * @return Exchange rate in base wei
      */
-    function assetExchangeRate(
-        IChainlinkAggregatorV3[2] calldata _feeds,
-        uint8 _baseDecimals,
-        uint8 _baseFeedDecimals,
-        uint256 validityPeriod
+    function exchangeRate(
+        IChainlinkAggregatorV3[2] calldata _feeds, // [quote,base]
+        uint8[2] calldata _decimals,
+        uint256[2] calldata _validities // [quote,base]
     ) public view returns (uint256) {
         if (address(_feeds[0]) == address(_feeds[1]))
-            return 10 ** uint256(_baseDecimals); // == weiPerUnit of asset == 1:1
+            return 10 ** uint256(_decimals[1]); // == weiPerUnit of asset == 1:1
 
-        (, int256 quotePrice, , uint quoteUpdateTime, ) = _feeds[0].latestRoundData();
-        (, int256 basePrice, , uint baseUpdateTime, ) = _feeds[1].latestRoundData();
-
-        require(
-            quotePrice > 0 && block.timestamp <= (quoteUpdateTime + validityPeriod) &&
-            basePrice > 0 && block.timestamp <= (baseUpdateTime + validityPeriod),
-            "Stale price");
-
-        uint256 rate = uint256(quotePrice).exchangeRate(uint256(basePrice), _baseFeedDecimals); // in _baseFeedDecimals
-        return _baseDecimals >= _baseFeedDecimals ?
-            rate * 10 ** uint256(_baseDecimals - _baseFeedDecimals) :
-            rate / 10 ** uint256(_baseFeedDecimals - _baseDecimals);
+        return getPriceUsd(_feeds[0], _validities[0], 18)
+            .exchangeRate(getPriceUsd(_feeds[1], _validities[1], 18),
+                _decimals[1]); // in _baseFeedDecimals
     }
 }

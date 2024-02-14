@@ -1,5 +1,23 @@
 import { networkBySlug } from "@astrolabs/hardhat";
 
+export function findSymbolByAddress(address: string, chainId: number): string | undefined {
+  const networkAddresses = addresses[chainId];
+  if (!networkAddresses) {
+    console.log(`Network with chainId ${chainId} is not supported.`);
+    return;
+  }
+
+  const tokens = networkAddresses.tokens;
+  for (const symbol in tokens) {
+    if (tokens[symbol].toLowerCase() === address.toLowerCase()) {
+      return symbol;
+    }
+  }
+
+  console.log(`Address ${address} not found in chainId ${chainId}.`);
+  return;
+}
+
 export type NetworkAddresses = {
   // common addresses
   accounts?: { [token: string]: string };
@@ -27,6 +45,20 @@ export const addresses = {
     },
     oracles: {
       Pyth: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
+    },
+    libs: {
+      AsMaths: "",
+      AsArrays: "",
+      AsAccounting: "",
+      PythUtils: "",
+      ChainlinkUtils: "",
+      RedStoneUtils: "",
+    },
+    astrolab: {
+      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
+      // Swapper: "0xac64a35e398699dd3f22d4ba2252e5153c40fe9c",
+      StrategyV5Agent: "",
+      "Astrolab CompoundV3 MetaStable" : "",
     },
     tokens: {
       WETH: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
@@ -533,7 +565,7 @@ export const addresses = {
       "Astrolab Moonwell MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
       "Astrolab Stargate MetaStable": "",
       "Astrolab Aave MetaStable": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
-      "Astrolab CompoundV3 MetaStable": "0x629dc47b5fedee66b99f52dce4471453eadfe0b8",
+      "Astrolab CompoundV3 MetaStable": "",
       "Astrolab Sonne MetaStable": "",
     },
     tokens: {
@@ -588,7 +620,7 @@ export const addresses = {
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
       StrategyV5Agent: "",
-      "Astrolab Lodestar MetaStable": "0xceb2aac13906633b28f35f57fab2422043f7cfb8",
+      "Astrolab Lodestar MetaStable": "0xceb2aa13906633b28f35f57fab2422043f7cfb8",
       "Astrolab CompoundV3 MetaStable": "",
     },
     tokens: {

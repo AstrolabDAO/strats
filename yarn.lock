@@ -18,12 +18,26 @@
     ethers "^5.7.0"
     hardhat "^2.10.2"
 
-"@astrolabs/registry@^1.0.1", "@astrolabs/registry@^1.0.19", "@astrolabs/registry@^1.0.29":
+"@astrolabs/registry@^1.0.1", "@astrolabs/registry@^1.0.19":
   version "1.0.35"
   resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.35.tgz#0a7dd09c0c959cf10b4db25f6d8b5678b4180089"
   integrity sha512-7SQwFgZcLgrJJMDgElifgWWzgjw5EpepJR1sOtbMVcOQIREUcuzSJ7xhOHeCwh5CN3m8Pud+fEVcLzB3gSgpQg==
   dependencies:
     "@astrolabs/registry" "^1.0.19"
+
+"@astrolabs/registry@^1.0.36":
+  version "1.0.43"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.43.tgz#1888652935f0108b1611eb7ea3bba81e6b064783"
+  integrity sha512-fE92xCyS7HrSMEwb236biE2+pEsRxNfeHoyMBpfXMpHwzVt3ACZwO4s3oYW3zszPbuJUo4SQrkSgit6059fR5g==
+  dependencies:
+    "@astrolabs/registry" "^1.0.36"
+
+"@astrolabs/registry@^1.0.46":
+  version "1.0.46"
+  resolved "https://registry.yarnpkg.com/@astrolabs/registry/-/registry-1.0.46.tgz#bd62b4c1f3c3a6844919a5f042be455c605162bf"
+  integrity sha512-Vi9jFJtDlNG9Bbru9uGjrdPxsIWT+QJI5uNM/MprUvxfMGcQEH5rusF/V1QrcdNdLXJmzP1WW7C2ky/XNEK2nw==
+  dependencies:
+    "@astrolabs/registry" "^1.0.36"
 
 "@astrolabs/swapper@^1.0.17":
   version "1.0.21"

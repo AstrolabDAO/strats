@@ -7,7 +7,7 @@ import {
   loadAbi,
   network,
   provider,
-  weiToString
+  weiToString,
 } from "@astrolabs/hardhat";
 import {
   ISwapperParams,
@@ -20,9 +20,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { erc20Abi, wethAbi } from "abitype/abis";
 import { assert } from "chai";
 import crypto from "crypto";
-import {
-  Provider as MulticallProvider
-} from "ethcall";
+import { Provider as MulticallProvider } from "ethcall";
 import {
   BigNumber,
   BigNumberish,
@@ -44,6 +42,8 @@ export const addressZero = constants.AddressZero;
 export const addressOne = "0x0000000000000000000000000000000000000001";
 export const MaxUint256 = ethers.constants.MaxUint256;
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
+
+export const indexes = Array.from({ length: 8 }, (_, index) => index);
 
 export function isLive(env: any) {
   const n = env.network ?? network;
@@ -105,10 +105,23 @@ export function getSelectors(abi: any) {
 }
 
 /**
+ * Checks if two arrays are equal
+ * @param a - The first array
+ * @param b - The second array
+ * @returns True if the arrays are equal, false otherwise
+ */
+export const arraysEqual = (a: any[], b: any[]) =>
+  a === b ||
+  (a && b && a.length === b.length && a.every((val, idx) => val === b[idx]));
+
+/**
  * Overrides for different network chain IDs
  * @type {Object.<number, Overrides>}
  */
 const networkOverrides: { [chainId: number]: Overrides } = {
+  1: {
+    gasLimit: 1e8,
+  },
   100: {
     // gasLimit: 1e7,
     maxPriorityFeePerGas: 5e9,
@@ -122,9 +135,8 @@ const networkOverrides: { [chainId: number]: Overrides } = {
   },
   8453: {
     gasLimit: 1e7,
-  }
+  },
 };
-
 
 /**
  * Retrieves the overrides based on the provided environment
@@ -133,9 +145,11 @@ const networkOverrides: { [chainId: number]: Overrides } = {
  * @dev No overrides are used for live environments (mainnets)
  */
 export const getOverrides = (env: Partial<ITestEnv>) => {
-  const overrides = isLive(env) ? {} : networkOverrides[env.network!.config.chainId!] ?? {};
+  const overrides = isLive(env)
+    ? {}
+    : networkOverrides[env.network!.config.chainId!] ?? {};
   return overrides;
-}
+};
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -219,27 +233,28 @@ export async function logBalances(
   let balances: BigNumber[];
   let tokenId = "";
   if (token == addressOne) {
-    tokenId = `native token`
+    tokenId = `native token`;
     balances = await env.multicallProvider!.all([
       env.multicallProvider!.getEthBalance(payer),
       env.multicallProvider!.getEthBalance(receiver),
     ]);
     console.log(`
-    State ${step ?? ""}:\nBalances of ${tokenId
-    }\n  - payer (eg. rescued strat): ${
+    State ${
+      step ?? ""
+    }:\nBalances of ${tokenId}\n  - payer (eg. rescued strat): ${
       balances[0]
     }\n  - receiver (eg. rescuer): ${balances[1]}`);
   } else {
-    if (typeof token === "string")
-      token = await SafeContract.build(token);
-    tokenId = `${token.sym} (${token.address})`
+    if (typeof token === "string") token = await SafeContract.build(token);
+    tokenId = `${token.sym} (${token.address})`;
     balances = await env.multicallProvider!.all([
       token.multi.balanceOf(payer),
       token.multi.balanceOf(receiver),
     ]);
     console.log(`
-    State ${step ?? ""}:\nBalances of ${tokenId
-    }\n  - payer (eg. rescued strat): ${token.toAmount(
+    State ${
+      step ?? ""
+    }:\nBalances of ${tokenId}\n  - payer (eg. rescued strat): ${token.toAmount(
       balances[0],
     )}\n  - receiver (eg. rescuer): ${token.toAmount(balances[1])}`);
   }
@@ -260,12 +275,13 @@ export async function logState(
   sleepBefore = 0,
   sleepAfter = 0,
 ) {
-  const { strat, asset, inputs, rewardTokens } = env.deployment!;
+  const { strat, rewardTokens } = env.deployment!;
   if (sleepBefore) {
     console.log(`Sleeping ${sleepBefore}ms before logging state...`);
     await sleep(sleepBefore);
   }
   try {
+    const asset = await SafeContract.build(await strat.asset());
     const [
       sharePrice,
       totalSupply,
@@ -308,13 +324,25 @@ export async function logState(
       strat.multi.balanceOf(env.deployer!.address),
       // await assetTokenContract.balanceOf(strategy.address),
     ]);
-
-    const inputsAddresses = inputs.map((input) => input.address);
-    // await env.multicallProvider!.all(inputs.map((input, index) => strat.multi.inputs(index)));
+    const inputIndexes = [...Array(8)];
+    const inputData = await env.multicallProvider!.all(
+      indexes.map((i) => strat.multi.inputs(i)),
+    );
+    const emptyAddress = "0x0000000000000000000000000000000000000000";
+    let lastInputIndex = inputData.findIndex((input) => input == emptyAddress);
+    if (lastInputIndex < 0) lastInputIndex = inputIndexes.length; // max 8 inputs (if no empty address found)
+    const weightData = await env.multicallProvider!.all(
+      indexes.map((i) => strat.multi.inputWeights(i)),
+    );
+    const [inputAddresses, inputWeights] = [
+      inputData.slice(0, lastInputIndex),
+      weightData.slice(0, lastInputIndex),
+    ];
+    const inputs = await Promise.all(
+      inputAddresses.map((input: any) => SafeContract.build(input)),
+    );
 
     const rewardsAddresses = rewardTokens.map((reward) => reward.address);
-    // await env.multicallProvider!.all(rewardTokens.map((input, index) => strat.multi.rewardTokens(index)));
-
     // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
     const [invested, rewardsAvailable] = await Promise.all([
       strat["invested()"](),
@@ -326,71 +354,77 @@ export async function logState(
 
     console.log(
       `State ${step ?? ""}:
-    asset: ${asset.address}
-    inputs: [${inputsAddresses.join(", ")}]
+    asset: ${asset.sym} (${asset.address})
+    inputs: [${inputs
+      .map((input) => input.sym + " (" + input.address)
+      .join("), ")})]
+    inputWeights: [${inputWeights.join(", ")}]
     rewardTokens: [${rewardsAddresses.join(", ")}]
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${strat.toAmount(totalSupply)} (${totalSupply}wei)
     totalAccountedSupply(): ${strat.toAmount(
-        totalAccountedSupply,
-      )} (${totalAccountedSupply}wei)
+      totalAccountedSupply,
+    )} (${totalAccountedSupply}wei)
     totalAssets(): ${asset.toAmount(totalAssets)} (${totalAssets}wei)
     totalAccountedAssets(): ${asset.toAmount(
-        totalAccountedAssets,
-      )} (${totalAccountedAssets}wei)
+      totalAccountedAssets,
+    )} (${totalAccountedAssets}wei)
     totalClaimableAssetFees(): ${asset.toAmount(
-        totalClaimableAssetFees,
-      )} (${totalClaimableAssetFees}wei)
+      totalClaimableAssetFees,
+    )} (${totalClaimableAssetFees}wei)
     invested(): ${asset.toAmount(invested)} (${invested}wei)\n${inputs
-        .map(
-          (input, index) =>
-            `      -${input.sym}: ${<any>(
-              asset.toAmount(investedAmounts[index])
-            )} (${investedAmounts[index]}wei)`,
-        )
-        .join("\n")}
-    available(): ${available / asset.weiPerUnit} (${available}wei) (${Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
-      }%)
+      .map(
+        (input, index) =>
+          `      -${input.sym}: ${<any>(
+            asset.toAmount(investedAmounts[index])
+          )} (${investedAmounts[index]}wei)`,
+      )
+      .join("\n")}
+    available(): ${available / asset.weiPerUnit} (${available}wei) (${
+      Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
+    }%)
     totalRedemptionRequest(): ${strat.toAmount(
-        totalRedemptionRequest,
-      )} (${totalRedemptionRequest}wei)
+      totalRedemptionRequest,
+    )} (${totalRedemptionRequest}wei)
     totalClaimableRedemption(): ${strat.toAmount(
-        totalClaimableRedemption,
-      )} (${totalClaimableRedemption}wei) (${Math.round(
+      totalClaimableRedemption,
+    )} (${totalClaimableRedemption}wei) (${
+      Math.round(
         totalRedemptionRequest.lt(10)
           ? 0
           : (totalClaimableRedemption * 100) / totalRedemptionRequest,
       ) / 100
-      }%)
+    }%)
     rewardsAvailable():\n${rewardTokens
-        .map(
-          (reward, index) =>
-            `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${rewardsAvailable[index]
-            }wei)`,
-        )
-        .join("\n")}
+      .map(
+        (reward, index) =>
+          `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${
+            rewardsAvailable[index]
+          }wei)`,
+      )
+      .join("\n")}
     previewInvest(0 == available()*.9):\n${inputs
-        .map(
-          (input, i) =>
-            `      -${input.sym}: ${asset.toAmount(
-              previewInvest[i],
-            )} (${previewInvest[i].toString()}wei)`,
-        )
-        .join("\n")}
+      .map(
+        (input, i) =>
+          `      -${input.sym}: ${asset.toAmount(
+            previewInvest[i],
+          )} (${previewInvest[i].toString()}wei)`,
+      )
+      .join("\n")}
     previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
-        .map(
-          (input, i) =>
-            `      -${input.sym}: ${input.toAmount(
-              previewLiquidate[i],
-            )} (${previewLiquidate[i].toString()}wei)`,
-        )
-        .join("\n")}
+      .map(
+        (input, i) =>
+          `      -${input.sym}: ${input.toAmount(
+            previewLiquidate[i],
+          )} (${previewLiquidate[i].toString()}wei)`,
+      )
+      .join("\n")}
     stratAssetBalance(): ${asset.toAmount(
-          stratAssetBalance,
-        )} (${stratAssetBalance}wei)
+      stratAssetBalance,
+    )} (${stratAssetBalance}wei)
     deployerBalances(shares, asset): [${strat.toAmount(
-          deployerSharesBalance,
-        )},${asset.toAmount(deployerAssetBalance)}]
+      deployerSharesBalance,
+    )},${asset.toAmount(deployerAssetBalance)}]
     `,
     );
     if (sleepAfter) await sleep(sleepAfter);
@@ -520,7 +554,12 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
       "1",
       tr.to,
       tr.data,
-      { gasLimit: Math.max(Number(tr.gasLimit ?? 0), (getOverrides(env)?.gasLimit as number) ?? 1e7) },
+      {
+        gasLimit: Math.max(
+          Number(tr.gasLimit ?? 0),
+          (getOverrides(env)?.gasLimit as number) ?? 1e7,
+        ),
+      },
     );
     console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
     received = (await output.balanceOf(o.payer)).sub(outputBalanceBeforeSwap);
@@ -622,7 +661,8 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   if (env.needsFunding) {
     console.log(
-      `Funding ${env.deployer.address} from ${env.gasUsedForFunding || "(auto)"
+      `Funding ${env.deployer.address} from ${
+        env.gasUsedForFunding || "(auto)"
       }wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`,
     );
     let gas =
@@ -684,18 +724,14 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
   }
   const params = env.deployment!.initParams[1] as IChainlinkParams;
 
-  if (!env.network.name.includes("tenderly"))
-    return;
+  if (!env.network.name.includes("tenderly")) return;
 
   for (const lib of Object.keys(env.deployment!.units!)) {
     if (isOracleLib(lib)) {
       console.log(`Whitelisting oracle access for ${lib}`);
       switch (lib) {
         case "ChainlinkUtils": {
-          const oracles = new Set([
-            params.assetPriceFeed,
-            ...params.inputPriceFeeds,
-          ]);
+          const oracles = new Set([params.assetFeed, ...params.inputFeeds]);
           for (const oracle of oracles) {
             const storageSlot =
               "0x0000000000000000000000000000000000000000000000000000000000000031";

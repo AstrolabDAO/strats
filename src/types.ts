@@ -130,13 +130,17 @@ export interface IStrategyBaseParams {
 
 export interface IPythParams {
   pyth: string;
-  assetPythId: string;
-  inputPythIds: string[];
+  assetFeed: string;
+  assetValidity: number;
+  inputFeeds: string[];
+  inputValidities: number[];
 }
 
 export interface IChainlinkParams {
-  assetPriceFeed: string;
-  inputPriceFeeds: string[];
+  assetFeed: string;
+  assetFeedValidity: number;
+  inputFeeds: string[];
+  inputFeedValidities: number[];
 }
 
 export type IStrategyParams = [IStrategyBaseParams, any];
