@@ -528,21 +528,21 @@ abstract contract As4626 is As4626Abstract {
      * @return The maximum amount of assets that can be deposited
      */
     function maxDeposit(address) public view returns (uint256) {
-        return maxTotalAssets.subMax0(totalAssets());
+        return paused() ? 0 : maxTotalAssets.subMax0(totalAssets());
     }
 
     /**
      * @return The maximum amount of shares that can be minted
      */
     function maxMint(address) public view returns (uint256) {
-        return convertToShares(maxDeposit(address(0)), false);
+        return paused() ? 0 : convertToShares(maxDeposit(address(0)), false);
     }
 
     /**
      * @return The maximum amount of assets that can be withdrawn
      */
     function maxWithdraw(address _owner) public view returns (uint256) {
-        return convertToAssets(maxRedeem(_owner), false);
+        return paused() ? 0 : convertToAssets(maxRedeem(_owner), false);
     }
 
     /**
