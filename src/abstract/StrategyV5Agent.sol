@@ -117,6 +117,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         address[] calldata _inputs,
         uint16[] calldata _weights
     ) public onlyAdmin {
+        if (_inputs.length > 8) revert Unauthorized();
         address swapperAddress = address(swapper);
         for (uint8 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
@@ -134,6 +135,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     function setRewardTokens(
         address[] calldata _rewardTokens
     ) public onlyManager {
+        if (_rewardTokens.length > 8) revert Unauthorized();
         for (uint8 i = 0; i < _rewardTokens.length; i++) {
             rewardTokens[i] = _rewardTokens[i];
             rewardTokenIndex[_rewardTokens[i]] = i+1;
