@@ -104,7 +104,7 @@ abstract contract As4626 is As4626Abstract {
 
         // slice the fee from the amount received (gas optimized)
         if (!exemptionList[_receiver])
-            claimableAssetFees += received.revBp(fees.entry);
+            claimableAssetFees += received.bp(fees.entry);
 
         // if received amount is less than the requested amount, mint proportionally less shares
         if (received < _amount)
@@ -148,7 +148,7 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Withdraw assets denominated in asset
+     * @notice Withdraw by burning _shares from owner and sending _amount of asset to _receiver
      * @dev Unlike safeWithdraw, there's no slippage control here
      * @param _amount Amount of asset tokens to withdraw
      * @param _receiver Who will get the withdrawn assets
@@ -216,7 +216,7 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Withdraw assets denominated in asset
+     * @notice Withdraw by burning the equivalent _owner's shares and sending _amount of asset to _receiver
      * @dev Beware, there's no slippage control - use safeWithdraw if you want it
      * @param _amount Amount of asset tokens to withdraw
      * @param _receiver Who will get the withdrawn assets
@@ -251,7 +251,7 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @notice Redeem shares for their asset value
+     * @notice Redeems/burns _owner's shares and sends the equivalent amount in asset to _receiver
      * @dev Beware, there's no slippage control - you need to use the overloaded function if you want it
      * @param _shares Amount of shares to redeem
      * @param _receiver Who will get the withdrawn assets
@@ -449,7 +449,7 @@ abstract contract As4626 is As4626Abstract {
      * @return shares Amount of asset tokens that the caller should pay
      */
     function previewMint(uint256 _shares, address _receiver) public view returns (uint256) {
-        return convertToAssets(_shares, true).addBp(exemptionList[_receiver] ? 0 : fees.entry);
+        return convertToAssets(_shares, true).revAddBp(exemptionList[_receiver] ? 0 : fees.entry);
     }
 
     /**
@@ -470,7 +470,7 @@ abstract contract As4626 is As4626Abstract {
      * @return shares Amount of shares that will be minted
      */
     function previewDeposit(uint256 _amount, address _receiver) public view returns (uint256 shares) {
-        return convertToShares(_amount, false).revSubBp(exemptionList[_receiver] ? 0 : fees.entry);
+        return convertToShares(_amount, false).subBp(exemptionList[_receiver] ? 0 : fees.entry);
     }
 
     /**
@@ -492,7 +492,7 @@ abstract contract As4626 is As4626Abstract {
      * @return How many shares will be burnt
      */
     function previewWithdraw(uint256 _assets, address _owner) public view returns (uint256) {
-        return convertToShares(_assets, true).addBp(exemptionList[_owner] ? 0 : fees.exit);
+        return convertToShares(_assets, true).revAddBp(exemptionList[_owner] ? 0 : fees.exit);
     }
 
     /**
@@ -513,7 +513,7 @@ abstract contract As4626 is As4626Abstract {
      * @return Preview amount of asset tokens that the caller will get for his shares
      */
     function previewRedeem(uint256 _shares, address _owner) public view returns (uint256) {
-        return convertToAssets(_shares, false).revSubBp(exemptionList[_owner] ? 0 : fees.exit);
+        return convertToAssets(_shares, false).subBp(exemptionList[_owner] ? 0 : fees.exit);
     }
 
     /**
