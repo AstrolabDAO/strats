@@ -20,7 +20,7 @@ import "./AsRescuable.sol";
 contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     using AsMaths for uint256;
     using AsMaths for int256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     constructor() StrategyV5Abstract() {}
 
@@ -47,13 +47,13 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
 
         for (uint256 i = 0; i < rewardLength; i++) {
             if (rewardTokens[i] == address(0)) break;
-            IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
+            IERC20Metadata(rewardTokens[i]).forceApprove(swapperAddress, _amount);
         }
         for (uint256 i = 0; i < inputLength; i++) {
             if (address(inputs[i]) == address(0)) break;
-            inputs[i].approve(swapperAddress, _amount);
+            inputs[i].forceApprove(swapperAddress, _amount);
         }
-        asset.approve(swapperAddress, _amount);
+        asset.forceApprove(swapperAddress, _amount);
     }
 
     /**
@@ -103,7 +103,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         last.accountedAssets = totalAssets();
         last.accountedSupply = totalSupply();
         address swapperAddress = address(swapper);
-        IERC20Metadata(_asset).approve(swapperAddress, MAX_UINT256);
+        IERC20Metadata(_asset).forceApprove(swapperAddress, MAX_UINT256);
     }
 
     /**
@@ -120,7 +120,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
             inputs[i] = IERC20Metadata(_inputs[i]);
             inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
-            inputs[i].approve(swapperAddress, MAX_UINT256);
+            inputs[i].forceApprove(swapperAddress, MAX_UINT256);
         }
         inputLength = uint8(_inputs.length);
     }
