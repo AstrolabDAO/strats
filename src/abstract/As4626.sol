@@ -153,7 +153,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _amount Amount of asset tokens to withdraw
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
-     * @return shares Amount of shares burned
+     * @return amount of asset withdrawn
      */
     function _withdraw(
         uint256 _amount,
@@ -221,7 +221,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _amount Amount of asset tokens to withdraw
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
-     * @return shares Amount of shares burned
+     * @return amount of asset withdrawn
      */
     function withdraw(
         uint256 _amount,
@@ -238,7 +238,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _amount Amount of asset tokens to withdraw
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
-     * @return amount Amount of shares burned
+     * @return amount of asset withdrawn
      */
     function safeWithdraw(
         uint256 _amount,

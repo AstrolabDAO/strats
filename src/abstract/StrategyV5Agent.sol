@@ -30,10 +30,12 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
      */
     function init(StrategyBaseParams calldata _params) public onlyAdmin {
         // setInputs(_params.inputs, _params.inputWeights);
-        setRewardTokens(_params.rewardTokens);
+        // NOTE: If no reward tokens, strategy is auto-compounding
+        if (_params.rewardTokens[0] != address(0))
+            setRewardTokens(_params.rewardTokens);
         asset = IERC20Metadata(_params.coreAddresses.asset);
         assetDecimals = asset.decimals();
-        weiPerAsset = 10**assetDecimals;
+        weiPerAsset = 10 ** assetDecimals;
         updateSwapper(_params.coreAddresses.swapper);
         As4626.init(_params.erc20Metadata, _params.coreAddresses, _params.fees);
     }
@@ -78,8 +80,11 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
      * @param _swapData Swap callData oldAsset->newAsset
      * @param _priceFactor Multiplier of (old asset price * 1e18) / (new asset price)
      */
-    function updateAsset(address _asset, bytes calldata _swapData, uint256 _priceFactor) external virtual onlyAdmin {
-
+    function updateAsset(
+        address _asset,
+        bytes calldata _swapData,
+        uint256 _priceFactor
+    ) external virtual onlyAdmin {
         if (_asset == address(0)) revert AddressZero();
         if (_asset == address(asset)) return;
 
@@ -91,11 +96,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         _pause();
 
         // slippage is checked within Swapper >> no need to use (received, spent)
-        swapper.decodeAndSwapBalance(
-            address(asset),
-            _asset,
-            _swapData
-        );
+        swapper.decodeAndSwapBalance(address(asset), _asset, _swapData);
 
         // reset all cached accounted values as a denomination change might change the accounting basis
         expectedProfits = 0; // reset trailing profits
@@ -103,7 +104,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         _collectFees(); // claim all pending fees to reset claimableAssetFees
         asset = IERC20Metadata(_asset);
         assetDecimals = asset.decimals();
-        weiPerAsset = 10**assetDecimals;
+        weiPerAsset = 10 ** assetDecimals;
         last.accountedAssets = totalAssets();
         last.accountedSupply = totalSupply();
         last.sharePrice = last.sharePrice.mulDiv(_priceFactor, 1e18); // multiply then debase
@@ -141,7 +142,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         if (_rewardTokens.length > 8) revert Unauthorized();
         for (uint8 i = 0; i < _rewardTokens.length; i++) {
             rewardTokens[i] = _rewardTokens[i];
-            rewardTokenIndex[_rewardTokens[i]] = i+1;
+            rewardTokenIndex[_rewardTokens[i]] = i + 1;
         }
         rewardLength = uint8(_rewardTokens.length);
     }

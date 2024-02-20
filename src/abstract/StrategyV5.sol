@@ -115,6 +115,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function
      * @param _amounts Amount of inputs to liquidate (in asset)
      * @param _minLiquidity Minimum amount of assets to receive
+     * TODO : Implement or remove panic
      * @param _panic Set to true to ignore slippage when liquidating
      * @param _params Generic callData (e.g., SwapperParams)
      * @return liquidityAvailable Amount of assets available to liquidate

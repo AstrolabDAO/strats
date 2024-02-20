@@ -53,7 +53,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      * @dev Initializes the strategy with the specified parameters
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
-     * @param _compoundParams Sonne specific parameters
+     * @param _compoundParams Compound specific parameters
      */
     function init(
         StrategyBaseParams calldata _baseParams,
