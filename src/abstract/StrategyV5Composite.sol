@@ -2,7 +2,10 @@
 pragma solidity ^0.8.17;
 
 import "../libs/AsArrays.sol";
-import "../abstract/StrategyV5.sol";
+import "../libs/AsMaths.sol";
+// import "../abstract/StrategyV5.sol";
+import "../abstract/StrategyV5Chainlink.sol";
+
 import "../interfaces/IAs4626.sol";
 
 /**            _             _       _
@@ -11,12 +14,12 @@ import "../interfaces/IAs4626.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AsComposite - Liquidity providing on primitives
+ * @title StrategyV5Composite - Liquidity providing on primitives
  * @author Astrolab DAO
  * @notice Liquidity providing for network specific AsPrimitives
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract AsComposite is StrategyV5 {
+contract StrategyV5Composite is StrategyV5Chainlink {
     //TODO: Tbd if used or not
     using AsMaths for uint256;
     using AsArrays for uint256;
@@ -25,10 +28,9 @@ contract AsComposite is StrategyV5 {
     // Third party contracts
     address[8] public primitives;
 
-    constructor() StrategyV5() {}
+    constructor() StrategyV5Chainlink() {}
 
     // Struct containing the compopsite init parameters
-    //TODO: Tbd if needed or pass directly to init address[]
     struct Params {
         address[] primitives;
     }
@@ -40,6 +42,7 @@ contract AsComposite is StrategyV5 {
      */
     function init(
         StrategyBaseParams calldata _baseParams,
+        ChainlinkParams calldata _chainlinkParams,
         Params calldata _compositeParams
     ) external onlyAdmin {
         for (uint8 i = 0; i < _compositeParams.primitives.length; i++) {
@@ -52,7 +55,8 @@ contract AsComposite is StrategyV5 {
             primitives[i] = _compositeParams.primitives[i];
         }
         _setAllowances(MAX_UINT256);
-        StrategyV5._init(_baseParams);
+        // StrategyV5._init(_baseParams);
+        StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
     /**
@@ -138,7 +142,6 @@ contract AsComposite is StrategyV5 {
         uint256[] calldata _minLiquidity,
         bytes[][] memory _params
     ) external nonReentrant onlyKeeper returns (uint256 assetsRecovered) {
-        uint256 toLiquidate;
         uint256 recovered;
         uint256 balance;
 
@@ -205,10 +208,11 @@ contract AsComposite is StrategyV5 {
 
             // NB: we could use redeemUnderlying() here
             toLiquidate = AsMaths.min(_inputToStake(_amounts[i], i), balance);
+            // toLiquidate = _inputToStake(_amounts[i], i).min(balance);
 
             if (req.liquidate[i] > 0) {
                 recovered = primitive.withdraw(
-                    (AsMaths.min(req.liquidate[i], _amounts[i])),
+                    req.liquidate[i].min(_amounts[i]),
                     address(this),
                     address(this)
                 );

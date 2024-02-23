@@ -162,7 +162,7 @@ export interface IStrategyDeployment extends IDeployment {
   strat: SafeContract;
   asset: SafeContract;
   inputs: SafeContract[];
-  rewardTokens: SafeContract[];
+  rewardTokens: SafeContract[] | string[];
 }
 
 export interface ITestEnv {

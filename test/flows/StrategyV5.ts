@@ -40,7 +40,6 @@ import { findSymbolByAddress } from "../../src/addresses";
 import compoundAddresses from "../../src/implementations/Compound/addresses";
 
 export const indexes = Array.from({ length: 8 }, (_, index) => index);
-
 /**
  * Deploys a strategy with the given parameters
  * @param env - Strategy deployment environment
@@ -95,7 +94,6 @@ export const deployStrat = async (
   // exclude implementation specific libraries from agentLibs (eg. oracle libs)
   // as these are specific to the strategy implementation
   const stratLibs = Object.assign({}, libraries);
-
   const agentLibs = Object.assign({}, stratLibs);
   delete agentLibs.AsMaths; // not used statically by Agent/Strat
 
@@ -243,6 +241,7 @@ export const deployStrat = async (
   ) {
     console.log(`Using existing deployment [${name} Stack]`);
   } else {
+    console.log(env.deployment?.units, "env.deployment?.units?");
     await deployAll(env.deployment!);
   }
 
@@ -290,11 +289,14 @@ export async function setupStrat(
     inputs: await Promise.all(
       initParams[0].inputs!.map((input) => SafeContract.build(input)),
     ),
-    rewardTokens: await Promise.all(
-      initParams[0].rewardTokens!.map((rewardToken) =>
-        SafeContract.build(rewardToken),
-      ),
-    ),
+    rewardTokens:
+      initParams[0].rewardTokens[0] != addressZero
+        ? await Promise.all(
+            initParams[0].rewardTokens!.map((rewardToken) =>
+              SafeContract.build(rewardToken),
+            ),
+          )
+        : initParams[0].rewardTokens[0],
   } as any;
 
   env = await deployStrat(
@@ -960,7 +962,7 @@ export async function updateInputs(
   receipt = await strat
     .safe(
       "setInputs(address[],address[],uint16[],address[],uint256[])",
-      [orderedInputs, lpTokens, orderedWeights, newFeeds,[86400,86400]],
+      [orderedInputs, lpTokens, orderedWeights, newFeeds, [86400, 86400]],
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
@@ -1119,4 +1121,3 @@ export async function shuffleWeightsRebalance(
 // function findSymbolByAddress(to: string, arg1: number) {
 //   throw new Error("Function not implemented.");
 // }
-
