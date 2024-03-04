@@ -491,7 +491,7 @@ abstract contract As4626 is As4626Abstract {
      * @return How many shares will be burnt
      */
     function previewWithdraw(uint256 _assets, address _owner) public view returns (uint256) {
-        return convertToShares(_assets, true).revAddBp(exemptionList[_owner] ? 0 : fees.exit);
+        return convertToShares(_assets.revAddBp(exemptionList[_owner] ? 0 : fees.exit), true);
     }
 
     /**
@@ -512,7 +512,7 @@ abstract contract As4626 is As4626Abstract {
      * @return Preview amount of asset tokens that the caller will get for his shares
      */
     function previewRedeem(uint256 _shares, address _owner) public view returns (uint256) {
-        return convertToAssets(_shares, false).subBp(exemptionList[_owner] ? 0 : fees.exit);
+        return convertToAssets(_shares.subBp(exemptionList[_owner] ? 0 : fees.exit), false);
     }
 
     /**
