@@ -53,7 +53,7 @@ library AsAccounting {
         int256 change = int256(price) - int256(last.accountedSharePrice); // 1e? - 1e? = 1e?
 
         // If called within the same block or the share price decreased, no fees are collected
-        if (duration == 0 || change < 0) return (0, 0, 0, 0);
+        if (duration == 0 || change < 0) return (0, price, 0, 0);
 
         // relative profit = (change / last price) on a PRECISION_BP_BASIS scale
         profit = uint256(change).mulDiv(
