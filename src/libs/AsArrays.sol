@@ -21,57 +21,69 @@ library AsArrays {
      */
     function sum(uint256[] storage self) public view returns (uint256 value) {
         assembly {
-            mstore(0x60, self.slot)
+            let ptr := mload(0x40) // Safe memory pointer
+            mstore(ptr, self.slot) // Store the array's slot
 
             for {
                 let i := 0
             } lt(i, sload(self.slot)) {
                 i := add(i, 1)
             } {
-                value := add(sload(add(keccak256(0x60, 0x20), i)), value)
+                let el := sload(add(keccak256(ptr, 0x20), i)) // Load each element
+                value := add(value, el) // Accumulate the sum
             }
         }
     }
 
     /**
-     * @notice Returns the max value in an array
-     * @param self Storage array containing uint256 type variables
-     * @return value The highest value in the array
+     * @dev Returns the maximum value in the given array
+     * @param self The array to find the maximum value from
+     * @return value The maximum value in the array
      */
     function max(uint256[] storage self) public view returns (uint256 value) {
         assembly {
-            mstore(0x60, self.slot)
-            value := sload(keccak256(0x60, 0x20))
+            let ptr := mload(0x40) // Load the current free memory pointer
+            mstore(ptr, self.slot) // Store the array's slot at the safe memory location
+            value := sload(keccak256(ptr, 0x20)) // Load the first element of the array
 
-            for {
-                let i := 0
-            } lt(i, sload(self.slot)) {
-                i := add(i, 1)
-            } {
-                switch gt(sload(add(keccak256(0x60, 0x20), i)), value)
-                case 1 {
-                    value := sload(add(keccak256(0x60, 0x20), i))
+            // Get the array's length
+            let len := sload(self.slot)
+
+            // Iterate over the array
+            for { let i := 0 } lt(i, len) { i := add(i, 1) } {
+                // Compute the keccak256 hash of the slot and index to access the array element
+                let el := sload(add(keccak256(ptr, 0x20), i))
+                // Check if the current element is greater than the current max value
+                if gt(el, value) {
+                    value := el // Update max value
                 }
             }
+
+            // No need to update the free memory pointer since we didn't allocate more memory
         }
     }
 
-    /// @notice Returns the minimum value in an array
-    /// @param self Storage array containing uint256 type variables
-    /// @return value The highest value in the array
+    /**
+     * @dev Returns the minimum value in the given array
+     * @param self The array to find the minimum value from
+     * @return value The minimum value in the array
+     */
     function min(uint256[] storage self) public view returns (uint256 value) {
+        bool initialized;
         assembly {
-            mstore(0x60, self.slot)
-            value := sload(keccak256(0x60, 0x20))
+            let ptr := mload(0x40) // Safe memory pointer
+            mstore(ptr, self.slot) // Store the array's slot
 
             for {
                 let i := 0
             } lt(i, sload(self.slot)) {
                 i := add(i, 1)
             } {
-                switch gt(sload(add(keccak256(0x60, 0x20), i)), value)
-                case 0 {
-                    value := sload(add(keccak256(0x60, 0x20), i))
+                let el := sload(add(keccak256(ptr, 0x20), i)) // Load each element
+                // Initialize value with the first element or update it if a new minimum is found
+                if or(iszero(initialized), lt(el, value)) {
+                    value := el
+                    initialized := 1
                 }
             }
         }
