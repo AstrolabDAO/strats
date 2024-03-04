@@ -22,35 +22,35 @@ abstract contract AsRescuable is AsRescuableAbstract {
     uint64 public constant RESCUE_VALIDITY = 7 days;
 
     /**
-     * @dev Checks if a rescue request is locked based on the current timestamp.
-     * @param req The rescue request to check.
-     * @return A boolean indicating whether the rescue request is locked.
+     * @dev Checks if a rescue request is locked based on the current timestamp
+     * @param req The rescue request to check
+     * @return A boolean indicating whether the rescue request is locked
      */
     function _isRescueLocked(RescueRequest memory req) internal view returns (bool) {
         return block.timestamp < (req.timestamp + RESCUE_TIMELOCK);
     }
 
     /**
-     * @dev Checks if a rescue request is stale based on the current timestamp.
-     * @param req The rescue request to check.
-     * @return A boolean indicating whether the rescue request is stale.
+     * @dev Checks if a rescue request is stale based on the current timestamp
+     * @param req The rescue request to check
+     * @return A boolean indicating whether the rescue request is stale
      */
     function _isRescueExpired(RescueRequest memory req) internal view returns (bool) {
         return block.timestamp > (req.timestamp + RESCUE_TIMELOCK + RESCUE_VALIDITY);
     }
 
     /**
-     * @dev Checks if a rescue request is unlocked based on the current timestamp.
-     * @param req The rescue request to check.
-     * @return A boolean indicating whether the rescue request is unlocked.
+     * @dev Checks if a rescue request is unlocked based on the current timestamp
+     * @param req The rescue request to check
+     * @return A boolean indicating whether the rescue request is unlocked
      */
     function _isRescueUnlocked(RescueRequest memory req) internal view returns (bool) {
         return !_isRescueExpired(req) && !_isRescueLocked(req);
     }
 
     /**
-     * @dev Requests a rescue for a specific token.
-     * @param _token The address of the token to be rescued.
+     * @dev Requests a rescue for a specific token
+     * @param _token The address of the token to be rescued
      */
     function _requestRescue(address _token) internal {
         RescueRequest storage req = rescueRequests[_token];
@@ -65,15 +65,15 @@ abstract contract AsRescuable is AsRescuableAbstract {
     function requestRescue(address _token) external virtual {}
 
     /**
-     * @dev Internal function to rescue tokens or native tokens (ETH) from the contract.
-     * @param _token The address of the token to be rescued. Use address(1) for native tokens (ETH).
-     * @notice This function can only be called by the receiver specified in the rescue request.
-     * @notice The rescue request must be initiated before the rescue timelock expires.
-     * @notice The rescue request remains valid until the rescue validity period expires.
-     * @notice If the rescue request is valid, the specified amount of tokens will be transferred to the receiver.
-     * @notice If the rescue request is not valid, a new rescue request will be set with the caller as the receiver.
-     * @notice Emits a Rescue event when the rescue is successful.
-     * @notice Emits a Rescue event when a new rescue request is set.
+     * @dev Internal function to rescue tokens or native tokens (ETH) from the contract
+     * @param _token The address of the token to be rescued. Use address(1) for native tokens (ETH)
+     * @notice This function can only be called by the receiver specified in the rescue request
+     * @notice The rescue request must be initiated before the rescue timelock expires
+     * @notice The rescue request remains valid until the rescue validity period expires
+     * @notice If the rescue request is valid, the specified amount of tokens will be transferred to the receiver
+     * @notice If the rescue request is not valid, a new rescue request will be set with the caller as the receiver
+     * @notice Emits a Rescue event when the rescue is successful
+     * @notice Emits a Rescue event when a new rescue request is set
      */
     function _rescue(address _token) internal {
         RescueRequest storage req = rescueRequests[_token];

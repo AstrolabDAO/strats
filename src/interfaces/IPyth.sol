@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title PythStructs
- * @dev Contains data structures used in Pyth contracts.
+ * @dev Contains data structures used in Pyth contracts
  * cf. https://github.com/pyth-network/pyth-sdk-solidity/blob/main/AbstractPyth.sol
  */
 contract PythStructs {
@@ -25,7 +25,7 @@ contract PythStructs {
 
 /**
  * @title PythErrors
- * @dev Contains custom errors used in Pyth contracts.
+ * @dev Contains custom errors used in Pyth contracts
  */
 library PythErrors {
     error InvalidArgument(); // Invalid function arguments
@@ -45,7 +45,7 @@ library PythErrors {
 
 /**
  * @title IPythEvents
- * @dev Interface for Pyth contract events.
+ * @dev Interface for Pyth contract events
  */
 interface IPythEvents {
     event PriceFeedUpdate(
@@ -59,7 +59,7 @@ interface IPythEvents {
 
 /**
  * @title IPythAggregator
- * @dev Interface for consuming prices from the Pyth Network.
+ * @dev Interface for consuming prices from the Pyth Network
  */
 interface IPythAggregator is IPythEvents {
     function getValidTimePeriod() external view returns (uint validTimePeriod);

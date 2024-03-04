@@ -400,7 +400,7 @@ library AsMaths {
     ) internal pure returns (bool, uint256) {
         unchecked {
             // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-            // benefit is lost if 'b' is also tested.
+            // benefit is lost if 'b' is also tested
             // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
             if (a == 0) {
                 return (true, 0);
@@ -453,7 +453,7 @@ library AsMaths {
      * @return The average of the two numbers
      */
     function average(uint256 a, uint256 b) internal pure returns (uint256) {
-        // (a + b) / 2 can overflow.
+        // (a + b) / 2 can overflow
         return (a & b) + (a ^ b) / 2;
     }
 
@@ -468,11 +468,11 @@ library AsMaths {
      */
     function ceilDiv(uint256 a, uint256 b) internal pure returns (uint256) {
         if (b == 0) {
-            // Guarantee the same behavior as in a regular Solidity division.
+            // Guarantee the same behavior as in a regular Solidity division
             return a / b;
         }
 
-        // (a + b - 1) / b can overflow on addition, so we distribute.
+        // (a + b - 1) / b can overflow on addition, so we distribute
         return a == 0 ? 0 : (a - 1) / b + 1;
     }
 
@@ -494,7 +494,7 @@ library AsMaths {
         unchecked {
             // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
             // the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
-            // variables such that product = prod1 * 2^256 + prod0.
+            // variables such that product = prod1 * 2^256 + prod0
             uint256 prod0 = x * y; // Least significant 256 bits of the product
             uint256 prod1; // Most significant 256 bits of the product
             assembly {
@@ -502,54 +502,54 @@ library AsMaths {
                 prod1 := sub(sub(mm, prod0), lt(mm, prod0))
             }
 
-            // Handle non-overflow cases, 256 by 256 division.
+            // Handle non-overflow cases, 256 by 256 division
             if (prod1 == 0) {
-                // Solidity will revert if denominator == 0, unlike the div opcode on its own.
-                // The surrounding unchecked block does not change this fact.
-                // See https://docs.soliditylang.org/en/latest/control-structures.html#checked-or-unchecked-arithmetic.
+                // Solidity will revert if denominator == 0, unlike the div opcode on its own
+                // The surrounding unchecked block does not change this fact
+                // See https://docs.soliditylang.org/en/latest/control-structures.html#checked-or-unchecked-arithmetic
                 return prod0 / denominator;
             }
 
-            // Make sure the result is less than 2^256. Also prevents denominator == 0.
+            // Make sure the result is less than 2^256. Also prevents denominator == 0
             require(denominator > prod1);
 
             // 512 by 256 division
-            // Make division exact by subtracting the remainder from [prod1 prod0].
+            // Make division exact by subtracting the remainder from [prod1 prod0]
             uint256 remainder;
             assembly {
-                // Compute remainder using mulmod.
+                // Compute remainder using mulmod
                 remainder := mulmod(x, y, denominator)
 
-                // Subtract 256 bit number from 512 bit number.
+                // Subtract 256 bit number from 512 bit number
                 prod1 := sub(prod1, gt(remainder, prod0))
                 prod0 := sub(prod0, remainder)
             }
 
-            // Factor powers of two out of denominator and compute the largest power of two divisor of denominator.
+            // Factor powers of two out of denominator and compute the largest power of two divisor of denominator
             // Always >= 1. See https://cs.stackexchange.com/q/138556/92363.
 
             uint256 twos = denominator & (0 - denominator);
             assembly {
-                // Divide denominator by twos.
+                // Divide denominator by twos
                 denominator := div(denominator, twos)
 
-                // Divide [prod1 prod0] by twos.
+                // Divide [prod1 prod0] by twos
                 prod0 := div(prod0, twos)
 
-                // Flip twos such that it is 2^256 / twos. If twos is zero, then it becomes one.
+                // Flip twos such that it is 2^256 / twos. If twos is zero, then it becomes one
                 twos := add(div(sub(0, twos), twos), 1)
             }
 
-            // Shift in bits from prod1 into prod0.
+            // Shift in bits from prod1 into prod0
             prod0 |= prod1 * twos;
 
             // Invert denominator mod 2^256. Now that denominator is an odd number, it has an inverse modulo 2^256 such
             // that denominator * inv = 1 mod 2^256. Compute the inverse by starting with a seed that is correct for
-            // four bits. That is, denominator * inv = 1 mod 2^4.
+            // four bits. That is, denominator * inv = 1 mod 2^4
             uint256 inverse = (3 * denominator) ^ 2;
 
             // Use the Newton-Raphson iteration to improve the precision. Thanks to Hensel's lifting lemma, this also
-            // works in modular arithmetic, doubling the correct bits in each step.
+            // works in modular arithmetic, doubling the correct bits in each step
             inverse *= 2 - denominator * inverse; // inverse mod 2^8
             inverse *= 2 - denominator * inverse; // inverse mod 2^16
             inverse *= 2 - denominator * inverse; // inverse mod 2^32
@@ -557,10 +557,10 @@ library AsMaths {
             inverse *= 2 - denominator * inverse; // inverse mod 2^128
             inverse *= 2 - denominator * inverse; // inverse mod 2^256
 
-            // Because the division is now exact we can divide by multiplying with the modular inverse of denominator.
+            // Because the division is now exact we can divide by multiplying with the modular inverse of denominator
             // This will give us the correct result modulo 2^256. Since the preconditions guarantee that the outcome is
             // less than 2^256, this is the final result. We don't need to compute the high bits of the result and prod1
-            // is no longer required.
+            // is no longer required
             result = prod0 * inverse;
             return result;
         }
@@ -613,22 +613,22 @@ library AsMaths {
             return 0;
         }
 
-        // For our first guess, we get the biggest power of 2 which is smaller than the square root of the target.
+        // For our first guess, we get the biggest power of 2 which is smaller than the square root of the target
         //
         // We know that the "msb" (most significant bit) of our target number `a` is a power of 2 such that we have
-        // `msb(a) <= a < 2*msb(a)`. This value can be written `msb(a)=2**k` with `k=log2(a)`.
+        // `msb(a) <= a < 2*msb(a)`. This value can be written `msb(a)=2**k` with `k=log2(a)`
         //
         // This can be rewritten `2**log2(a) <= a < 2**(log2(a) + 1)`
         // → `sqrt(2**k) <= sqrt(a) < sqrt(2**(k+1))`
         // → `2**(k/2) <= sqrt(a) < 2**((k+1)/2) <= 2**(k/2 + 1)`
         //
-        // Consequently, `2**(log2(a) / 2)` is a good first approximation of `sqrt(a)` with at least 1 correct bit.
+        // Consequently, `2**(log2(a) / 2)` is a good first approximation of `sqrt(a)` with at least 1 correct bit
         uint256 result = 1 << (log2(a) >> 1);
 
         // At this point `result` is an estimation with one bit of precision. We know the true value is a uint128,
         // since it is the square root of a uint256. Newton's method converges quadratically (precision doubles at
         // every iteration). We thus need at most 7 iteration to turn our partial result with one bit of precision
-        // into the expected uint128 result.
+        // into the expected uint128 result
         unchecked {
             result = (result + a / result) >> 1;
             result = (result + a / result) >> 1;

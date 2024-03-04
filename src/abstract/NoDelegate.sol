@@ -10,17 +10,17 @@ abstract contract NoDelegate {
     address private immutable root;
 
     /**
-     * @dev Initializes the root address.
+     * @dev Initializes the root address
      */
     constructor() {
-        // Immutables are computed in the init code of the contract, and then inlined into the deployed bytecode.
-        // In other words, this variable won't change when it's checked at runtime.
+        // Immutables are computed in the init code of the contract, and then inlined into the deployed bytecode
+        // In other words, this variable won't change when it's checked at runtime
         root = address(this);
     }
 
     /**
      * @dev Private method is used instead of inlining into modifier because modifiers are copied into each method,
-     *     and the use of immutable means the address bytes are copied in every place the modifier is used.
+     *     and the use of immutable means the address bytes are copied in every place the modifier is used
      */
     function checkNotDelegate() private view {
         require(address(this) == root);

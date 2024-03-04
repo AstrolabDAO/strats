@@ -96,7 +96,7 @@ interface IKyberSapElasticLM {
     function deposit(uint256[] calldata nftIds) external;
 
     /**
-     * @dev Withdraw NFT, must exit all pool before call.
+     * @dev Withdraw NFT, must exit all pool before call
    * @param nftIds list nft id
    **/
     function withdraw(uint256[] calldata nftIds) external;
@@ -133,13 +133,13 @@ interface IKyberSapElasticLM {
     function harvestMultiplePools(uint256[] calldata nftIds, bytes[] calldata datas) external;
 
     /**
-     * @dev Operator only. Call to enable withdraw emergency withdraw for user.
+     * @dev Operator only. Call to enable withdraw emergency withdraw for user
    * @param canWithdraw list pool ids to join
    **/
     function enableWithdraw(bool canWithdraw) external;
 
     /**
-     * @dev Operator only. Call to withdraw all reward from list pools.
+     * @dev Operator only. Call to withdraw all reward from list pools
    * @param rewards list reward address erc20 token
    * @param amounts amount to withdraw
    **/
@@ -234,8 +234,8 @@ interface ReinvestmentToken is IERC20 {
 
     /// @notice The pool tick distance
     /// @dev Ticks can only be initialized and used at multiples of this value
-    /// It remains an int24 to avoid casting even though it is >= 1.
-    /// e.g: a tickDistance of 5 means ticks can be initialized every 5th tick, i.e., ..., -10, -5, 0, 5, 10, ...
+    /// It remains an int24 to avoid casting even though it is >= 1
+    /// e.g: a tickDistance of 5 means ticks can be initialized every 5th tick, i.e., ..., -10, -5, 0, 5, 10, ..
     /// @return The tick distance
     function tickDistance() external view returns (int24);
 
@@ -262,7 +262,7 @@ interface ReinvestmentToken is IERC20 {
     );
 
     /// @notice Returns the previous and next initialized ticks of a specific tick
-    /// @dev If specified tick is uninitialized, the returned values are zero.
+    /// @dev If specified tick is uninitialized, the returned values are zero
     /// @param tick The tick to look up
     function initializedTicks(int24 tick) external view returns (int24 previous, int24 next);
 
@@ -317,7 +317,7 @@ interface ReinvestmentToken is IERC20 {
     /// @param tickLower The lower tick (of a position)
     /// @param tickUpper The upper tick (of a position)
     /// @return secondsPerLiquidityInside active time (multiplied by 2^96)
-    /// between the 2 ticks, per unit of liquidity.
+    /// between the 2 ticks, per unit of liquidity
     function getSecondsPerLiquidityInside(int24 tickLower, int24 tickUpper)
     external
     view

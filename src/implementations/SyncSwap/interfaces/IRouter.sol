@@ -12,16 +12,16 @@ interface IRouter {
     }
 
     struct SwapStep {
-        address pool; // The pool of the step.
-        bytes data; // The data to execute swap with the pool.
+        address pool; // The pool of the step
+        bytes data; // The data to execute swap with the pool
         address callback;
         bytes callbackData;
     }
 
     struct SwapPath {
-        SwapStep[] steps; // Steps of the path.
-        address tokenIn; // The input token of the path.
-        uint amountIn; // The input token amount of the path.
+        SwapStep[] steps; // Steps of the path
+        address tokenIn; // The input token of the path
+        uint amountIn; // The input token amount of the path
     }
 
     struct SplitPermitParams {
@@ -39,15 +39,15 @@ interface IRouter {
         bytes signature;
     }
 
-// Returns the vault address.
+// Returns the vault address
     function vault() external view returns (address);
 
-// Returns the wETH address.
+// Returns the wETH address
     function wETH() external view returns (address);
 
 // Adds some liquidity (supports unbalanced mint).
 // Alternatively, use `addLiquidity2` with the same params to register the position,
-// to make sure it can be indexed by the interface.
+// to make sure it can be indexed by the interface
     function addLiquidity(
         address pool,
         TokenInput[] calldata inputs,
@@ -59,7 +59,7 @@ interface IRouter {
 
 // Adds some liquidity (supports unbalanced mint).
 // Alternatively, use `addLiquidity2` with the same params to register the position,
-// to make sure it can be indexed by the interface.
+// to make sure it can be indexed by the interface
     function addLiquidity2(
         address pool,
         TokenInput[] calldata inputs,
@@ -71,7 +71,7 @@ interface IRouter {
 
 // Adds some liquidity with permit (supports unbalanced mint).
 // Alternatively, use `addLiquidityWithPermit` with the same params to register the position,
-// to make sure it can be indexed by the interface.
+// to make sure it can be indexed by the interface
     function addLiquidityWithPermit(
         address pool,
         TokenInput[] calldata inputs,
@@ -82,7 +82,7 @@ interface IRouter {
         SplitPermitParams[] memory permits
     ) external payable returns (uint liquidity);
 
-// Burns some liquidity (balanced).
+// Burns some liquidity (balanced)
     function burnLiquidity(
         address pool,
         uint liquidity,
@@ -92,7 +92,7 @@ interface IRouter {
         bytes calldata callbackData
     ) external returns (IPool.TokenAmount[] memory amounts);
 
-// Burns some liquidity with permit (balanced).
+// Burns some liquidity with permit (balanced)
     function burnLiquidityWithPermit(
         address pool,
         uint liquidity,
@@ -103,7 +103,7 @@ interface IRouter {
         ArrayPermitParams memory permit
     ) external returns (IPool.TokenAmount[] memory amounts);
 
-// Burns some liquidity (single).
+// Burns some liquidity (single)
     function burnLiquiditySingle(
         address pool,
         uint liquidity,
@@ -113,7 +113,7 @@ interface IRouter {
         bytes memory callbackData
     ) external returns (uint amountOut);
 
-// Burns some liquidity with permit (single).
+// Burns some liquidity with permit (single)
     function burnLiquiditySingleWithPermit(
         address pool,
         uint liquidity,
@@ -124,7 +124,7 @@ interface IRouter {
         ArrayPermitParams calldata permit
     ) external returns (uint amountOut);
 
-// Performs a swap.
+// Performs a swap
     function swap(
         SwapPath[] memory paths,
         uint amountOutMin,
@@ -138,7 +138,7 @@ interface IRouter {
         SplitPermitParams calldata permit
     ) external payable returns (IPool.TokenAmount memory amountOut);
 
-/// @notice Wrapper function to allow pool deployment to be batched.
+/// @notice Wrapper function to allow pool deployment to be batched
     function createPool(address factory, bytes calldata data) external payable returns (address);
 
 }
@@ -150,41 +150,41 @@ interface IPool {
         uint amount;
     }
 
-    /// @dev Returns the address of pool master.
+    /// @dev Returns the address of pool master
     function master() external view returns (address);
 
-    /// @dev Returns the vault.
+    /// @dev Returns the vault
     function vault() external view returns (address);
 
-    // [Deprecated] This is the interface before the dynamic fees update.
-    /// @dev Returns the pool type.
+    // [Deprecated] This is the interface before the dynamic fees update
+    /// @dev Returns the pool type
     function poolType() external view returns (uint16);
 
-    /// @dev Returns the assets of the pool.
+    /// @dev Returns the assets of the pool
     function getAssets() external view returns (address[] memory assets);
 
-    // [Deprecated] This is the interface before the dynamic fees update.
-    /// @dev Returns the swap fee of the pool.
-    // This function will forward calls to the pool master.
+    // [Deprecated] This is the interface before the dynamic fees update
+    /// @dev Returns the swap fee of the pool
+    // This function will forward calls to the pool master
     // function getSwapFee() external view returns (uint24 swapFee);
 
-    // [Recommended] This is the latest interface.
-    /// @dev Returns the swap fee of the pool.
-    /// This function will forward calls to the pool master.
+    // [Recommended] This is the latest interface
+    /// @dev Returns the swap fee of the pool
+    /// This function will forward calls to the pool master
     function getSwapFee(
         address sender, address tokenIn, address tokenOut, bytes calldata data
     ) external view returns (uint24 swapFee);
 
-    /// @dev Returns the protocol fee of the pool.
+    /// @dev Returns the protocol fee of the pool
     function getProtocolFee() external view returns (uint24 protocolFee);
 
-    // [Deprecated] The old interface for Era testnet.
-    /// @dev Mints liquidity.
-    // The data for Classic and Stable Pool is as follows.
+    // [Deprecated] The old interface for Era testnet
+    /// @dev Mints liquidity
+    // The data for Classic and Stable Pool is as follows
     // `address _to = abi.decode(_data, (address));`
     //function mint(bytes calldata data) external returns (uint liquidity);
 
-    /// @dev Mints liquidity.
+    /// @dev Mints liquidity
     function mint(
         bytes calldata data,
         address sender,
@@ -192,13 +192,13 @@ interface IPool {
         bytes calldata callbackData
     ) external returns (uint liquidity);
 
-    // [Deprecated] The old interface for Era testnet.
-    /// @dev Burns liquidity.
-    // The data for Classic and Stable Pool is as follows.
+    // [Deprecated] The old interface for Era testnet
+    /// @dev Burns liquidity
+    // The data for Classic and Stable Pool is as follows
     // `(address _to, uint8 _withdrawMode) = abi.decode(_data, (address, uint8));`
     //function burn(bytes calldata data) external returns (TokenAmount[] memory amounts);
 
-    /// @dev Burns liquidity.
+    /// @dev Burns liquidity
     function burn(
         bytes calldata data,
         address sender,
@@ -206,13 +206,13 @@ interface IPool {
         bytes calldata callbackData
     ) external returns (TokenAmount[] memory tokenAmounts);
 
-    // [Deprecated] The old interface for Era testnet.
-    /// @dev Burns liquidity with single output token.
-    // The data for Classic and Stable Pool is as follows.
+    // [Deprecated] The old interface for Era testnet
+    /// @dev Burns liquidity with single output token
+    // The data for Classic and Stable Pool is as follows
     // `(address _tokenOut, address _to, uint8 _withdrawMode) = abi.decode(_data, (address, address, uint8));`
     //function burnSingle(bytes calldata data) external returns (uint amountOut);
 
-    /// @dev Burns liquidity with single output token.
+    /// @dev Burns liquidity with single output token
     function burnSingle(
         bytes calldata data,
         address sender,
@@ -220,13 +220,13 @@ interface IPool {
         bytes calldata callbackData
     ) external returns (TokenAmount memory tokenAmount);
 
-    // [Deprecated] The old interface for Era testnet.
-    /// @dev Swaps between tokens.
-    // The data for Classic and Stable Pool is as follows.
+    // [Deprecated] The old interface for Era testnet
+    /// @dev Swaps between tokens
+    // The data for Classic and Stable Pool is as follows
     // `(address _tokenIn, address _to, uint8 _withdrawMode) = abi.decode(_data, (address, address, uint8));`
     //function swap(bytes calldata data) external returns (uint amountOut);
 
-    /// @dev Swaps between tokens.
+    /// @dev Swaps between tokens
     function swap(
         bytes calldata data,
         address sender,
@@ -246,7 +246,7 @@ interface IBasePool is IPool, IERC20 {
 
     function getReserves() external view returns (uint, uint);
 
-    // [Deprecated] The old interface for Era testnet.
+    // [Deprecated] The old interface for Era testnet
     //function getAmountOut(address tokenIn, uint amountIn) external view returns (uint amountOut);
     //function getAmountIn(address tokenOut, uint amountOut) external view returns (uint amountIn);
 

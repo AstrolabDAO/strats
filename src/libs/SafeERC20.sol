@@ -11,16 +11,16 @@ import "../interfaces/IERC20Permit.sol";
  * @dev Wrappers around ERC20 operations that throw on failure (when the token
  * contract returns false). Tokens that return no value (and instead revert or
  * throw on failure) are also supported, non-reverting calls are assumed to be
- * successful.
+ * successful
  * To use this library you can add a `using SafeERC20 for IERC20;` statement to your contract,
- * which allows you to call the safe operations as `token.safeTransfer(...)`, etc.
+ * which allows you to call the safe operations as `token.safeTransfer(...)`, etc
  */
 library SafeERC20 {
     using Address for address;
 
     /**
      * @dev Transfer `value` amount of `token` from the calling contract to `to`. If `token` returns no value,
-     * non-reverting calls are assumed to be successful.
+     * non-reverting calls are assumed to be successful
      */
     function safeTransfer(IERC20 token, address to, uint256 value) internal {
         _callOptionalReturn(token, abi.encodeWithSelector(token.transfer.selector, to, value));
@@ -28,7 +28,7 @@ library SafeERC20 {
 
     /**
      * @dev Transfer `value` amount of `token` from `from` to `to`, spending the approval given by `from` to the
-     * calling contract. If `token` returns no value, non-reverting calls are assumed to be successful.
+     * calling contract. If `token` returns no value, non-reverting calls are assumed to be successful
      */
     function safeTransferFrom(IERC20 token, address from, address to, uint256 value) internal {
         _callOptionalReturn(token, abi.encodeWithSelector(token.transferFrom.selector, from, to, value));
@@ -36,10 +36,10 @@ library SafeERC20 {
 
     /**
      * @dev Deprecated. This function has issues similar to the ones found in
-     * {IERC20-approve}, and its usage is discouraged.
+     * {IERC20-approve}, and its usage is discouraged
      *
      * Whenever possible, use {safeIncreaseAllowance} and
-     * {safeDecreaseAllowance} instead.
+     * {safeDecreaseAllowance} instead
      */
     function safeApprove(IERC20 token, address spender, uint256 value) internal {
         // safeApprove should only be called when setting an initial allowance,
@@ -54,7 +54,7 @@ library SafeERC20 {
 
     /**
      * @dev Increase the calling contract's allowance toward `spender` by `value`. If `token` returns no value,
-     * non-reverting calls are assumed to be successful.
+     * non-reverting calls are assumed to be successful
      */
     function safeIncreaseAllowance(IERC20 token, address spender, uint256 value) internal {
         uint256 oldAllowance = token.allowance(address(this), spender);
@@ -63,7 +63,7 @@ library SafeERC20 {
 
     /**
      * @dev Decrease the calling contract's allowance toward `spender` by `value`. If `token` returns no value,
-     * non-reverting calls are assumed to be successful.
+     * non-reverting calls are assumed to be successful
      */
     function safeDecreaseAllowance(IERC20 token, address spender, uint256 value) internal {
         unchecked {
@@ -76,7 +76,7 @@ library SafeERC20 {
     /**
      * @dev Set the calling contract's allowance toward `spender` to `value`. If `token` returns no value,
      * non-reverting calls are assumed to be successful. Meant to be used with tokens that require the approval
-     * to be set to zero before setting it to a non-zero value, such as USDT.
+     * to be set to zero before setting it to a non-zero value, such as USDT
      */
     function forceApprove(IERC20 token, address spender, uint256 value) internal {
         bytes memory approvalCall = abi.encodeWithSelector(token.approve.selector, spender, value);
@@ -88,8 +88,8 @@ library SafeERC20 {
     }
 
     /**
-     * @dev Use a ERC-2612 signature to set the `owner` approval toward `spender` on `token`.
-     * Revert on invalid signature.
+     * @dev Use a ERC-2612 signature to set the `owner` approval toward `spender` on `token`
+     * Revert on invalid signature
      */
     function safePermit(
         IERC20Permit token,
@@ -109,9 +109,9 @@ library SafeERC20 {
 
     /**
      * @dev Imitates a Solidity high-level call (i.e. a regular function call to a contract), relaxing the requirement
-     * on the return value: the return value is optional (but if data is returned, it must not be false).
-     * @param token The token targeted by the call.
-     * @param data The call data (encoded using abi.encode or one of its variants).
+     * on the return value: the return value is optional (but if data is returned, it must not be false)
+     * @param token The token targeted by the call
+     * @param data The call data (encoded using abi.encode or one of its variants)
      */
     function _callOptionalReturn(IERC20 token, bytes memory data) private {
         // We need to perform a low level call here, to bypass Solidity's return data size checking mechanism, since
@@ -124,11 +124,11 @@ library SafeERC20 {
 
     /**
      * @dev Imitates a Solidity high-level call (i.e. a regular function call to a contract), relaxing the requirement
-     * on the return value: the return value is optional (but if data is returned, it must not be false).
-     * @param token The token targeted by the call.
-     * @param data The call data (encoded using abi.encode or one of its variants).
+     * on the return value: the return value is optional (but if data is returned, it must not be false)
+     * @param token The token targeted by the call
+     * @param data The call data (encoded using abi.encode or one of its variants)
      *
-     * This is a variant of {_callOptionalReturn} that silents catches all reverts and returns a bool instead.
+     * This is a variant of {_callOptionalReturn} that silents catches all reverts and returns a bool instead
      */
     function _callOptionalReturnBool(IERC20 token, bytes memory data) private returns (bool) {
         // We need to perform a low level call here, to bypass Solidity's return data size checking mechanism, since

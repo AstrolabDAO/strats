@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title IChainlinkAggregatorV3
- * @dev Interface for consuming prices from the Chainlink Network.
+ * @dev Interface for consuming prices from the Chainlink Network
  */
 interface IChainlinkAggregatorV3 {
     // Events

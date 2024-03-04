@@ -38,7 +38,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     }
 
     /**
-     * @dev Initializes the strategy with the specified parameters.
+     * @dev Initializes the strategy with the specified parameters
      * @param _params StrategyBaseParams struct containing strategy parameters
      * @param _pythParams Pyth specific parameters
      */

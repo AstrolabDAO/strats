@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 interface IPausable {
     /**
-     * @dev Returns true if the contract is paused, and false otherwise.
+     * @dev Returns true if the contract is paused, and false otherwise
      */
     function paused() external view returns (bool);
 }

@@ -48,7 +48,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @dev Initializes the strategy with the specified parameters.
+     * @dev Initializes the strategy with the specified parameters
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
      * @param _aaveParams Aave specific parameters
@@ -91,7 +91,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            // We deposit the whole asset balance.
+            // We deposit the whole asset balance
             if (asset != inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
                     _input: address(asset),

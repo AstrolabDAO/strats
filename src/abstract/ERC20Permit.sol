@@ -104,15 +104,15 @@ abstract contract ERC20Permit is ERC20, EIP712, Nonces {
     string public VERSION;
 
     /**
-     * @dev Emitted when a signature is expired during permit execution.
-     * @param deadline The expiration timestamp of the permit.
+     * @dev Emitted when a signature is expired during permit execution
+     * @param deadline The expiration timestamp of the permit
      */
     error ERC2612ExpiredSignature(uint256 deadline);
 
     /**
-     * @dev Emitted when the signer of the permit is different from the owner.
-     * @param signer The signer address.
-     * @param owner The owner address.
+     * @dev Emitted when the signer of the permit is different from the owner
+     * @param signer The signer address
+     * @param owner The owner address
      */
     error ERC2612InvalidSigner(address signer, address owner);
 

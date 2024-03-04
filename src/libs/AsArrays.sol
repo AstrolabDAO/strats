@@ -34,7 +34,7 @@ library AsArrays {
     }
 
     /**
-     * @notice Returns the max value in an array.
+     * @notice Returns the max value in an array
      * @param self Storage array containing uint256 type variables
      * @return value The highest value in the array
      */
@@ -56,7 +56,7 @@ library AsArrays {
         }
     }
 
-    /// @notice Returns the minimum value in an array.
+    /// @notice Returns the minimum value in an array
     /// @param self Storage array containing uint256 type variables
     /// @return value The highest value in the array
     function min(uint256[] storage self) public view returns (uint256 value) {
@@ -160,10 +160,10 @@ library AsArrays {
     }
 
     /**
-     * @dev Fills a dynamic array with a specific value.
-     * @param a The value to fill the array with.
-     * @param n The size of the array.
-     * @return arr The filled array.
+     * @dev Fills a dynamic array with a specific value
+     * @param a The value to fill the array with
+     * @param n The size of the array
+     * @return arr The filled array
      */
     function fill(uint8 a, uint64 n) internal pure returns (uint8[] memory arr) {
         arr = new uint8[](n); for (uint64 i = 0; i < n; i++) arr[i] = a;
@@ -178,9 +178,9 @@ library AsArrays {
     }
 
     /**
-     * @dev Converts a value to a one-element array.
-     * @param a The value to convert to an array.
-     * @return arr The resulting array.
+     * @dev Converts a value to a one-element array
+     * @param a The value to convert to an array
+     * @return arr The resulting array
      */
     function toArray(uint8 a) internal pure returns (uint8[] memory arr) {
         arr = new uint8[](1); arr[0] = a;

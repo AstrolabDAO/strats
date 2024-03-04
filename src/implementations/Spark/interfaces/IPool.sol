@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
 /**
  * @title IPool
  * @author Aave
- * @notice Defines the basic interface for an Aave Pool.
+ * @notice Defines the basic interface for an Aave Pool
  */
 interface IPool {
   /**
@@ -165,7 +165,7 @@ interface IPool {
 //   );
 
   /**
-   * @dev Emitted when a borrower is liquidated.
+   * @dev Emitted when a borrower is liquidated
    * @param collateralAsset The address of the asset asset used as collateral, to receive as result of the liquidation
    * @param debtAsset The address of the asset borrowed asset to be repaid with the liquidation
    * @param user The address of the borrower getting liquidated
@@ -186,7 +186,7 @@ interface IPool {
   );
 
   /**
-   * @dev Emitted when the state of a reserve is updated.
+   * @dev Emitted when the state of a reserve is updated
    * @param reserve The address of the asset asset of the reserve
    * @param liquidityRate The next liquidity rate
    * @param stableBorrowRate The next stable borrow rate
@@ -204,7 +204,7 @@ interface IPool {
   );
 
   /**
-   * @dev Emitted when the protocol treasury receives minted aTokens from the accrued interest.
+   * @dev Emitted when the protocol treasury receives minted aTokens from the accrued interest
    * @param reserve The address of the reserve
    * @param amountMinted The amount minted to the treasury
    */
@@ -215,7 +215,7 @@ interface IPool {
    * @param asset The address of the asset asset to mint
    * @param amount The amount to mint
    * @param onBehalfOf The address that will receive the aTokens
-   * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
+   * @param referralCode Code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    */
   function mintUnbacked(
@@ -226,7 +226,7 @@ interface IPool {
   ) external;
 
   /**
-   * @notice Back the current unbacked asset with `amount` and pay `fee`.
+   * @notice Back the current unbacked asset with `amount` and pay `fee`
    * @param asset The address of the asset asset to back
    * @param amount The amount to back
    * @param fee The amount paid in fees
@@ -235,14 +235,14 @@ interface IPool {
   function backUnbacked(address asset, uint256 amount, uint256 fee) external returns (uint256);
 
   /**
-   * @notice Supplies an `amount` of asset asset into the reserve, receiving in return overlying aTokens.
+   * @notice Supplies an `amount` of asset asset into the reserve, receiving in return overlying aTokens
    * - E.g. User supplies 100 USDC and gets in return 100 aUSDC
    * @param asset The address of the asset asset to supply
    * @param amount The amount to be supplied
    * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
    *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
    *   is a different wallet
-   * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
+   * @param referralCode Code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    */
   function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -256,7 +256,7 @@ interface IPool {
    *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
    *   is a different wallet
    * @param deadline The deadline timestamp that the permit is valid
-   * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
+   * @param referralCode Code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    * @param permitV The V parameter of ERC712 permit sig
    * @param permitR The R parameter of ERC712 permit sig
@@ -295,7 +295,7 @@ interface IPool {
    * @param asset The address of the asset asset to borrow
    * @param amount The amount to be borrowed
    * @param interestRateMode The interest rate mode at which the user wants to borrow: 1 for Stable, 2 for Variable
-   * @param referralCode The code used to register the integrator originating the operation, for potential rewards.
+   * @param referralCode The code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    * @param onBehalfOf The address of the user who will receive the debt. Should be the address of the borrower itself
    * calling the function if he wants to borrow against his own collateral, or the address of the credit delegator
@@ -381,7 +381,7 @@ interface IPool {
   function swapBorrowRateMode(address asset, uint256 interestRateMode) external;
 
   /**
-   * @notice Rebalances the stable interest rate of a user to the current stable rate defined on the reserve.
+   * @notice Rebalances the stable interest rate of a user to the current stable rate defined on the reserve
    * - Users can be rebalanced if the following conditions are satisfied:
    *     1. Usage ratio is above 95%
    *     2. the current supply APY is below REBALANCE_UP_THRESHOLD * maxVariableBorrowRate, which means that too
@@ -419,7 +419,7 @@ interface IPool {
 
   /**
    * @notice Allows smartcontracts to access the liquidity of the pool within one transaction,
-   * as long as the amount taken plus a fee is returned.
+   * as long as the amount taken plus a fee is returned
    * @dev IMPORTANT There are security concerns for developers of flashloan receiver contracts that must be kept
    * into consideration. For further details please visit https://docs.aave.com/developers/
    * @param receiverAddress The address of the contract receiving the funds, implementing IFlashLoanReceiver interface
@@ -431,7 +431,7 @@ interface IPool {
    *   2 -> Open debt at variable rate for the value of the amount flash-borrowed to the `onBehalfOf` address
    * @param onBehalfOf The address  that will receive the debt in the case of using on `modes` 1 or 2
    * @param params Variadic packed params to pass to the receiver as extra information
-   * @param referralCode The code used to register the integrator originating the operation, for potential rewards.
+   * @param referralCode The code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    */
   function flashLoan(
@@ -446,14 +446,14 @@ interface IPool {
 
   /**
    * @notice Allows smartcontracts to access the liquidity of the pool within one transaction,
-   * as long as the amount taken plus a fee is returned.
+   * as long as the amount taken plus a fee is returned
    * @dev IMPORTANT There are security concerns for developers of flashloan receiver contracts that must be kept
    * into consideration. For further details please visit https://docs.aave.com/developers/
    * @param receiverAddress The address of the contract receiving the funds, implementing IFlashLoanSimpleReceiver interface
    * @param asset The address of the asset being flash-borrowed
    * @param amount The amount of the asset being flash-borrowed
    * @param params Variadic packed params to pass to the receiver as extra information
-   * @param referralCode The code used to register the integrator originating the operation, for potential rewards.
+   * @param referralCode The code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    */
   function flashLoanSimple(
@@ -565,7 +565,7 @@ interface IPool {
    * @dev WARNING: This function is intended to be used primarily by the protocol itself to get a
    * "dynamic" variable index based on time, current stored index and virtual rate at the current
    * moment (approx. a borrower would get if opening a position). This means that is always used in
-   * combination with variable debt supply/balances.
+   * combination with variable debt supply/balances
    * If using this function externally, consider that is possible to have an increasing normalized
    * variable debt that is not equivalent to how the variable debt index would be updated in storage
    * (e.g. only updates with non-zero variable debt supply)
@@ -642,8 +642,8 @@ interface IPool {
   ) external;
 
   /**
-   * @notice Configures a new category for the eMode.
-   * @dev In eMode, the protocol allows very high borrowing power to borrow assets of the same category.
+   * @notice Configures a new category for the eMode
+   * @dev In eMode, the protocol allows very high borrowing power to borrow assets of the same category
    * The category 0 is reserved as it's the default for volatile assets
    * @param id The id of the category
    * @param config The configuration of the category
@@ -722,7 +722,7 @@ interface IPool {
   function rescueTokens(address token, address to, uint256 amount) external;
 
   /**
-   * @notice Supplies an `amount` of asset asset into the reserve, receiving in return overlying aTokens.
+   * @notice Supplies an `amount` of asset asset into the reserve, receiving in return overlying aTokens
    * - E.g. User supplies 100 USDC and gets in return 100 aUSDC
    * @dev Deprecated: Use the `supply` function instead
    * @param asset The address of the asset asset to supply
@@ -730,7 +730,7 @@ interface IPool {
    * @param onBehalfOf The address that will receive the aTokens, same as msg.sender if the user
    *   wants to receive them on his own wallet, or a different address if the beneficiary of aTokens
    *   is a different wallet
-   * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
+   * @param referralCode Code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    */
   function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;

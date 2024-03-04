@@ -38,11 +38,11 @@ abstract contract As4626 is As4626Abstract {
     receive() external payable {}
 
     /**
-     * @dev Initializes the contract with the provided ERC20 metadata, core addresses, and fees.
-     * Only the admin can call this function.
-     * @param _erc20Metadata The ERC20 metadata including name, symbol, and decimals.
-     * @param _coreAddresses The core addresses including the fee collector address.
-     * @param _fees The fees structure.
+     * @dev Initializes the contract with the provided ERC20 metadata, core addresses, and fees
+     * Only the admin can call this function
+     * @param _erc20Metadata The ERC20 metadata including name, symbol, and decimals
+     * @param _coreAddresses The core addresses including the fee collector address
+     * @param _fees The fees structure
      */
     function init(
         Erc20Metadata calldata _erc20Metadata,
@@ -813,10 +813,10 @@ abstract contract As4626 is As4626Abstract {
     }
 
     /**
-     * @dev Executes a flash loan by transferring a specified amount of tokens to a receiver contract and executing an operation.
-     * @param receiver The contract that will receive the flash loan tokens and execute the operation.
-     * @param amount The amount of tokens to be borrowed in the flash loan.
-     * @param params Additional parameters to be passed to the receiver contract's executeOperation function.
+     * @dev Executes a flash loan by transferring a specified amount of tokens to a receiver contract and executing an operation
+     * @param receiver The contract that will receive the flash loan tokens and execute the operation
+     * @param amount The amount of tokens to be borrowed in the flash loan
+     * @param params Additional parameters to be passed to the receiver contract's executeOperation function
      */
     function flashLoanSimple(
         IFlashLoanReceiver receiver,

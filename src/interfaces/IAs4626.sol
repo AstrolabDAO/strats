@@ -9,7 +9,7 @@ import "./IAsRescuable.sol";
 /**
  * @title IFlashLoanReceiver
  * @author Astrolab DAO, based on AAVE's work (cf. https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/interfaces/IFlashLoanReceiver.sol)
- * @notice Defines the basic interface of a flashloan-receiver contract.
+ * @notice Defines the basic interface of a flashloan-receiver contract
  * @dev Implement this interface to develop a flashloan-compatible flashLoanReceiver contract
  */
 interface IFlashLoanReceiver {

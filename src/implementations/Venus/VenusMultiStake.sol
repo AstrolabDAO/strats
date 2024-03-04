@@ -48,7 +48,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
     }
 
     /**
-     * @dev Initializes the strategy with the specified parameters.
+     * @dev Initializes the strategy with the specified parameters
      * @param _baseParams StrategyBaseParams struct containing strategy parameters
      * @param _chainlinkParams Chainlink specific parameters
      * @param _venusParams Venus specific parameters
@@ -72,7 +72,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
     /**
      * @notice Claim rewards from the third party contracts
      * @return amounts Array of rewards claimed for each reward token
-     * @dev cf.
+     * @dev cf
      *  - https://github.com/VenusProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-core-pool/comptroller/Diamond/facets/reward-facet.md#L6
      *  - https://github.com/VenusProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-isolated-pools/rewards/rewards-distributor.md#L233
      */
@@ -108,7 +108,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
-            // We deposit the whole asset balance.
+            // We deposit the whole asset balance
             if (asset != inputs[i] && _amounts[i] > 10) {
                 (toDeposit, spent) = swapper.decodeAndSwap({
                     _input: address(asset),

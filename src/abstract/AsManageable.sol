@@ -99,14 +99,14 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     }
 
     /**
-     * @notice Revokes `role` from the calling account.
+     * @notice Revokes `role` from the calling account
      *
      * @dev Roles are often managed via {grantRole} and {revokeRole}: this function's
      * purpose is to provide a mechanism for accounts to lose their privileges
-     * if they are compromised (such as when a trusted device is misplaced).
+     * if they are compromised (such as when a trusted device is misplaced)
      *
-     * To avoid bricking the contract, admin role can't be renounced.
-     * If needed, the admin can grant the role to another account and then revoke the former.
+     * To avoid bricking the contract, admin role can't be renounced
+     * If needed, the admin can grant the role to another account and then revoke the former
      */
     function renounceRole(
         bytes32 role,
@@ -118,16 +118,16 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     }
 
     /**
-     * @dev Revokes `role` from `account`.
+     * @dev Revokes `role` from `account`
      *
-     * If `account` had been granted `role`, emits a {RoleRevoked} event.
+     * If `account` had been granted `role`, emits a {RoleRevoked} event
      *
      * Requirements:
      *
-     * - the caller must have ``role``'s admin role.
+     * - the caller must have ``role``'s admin role
      * - admin role can't revoke itself
      *
-     * May emit a {RoleRevoked} event.
+     * May emit a {RoleRevoked} event
      */
     function revokeRole(
         bytes32 role,
@@ -162,8 +162,8 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     }
 
     /**
-     * @dev Checks the acceptance of a role change.
-     * @param acceptance The acceptance data containing the role and timestamp.
+     * @dev Checks the acceptance of a role change
+     * @param acceptance The acceptance data containing the role and timestamp
      */
     function _checkRoleAcceptance(
         PendingAcceptance memory acceptance
@@ -177,41 +177,41 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     }
 
     /**
-     * @dev Contract that provides functions for managing roles and permissions.
+     * @dev Contract that provides functions for managing roles and permissions
      */
     function getManagers() external view returns (address[] memory) {
         return getMembers(MANAGER_ROLE);
     }
 
     /**
-     * @dev Contract that provides functions for managing roles and permissions.
+     * @dev Contract that provides functions for managing roles and permissions
      */
     function getKeepers() external view returns (address[] memory) {
         return getMembers(KEEPER_ROLE);
     }
 
     /**
-     * @dev Checks if an account has the admin role.
-     * @param _account The address of the account to check.
-     * @return A boolean indicating whether the account has the admin role.
+     * @dev Checks if an account has the admin role
+     * @param _account The address of the account to check
+     * @return A boolean indicating whether the account has the admin role
      */
     function isAdmin(address _account) external view returns (bool) {
         return hasRole(DEFAULT_ADMIN_ROLE, _account);
     }
 
     /**
-     * @dev Checks if an account has the manager role.
-     * @param _account The address of the account to check.
-     * @return A boolean indicating whether the account has the manager role.
+     * @dev Checks if an account has the manager role
+     * @param _account The address of the account to check
+     * @return A boolean indicating whether the account has the manager role
      */
     function isManager(address _account) external view returns (bool) {
         return hasRole(MANAGER_ROLE, _account);
     }
 
     /**
-     * @dev Checks if an account has the keeper role.
-     * @param _account The address of the account to check.
-     * @return A boolean indicating whether the account has the keeper role.
+     * @dev Checks if an account has the keeper role
+     * @param _account The address of the account to check
+     * @return A boolean indicating whether the account has the keeper role
      */
     function isKeeper(address _account) external view returns (bool) {
         return hasRole(KEEPER_ROLE, _account);

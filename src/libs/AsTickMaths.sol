@@ -87,7 +87,7 @@ library AsTickMath {
 
         if (tick > 0) ratio = type(uint256).max / ratio;
 
-        // this divides by 1<<32 rounding up to go from a Q128.128 to a Q128.96.
+        // this divides by 1<<32 rounding up to go from a Q128.128 to a Q128.96
         // we then downcast because we know the result always fits within 160 bits due to our tick input constraint
         // we round up in the division so getTickAtSqrtRatio of the output price is always consistent
         sqrtPriceX96 = uint160(
@@ -98,7 +98,7 @@ library AsTickMath {
     /**
      * @notice Calculates the greatest tick value such that getRatioAtTick(tick) <= ratio
      * @dev Throws in case sqrtPriceX96 < MIN_SQRT_RATIO, as MIN_SQRT_RATIO is the lowest value getRatioAtTick may
-     * ever return.
+     * ever return
      * @param sqrtPriceX96 The sqrt ratio for which to compute the tick as a Q64.96
      * @return tick The greatest tick for which the ratio is less than or equal to the input ratio
      */
