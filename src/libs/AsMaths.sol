@@ -19,7 +19,7 @@ library AsMaths {
     using AsCast for int256;
 
     // Constants
-    uint256 internal constant BP_BASIS = 10_000; // 50% == 5_000 == 5e3
+    uint256 internal constant BP_BASIS = 100_00; // 50% == 5_000 == 5e3
     uint256 internal constant PRECISION_BP_BASIS = BP_BASIS ** 2; // 50% == 50_000_000 == 5e7
     uint256 internal constant SEC_PER_YEAR = 31_556_952; // 365.2425 days, more precise than 365 days const
 
@@ -847,7 +847,7 @@ library AsMaths {
     }
 
     /**
-     * @notice Calculates the exchange rate in bps (10_000 == 100%) between two prices (in wei)
+     * @notice Calculates the exchange rate in bps (100_00 == 100%) between two prices (in wei)
      * @dev Reverts if either value is zero
      * @param p1 Quote currency price in wei
      * @param p2 Base currency price in wei

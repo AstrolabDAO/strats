@@ -216,7 +216,7 @@ export const deployStrat = async (
   // inputs
   if (initParams[0].inputWeights.length == 1)
     // default input weight == 100%
-    initParams[0].inputWeights = [10_000];
+    initParams[0].inputWeights = [100_00];
 
   merge(env.deployment, {
     name: `${name} Stack`,
@@ -412,11 +412,11 @@ export async function preInvest(
       console.log("Preparing invest() SwapData from inputs/inputWeights");
       // const weight = env.deployment!.initParams[0].inputWeights[i];
       // if (!weight) throw new Error(`No inputWeight found for input ${i} (${inputs[i].symbol})`);
-      // inputAmount = amount.mul(weight).div(10_000).toString()
+      // inputAmount = amount.mul(weight).div(100_00).toString()
       tr = (await getTransactionRequest({
         input: asset.address,
         output: inputs[i].address,
-        amountWei: amounts[i], // using a 10_000 bp basis (10_000 = 100%)
+        amountWei: amounts[i], // using a 100_00 bp basis (100_00 = 100%)
         inputChainId: network.config.chainId!,
         payer: strat.address,
         testPayer: env.addresses!.accounts!.impersonate,
@@ -514,8 +514,8 @@ export async function liquidate(
       const derivation = stablePair ? 100 : 1_000; // .1% or 1%
       const slippage = stablePair ? 25 : 250; // .025% or .25%
 
-      amounts[i] = amounts[i].mul(10_000 + derivation).div(10_000);
-      swapAmounts[i] = amounts[i].mul(10_000).div(10_000); // slippage
+      amounts[i] = amounts[i].mul(100_00 + derivation).div(100_00);
+      swapAmounts[i] = amounts[i].mul(100_00).div(100_00); // slippage
 
       if (swapAmounts[i].gt(10)) {
         // only generate swapData if the input is not the asset
@@ -764,11 +764,11 @@ export async function preUpdateAsset(
     console.log("Preparing invest() SwapData from inputs/inputWeights");
     // const weight = env.deployment!.initParams[0].inputWeights[i];
     // if (!weight) throw new Error(`No inputWeight found for input ${i} (${inputs[i].symbol})`);
-    // inputAmount = amount.mul(weight).div(10_000).toString()
+    // inputAmount = amount.mul(weight).div(100_00).toString()
     tr = (await getTransactionRequest({
       input: from,
       output: to,
-      amountWei: amount, // using a 10_000 bp basis (10_000 = 100%)
+      amountWei: amount, // using a 100_00 bp basis (100_00 = 100%)
       inputChainId: network.config.chainId!,
       payer: env.deployment!.strat.address,
       testPayer: env.addresses!.accounts!.impersonate,

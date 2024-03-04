@@ -39,7 +39,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
 
     IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
     uint8[8] internal inputDecimals; // Decimals of the input assets
-    uint16[8] public inputWeights; // Array of input weights weights in basis points (100% = 10_000)
+    uint16[8] public inputWeights; // Array of input weights weights in basis points (100% = 100_00)
     address[8] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
     mapping(address => uint8) internal rewardTokenIndex; // to keep track of reward token indexes eg. to be aggregated
     uint8 internal inputLength; // Actual length of the inputs array
