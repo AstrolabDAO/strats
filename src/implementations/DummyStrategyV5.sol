@@ -28,17 +28,17 @@ contract DummyStrategy is StrategyV5 {
     }
 
     function _harvest(
-        bytes[] memory _params
+        bytes[] calldata _params
     ) internal override returns (uint256 assetsReceived) {}
 
     function _invest(
         uint256[8] calldata _amounts,
-        bytes[] memory _params
+        bytes[] calldata _params
     ) internal override returns (uint256 investedAmount, uint256 iouReceived) {}
 
     function _liquidate(
         uint256[8] calldata _amounts,
-        bytes[] memory _params
+        bytes[] calldata _params
     ) internal override returns (uint256 assetsRecovered) {}
 
     function invested() public view override returns (uint256) {}

@@ -89,74 +89,70 @@ library AsArrays {
     }
 
     /**
-     * @notice Returns dereferrenced array (slice) starting at ptr and containing size elements
-     * @param ptr reference of the array
-     * @return array of given size
+     * @dev Slices a portion of a uint256 array
+     * @param data The uint256 array to slice
+     * @param begin The starting index of the slice
+     * @param length The length of the slice
+     * @return The sliced uint256 array
      */
-    function unref(uint256 ptr, uint256 size) internal pure returns (uint256[] memory) {
-        uint256[] memory data = new uint256[](size);
-        assembly {
-            data := ptr
-            // safer:
-            // for { let i := 0 } lt(i, size) { i := add(i, 1) } {
-            //     mstore(add(data, add(0x20, mul(i, 0x20))), mload(add(ptr, mul(i, 0x20))))
-            // }
+    function slice(
+        uint256[] memory data,
+        uint256 begin,
+        uint256 length
+    ) internal pure returns (uint256[] memory) {
+        require(data.length >= begin + length); // out of bounds
+
+        uint256[] memory tempArray = new uint256[](length);
+
+        if (length > 0) {
+            assembly {
+                let src := add(add(data, 0x20), mul(begin, 0x20)) // src start
+                let dst := add(tempArray, 0x20) // dst start
+                // let copyLength := mul(length, 0x20) // bytes length
+                // mcopy(dst, src, copyLength) // <-- cancun
+                let end := add(src, length) // end pos
+                for { } lt(src, end) { } { // loop until src+length
+                    mstore(dst, mload(src)) // copy 32 bytes
+                    src := add(src, 0x20) // move src pointer 32 bytes fwd
+                    dst := add(dst, 0x20) // move dst pointer 32 bytes fwd
+                }
+            }
         }
-        return data;
+
+        return tempArray;
     }
 
     /**
-     * @notice Used to test memory pointers on the current evm
-     * @return true - memory ok, false - memory error
+     * @dev Slices a portion of a bytes array
+     * @param data The bytes array to slice
+     * @param begin The starting index of the slice
+     * @param length The length of the slice
+     * @return The sliced portion of the bytes array
      */
-    function testRefUnref() internal pure returns (bool) {
-        uint256[] memory dt = new uint256[](3);
-        for (uint i = 0; i < dt.length; i++) {
-            dt[i] = i;
-        }
-        uint256 wptr = ref(dt);
-        uint256[] memory data;
-        data = unref(wptr, 3);
-        return data.length == 3 && data[0] == 0 && data[1] == 1 && data[2] == 2;
-    }
+    function slice(
+        bytes memory data,
+        uint256 begin,
+        uint256 length
+    ) internal pure returns (bytes memory) {
+        require(data.length >= begin + length); // out of bounds
 
-    /**
-     * @notice Returns a slice of the array
-     * @param self Storage array containing uint256 type variables
-     * @param begin Index of the first element to include in the slice
-     * @param end Index of the last element to include in the slice
-     * @return slice of the array
-     */
-    function slice(uint256[] memory self, uint256 begin, uint256 end) internal pure returns (uint256[] memory) {
-        require(begin < end && end <= self.length);
-        return unref(ref(self) + begin * 0x20, end - begin);
-    }
+        bytes memory tempBytes = new bytes(length);
 
-    /**
-     * @notice Returns a slice of the bytes array
-     * @param self Storage array containing uint256 type variables
-     * @param begin Index of the first element to include in the slice
-     * @return slice of the array
-     */
-    function slice(bytes[] memory self, uint256 begin, uint256 end)
-        internal
-        pure
-        returns (bytes[] memory)
-    {
-        require(begin < end && end <= self.length);
-
-        // Calculate the number of elements in the slice
-        uint256 sliceLength = end - begin;
-
-        // Allocate a new bytes array for the slice
-        bytes[] memory sliceData = new bytes[](sliceLength);
-
-        // Copy the bytes from the original array to the slice
-        for (uint256 i = 0; i < sliceLength; i++) {
-            sliceData[i] = self[i + begin];
+        if (length > 0) {
+            assembly {
+                let src := add(add(data, 0x20), begin) // src start
+                let dst := add(tempBytes, 0x20) // dst start
+                // mcopy(dst, src, length) // Use mcopy to copy the data
+                let end := add(src, length) // End position of copying based on length
+                for { } lt(src, end) { } { // loop until src+length
+                    mstore(dst, mload(src)) // copy 32 bytes
+                    src := add(src, 0x20) // move src pointer 32 bytes fwd
+                    dst := add(dst, 0x20) // move dst pointer 32 bytes fwd
+                }
+            }
         }
 
-        return sliceData;
+        return tempBytes;
     }
 
     /**

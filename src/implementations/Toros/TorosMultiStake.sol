@@ -79,7 +79,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
      */
     function _invest(
         uint256[8] calldata _amounts, // from previewInvest()
-        bytes[] memory _params
+        bytes[] calldata _params
     )
         internal
         override
@@ -137,7 +137,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
      */
     function _liquidate(
         uint256[8] calldata _amounts, // from previewLiquidate()
-        bytes[] memory _params
+        bytes[] calldata _params
     ) internal override returns (uint256 assetsRecovered) {
         uint256 toLiquidate;
         uint256 recovered;

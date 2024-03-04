@@ -678,7 +678,7 @@ export async function compound(
   const receipt = await strat
     .safe(
       "compound",
-      [investAmounts, [...harvestSwapData, ...investSwapData]],
+      [investAmounts, harvestSwapData, investSwapData],
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());

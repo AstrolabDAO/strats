@@ -108,7 +108,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _liquidate(
         uint256[8] calldata _amounts, // from previewLiquidate()
-        bytes[] memory _params
+        bytes[] calldata _params
     ) internal virtual returns (uint256 assetsRecovered) {}
 
     /**
@@ -123,7 +123,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256[8] calldata _amounts,
         uint256 _minLiquidity,
         bool _panic,
-        bytes[] memory _params
+        bytes[] calldata _params
     )
         external
         onlyKeeper
@@ -180,7 +180,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _params Swaps calldata
      * @return assetsReceived Amount of assets from the swaps
      */
-    function _swapRewards(uint256[] memory _balances, bytes[] memory _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
+    function _swapRewards(uint256[] memory _balances, bytes[] calldata _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
 
         uint256 received;
         for (uint8 i = 0; i < rewardLength; i++) {
@@ -204,7 +204,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @return assetsReceived Amount of asset assets received (after swap)
      */
     function _harvest(
-        bytes[] memory _params
+        bytes[] calldata _params
     ) internal virtual nonReentrant returns (uint256 assetsReceived) {
         return _swapRewards(claimRewards(), _params);
     }
@@ -214,7 +214,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _params Generic callData (e.g., SwapperParams)
      * @return amount Amount of asset assets received (after swap)
      */
-    function harvest(bytes[] memory _params) public returns (uint256 amount) {
+    function harvest(bytes[] calldata _params) public returns (uint256 amount) {
         amount = _harvest(_params);
         // reset expected profits to updated value + amount
         expectedProfits =
@@ -237,7 +237,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _invest(
         uint256[8] calldata _amounts, // from previewInvest()
-        bytes[] memory _params
+        bytes[] calldata _params
     ) internal virtual returns (uint256 investedAmount, uint256 iouReceived) {}
 
     /**
@@ -249,7 +249,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function invest(
         uint256[8] calldata _amounts, // from previewInvest()
-        bytes[] memory _params
+        bytes[] calldata _params
     ) public onlyManager returns (uint256 investedAmount, uint256 iouReceived) {
         (investedAmount, iouReceived) = _invest(_amounts, _params);
         last.invest = uint64(block.timestamp);
@@ -262,43 +262,44 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @dev Pass a conservative _amount (e.g., available() + 90% of rewards valued in asset)
      * to ensure the asset->inputs swaps
      * @param _amounts Amount of inputs to invest (in asset, after harvest-> should include rewards)
-     * @param _params Generic callData (harvest+invest SwapperParams)
+     * @param _harvestParams Generic callData SwapperParams
+     * @param _investParams Generic callData SwapperParams
      * @return iouReceived IOUs received from the compound operation
      * @return harvestedRewards Amount of rewards harvested
      */
     function _compound(
         uint256[8] calldata _amounts,
-        bytes[] memory _params // rewardTokens(0...n)->underlying() / asset()->inputs(0...n) with assetWeights(0...n)
+        bytes[] calldata _harvestParams,
+        bytes[] calldata _investParams
     ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
         // we expect the SwapData to cover harvesting + investing
-        if (_params.length != (rewardLength + inputLength))
+        if (_harvestParams.length != rewardLength || _investParams.length != inputLength)
             revert InvalidCalldata();
 
         // harvest using the first calldata bytes (swap rewards->asset)
-        harvestedRewards = harvest(_params.slice(0, rewardLength));
-        (, iouReceived) = _invest(
-            _amounts,
-            _params.slice(rewardLength, _params.length)
-        ); // invest using the second calldata bytes (swap asset->inputs)
+        harvestedRewards = harvest(_harvestParams);
+        (, iouReceived) = _invest(_amounts, _investParams);
         return (iouReceived, harvestedRewards);
     }
 
     /**
      * @notice Executes the compound operation in the strategy
      * @param _amounts Amounts of inputs to compound (in asset, after harvest-> should include rewards)
-     * @param _params Generic callData for the compound operation
+     * @param _harvestParams Generic callData SwapperParams
+     * @param _investParams Generic callData SwapperParams
      * @return iouReceived IOUs received from the compound operation
      * @return harvestedRewards Amount of rewards harvested
      */
     function compound(
         uint256[8] calldata _amounts,
-        bytes[] memory _params
+        bytes[] calldata _harvestParams,
+        bytes[] calldata _investParams
     )
         external
         onlyKeeper
         returns (uint256 iouReceived, uint256 harvestedRewards)
     {
-        (iouReceived, harvestedRewards) = _compound(_amounts, _params);
+        (iouReceived, harvestedRewards) = _compound(_amounts, _harvestParams, _investParams);
         emit Compound(iouReceived, block.timestamp);
     }
 

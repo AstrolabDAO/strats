@@ -39,22 +39,23 @@ interface IStrategyV5 is IStrategyV5Abstract {
 
     function invest(
         uint256[8] calldata _amounts,
-        bytes[] memory _params
+        bytes[] calldata _params
     ) external returns (uint256 investedAmount, uint256 iouReceived);
 
-    function harvest(bytes[] memory _params) external returns (uint256 amount);
+    function harvest(bytes[] calldata _params) external returns (uint256 amount);
 
     function compound(
         uint256[8] calldata _amounts,
         uint256 _minIouReceived,
-        bytes[] memory _params
+        bytes[] memory _harvestParams,
+        bytes[] memory _investParams
     ) external returns (uint256 iouReceived, uint256 harvestedRewards);
 
     function liquidate(
         uint256[8] calldata _amount,
         uint256 _minLiquidity,
         bool _panic,
-        bytes[] memory _params
+        bytes[] calldata _params
     ) external returns (uint256 liquidityAvailable);
 
     function liquidateRequest(uint256 _amount) external returns (uint256);
