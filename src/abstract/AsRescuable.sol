@@ -85,7 +85,8 @@ abstract contract AsRescuable is AsRescuableAbstract {
 
         // send to receiver
         if (_token == address(1)) {
-            payable(req.receiver).transfer(address(this).balance);
+            (bool ok, ) = payable(req.receiver).call{value: address(this).balance}("");
+            require(ok);
         } else {
             IERC20Metadata(_token).safeTransfer(req.receiver, IERC20Metadata(_token).balanceOf(address(this)));
         }
