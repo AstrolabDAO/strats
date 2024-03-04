@@ -448,7 +448,7 @@ abstract contract As4626 is As4626Abstract {
      * @return shares Amount of asset tokens that the caller should pay
      */
     function previewMint(uint256 _shares, address _receiver) public view returns (uint256) {
-        return convertToAssets(_shares, true).revAddBp(exemptionList[_receiver] ? 0 : fees.entry);
+        return convertToAssets(_shares.revAddBp(exemptionList[_receiver] ? 0 : fees.entry), true);
     }
 
     /**
@@ -469,7 +469,7 @@ abstract contract As4626 is As4626Abstract {
      * @return shares Amount of shares that will be minted
      */
     function previewDeposit(uint256 _amount, address _receiver) public view returns (uint256 shares) {
-        return convertToShares(_amount, false).subBp(exemptionList[_receiver] ? 0 : fees.entry);
+        return convertToShares(_amount.subBp(exemptionList[_receiver] ? 0 : fees.entry), false);
     }
 
     /**
