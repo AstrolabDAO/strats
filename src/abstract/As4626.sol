@@ -175,6 +175,7 @@ abstract contract As4626 is As4626Abstract {
         if (_amount > _shares.mulDiv(price * weiPerAsset, weiPerShare ** 2))
             revert AmountTooHigh(_amount);
 
+        // consume the allowance if the owner is not the sender, revert if allowance < _shares
         if (msg.sender != _owner)
             _spendAllowance(_owner, msg.sender, _shares);
 
@@ -586,8 +587,10 @@ abstract contract As4626 is As4626Abstract {
         address _owner,
         bytes memory _data
     ) public nonReentrant whenNotPaused returns (uint256 _requestId) {
+
         if (_operator != msg.sender || (_owner != msg.sender && allowance(_owner, _operator) < _shares))
             revert Unauthorized();
+
         if (_shares == 0 || balanceOf(_owner) < _shares)
             revert AmountTooLow(_shares);
 
@@ -618,9 +621,10 @@ abstract contract As4626 is As4626Abstract {
         request.timestamp = block.timestamp;
         req.totalRedemption += _shares;
 
-        if(_data.length != 0) {
-        // the caller contract must return the bytes4 value "0x0102fde4"
-            if(IERC7540RedeemReceiver(msg.sender).onERC7540RedeemReceived(_operator, _owner, _requestId, _data) != 0x0102fde4)
+        if (_data.length != 0) {
+            // the caller contract must implement callback (0x0102fde4 selector)
+            if (IERC7540RedeemReceiver(msg.sender)
+                .onERC7540RedeemReceived(_operator, _owner, _requestId, _data) != 0x0102fde4)
                 revert Unauthorized();
         }
         emit RedeemRequest(_owner, _operator, _owner, _shares);
