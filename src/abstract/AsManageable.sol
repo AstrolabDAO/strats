@@ -27,8 +27,8 @@ abstract contract AsManageable is AsAccessControl, Pausable {
 
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER");
-    uint256 private constant TIMELOCK_PERIOD = 2 days;
-    uint256 private constant VALIDITY_PERIOD = 7 days;
+    uint256 public constant TIMELOCK_PERIOD = 2 days;
+    uint256 public constant VALIDITY_PERIOD = 7 days;
 
     mapping(address => PendingAcceptance) public pendingAcceptance;
 

@@ -18,8 +18,8 @@ abstract contract AsRescuable is AsRescuableAbstract {
 
     using SafeERC20 for IERC20Metadata;
 
-    uint64 constant RESCUE_TIMELOCK = 2 days;
-    uint64 constant RESCUE_VALIDITY = 7 days;
+    uint64 public constant RESCUE_TIMELOCK = 2 days;
+    uint64 public constant RESCUE_VALIDITY = 7 days;
 
     /**
      * @dev Checks if a rescue request is locked based on the current timestamp.
