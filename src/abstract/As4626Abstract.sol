@@ -102,6 +102,20 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     }
 
     /**
+     * @dev Transfers a specified amount of tokens to a given address
+     * @param _to The address to transfer tokens to
+     * @param _amount The amount of tokens to transfer
+     * @return A boolean value indicating whether the transfer was successful or not
+     * @dev Throws an exception if the transfer amount exceeds the balance of the sender minus the shares in the request
+     */
+    function transfer(address _to, uint256 _amount) public override(ERC20) returns (bool) {
+        Erc7540Request storage request = req.byOwner[msg.sender];
+        if (_amount > (balanceOf(msg.sender) - request.shares))
+            revert AmountTooHigh(_amount);
+        return ERC20.transfer(_to, _amount);
+    }
+
+    /**
      * @notice Exempt an account from entry/exit fees or remove its exemption
      * @param _account The account to exempt
      * @param _isExempt Whether to exempt or not
