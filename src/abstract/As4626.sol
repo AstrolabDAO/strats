@@ -705,7 +705,8 @@ abstract contract As4626 is As4626Abstract {
         }
 
         req.totalRedemption -= shares;
-        if (isRequestClaimable(request.timestamp))
+        // if the request liquidation has been processed, reduce totalClaimable by that much
+        if (request.timestamp < last.liquidate)
             req.totalClaimableRedemption -= shares;
 
         // Adjust the operator's allowance after burning shares, only if operator != owner
