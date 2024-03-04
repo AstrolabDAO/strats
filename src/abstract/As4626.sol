@@ -689,11 +689,12 @@ abstract contract As4626 is As4626Abstract {
         if (isRequestClaimable(request.timestamp))
             req.totalClaimableRedemption -= shares;
 
-        // Adjust the operator's allowance after burning shares, only if the operator is different from the owner
+        // Adjust the operator's allowance after burning shares, only if operator != owner
         if (opportunityCost > 0 && _owner != msg.sender) {
             uint256 currentAllowance = allowance(_owner, _operator);
-            _approve(_owner, _operator, currentAllowance - shares);
+            _approve(_owner, _operator, currentAllowance - opportunityCost);
         }
+
         request.shares = 0;
         emit RedeemRequestCanceled(_owner, shares);
     }
