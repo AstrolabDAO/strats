@@ -197,7 +197,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     ) internal view returns (uint256) {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         (, int256 price, , uint256 updateTime, ) = feed.latestRoundData();
-        if (block.timestamp > (updateTime + validityByFeed[feed]))
+        if (block.timestamp > (updateTime + validityByFeed[feed]) || price <= 0)
             revert InvalidOrStaleValue(updateTime, price);
         return
             _amount.mulDiv(
