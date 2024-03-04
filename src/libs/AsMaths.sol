@@ -263,7 +263,7 @@ library AsMaths {
      * @return The negated value of the input as a signed integer
      */
     function neg(uint256 x) internal pure returns (int256) {
-        return x.toInt() * (-1);
+        return x.toInt256() * (-1);
     }
 
     function max(uint256 x, uint256 y) internal pure returns (uint256) {
