@@ -228,7 +228,6 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external whenNotPaused returns (uint256) {
-        if (_owner != msg.sender) revert Unauthorized();
         return _withdraw(_amount, previewWithdraw(_amount, _owner), _receiver, _owner);
     }
 
@@ -263,7 +262,6 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external whenNotPaused returns (uint256 assets) {
-        if (_owner != msg.sender) revert Unauthorized();
         return _withdraw(previewRedeem(_shares, _owner), _shares, _receiver, _owner);
     }
 
