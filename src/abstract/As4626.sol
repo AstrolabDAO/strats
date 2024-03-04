@@ -164,33 +164,38 @@ abstract contract As4626 is As4626Abstract {
         if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
 
         Erc7540Request storage request = req.byOwner[_owner];
-        uint256 claimable = claimableRedeemRequest(_owner);
-        last.sharePrice = sharePrice();
+        uint256 price = sharePrice();
+        last.sharePrice = price;
 
-        uint256 price = (claimable >= _shares)
-            ? AsMaths.min(last.sharePrice, request.sharePrice) // worst of if pre-existing request
-            : last.sharePrice; // current price
-
-        // amount/shares cannot be higher than the share price (dictated by the inline convertToAssets below)
-        if (_amount > _shares.mulDiv(price * weiPerAsset, weiPerShare ** 2))
-            revert AmountTooHigh(_amount);
-
-        // consume the allowance if the owner is not the sender, revert if allowance < _shares
-        if (msg.sender != _owner)
-            _spendAllowance(_owner, msg.sender, _shares);
+        uint256 claimable = (msg.sender == request.operator || msg.sender == _owner)
+            ? claimableRedeemRequest(_owner) : 0;
 
         if (claimable >= _shares) {
             req.byOwner[_owner].shares -= _shares;
             req.totalRedemption -= AsMaths.min(_shares, req.totalRedemption); // min 0
             req.totalClaimableRedemption -= AsMaths.min(
                 _shares,
-                req.totalClaimableRedemption
-            ); // min 0
+                req.totalClaimableRedemption); // min 0
+
+            price = (claimable >= _shares)
+                ? AsMaths.min(last.sharePrice, request.sharePrice) // worst of if pre-existing request
+                : last.sharePrice; // current price
         } else {
-            // if the user has not requested enough shares, check if the vault cash can cover the withdrawal
+            // check if the vault available liquidity can cover the withdrawal
             if (_shares > available().mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset))
                 revert AmountTooHigh(_shares);
+
+            // allowance is already consumed if requested shares are used, but not here
+            if (msg.sender != _owner) {
+                if (allowance(_owner, msg.sender) < _shares)
+                    revert Unauthorized();
+                _spendAllowance(_owner, msg.sender, _shares);
+            }
         }
+
+        // amount/shares cannot be higher than the share price (dictated by the inline convertToAssets below)
+        if (_amount > _shares.mulDiv(price * weiPerAsset, weiPerShare ** 2))
+            revert AmountTooHigh(_amount);
 
         if (!exemptionList[_owner])
             claimableAssetFees += _amount.revBp(fees.exit);
@@ -204,7 +209,6 @@ abstract contract As4626 is As4626Abstract {
         asset.safeTransfer(_receiver, _amount);
 
         uint256 newSupply = totalAccountedSupply();
-
         uint256 totalValueBefore = last.sharePrice * (newSupply + _shares);
         uint256 totalValueAfter = totalValueBefore - (_shares * price);
 
@@ -588,11 +592,17 @@ abstract contract As4626 is As4626Abstract {
         bytes memory _data
     ) public nonReentrant whenNotPaused returns (uint256 _requestId) {
 
-        if (_operator != msg.sender || (_owner != msg.sender && allowance(_owner, _operator) < _shares))
+        if (_operator != msg.sender)
             revert Unauthorized();
 
         if (_shares == 0 || balanceOf(_owner) < _shares)
             revert AmountTooLow(_shares);
+
+        if (_owner != msg.sender) {
+            if (allowance(_owner, _operator) < _shares)
+                revert Unauthorized();
+            _spendAllowance(_owner, _operator, _shares);
+        }
 
         Erc7540Request storage request = req.byOwner[_owner];
         if (request.operator != _operator) request.operator = _operator;
@@ -669,8 +679,17 @@ abstract contract As4626 is As4626Abstract {
         Erc7540Request storage request = req.byOwner[_owner];
         uint256 shares = request.shares;
 
-        if (_operator != msg.sender || (_owner != msg.sender && allowance(_owner, _operator) < shares))
+        if (_operator != msg.sender)
             revert Unauthorized();
+
+        if (_owner != msg.sender) {
+            if (allowance(_owner, _operator) < shares)
+                revert Unauthorized();
+
+            if (request.operator != _operator)
+                revert Unauthorized();
+        }
+
         if (shares == 0) revert AmountTooLow(0);
 
         last.sharePrice = sharePrice();
@@ -695,6 +714,7 @@ abstract contract As4626 is As4626Abstract {
             _approve(_owner, _operator, currentAllowance - opportunityCost);
         }
 
+        // consume the request whether operator == owner or not (operator's allowance already spent)
         request.shares = 0;
         emit RedeemRequestCanceled(_owner, shares);
     }
