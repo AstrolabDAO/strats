@@ -36,13 +36,24 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
         uint256 assets,
         uint256 shares
     );
+
     // ERC7540
-    event RedeemRequest(
-        address indexed sender,
-        address indexed operator,
+    event DepositRequest(
+        address indexed receiver,
         address indexed owner,
-        uint256 assets
+        uint256 indexed requestId,
+        address sender, // operator
+        uint256 assets // locked assets
     );
+
+    event RedeemRequest(
+        address indexed receiver,
+        address indexed owner,
+        uint256 indexed requestId,
+        address sender, // operator
+        uint256 shares // shares to unlock
+    );
+
     // event DepositRequestCanceled(address indexed owner, uint256 assets);
     event RedeemRequestCanceled(address indexed owner, uint256 assets);
 

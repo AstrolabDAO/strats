@@ -5,6 +5,7 @@ import "./As4626Abstract.sol";
 import "./AsTypes.sol";
 import "../interfaces/IAs4626.sol";
 import "../interfaces/IERC7540RedeemReceiver.sol";
+import "../interfaces/IERC7540DepositReceiver.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
@@ -567,17 +568,27 @@ abstract contract As4626 is As4626Abstract {
                 );
     }
 
-    // /**
-    //  * @notice Initiate a deposit request for assets denominated in asset
-    //  * @param assets Amount of asset tokens to deposit
-    //  * @param operator Address initiating the request
-    //  */
-    // function requestDeposit(
-    //     uint256 assets,
-    //     address operator,
-    //     address _owner,
-    //     bytes memory _data
-    // ) external virtual nonReentrant whenNotPaused returns (uint256 _requestId) {}
+    /**
+     * @notice Initiate a deposit request for _amount denominated in asset
+     * @dev polyfill satisfying the ERC7540 interface
+     * @param _amount Amount of asset tokens to deposit
+     * @param _operator Address initiating the request
+     */
+    function requestDeposit(
+        uint256 _amount,
+        address _operator,
+        address _owner,
+        bytes memory _data
+    ) external virtual nonReentrant whenNotPaused returns (uint256 _requestId) {
+        _requestId = ++requestId;
+        if (_data.length != 0) {
+            // the caller contract must implement onERC7540DepositReceived callback (0xe74d2a41 selector)
+            if (IERC7540DepositReceiver(_owner)
+                .onERC7540DepositReceived(_operator, _owner, _requestId, _data) != IERC7540DepositReceiver.onERC7540DepositReceived.selector)
+                revert Unauthorized();
+        }
+        emit DepositRequest(_owner, _owner, _requestId, _operator, _amount);
+    }
 
     /**
      * @notice Initiate a redeem request for shares
@@ -632,12 +643,12 @@ abstract contract As4626 is As4626Abstract {
         req.totalRedemption += _shares;
 
         if (_data.length != 0) {
-            // the caller contract must implement callback (0x0102fde4 selector)
-            if (IERC7540RedeemReceiver(msg.sender)
-                .onERC7540RedeemReceived(_operator, _owner, _requestId, _data) != 0x0102fde4)
+            // the caller contract must implement onERC7540RedeemReceived callback (0x0102fde4 selector)
+            if (IERC7540RedeemReceiver(_owner)
+                .onERC7540RedeemReceived(_operator, _owner, _requestId, _data) != IERC7540RedeemReceiver.onERC7540RedeemReceived.selector)
                 revert Unauthorized();
         }
-        emit RedeemRequest(_owner, _operator, _owner, _shares);
+        emit RedeemRequest(_owner, _owner, _requestId, request.operator, _shares);
     }
 
     /**
@@ -659,6 +670,7 @@ abstract contract As4626 is As4626Abstract {
 
     // /**
     //  * @notice Cancel a deposit request
+    //  * @dev as per the EIP7540, cancel functions are not mandatory, hence not polyfilled
     //  * @param operator Address initiating the request
     //  * @param owner The owner of the shares to be redeemed
     //  */

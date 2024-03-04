@@ -7,17 +7,14 @@ pragma solidity ^0.8.0;
  */
 interface IERC7540RedeemReceiver {
     /**
-     * @notice Handle the receipt of a redeem request.
-     * @dev The ERC-7540 smart contract calls this function on the receiver after a redeem request has been submitted.
-     * This function MAY throw to revert and reject the request.
-     * Return of other than the magic value MUST result in the transaction being reverted.
-     * Note: the contract address is always the message sender.
-     * @param operator The address which called `requestRedeem` function.
-     * @param owner The owner of the shares being redeemed.
-     * @param requestId The ID of the redeem request.
-     * @param data Additional data with no specified format, sent in call to `requestRedeem`.
-     * @return `bytes4(keccak256("onERC7540RedeemReceived(address,address,uint256,bytes)"))`
-     * unless throwing.
+     * @notice Redeem request callback
+     * @dev The ERC-7540 smart contract calls this function on the receiver after a redeem request has been submitted
+     * @param operator The address which called `requestRedeem` function
+     * @param owner The owner of the shares being redeemed
+     * @param requestId The ID of the redeem request
+     * @param data Additional data with no specified format, sent in call to `requestRedeem`
+     * @return its own signature - `bytes4(keccak256("onERC7540RedeemReceived(address,address,uint256,bytes)"))`
+     * unless throwing
      **/
     function onERC7540RedeemReceived(
         address operator,
