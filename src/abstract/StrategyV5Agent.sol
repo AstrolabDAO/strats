@@ -46,7 +46,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         address swapperAddress = address(swapper);
         // we keep the possibility to set allowance to 0 in case of a change of swapper
         // default is to approve MAX_UINT256
-        _amount != 0 ? _amount : MAX_UINT256;
+        _amount = _amount > 0 ? _amount : MAX_UINT256;
 
         for (uint256 i = 0; i < rewardLength; i++) {
             if (rewardTokens[i] == address(0)) break;
