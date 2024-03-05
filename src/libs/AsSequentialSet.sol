@@ -18,6 +18,7 @@ library AsSequentialSet {
     using AsCast for address;
 
     error EmptySet();
+    error OutOfBounds(uint256 index);
 
     /**
      * @dev Struct representing a sequential set
@@ -35,6 +36,7 @@ library AsSequentialSet {
      * @param o The element to be added
      */
     function push(Set storage q, bytes32 o) internal {
+        require(q.index[o] == 0); // prevent duplicates
         q.data.push(o);
         q.index[o] = uint32(q.data.length);
     }
@@ -77,13 +79,20 @@ library AsSequentialSet {
      * @param q The sequential set
      */
     function shift(Set storage q) internal {
-        if (q.data.length == 0) {
+        if (q.data.length == 0)
             revert EmptySet();
+
+        if (q.data.length == 1) {
+            // length == 1 >> delete index and pop
+            delete q.index[q.data[0]];
+            q.data.pop();
+        } else {
+            // typical shift
+            delete q.index[q.data[0]];
+            q.data[0] = q.data[q.data.length - 1];
+            q.index[q.data[0]] = 1;
+            q.data.pop();
         }
-        delete q.index[q.data[0]];
-        q.data[0] = q.data[q.data.length - 1];
-        q.index[q.data[0]] = 1;
-        q.data.pop();
     }
 
     /**
@@ -95,11 +104,12 @@ library AsSequentialSet {
         if (q.data.length == 0) {
             q.data.push(o);
         } else {
-            q.data[q.data.length - 1] = q.data[0];
-            q.index[q.data[0]] = uint32(q.data.length);
-            q.data[0] = o;
+            bytes32 firstElement = q.data[0]; // tmp load the first element in memory
+            q.data.push(firstElement); // push it back
+            q.index[firstElement] = uint32(q.data.length); // update its index to last
+            q.data[0] = o; // use the freed first slot to insert o
+            q.index[o] = 1; // freed index
         }
-        q.index[o] = 1;
     }
 
     /**
@@ -109,14 +119,25 @@ library AsSequentialSet {
      * @param o The element to be inserted
      */
     function insert(Set storage q, uint256 i, bytes32 o) internal {
-        require(i <= q.data.length, "Index out of bounds");
-        q.data.push(bytes32(0));
-        for (uint256 j = q.data.length; j > i; j--) {
-            q.data[j] = q.data[j - 1];
-            q.index[q.data[j]] = uint32(j + 1);
+        require(q.index[o] == 0); // prevent duplicates
+        if (i > q.data.length)
+            revert OutOfBounds(i);
+
+        // If inserting at the end, simply push the new element
+        if (i == q.data.length) {
+            q.data.push(o);
+            q.index[o] = uint32(q.data.length);
+        } else {
+            // Save the displaced element
+            bytes32 displacedElement = q.data[i];
+            // Insert the new element at the specified index
+            q.data[i] = o;
+            q.index[o] = uint32(i + 1);
+
+            // Push the displaced element to the back of the queue
+            q.data.push(displacedElement);
+            q.index[displacedElement] = uint32(q.data.length);
         }
-        q.data[i] = o;
-        q.index[o] = uint32(i + 1);
     }
 
     /**
@@ -125,12 +146,24 @@ library AsSequentialSet {
      * @param i The index of the element to be deleted
      */
     function removeAt(Set storage q, uint256 i) internal {
-        require(i < q.data.length, "Index out of bounds");
+        if (i >= q.data.length)
+            revert OutOfBounds(i);
+
+        // Get the element to be removed for index cleanup
+        bytes32 elementToRemove = q.data[i];
+
+        // If not removing the last element, move the last element to the removed position
         if (i < q.data.length - 1) {
-            delete q.data[i];
             q.data[i] = q.data[q.data.length - 1];
+            // Update the index of the moved element to its new position
+            q.index[q.data[i]] = uint32(i + 1); // Assuming 1-based indexing for the mapping
         }
+
+        // Remove the last element (either the moved element or the original if it was the last)
         q.data.pop();
+
+        // Clean up the index mapping for the removed element
+        delete q.index[elementToRemove];
     }
 
     /**
@@ -141,7 +174,7 @@ library AsSequentialSet {
     function remove(Set storage q, bytes32 o) internal {
         uint32 i = q.index[o];
         q.index[o] = 0;
-        require(i > 0, "Element not found");
+        require(i > 0); // not found
         removeAt(q, i - 1);
     }
 
