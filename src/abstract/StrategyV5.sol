@@ -473,7 +473,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256 _amount
     ) public view returns (uint256[8] memory amounts) {
         uint256 allocated = invested();
-        _amount += AsMaths.min(totalPendingAssetRequest() + allocated.bp(150), allocated); // defaults to requests + 1% offset to buffer flows
+        _amount += totalPendingAssetRequest() + allocated.bp(150);
+        _amount = AsMaths.min(_amount, allocated);
         // excessInput accounts for the weights and the cash available in the strategy
         int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
         for (uint8 i = 0; i < inputLength; i++) {
