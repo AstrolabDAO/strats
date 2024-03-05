@@ -58,7 +58,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      */
     function setPriceFeed(address _address, bytes32 _feed, uint256 _validity) public onlyAdmin {
         if (!pyth.priceFeedExists(_feed))
-            revert InvalidCalldata();
+            revert InvalidData();
         feedByAsset[_address] = _feed;
         validityByFeed[_feed] = _validity;
     }

@@ -275,7 +275,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
         // we expect the SwapData to cover harvesting + investing
         if (_harvestParams.length != rewardLength || _investParams.length != inputLength)
-            revert InvalidCalldata();
+            revert InvalidData();
 
         // harvest using the first calldata bytes (swap rewards->asset)
         harvestedRewards = harvest(_harvestParams);
@@ -419,7 +419,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         if (_total == 0) _total = invested();
         return
             int256(invested(_index).mulDiv(AsMaths.BP_BASIS, _total)) -
-            int256(uint256(inputWeights[_index]));
+            int256(uint256(inputWeights[_index])); // de-facto safe as weights are sanitized
     }
 
     /**

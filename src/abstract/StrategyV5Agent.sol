@@ -122,10 +122,17 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     ) public onlyAdmin {
         if (_inputs.length > 8) revert Unauthorized();
         address swapperAddress = address(swapper);
+        uint16 totalWeight = 0;
         for (uint8 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
             inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
+
+            // Check for overflow before adding the weight
+            if (totalWeight > AsMaths.BP_BASIS - _weights[i])
+                revert InvalidData();
+
+            totalWeight += _weights[i];
             inputs[i].approve(swapperAddress, MAX_UINT256);
         }
         inputLength = uint8(_inputs.length);
