@@ -40,7 +40,7 @@ interface IAs4626Abstract is IERC20Permit, IAsManageable, IAsRescuable, IFlashLo
     function minLiquidity() external view returns (uint256);
     function asset() external view returns (address);
     function decimals() external view returns (uint8);
-    function weiPerShare() external view returns (uint256);
+    function WEI_PER_SHARE() external view returns (uint256);
     function expectedProfits() external view returns (uint256);
     function maxFees() external view returns (Fees memory);
     function fees() external view returns (Fees memory);

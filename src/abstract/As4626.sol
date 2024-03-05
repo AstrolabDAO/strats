@@ -53,8 +53,8 @@ abstract contract As4626 is As4626Abstract {
         setFees(_fees);
         feeCollector = _coreAddresses.feeCollector;
         req.redemptionLocktime = 6 hours;
-        last.accountedSharePrice = weiPerShare;
-        last.accountedProfit = weiPerShare;
+        last.accountedSharePrice = WEI_PER_SHARE;
+        last.accountedProfit = WEI_PER_SHARE;
         last.feeCollection = uint64(block.timestamp);
         last.liquidate = uint64(block.timestamp);
         last.harvest = uint64(block.timestamp);
@@ -94,7 +94,7 @@ abstract contract As4626 is As4626Abstract {
         // do not allow minting at a price higher than the current share price
         last.sharePrice = sharePrice();
 
-        if (_amount > maxDeposit(address(0)) || _shares > _amount.mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset))
+        if (_amount > maxDeposit(address(0)) || _shares > _amount.mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset))
             revert AmountTooHigh(_amount);
 
         uint256 vaultAssets = asset.balanceOf(address(this));
@@ -183,7 +183,7 @@ abstract contract As4626 is As4626Abstract {
                 : last.sharePrice; // current price
         } else {
             // check if the vault available liquidity can cover the withdrawal
-            if (_shares > available().mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset))
+            if (_shares > available().mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset))
                 revert AmountTooHigh(_shares);
 
             // allowance is already consumed if requested shares are used, but not here
@@ -195,7 +195,7 @@ abstract contract As4626 is As4626Abstract {
         }
 
         // amount/shares cannot be higher than the share price (dictated by the inline convertToAssets below)
-        if (_amount > _shares.mulDiv(price * weiPerAsset, weiPerShare ** 2))
+        if (_amount > _shares.mulDiv(price * weiPerAsset, WEI_PER_SHARE_SQUARED))
             revert AmountTooHigh(_amount);
 
         if (!exemptionList[_owner])
@@ -204,7 +204,7 @@ abstract contract As4626 is As4626Abstract {
         _burn(_owner, _shares);
 
         // check if burning the shares will bring the totalSupply below the minLiquidity
-        if (totalSupply() < minLiquidity.mulDiv(weiPerShare ** 2, last.sharePrice * weiPerAsset)) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
+        if (totalSupply() < minLiquidity.mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset)) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
             revert Unauthorized();
 
         asset.safeTransfer(_receiver, _amount);
@@ -711,7 +711,7 @@ abstract contract As4626 is As4626Abstract {
             // with the idle funds (opportunity cost)
             opportunityCost = shares.mulDiv(
                 last.sharePrice - request.sharePrice,
-                weiPerShare
+                WEI_PER_SHARE
             ); // eg. 1e8+1e8-1e8 = 1e8
             _burn(_owner, opportunityCost);
         }
@@ -771,7 +771,7 @@ abstract contract As4626 is As4626Abstract {
         return
             request.shares.mulDiv(
                 AsMaths.min(request.sharePrice, sharePrice()), // worst of
-                weiPerShare
+                WEI_PER_SHARE
             );
     }
 

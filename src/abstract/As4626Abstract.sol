@@ -82,7 +82,8 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
 
     IERC20Metadata public asset; // ERC20 token used as the base denomination
     uint8 internal assetDecimals; // ERC20 token decimals
-    uint256 internal constant weiPerShare = 1e8; // weis in a share (base unit)
+    uint256 internal constant WEI_PER_SHARE = 1e12; // weis in a share (base unit)
+    uint256 internal constant WEI_PER_SHARE_SQUARED = WEI_PER_SHARE ** 2;
     uint256 internal weiPerAsset; // weis in an asset (underlying unit)
     Epoch public last; // Epoch tracking latest events
 
@@ -187,7 +188,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
             totalAssets().subMax0(
                 req.totalClaimableRedemption.mulDiv(
                     last.sharePrice * weiPerAsset,
-                    weiPerShare ** 2
+                    WEI_PER_SHARE_SQUARED
                 )); // eg. (1e8+1e8+1e6)-(1e8+1e8) = 1e6
     }
 
@@ -207,9 +208,9 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
         uint256 supply = totalAccountedSupply();
         return
             supply == 0
-                ? weiPerShare
+                ? WEI_PER_SHARE
                 : totalAccountedAssets().mulDiv( // eg. e6
-                    weiPerShare ** 2, // 1e8*2
+                    WEI_PER_SHARE_SQUARED, // 1e8*2
                     supply * weiPerAsset
                 ); // eg. (1e6+1e8+1e8)-(1e8+1e6)
     }
@@ -230,7 +231,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      * @return Amount of shares you can get for your assets
      */
     function convertToShares(uint256 _assets, bool _roundUp) internal view returns (uint256) {
-        return _assets.mulDiv(weiPerShare ** 2, sharePrice() * weiPerAsset, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
+        return _assets.mulDiv(WEI_PER_SHARE_SQUARED, sharePrice() * weiPerAsset, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
     }
 
     /**
@@ -250,7 +251,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      * @return Amount of asset tokens you can get for your shares
      */
     function convertToAssets(uint256 _shares,  bool _roundUp) internal view returns (uint256) {
-        return _shares.mulDiv(sharePrice() * weiPerAsset, weiPerShare ** 2, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e8+(1e8+1e6)-(1e8+1e8) = 1e6
+        return _shares.mulDiv(sharePrice() * weiPerAsset, WEI_PER_SHARE_SQUARED, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e8+(1e8+1e6)-(1e8+1e8) = 1e6
     }
 
     /**
