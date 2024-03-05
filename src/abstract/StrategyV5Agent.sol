@@ -108,15 +108,36 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         expectedProfits = 0; // reset trailing profits
         totalLent = 0; // reset totalLent (broken analytics)
         _collectFees(); // claim all pending fees to reset claimableAssetFees
+        address swapperAddress = address(swapper);
+        if (swapperAddress != address(0)) {
+            IERC20Metadata(asset).forceApprove(swapperAddress, 0); // revoke swapper allowance on previous asset
+            IERC20Metadata(_asset).forceApprove(swapperAddress, MAX_UINT256);
+        }
         asset = IERC20Metadata(_asset);
         assetDecimals = asset.decimals();
         weiPerAsset = 10**assetDecimals;
         last.accountedAssets = totalAssets();
         last.accountedSupply = totalSupply();
         last.sharePrice = last.sharePrice.mulDiv(_priceFactor, 1e18); // multiply then debase
-        address swapperAddress = address(swapper);
-        if (swapperAddress != address(0))
-            IERC20Metadata(_asset).forceApprove(swapperAddress, MAX_UINT256);
+    }
+
+    /**
+    * @notice Sets the input weights for the input tokens
+    * @param _weights array of input weights
+    */
+    function setInputWeights(uint16[] calldata _weights) public onlyAdmin {
+
+        if (_weights.length != inputLength) revert InvalidData();
+        uint16 totalWeight = 0;
+        for (uint8 i = 0; i < inputLength; i++) {
+            inputWeights[i] = _weights[i];
+
+            // Check for overflow before adding the weight
+            if (totalWeight > AsMaths.BP_BASIS - _weights[i])
+                revert InvalidData();
+
+            totalWeight += _weights[i];
+        }
     }
 
     /**
@@ -129,21 +150,15 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         uint16[] calldata _weights
     ) public onlyAdmin {
         if (_inputs.length > 8) revert Unauthorized();
-        address swapperAddress = address(swapper);
-        uint16 totalWeight = 0;
+        setSwapperAllowance(0, true, false, false);
         for (uint8 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
             inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
-
-            // Check for overflow before adding the weight
-            if (totalWeight > AsMaths.BP_BASIS - _weights[i])
-                revert InvalidData();
-
-            totalWeight += _weights[i];
         }
         setSwapperAllowance(MAX_UINT256, true, false, false);
         inputLength = uint8(_inputs.length);
+        setInputWeights(_weights);
     }
 
     /**
@@ -154,6 +169,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         address[] calldata _rewardTokens
     ) public onlyManager {
         if (_rewardTokens.length > 8) revert Unauthorized();
+        setSwapperAllowance(0, false, true, false);
         for (uint8 i = 0; i < _rewardTokens.length; i++) {
             rewardTokens[i] = _rewardTokens[i];
             rewardTokenIndex[_rewardTokens[i]] = i+1;
