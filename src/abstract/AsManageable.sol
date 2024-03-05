@@ -83,19 +83,18 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     {
         require(!hasRole(role, account));
 
-        if (role == DEFAULT_ADMIN_ROLE || role == MANAGER_ROLE) {
+        // no acceptance needed for keepers
+        if (role == KEEPER_ROLE)
+            return _grantRole(role, account);
 
-            pendingAcceptance[account] = PendingAcceptance({
-                // only get replaced if admin, managers can coexist
-                replacing: role == DEFAULT_ADMIN_ROLE
-                    ? msg.sender
-                    : address(0),
-                timestamp: block.timestamp,
-                role: role
-            });
-        } else {
-            _grantRole(role, account);
-        }
+        pendingAcceptance[account] = PendingAcceptance({
+            // only get replaced if admin (managers can coexist)
+            replacing: role == DEFAULT_ADMIN_ROLE
+                ? msg.sender
+                : address(0),
+            timestamp: block.timestamp,
+            role: role
+        });
     }
 
     /**
