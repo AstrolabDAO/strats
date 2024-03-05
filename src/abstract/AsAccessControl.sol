@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../libs/AsCast.sol";
-import "../libs/AsSequentialSet.sol";
+import "../libs/AsIterableSet.sol";
 
 /**            _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -17,7 +17,7 @@ import "../libs/AsSequentialSet.sol";
  * roles are defined by default
  */
 abstract contract AsAccessControl {
-    using AsSequentialSet for AsSequentialSet.Set;
+    using AsIterableSet for AsIterableSet.Set;
     using AsCast for bytes32;
     using AsCast for address;
 
@@ -28,7 +28,7 @@ abstract contract AsAccessControl {
     error Unauthorized();
 
     struct RoleState {
-        AsSequentialSet.Set members;
+        AsIterableSet.Set members;
         bytes32 adminRole;
     }
 

@@ -9,11 +9,11 @@ import "./AsCast.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
  *
- * @title AsSet
+ * @title AsIterableSet
  * @author Astrolab DAO
- * @dev A library to manage a set of elements stored in a sequential order with efficient operations
+ * @dev A library to manage a set of elements that can be iterated over from 0 to q.size()
  */
-library AsSequentialSet {
+library AsIterableSet {
     using AsCast for bytes32;
     using AsCast for address;
 
@@ -21,7 +21,7 @@ library AsSequentialSet {
     error OutOfBounds(uint256 index);
 
     /**
-     * @dev Struct representing a sequential set
+     * @dev Struct representing an iterable set
      * @param data An array of bytes32 elements representing the set
      * @param index A mapping from bytes32 elements to their index in the data array
      */
@@ -31,8 +31,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Adds an element to the end of the sequential set
-     * @param q The sequential set
+     * @dev Adds an element to the end of the iterable set
+     * @param q The iterable set
      * @param o The element to be added
      */
     function push(Set storage q, bytes32 o) internal {
@@ -60,8 +60,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Removes the last element from the sequential set and returns it
-     * @param q The sequential set
+     * @dev Removes the last element from the iterable set and returns it
+     * @param q The iterable set
      * @return The last element of the set
      */
     function pop(Set storage q) internal returns (bytes32) {
@@ -75,8 +75,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Removes the first element from the sequential set
-     * @param q The sequential set
+     * @dev Removes the first element from the iterable set
+     * @param q The iterable set
      */
     function shift(Set storage q) internal {
         if (q.data.length == 0)
@@ -96,8 +96,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Adds an element to the beginning of the sequential set
-     * @param q The sequential set
+     * @dev Adds an element to the beginning of the iterable set
+     * @param q The iterable set
      * @param o The element to be added
      */
     function unshift(Set storage q, bytes32 o) internal {
@@ -113,8 +113,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Inserts an element at a specific index in the sequential set
-     * @param q The sequential set
+     * @dev Inserts an element at a specific index in the iterable set
+     * @param q The iterable set
      * @param i The index at which to insert
      * @param o The element to be inserted
      */
@@ -141,8 +141,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Removes an element at a specific index in the sequential set
-     * @param q The sequential set
+     * @dev Removes an element at a specific index in the iterable set
+     * @param q The iterable set
      * @param i The index of the element to be deleted
      */
     function removeAt(Set storage q, uint256 i) internal {
@@ -167,8 +167,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Removes a raw element from the sequential set
-     * @param q The sequential set
+     * @dev Removes a raw element from the iterable set
+     * @param q The iterable set
      * @param o The element to be deleted
      */
     function remove(Set storage q, bytes32 o) internal {
@@ -197,8 +197,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Retrieves an element by its index in the sequential set
-     * @param q The sequential set
+     * @dev Retrieves an element by its index in the iterable set
+     * @param q The iterable set
      * @param i The index of the element
      * @return The element at the specified index
      */
@@ -208,8 +208,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Retrieves an element by its index in the sequential set
-     * @param q The sequential set
+     * @dev Retrieves an element by its index in the iterable set
+     * @param q The iterable set
      * @param i The index of the element
      * @return The element at the specified index
      */
@@ -218,8 +218,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Checks if the sequential set contains a specific element
-     * @param q The sequential set
+     * @dev Checks if the iterable set contains a specific element
+     * @param q The iterable set
      * @param o The element to check for
      * @return True if the element is in the set, false otherwise
      */
@@ -228,8 +228,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Returns the number of elements in the sequential set
-     * @param q The sequential set
+     * @dev Returns the number of elements in the iterable set
+     * @param q The iterable set
      * @return The size of the set
      */
     function size(Set storage q) internal view returns (uint256) {
@@ -237,11 +237,11 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Returns a copy of all elements in the sequential set as an array
+     * @dev Returns a copy of all elements in the iterable set as an array
      * @notice this copies the entire q.data storage to memory, gas cost is hence exponential of the set size
      * should mainly be used by views/static calls (gas free)
      * uncallable if copy(q.data.length) cost > block gaslimit (thousands of entries on most chains)
-     * @param q The sequential set
+     * @param q The iterable set
      * @return An array containing all elements of the set
      */
     function rawValues(Set storage q) internal view returns (bytes32[] memory) {
@@ -249,8 +249,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Returns a copy of all elements in the sequential set as an array of uint256
-     * @param q The sequential set
+     * @dev Returns a copy of all elements in the iterable set as an array of uint256
+     * @param q The iterable set
      * @return values An array of uint256 containing all elements of the set
      */
     function valuesAsUint(Set storage q) internal view returns (uint256[] memory values) {
@@ -261,8 +261,8 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Returns a copy of all elements in the sequential set as an array of int256
-     * @param q The sequential set
+     * @dev Returns a copy of all elements in the iterable set as an array of int256
+     * @param q The iterable set
      * @return values An array of int256 containing all elements of the set
      */
     function valuesAsInt(Set storage q) internal view returns (int256[] memory values) {
@@ -273,9 +273,9 @@ library AsSequentialSet {
     }
 
     /**
-     * @dev Returns a copy of all elements in the sequential set as an array of addresses
+     * @dev Returns a copy of all elements in the iterable set as an array of addresses
      * @notice less efficient than above batch casting
-     * @param q The sequential set
+     * @param q The iterable set
      * @return values An array of addresses containing all elements of the set
      */
     function valuesAsAddress(Set storage q) internal view returns (address[] memory values) {
@@ -286,8 +286,8 @@ library AsSequentialSet {
     }
 
     // /**
-    //  * @dev Removes zero elements from the tail end of the sequential set
-    //  * @param q The sequential set
+    //  * @dev Removes zero elements from the tail end of the iterable set
+    //  * @param q The iterable set
     //  */
     // function _cleanTail(Set storage q) internal {
     //     uint32 n = uint32(q.data.length);
@@ -297,8 +297,8 @@ library AsSequentialSet {
     // }
 
     // /**
-    //  * @dev Removes zero elements from the head of the sequential set, maintaining the set's integrity
-    //  * @param q The sequential set
+    //  * @dev Removes zero elements from the head of the iterable set, maintaining the set's integrity
+    //  * @param q The iterable set
     //  */
     // function _cleanHead(Set storage q) internal {
     //     _cleanTail(q);

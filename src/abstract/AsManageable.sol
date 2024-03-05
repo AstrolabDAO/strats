@@ -17,7 +17,7 @@ import "./AsAccessControl.sol";
  * roles are defined by default
  */
 abstract contract AsManageable is AsAccessControl, Pausable {
-    using AsSequentialSet for AsSequentialSet.Set;
+    using AsIterableSet for AsIterableSet.Set;
 
     struct PendingAcceptance {
         bytes32 role; // by default 0x00 == DEFAULT_ADMIN_ROLE
