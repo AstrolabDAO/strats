@@ -151,12 +151,12 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     function acceptRole(bytes32 role) external {
         PendingAcceptance memory acceptance = pendingAcceptance[msg.sender];
 
-        _checkRoleAcceptance(acceptance);
+        _checkRoleAcceptance(acceptance, role);
         if (acceptance.replacing != address(0)) {
             // if replacing, revoke the old role
             _revokeRole(acceptance.role, acceptance.replacing);
         }
-        _grantRole(role, msg.sender);
+        _grantRole(acceptance.role, msg.sender);
         delete pendingAcceptance[msg.sender];
     }
 
@@ -165,8 +165,13 @@ abstract contract AsManageable is AsAccessControl, Pausable {
      * @param acceptance The acceptance data containing the role and timestamp
      */
     function _checkRoleAcceptance(
-        PendingAcceptance memory acceptance
+        PendingAcceptance memory acceptance,
+        bytes32 role
     ) private view {
+
+        // make sure the role accepted is the same as the pending one
+        if (acceptance.role == role)
+            revert Unauthorized();
         // grant the keeper role instantly (no attack surface here)
         if (acceptance.role == KEEPER_ROLE) return;
         if (block.timestamp > (acceptance.timestamp + TIMELOCK_PERIOD + VALIDITY_PERIOD))
