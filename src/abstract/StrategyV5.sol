@@ -5,7 +5,6 @@ import "../interfaces/IStrategyV5.sol";
 import "./StrategyV5Abstract.sol";
 import "./AsRescuableAbstract.sol";
 import "./AsProxy.sol";
-import "../libs/SafeERC20.sol";
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
 
@@ -24,7 +23,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     using AsMaths for uint256;
     using AsMaths for int256;
     using AsArrays for bytes[];
-    using SafeERC20 for IERC20;
 
     constructor() StrategyV5Abstract() {}
 
@@ -550,6 +548,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _balance(address token) internal view virtual returns (uint256) {
         return (token == address(1) || token == address(wgas)) ?
             address(this).balance + wgas.balanceOf(address(this)) :
-            IERC20(token).balanceOf(address(this));
+            IERC20Metadata(token).balanceOf(address(this));
     }
 }

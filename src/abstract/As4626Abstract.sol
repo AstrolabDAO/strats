@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: agpl-3
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ERC20.sol";
 import "./AsManageable.sol";
 import "./AsTypes.sol";
@@ -19,6 +21,8 @@ import "../libs/AsAccounting.sol";
  * @dev Make sure all As4626 state variables here to match proxy/implementation slots
  */
 abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
+
+    using SafeERC20 for IERC20Metadata;
     using AsMaths for uint256;
 
     // Events

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.17;
 
-import "../libs/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libs/PythUtils.sol";
 import "./StrategyV5.sol";
 import "../interfaces/IPyth.sol";
@@ -18,7 +18,6 @@ import "../interfaces/IPyth.sol";
  */
 abstract contract StrategyV5Pyth is StrategyV5 {
     using AsMaths for uint256;
-    using SafeERC20 for IERC20;
     using PythUtils for PythStructs.Price;
     using PythUtils for uint256;
 

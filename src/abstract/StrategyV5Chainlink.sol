@@ -17,7 +17,6 @@ import "./StrategyV5.sol";
  */
 abstract contract StrategyV5Chainlink is StrategyV5 {
     using AsMaths for uint256;
-    using SafeERC20 for IERC20;
 
     // Third party contracts
     mapping (address => IChainlinkAggregatorV3) public feedByAsset;

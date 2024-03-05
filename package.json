@@ -51,7 +51,6 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.9",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
-    "@openzeppelin/contracts": "4.9.3",
     "@redstone-finance/evm-connector": "^0.3.6",
     "@tenderly/hardhat-tenderly": "^1.7.7",
     "@types/chai": "^4.3.9",
@@ -85,6 +84,7 @@
     "@astrolabs/registry": "^1.0.46",
     "@astrolabs/swapper": "^1.0.17",
     "@axelar-network/axelar-gmp-sdk-solidity": "^5.6.4",
+    "@openzeppelin/contracts": "^5.0.2",
     "dotenv": "^16.3.1",
     "lodash": "^4.17.21"
   }

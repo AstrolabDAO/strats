@@ -19,7 +19,7 @@ import "./interfaces/v3/ICompoundV3.sol";
 contract CompoundV3MultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     // Third party contracts
     address[8] public cTokens; // LP token/pool
@@ -214,7 +214,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++)
-            inputs[i].approve(address(cTokens[i]), _amount);
+            inputs[i].forceApprove(address(cTokens[i]), _amount);
     }
 
     /**

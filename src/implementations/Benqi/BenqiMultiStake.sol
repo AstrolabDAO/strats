@@ -19,7 +19,7 @@ import "./interfaces/IBenqi.sol";
 contract BenqiMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     // Third party contracts
     IQiToken[8] internal qiTokens; // LP token/pool
@@ -189,7 +189,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++)
-            inputs[i].approve(address(qiTokens[i]), _amount);
+            inputs[i].forceApprove(address(qiTokens[i]), _amount);
     }
 
     /**

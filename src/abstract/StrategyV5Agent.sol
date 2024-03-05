@@ -20,7 +20,7 @@ import "./AsRescuable.sol";
 contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     using AsMaths for uint256;
     using AsMaths for int256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     constructor() StrategyV5Abstract() {}
 
@@ -29,34 +29,41 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
      * @param _params StrategyBaseParams struct containing strategy parameters
      */
     function init(StrategyBaseParams calldata _params) public onlyAdmin {
-        // setInputs(_params.inputs, _params.inputWeights);
+        swapper = ISwapper(_params.coreAddresses.swapper);
+        // setInputs(_params.inputs, _params.inputWeights); // done in parent strategy init()
         setRewardTokens(_params.rewardTokens);
         asset = IERC20Metadata(_params.coreAddresses.asset);
         assetDecimals = asset.decimals();
         weiPerAsset = 10**assetDecimals;
-        updateSwapper(_params.coreAddresses.swapper);
         As4626.init(_params.erc20Metadata, _params.coreAddresses, _params.fees);
+        setSwapperAllowance(MAX_UINT256, true, false, true); // reward allowances already set
     }
 
     /**
      * @notice Sets the swapper allowance
      * @param _amount Amount of allowance to set
      */
-    function setSwapperAllowance(uint256 _amount) public onlyAdmin {
+    function setSwapperAllowance(uint256 _amount, bool _inputs, bool _rewards, bool _asset) public onlyAdmin {
         address swapperAddress = address(swapper);
+        if (swapperAddress == address(0)) revert AddressZero();
         // we keep the possibility to set allowance to 0 in case of a change of swapper
         // default is to approve MAX_UINT256
         _amount = _amount > 0 ? _amount : MAX_UINT256;
 
-        for (uint256 i = 0; i < rewardLength; i++) {
-            if (rewardTokens[i] == address(0)) break;
-            IERC20Metadata(rewardTokens[i]).approve(swapperAddress, _amount);
+        if (_inputs) {
+            for (uint256 i = 0; i < inputLength; i++) {
+                if (address(inputs[i]) == address(0)) break;
+                inputs[i].forceApprove(swapperAddress, _amount);
+            }
         }
-        for (uint256 i = 0; i < inputLength; i++) {
-            if (address(inputs[i]) == address(0)) break;
-            inputs[i].approve(swapperAddress, _amount);
+        if (_rewards) {
+            for (uint256 i = 0; i < rewardLength; i++) {
+                if (rewardTokens[i] == address(0)) break;
+                IERC20Metadata(rewardTokens[i]).forceApprove(swapperAddress, _amount);
+            }
         }
-        asset.approve(swapperAddress, _amount);
+        if (_asset)
+            asset.forceApprove(swapperAddress, _amount);
     }
 
     /**
@@ -65,9 +72,9 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
      */
     function updateSwapper(address _swapper) public onlyAdmin {
         if (_swapper == address(0)) revert AddressZero();
-        if (address(swapper) != address(0)) setSwapperAllowance(0);
+        setSwapperAllowance(0, true, true, true);
         swapper = ISwapper(_swapper);
-        setSwapperAllowance(MAX_UINT256);
+        setSwapperAllowance(MAX_UINT256, true, true, true);
     }
 
     /**
@@ -108,7 +115,8 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         last.accountedSupply = totalSupply();
         last.sharePrice = last.sharePrice.mulDiv(_priceFactor, 1e18); // multiply then debase
         address swapperAddress = address(swapper);
-        IERC20Metadata(_asset).approve(swapperAddress, MAX_UINT256);
+        if (swapperAddress != address(0))
+            IERC20Metadata(_asset).forceApprove(swapperAddress, MAX_UINT256);
     }
 
     /**
@@ -133,8 +141,8 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
                 revert InvalidData();
 
             totalWeight += _weights[i];
-            inputs[i].approve(swapperAddress, MAX_UINT256);
         }
+        setSwapperAllowance(MAX_UINT256, true, false, false);
         inputLength = uint8(_inputs.length);
     }
 
@@ -151,6 +159,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
             rewardTokenIndex[_rewardTokens[i]] = i+1;
         }
         rewardLength = uint8(_rewardTokens.length);
+        setSwapperAllowance(MAX_UINT256, false, true, false);
     }
 
     /**

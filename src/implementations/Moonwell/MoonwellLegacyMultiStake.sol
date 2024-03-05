@@ -19,7 +19,6 @@ import "./interfaces/IMoonwell.sol";
 contract MoonwellLegacyMultiStake is MoonwellMultiStake {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
 
     constructor() MoonwellMultiStake() {}
 

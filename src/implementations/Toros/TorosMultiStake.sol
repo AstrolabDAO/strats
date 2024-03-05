@@ -19,7 +19,7 @@ import "./interfaces/IDHedge.sol";
 contract TorosMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     // Third party contracts
     IDHedgePool[8] internal pools;
@@ -182,7 +182,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++) {
-            inputs[i].approve(address(dHedgeSwapper), _amount);
+            inputs[i].forceApprove(address(dHedgeSwapper), _amount);
         }
     }
 

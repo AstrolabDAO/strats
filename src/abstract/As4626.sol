@@ -6,7 +6,7 @@ import "./AsTypes.sol";
 import "../interfaces/IAs4626.sol";
 import "../interfaces/IERC7540RedeemReceiver.sol";
 import "../interfaces/IERC7540DepositReceiver.sol";
-import "../libs/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
 

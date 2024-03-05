@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.17;
 
-import "../../libs/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
@@ -22,7 +21,7 @@ import "./interfaces/IStakingRewards.sol";
 contract HopMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     // Third party contracts
     IERC20Metadata[5] internal lpTokens; // LP token of the pool
@@ -238,11 +237,11 @@ contract HopMultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++) {
-            inputs[i].approve(address(stableRouters[i]), _amount);
-            lpTokens[i].approve(address(stableRouters[i]), _amount);
+            inputs[i].forceApprove(address(stableRouters[i]), _amount);
+            lpTokens[i].forceApprove(address(stableRouters[i]), _amount);
             // for (uint8 j = 0; j < rewardPools[i].length; j++) {
             if (address(rewardPools[i][0]) == address(0)) break; // no overflow (static array)
-            lpTokens[i].approve(address(rewardPools[i][0]), _amount);
+            lpTokens[i].forceApprove(address(rewardPools[i][0]), _amount);
             // }
         }
     }

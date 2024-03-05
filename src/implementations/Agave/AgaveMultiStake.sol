@@ -20,7 +20,7 @@ import "../Balancer/interfaces/v2/IBalancer.sol";
 contract AgaveMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     // Third party contracts
     IERC20Metadata[8] internal aTokens; // LP token of the pool
@@ -228,8 +228,8 @@ contract AgaveMultiStake is StrategyV5Chainlink {
     function _setAllowances(uint256 _amount) internal override {
         IPool pool = IPool(poolProvider.getLendingPool());
         for (uint8 i = 0; i < inputLength; i++) {
-            inputs[i].approve(address(pool), _amount);
-            aTokens[i].approve(address(pool), _amount);
+            inputs[i].forceApprove(address(pool), _amount);
+            aTokens[i].forceApprove(address(pool), _amount);
         }
     }
 

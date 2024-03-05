@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSL 1.1
 pragma solidity ^0.8.0;
 
-import "../../libs/SafeERC20.sol";
 import "../../libs/AsMaths.sol";
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5Chainlink.sol";
@@ -21,7 +20,6 @@ import "./interfaces/IStargate.sol";
 contract StargateMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
 
     // Third party contracts
     IStargateRouter[5] internal routers; // stargate router

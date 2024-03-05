@@ -19,7 +19,7 @@ import "./interfaces/ISonne.sol";
 contract SonneMultiStake is StrategyV5Chainlink {
     using AsMaths for uint256;
     using AsArrays for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Metadata;
 
     // Third party contracts
     ICToken[8] internal cTokens; // LP token/pool
@@ -187,7 +187,7 @@ contract SonneMultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         for (uint8 i = 0; i < inputLength; i++)
-            inputs[i].approve(address(cTokens[i]), _amount);
+            inputs[i].forceApprove(address(cTokens[i]), _amount);
     }
 
     /**
