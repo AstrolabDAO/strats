@@ -39,9 +39,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         agent = _params.coreAddresses.agent;
         wgas = IWETH9(_params.coreAddresses.wgas);
         if (agent == address(0)) revert AddressZero();
-        _delegateWithSignature(
-            agent, // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights.rewardTokens
-            "init(((string,string,uint8),(address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))" // StrategyV5Agent.init(_params)
+        _delegateToSelector(
+            agent,      // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights.rewardTokens
+            0x83904ca7, // keccak256("init(((string,string,uint8),(address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))") == StrategyV5Agent.init(_params)
+            msg.data[4:]
         );
     }
 
@@ -70,24 +71,24 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         bytes calldata _swapData,
         uint256 _priceFactor
     ) internal {
-        _delegateWithSignature(
+        _delegateToSelectorMemory(
             agent,
-            "updateAsset(address,bytes,uint256)" // StrategyV5Agent.updateAsset(_asset, _swapData, _priceFactor)
+            0x7a1ed234, // keccak256("updateAsset(address,bytes,uint256)") == StrategyV5Agent.updateAsset(_asset, _swapData, _priceFactor)
+            abi.encode(_asset, _swapData, _priceFactor)
         );
     }
 
     /**
      * @notice Changes the strategy input tokens
-     * @param _inputs Array of input token addresses
-     * @param _weights Array of input token weights
      */
     function _setInputs(
         address[] calldata _inputs,
         uint16[] calldata _weights
     ) internal {
-        _delegateWithSignature(
+        _delegateToSelectorMemory(
             agent,
-            "setInputs(address[],uint16[])" // StrategyV5Agent.setInputs(_inputs, _weights)
+            0xd0d37333, // keccak256("setInputs(address[],uint16[])") == StrategyV5Agent.setInputs(_inputs, _weights)
+            abi.encode(_inputs, _weights)
         );
     }
 
