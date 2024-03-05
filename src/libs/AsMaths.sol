@@ -245,7 +245,9 @@ library AsMaths {
      * @return The absolute value of the input
      */
     function abs(int256 x) internal pure returns (uint256) {
-        return uint256(x > 0 ? x : -x);
+        return x == type(int256).min
+            ? uint256(type(int256).max) + 1
+            : uint256(x > 0 ? x : -x);
     }
 
     /**
