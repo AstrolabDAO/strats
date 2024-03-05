@@ -22,9 +22,9 @@ library ChainlinkUtils {
     function getPriceUsd(IChainlinkAggregatorV3 _feed, uint256 _validity, uint8 _targetDecimals) internal view returns (uint256) {
         (, int256 basePrice, , uint updateTime, ) = _feed.latestRoundData();
         uint8 feedDecimals = _feed.decimals();
-        require(basePrice > 0 && block.timestamp <= (updateTime + _validity), "Stale price");
+        require(basePrice > 0 && block.timestamp <= (updateTime + _validity)); // Stale price
 
-        // debase pyth feed decimals to target decimals
+        // debase chainlink feed decimals to target decimals
         return _targetDecimals >= feedDecimals ?
             uint256(basePrice) * 10 ** uint32(_targetDecimals - feedDecimals) :
             uint256(basePrice) / 10 ** uint32(feedDecimals - _targetDecimals);

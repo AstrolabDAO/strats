@@ -45,7 +45,7 @@ library PythUtils {
     function getPriceUsd(IPythAggregator _pyth, bytes32 _feed, uint256 _validity, uint8 _targetDecimals) internal view returns (uint256) {
         PythStructs.Price memory pythPrice = _pyth.getPrice(_feed);
         uint256 price = toUint256(pythPrice, _targetDecimals);
-        require(price > 0 && block.timestamp <= (pythPrice.publishTime + _validity), "Stale price");
+        require(price > 0 && block.timestamp <= (pythPrice.publishTime + _validity)); // Stale price
         return price;
     }
 
