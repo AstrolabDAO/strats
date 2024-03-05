@@ -498,7 +498,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256 _amount
     ) public view returns (uint256[8] memory amounts) {
         if (_amount == 0)
-            _amount = available(); // only invest 90% of liquidity for buffered flows
+            _amount = available();
+        // compute the excess liquidity
+        // NB: max allocated would be 90% for buffering flows if inputWeights are [30_00,30_00,30_00]
         int256[8] memory excessInput = _excessInputLiquidity(invested() + _amount);
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
