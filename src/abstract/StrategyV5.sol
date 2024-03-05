@@ -48,8 +48,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     /**
      * @notice Returns the StrategyV5Agent proxy initialization state
      */
-    function initialized() public view override returns (bool) {
-        return agent != address(0) && address(asset) != address(0);
+    function initialized() public view virtual returns (bool) {
+        return _initialized && agent != address(0) && address(asset) != address(0);
     }
 
     /**
