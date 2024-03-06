@@ -53,7 +53,7 @@ interface IStrategyV5 is IStrategyV5Abstract {
 
     function liquidate(
         uint256[8] calldata _amount,
-        uint256 _minLiquidity,
+        uint256 __minLiquidity,
         bool _panic,
         bytes[] calldata _params
     ) external returns (uint256 liquidityAvailable);

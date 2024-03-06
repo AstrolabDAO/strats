@@ -45,7 +45,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     event DepositRequest(
         address indexed receiver,
         address indexed owner,
-        uint256 indexed requestId,
+        uint256 indexed _requestId,
         address sender, // operator
         uint256 assets // locked assets
     );
@@ -53,7 +53,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     event RedeemRequest(
         address indexed receiver,
         address indexed owner,
-        uint256 indexed requestId,
+        uint256 indexed _requestId,
         address sender, // operator
         uint256 shares // shares to unlock
     );
@@ -73,33 +73,34 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     error InvalidData(); // invalid calldata / inputs
 
     // Constants
-    uint256 internal constant MAX_UINT256 = type(uint256).max;
+    uint256 internal constant _MAX_UINT256 = type(uint256).max;
 
-    uint256 internal profitCooldown = 10 days; // Profit linearization period (profit locktime)
     uint256 public maxTotalAssets = 0; // Maximum total assets that can be deposited
-    uint256 public minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
-    uint16 internal maxSlippageBps = 100; // Strategy default internal ops slippage 1%
+    uint256 internal _minLiquidity = 1e7; // Minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
+    uint16 internal _maxSlippageBps = 100; // Strategy default internal ops slippage 1%
 
+    // Share/underlying asset accounting
+    uint256 internal constant _WEI_PER_SHARE = 1e12; // weis in a share (base unit)
+    uint256 internal constant _WEI_PER_SHARE_SQUARED = _WEI_PER_SHARE ** 2;
     IERC20Metadata public asset; // ERC20 token used as the base denomination
-    uint8 internal assetDecimals; // ERC20 token decimals
-    uint256 internal constant WEI_PER_SHARE = 1e12; // weis in a share (base unit)
-    uint256 internal constant WEI_PER_SHARE_SQUARED = WEI_PER_SHARE ** 2;
-    uint256 internal weiPerAsset; // weis in an asset (underlying unit)
+    uint8 internal _assetDecimals; // ERC20 token decimals
+    uint256 internal _weiPerAsset; // weis in an asset (underlying unit)
     Epoch public last; // Epoch tracking latest events
 
     // Profit-related variables
-    uint256 internal expectedProfits; // Expected profits
+    uint256 internal _profitCooldown = 10 days; // Profit linearization period (profit locktime)
+    uint256 internal _expectedProfits; // Expected profits
 
     Fees public fees; // Current fee structure
     address public feeCollector; // Address to collect fees
     uint256 public claimableAssetFees; // Amount of asset fees (entry+exit) that can be claimed
     mapping(address => bool) public exemptionList; // List of addresses exempted from fees
 
-    Requests internal req;
-    uint256 internal requestId; // redeem request id
+    Requests internal _req;
+    uint256 internal _requestId; // redeem request id
 
     // Flash loan
-    uint256 internal totalLent;
+    uint256 public totalLent;
     uint256 public maxLoan = 1e12; // Maximum amount of flash loan allowed (default to 1e12 eg. 1m usdc)
 
     constructor() {
@@ -114,7 +115,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      * @dev Throws an exception if the transfer amount exceeds the balance of the sender minus the shares in the request
      */
     function transfer(address _to, uint256 _amount) public override(ERC20) returns (bool) {
-        Erc7540Request storage request = req.byOwner[msg.sender];
+        Erc7540Request storage request = _req.byOwner[msg.sender];
         if (_amount > (balanceOf(msg.sender) - request.shares))
             revert AmountTooHigh(_amount);
         return ERC20.transfer(_to, _amount);
@@ -143,7 +144,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     function available() public view returns (uint256) {
         return
             availableBorrowable().subMax0(
-                convertToAssets(req.totalClaimableRedemption, false)
+                convertToAssets(_req.totalClaimableRedemption, false)
             );
     }
 
@@ -157,8 +158,8 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
                 claimableAssetFees +
                     AsAccounting.unrealizedProfits(
                         last.harvest,
-                        expectedProfits,
-                        profitCooldown
+                        _expectedProfits,
+                        _profitCooldown
                     )
             );
     }
@@ -186,9 +187,9 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     function totalAccountedAssets() public view returns (uint256) {
         return
             totalAssets().subMax0(
-                req.totalClaimableRedemption.mulDiv(
-                    last.sharePrice * weiPerAsset,
-                    WEI_PER_SHARE_SQUARED
+                _req.totalClaimableRedemption.mulDiv(
+                    last.sharePrice * _weiPerAsset,
+                    _WEI_PER_SHARE_SQUARED
                 )); // eg. (1e8+1e8+1e6)-(1e8+1e8) = 1e6
     }
 
@@ -197,7 +198,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      * @return Amount of shares
      */
     function totalAccountedSupply() public view returns (uint256) {
-        return totalSupply().subMax0(req.totalClaimableRedemption);
+        return totalSupply().subMax0(_req.totalClaimableRedemption);
     }
 
     /**
@@ -208,10 +209,10 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
         uint256 supply = totalAccountedSupply();
         return
             supply == 0
-                ? WEI_PER_SHARE
+                ? _WEI_PER_SHARE
                 : totalAccountedAssets().mulDiv( // eg. e6
-                    WEI_PER_SHARE_SQUARED, // 1e8*2
-                    supply * weiPerAsset
+                    _WEI_PER_SHARE_SQUARED, // 1e8*2
+                    supply * _weiPerAsset
                 ); // eg. (1e6+1e8+1e8)-(1e8+1e6)
     }
 
@@ -231,7 +232,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      * @return Amount of shares you can get for your assets
      */
     function convertToShares(uint256 _assets, bool _roundUp) internal view returns (uint256) {
-        return _assets.mulDiv(WEI_PER_SHARE_SQUARED, sharePrice() * weiPerAsset, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
+        return _assets.mulDiv(_WEI_PER_SHARE_SQUARED, sharePrice() * _weiPerAsset, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
     }
 
     /**
@@ -251,7 +252,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
      * @return Amount of asset tokens you can get for your shares
      */
     function convertToAssets(uint256 _shares,  bool _roundUp) internal view returns (uint256) {
-        return _shares.mulDiv(sharePrice() * weiPerAsset, WEI_PER_SHARE_SQUARED, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e8+(1e8+1e6)-(1e8+1e8) = 1e6
+        return _shares.mulDiv(sharePrice() * _weiPerAsset, _WEI_PER_SHARE_SQUARED, _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor); // eg. 1e8+(1e8+1e6)-(1e8+1e8) = 1e6
     }
 
     /**

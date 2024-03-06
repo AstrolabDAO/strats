@@ -87,29 +87,29 @@ library AsAccounting {
      * @notice Linearization of the accrued profits
      * @dev This is used to calculate the total assets under management
      * @param lastHarvest Timestamp of the last harvest
-     * @param expectedProfits Expected profits since the last harvest
-     * @param profitCooldown Cooldown period for realizing gains
+     * @param _expectedProfits Expected profits since the last harvest
+     * @param _profitCooldown Cooldown period for realizing gains
      * @return The amount of profits that are not yet realized
      */
     function unrealizedProfits(
         uint256 lastHarvest,
-        uint256 expectedProfits,
-        uint256 profitCooldown
+        uint256 _expectedProfits,
+        uint256 _profitCooldown
     ) public view returns (uint256) {
         // If the cooldown period is over, gains are realized
-        if (lastHarvest + profitCooldown < block.timestamp) {
+        if (lastHarvest + _profitCooldown < block.timestamp) {
             return 0;
         }
 
         // Calculate unrealized profits during cooldown using mulDiv for precision
         uint256 elapsedTime = block.timestamp - lastHarvest;
-        uint256 realizedProfits = expectedProfits.mulDiv(
+        uint256 realizedProfits = _expectedProfits.mulDiv(
             elapsedTime,
-            profitCooldown
+            _profitCooldown
         );
 
         // Return the amount of profits that are not yet realized
-        return expectedProfits - realizedProfits;
+        return _expectedProfits - realizedProfits;
     }
 
     /**

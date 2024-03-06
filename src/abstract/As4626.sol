@@ -52,9 +52,9 @@ abstract contract As4626 is As4626Abstract {
         // check that the fees are not too high
         setFees(_fees);
         feeCollector = _coreAddresses.feeCollector;
-        req.redemptionLocktime = 6 hours;
-        last.accountedSharePrice = WEI_PER_SHARE;
-        last.accountedProfit = WEI_PER_SHARE;
+        _req.redemptionLocktime = 6 hours;
+        last.accountedSharePrice = _WEI_PER_SHARE;
+        last.accountedProfit = _WEI_PER_SHARE;
         last.feeCollection = uint64(block.timestamp);
         last.liquidate = uint64(block.timestamp);
         last.harvest = uint64(block.timestamp);
@@ -96,7 +96,7 @@ abstract contract As4626 is As4626Abstract {
         last.sharePrice = sharePrice();
 
         if (_amount == 0)
-            _amount = _shares.mulDiv(last.sharePrice * weiPerAsset, WEI_PER_SHARE_SQUARED); // rounded down
+            _amount = _shares.mulDiv(last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED); // rounded down
 
         if (_amount > maxDeposit(address(0)))
             revert AmountTooHigh(_amount);
@@ -111,7 +111,7 @@ abstract contract As4626 is As4626Abstract {
         claimableAssetFees += assetFees;
 
         // compute the final shares (after fees and ERC20 tax)
-        _shares = (received - assetFees).mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset); // rounded down
+        _shares = (received - assetFees).mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset); // rounded down
 
         _mint(_receiver, _shares);
 
@@ -168,7 +168,7 @@ abstract contract As4626 is As4626Abstract {
 
         if (_amount == 0 && _shares == 0) revert AmountTooLow(0);
 
-        Erc7540Request storage request = req.byOwner[_owner];
+        Erc7540Request storage request = _req.byOwner[_owner];
 
         uint256 claimableShares = (msg.sender == request.operator || msg.sender == _owner)
             ? claimableRedeemRequest(_owner) : 0;
@@ -179,21 +179,21 @@ abstract contract As4626 is As4626Abstract {
 
         if (claimableShares > 0) {
             worstPrice = AsMaths.min(last.sharePrice, request.sharePrice);
-            claimableAmount = claimableShares.mulDiv(worstPrice * weiPerAsset, WEI_PER_SHARE_SQUARED); // rounded down
+            claimableAmount = claimableShares.mulDiv(worstPrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED); // rounded down
         }
 
         if (_amount == 0) {
-            _amount = _shares.mulDiv(worstPrice * weiPerAsset, WEI_PER_SHARE_SQUARED); // rounded down
+            _amount = _shares.mulDiv(worstPrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED); // rounded down
         } else {
-            _shares = _amount.mulDiv(WEI_PER_SHARE_SQUARED, worstPrice * weiPerAsset); // rounded down
+            _shares = _amount.mulDiv(_WEI_PER_SHARE_SQUARED, worstPrice * _weiPerAsset); // rounded down
         }
 
         uint256 assetFees = _amount.bp(exemptionList[_owner] ? 0 : fees.exit);
 
         if (claimableShares >= _shares) {
             request.shares -= _shares;
-            req.totalRedemption.subMax0(_shares); // min 0
-            req.totalClaimableRedemption.subMax0(_shares); // min 0
+            _req.totalRedemption.subMax0(_shares); // min 0
+            _req.totalClaimableRedemption.subMax0(_shares); // min 0
         } else {
             // allowance is already consumed if requested shares are used, but not here
             if (msg.sender != _owner) {
@@ -202,13 +202,13 @@ abstract contract As4626 is As4626Abstract {
                 _spendAllowance(_owner, msg.sender, _shares);
             }
             // check if the vault available liquidity can cover the withdrawal
-            if (_shares > available().mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset))
+            if (_shares > available().mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset))
                 revert AmountTooHigh(_shares);
         }
         _burn(_owner, _shares);
 
-        // check if burning the shares will bring the totalSupply below the minLiquidity
-        if (totalSupply() < minLiquidity.mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset)) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
+        // check if burning the shares will bring the totalSupply below the _minLiquidity
+        if (totalSupply() < _minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset)) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
             revert Unauthorized();
 
         claimableAssetFees += assetFees;
@@ -311,7 +311,7 @@ abstract contract As4626 is As4626Abstract {
         (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) = AsAccounting.computeFees(IAs4626(address(this)));
 
         // sum up all fees: feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
-        toMint = (feesAmount + claimableAssetFees).mulDiv(WEI_PER_SHARE_SQUARED, price * weiPerAsset);
+        toMint = (feesAmount + claimableAssetFees).mulDiv(_WEI_PER_SHARE_SQUARED, price * _weiPerAsset);
 
         // do not mint nor emit event if there are no fees to collect
         if (toMint == 0)
@@ -370,7 +370,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _slippageBps array of input tokens
      */
     function setMaxSlippageBps(uint16 _slippageBps) external onlyManager {
-        maxSlippageBps = _slippageBps;
+        _maxSlippageBps = _slippageBps;
     }
 
     /**
@@ -402,7 +402,7 @@ abstract contract As4626 is As4626Abstract {
 
         // 1e8 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
         // allowance should be given to the vault before calling this function
-        if (_seedDeposit < (minLiquidity - totalAssets()))
+        if (_seedDeposit < (_minLiquidity - totalAssets()))
             revert AmountTooLow(_seedDeposit);
 
         // seed the vault with some assets if it's empty
@@ -426,19 +426,19 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Set the minimum amount of assets to seed the vault
      * @dev This is to avoid dust amounts of assets
-     * @param _minLiquidity The minimum amount of assets to seed the vault
+     * @param __minLiquidity The minimum amount of assets to seed the vault
      */
-    function setMinLiquidity(uint256 _minLiquidity) external onlyAdmin {
-        minLiquidity = _minLiquidity;
+    function setMinLiquidity(uint256 __minLiquidity) external onlyAdmin {
+        _minLiquidity = __minLiquidity;
     }
 
     /**
      * @notice Set the cooldown period for realizing profits
      * @dev Helps avoid MEV/arbs on the sharePrice
-     * @param _profitCooldown The cooldown period for realizing profits
+     * @param __profitCooldown The cooldown period for realizing profits
      */
-    function setProfitCooldown(uint256 _profitCooldown) external onlyAdmin {
-        profitCooldown = _profitCooldown;
+    function setProfitCooldown(uint256 __profitCooldown) external onlyAdmin {
+        _profitCooldown = __profitCooldown;
     }
 
     /**
@@ -449,7 +449,7 @@ abstract contract As4626 is As4626Abstract {
     function setRedemptionRequestLocktime(
         uint256 _redemptionLocktime
     ) external onlyAdmin {
-        req.redemptionLocktime = _redemptionLocktime;
+        _req.redemptionLocktime = _redemptionLocktime;
     }
 
     /**
@@ -585,15 +585,15 @@ abstract contract As4626 is As4626Abstract {
         address _operator,
         address _owner,
         bytes memory _data
-    ) external virtual nonReentrant whenNotPaused returns (uint256 _requestId) {
-        _requestId = ++requestId;
+    ) external virtual nonReentrant whenNotPaused returns (uint256 __requestId) {
+        __requestId = ++_requestId;
         if (_data.length != 0) {
             // the caller contract must implement onERC7540DepositReceived callback (0xe74d2a41 selector)
             if (IERC7540DepositReceiver(_owner)
-                .onERC7540DepositReceived(_operator, _owner, _requestId, _data) != IERC7540DepositReceiver.onERC7540DepositReceived.selector)
+                .onERC7540DepositReceived(_operator, _owner, __requestId, _data) != IERC7540DepositReceiver.onERC7540DepositReceived.selector)
                 revert Unauthorized();
         }
-        emit DepositRequest(_owner, _owner, _requestId, _operator, _amount);
+        emit DepositRequest(_owner, _owner, __requestId, _operator, _amount);
     }
 
     /**
@@ -607,7 +607,7 @@ abstract contract As4626 is As4626Abstract {
         address _operator,
         address _owner,
         bytes memory _data
-    ) public nonReentrant whenNotPaused returns (uint256 _requestId) {
+    ) public nonReentrant whenNotPaused returns (uint256 __requestId) {
 
         if (_operator != msg.sender)
             revert Unauthorized();
@@ -621,7 +621,7 @@ abstract contract As4626 is As4626Abstract {
             _spendAllowance(_owner, _operator, _shares);
         }
 
-        Erc7540Request storage request = req.byOwner[_owner];
+        Erc7540Request storage request = _req.byOwner[_owner];
         if (request.operator != _operator) request.operator = _operator;
 
         last.sharePrice = sharePrice();
@@ -630,8 +630,8 @@ abstract contract As4626 is As4626Abstract {
                 revert AmountTooLow(_shares);
 
             // reinit the request (re-added lower)
-            req.totalRedemption -= AsMaths.min(
-                req.totalRedemption,
+            _req.totalRedemption -= AsMaths.min(
+                _req.totalRedemption,
                 request.shares
             );
             // compute request vwap
@@ -642,19 +642,19 @@ abstract contract As4626 is As4626Abstract {
             request.sharePrice = last.sharePrice;
         }
 
-        _requestId = ++requestId;
-        request.requestId = _requestId;
+        __requestId = ++_requestId;
+        request._requestId = __requestId;
         request.shares = _shares;
         request.timestamp = block.timestamp;
-        req.totalRedemption += _shares;
+        _req.totalRedemption += _shares;
 
         if (_data.length != 0) {
             // the caller contract must implement onERC7540RedeemReceived callback (0x0102fde4 selector)
             if (IERC7540RedeemReceiver(_owner)
-                .onERC7540RedeemReceived(_operator, _owner, _requestId, _data) != IERC7540RedeemReceiver.onERC7540RedeemReceived.selector)
+                .onERC7540RedeemReceived(_operator, _owner, __requestId, _data) != IERC7540RedeemReceiver.onERC7540RedeemReceived.selector)
                 revert Unauthorized();
         }
-        emit RedeemRequest(_owner, _owner, _requestId, request.operator, _shares);
+        emit RedeemRequest(_owner, _owner, __requestId, request.operator, _shares);
     }
 
     /**
@@ -663,7 +663,7 @@ abstract contract As4626 is As4626Abstract {
      * @param _operator Address initiating the request
      * @param _owner The owner of the shares to be redeemed
      * @param _data Additional data
-     * @return requestId The ID of the withdraw request
+     * @return _requestId The ID of the withdraw request
      */
     function requestWithdraw(
         uint256 _amount,
@@ -694,7 +694,7 @@ abstract contract As4626 is As4626Abstract {
         address _operator,
         address _owner
     ) external nonReentrant {
-        Erc7540Request storage request = req.byOwner[_owner];
+        Erc7540Request storage request = _req.byOwner[_owner];
         uint256 shares = request.shares;
 
         if (_operator != msg.sender)
@@ -717,15 +717,15 @@ abstract contract As4626 is As4626Abstract {
             // with the idle funds (opportunity cost)
             opportunityCost = shares.mulDiv(
                 last.sharePrice - request.sharePrice,
-                WEI_PER_SHARE
+                _WEI_PER_SHARE
             ); // eg. 1e8+1e8-1e8 = 1e8
             _burn(_owner, opportunityCost);
         }
 
-        req.totalRedemption -= shares;
+        _req.totalRedemption -= shares;
         // if the request liquidation has been processed, reduce totalClaimable by that much
         if (request.timestamp < last.liquidate)
-            req.totalClaimableRedemption -= shares;
+            _req.totalClaimableRedemption -= shares;
 
         // Adjust the operator's allowance after burning shares, only if operator != owner
         if (opportunityCost > 0 && _owner != msg.sender) {
@@ -743,7 +743,7 @@ abstract contract As4626 is As4626Abstract {
      * @return The total number of redemption requests
      */
     function totalRedemptionRequest() external view returns (uint256) {
-        return req.totalRedemption;
+        return _req.totalRedemption;
     }
 
     /**
@@ -751,7 +751,7 @@ abstract contract As4626 is As4626Abstract {
      * @return The total amount of redemption that can be claimed
      */
     function totalClaimableRedemption() external view returns (uint256) {
-        return req.totalClaimableRedemption;
+        return _req.totalClaimableRedemption;
     }
 
     /**
@@ -762,7 +762,7 @@ abstract contract As4626 is As4626Abstract {
     function pendingRedeemRequest(
         address _owner
     ) external view returns (uint256) {
-        return req.byOwner[_owner].shares;
+        return _req.byOwner[_owner].shares;
     }
 
     /**
@@ -773,11 +773,11 @@ abstract contract As4626 is As4626Abstract {
     function pendingAssetRequest(
         address _owner
     ) external view returns (uint256) {
-        Erc7540Request memory request = req.byOwner[_owner];
+        Erc7540Request memory request = _req.byOwner[_owner];
         return
             request.shares.mulDiv(
                 AsMaths.min(request.sharePrice, sharePrice()), // worst of
-                WEI_PER_SHARE
+                _WEI_PER_SHARE
             );
     }
 
@@ -791,7 +791,7 @@ abstract contract As4626 is As4626Abstract {
     ) public view returns (bool) {
         return
             block.timestamp >= AsMaths.min(
-                requestTimestamp + req.redemptionLocktime,
+                requestTimestamp + _req.redemptionLocktime,
                 last.liquidate
             );
     }
@@ -802,7 +802,7 @@ abstract contract As4626 is As4626Abstract {
      */
     function maxClaimableAsset() internal view returns (uint256) {
         return
-            AsMaths.min(convertToAssets(req.totalRedemption, false), availableClaimable());
+            AsMaths.min(convertToAssets(_req.totalRedemption, false), availableClaimable());
     }
 
     /**
@@ -811,10 +811,10 @@ abstract contract As4626 is As4626Abstract {
      * @return The maximum redemption claim for the owner
      */
     function claimableRedeemRequest(address _owner) public view returns (uint256) {
-        Erc7540Request memory request = req.byOwner[_owner];
+        Erc7540Request memory request = _req.byOwner[_owner];
         return
             isRequestClaimable(request.timestamp)
-                ? AsMaths.min(request.shares, req.totalClaimableRedemption)
+                ? AsMaths.min(request.shares, _req.totalClaimableRedemption)
                 : 0;
     }
 

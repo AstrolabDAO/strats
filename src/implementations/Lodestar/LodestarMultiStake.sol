@@ -46,7 +46,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
             lTokens[i] = ILToken(_params.lTokens[i]);
             lTokenDecimals[i] = lTokens[i].decimals();
         }
-        _setAllowances(MAX_UINT256);
+        _setAllowances(_MAX_UINT256);
     }
 
     /**
@@ -137,7 +137,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
 
             // unified slippage check (swap+add liquidity)
             if (
-                supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2)
+                supplied < _inputToStake(toDeposit, i).subBp(_maxSlippageBps * 2)
             ) revert AmountTooLow(supplied);
 
             // NB: better return ious[]
@@ -184,7 +184,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;

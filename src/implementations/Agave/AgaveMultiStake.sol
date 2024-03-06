@@ -48,7 +48,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
         poolProvider = IPoolAddressesProvider(_params.poolProvider);
         for (uint8 i = 0; i < _params.aTokens.length; i++)
             aTokens[i] = IERC20Metadata(_params.aTokens[i]);
-        _setAllowances(MAX_UINT256);
+        _setAllowances(_MAX_UINT256);
     }
 
     /**
@@ -166,7 +166,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
             uint256 supplied = aTokens[i].balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
-            if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
+            if (supplied < _inputToStake(toDeposit, i).subBp(_maxSlippageBps * 2))
                 revert AmountTooLow(supplied);
 
             // NB: better return ious[]
@@ -214,7 +214,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;

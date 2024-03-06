@@ -50,11 +50,11 @@ abstract contract StrategyV5Abstract is As4626Abstract {
 
     /**
      * @notice Calculates the total pending redemption requests in shares (1e8)
-     * @dev Returns the difference between req.totalClaimableRedemption and req.totalClaimableRedemption
+     * @dev Returns the difference between _req.totalClaimableRedemption and _req.totalClaimableRedemption
      * @return The total amount of pending redemption requests
      */
     function totalPendingRedemptionRequest() public view returns (uint256) {
-        return req.totalRedemption - req.totalClaimableRedemption;
+        return _req.totalRedemption - _req.totalClaimableRedemption;
     }
 
     /**

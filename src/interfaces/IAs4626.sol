@@ -34,14 +34,14 @@ interface IFlashLoanReceiver {
 }
 
 interface IAs4626Abstract is IERC20Permit, IAsManageable, IAsRescuable, IFlashLoanReceiver {
-    function maxSlippageBps() external view returns (uint16);
-    function profitCooldown() external view returns (uint256);
+    function _maxSlippageBps() external view returns (uint16);
+    function _profitCooldown() external view returns (uint256);
     function maxTotalAssets() external view returns (uint256);
-    function minLiquidity() external view returns (uint256);
+    function _minLiquidity() external view returns (uint256);
     function asset() external view returns (address);
     function decimals() external view returns (uint8);
-    function WEI_PER_SHARE() external view returns (uint256);
-    function expectedProfits() external view returns (uint256);
+    function _WEI_PER_SHARE() external view returns (uint256);
+    function _expectedProfits() external view returns (uint256);
     function maxFees() external view returns (Fees memory);
     function fees() external view returns (Fees memory);
     function feeCollector() external view returns (address);
@@ -129,8 +129,8 @@ interface IAs4626 is IAs4626Abstract {
         uint256 _maxTotalAssets
     ) external;
     function setFees(Fees memory _fees) external;
-    function setMinLiquidity(uint256 _minLiquidity) external;
-    function setProfitCooldown(uint256 _profitCooldown) external;
+    function setMinLiquidity(uint256 __minLiquidity) external;
+    function setProfitCooldown(uint256 __profitCooldown) external;
     function setRedemptionRequestLocktime(
         uint256 _redemptionLocktime
     ) external;

@@ -113,14 +113,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     /**
      * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function
      * @param _amounts Amount of inputs to liquidate (in asset)
-     * @param _minLiquidity Minimum amount of assets to receive
+     * @param __minLiquidity Minimum amount of assets to receive
      * @param _panic Set to true to ignore slippage when liquidating
      * @param _params Generic callData (e.g., SwapperParams)
      * @return liquidityAvailable Amount of assets available to liquidate
      */
     function liquidate(
         uint256[8] calldata _amounts,
-        uint256 _minLiquidity,
+        uint256 __minLiquidity,
         bool _panic,
         bytes[] calldata _params
     )
@@ -138,12 +138,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         // liquidate protocol positions
         uint256 liquidated = _liquidate(_amounts, _params);
 
-        req.totalClaimableRedemption += pendingRedemption;
+        _req.totalClaimableRedemption += pendingRedemption;
 
         // we use availableClaimable() and not availableBorrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
-        liquidityAvailable = availableClaimable().subMax0(req.totalClaimableRedemption.mulDiv(last.sharePrice * weiPerAsset, WEI_PER_SHARE_SQUARED));
+        liquidityAvailable = availableClaimable().subMax0(_req.totalClaimableRedemption.mulDiv(last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED));
         // check if we have enough cash to repay redemption requests
-        if ((liquidityAvailable < _minLiquidity) && !_panic)
+        if ((liquidityAvailable < __minLiquidity) && !_panic)
             revert AmountTooLow(liquidityAvailable);
 
         last.liquidate = uint64(block.timestamp);
@@ -218,11 +218,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function harvest(bytes[] calldata _params) public returns (uint256 amount) {
         amount = _harvest(_params);
         // reset expected profits to updated value + amount
-        expectedProfits =
+        _expectedProfits =
             AsAccounting.unrealizedProfits(
                 last.harvest,
-                expectedProfits,
-                profitCooldown
+                _expectedProfits,
+                _profitCooldown
             ) +
             amount;
         last.harvest = uint64(block.timestamp);

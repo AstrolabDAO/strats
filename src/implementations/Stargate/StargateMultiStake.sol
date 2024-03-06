@@ -76,7 +76,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
         rewardLength = uint8(_baseParams.rewardTokens.length);
         inputLength = uint8(_baseParams.inputs.length);
         setParams(_stargateParams);
-        _setAllowances(MAX_UINT256);
+        _setAllowances(_MAX_UINT256);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
 
@@ -137,7 +137,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
             uint256 toStake = _addLiquiditySingleSide(toDeposit, i);
 
             // unified slippage check (swap+add liquidity)
-            if (toStake < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
+            if (toStake < _inputToStake(toDeposit, i).subBp(_maxSlippageBps * 2))
                 revert AmountTooLow(toStake);
 
             uint256 balanceBefore = lpStaker.userInfo(stakingIds[i], address(this)).amount;
@@ -187,7 +187,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;

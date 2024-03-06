@@ -46,7 +46,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
             pools[i] = IDHedgePool(_params.pools[i]);
             poolDecimals[i] = uint8(pools[i].decimals());
         }
-        _setAllowances(MAX_UINT256);
+        _setAllowances(_MAX_UINT256);
     }
 
     /**
@@ -107,7 +107,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
                 investedAmount += _amounts[i];
                 toDeposit = _amounts[i];
             }
-            uint256 expectedIou = _inputToStake(toDeposit, i).subBp(maxSlippageBps);
+            uint256 expectedIou = _inputToStake(toDeposit, i).subBp(_maxSlippageBps);
             uint256 iouBefore = pools[i].balanceOf(address(this));
 
             dHedgeSwapper.deposit({
@@ -151,7 +151,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
                 pool: address(pools[i]),
                 fundTokenAmount: toLiquidate,
                 withdrawalAsset: address(inputs[i]),
-                expectedAmountOut: _amounts[i].subBp(maxSlippageBps)
+                expectedAmountOut: _amounts[i].subBp(_maxSlippageBps)
             });
 
             // swap the unstaked tokens (inputs[0]) for the asset asset if different
@@ -169,7 +169,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;

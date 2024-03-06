@@ -46,7 +46,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
             cTokens[i] = _params.cTokens[i];
             rewardConfigs[i] = cometRewards.rewardConfig(_params.cTokens[i]);
         }
-        _setAllowances(MAX_UINT256);
+        _setAllowances(_MAX_UINT256);
     }
 
     /**
@@ -89,7 +89,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
             cTokens[i] = _cTokens[i];
             rewardConfigs[i] = cometRewards.rewardConfig(_cTokens[i]);
         }
-        _setAllowances(MAX_UINT256);
+        _setAllowances(_MAX_UINT256);
         setInputs(_newInputs, _weights, _priceFeeds, _validities);
     }
 
@@ -153,7 +153,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
             uint256 supplied = cToken.balanceOf(address(this)) - iouBefore;
 
             // unified slippage check (swap+add liquidity)
-            if (supplied < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
+            if (supplied < _inputToStake(toDeposit, i).subBp(_maxSlippageBps * 2))
                 revert AmountTooLow(supplied);
 
             // NB: better return ious[]
@@ -201,7 +201,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;

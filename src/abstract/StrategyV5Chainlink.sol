@@ -124,7 +124,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         return
             ChainlinkUtils.exchangeRate(
                 [feed, feedByAsset[address(asset)]],
-                [inputDecimals[_index], assetDecimals],
+                [inputDecimals[_index], _assetDecimals],
                 [validityByFeed[feed], validityByFeed[feedByAsset[address(asset)]]]
             );
     }

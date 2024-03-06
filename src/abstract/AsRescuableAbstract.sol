@@ -15,5 +15,5 @@ abstract contract AsRescuableAbstract {
         uint256 timestamp;
         address receiver;
     }
-    mapping(address => RescueRequest) internal rescueRequests;
+    mapping(address => RescueRequest) internal _rescueRequests;
 }

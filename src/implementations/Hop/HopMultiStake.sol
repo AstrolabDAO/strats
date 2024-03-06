@@ -51,7 +51,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             stableRouters[i] = IStableRouter(_params.stableRouters[i]);
             setRewardPools(_params.rewardPools[i], i);
         }
-        _setAllowances(MAX_UINT256);
+        _setAllowances(_MAX_UINT256);
     }
 
     /**
@@ -172,7 +172,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             uint256 toStake = _addLiquiditySingleSide(toDeposit, i);
 
             // unified slippage check (swap+add liquidity)
-            if (toStake < _inputToStake(toDeposit, i).subBp(maxSlippageBps * 2))
+            if (toStake < _inputToStake(toDeposit, i).subBp(_maxSlippageBps * 2))
                 revert AmountTooLow(toStake);
 
             // we only support single rewardPool staking (index 0)
@@ -224,7 +224,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             // unified slippage check (unstake+remove liquidity+swap out)
             if (
                 recovered <
-                _inputToAsset(_amounts[i], i).subBp(maxSlippageBps * 2)
+                _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)
             ) revert AmountTooLow(recovered);
 
             assetsRecovered += recovered;

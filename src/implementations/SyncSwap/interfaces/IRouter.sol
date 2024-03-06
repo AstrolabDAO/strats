@@ -52,7 +52,7 @@ interface IRouter {
         address pool,
         TokenInput[] calldata inputs,
         bytes calldata data,
-        uint minLiquidity,
+        uint _minLiquidity,
         address callback,
         bytes calldata callbackData
     ) external payable returns (uint liquidity);
@@ -64,7 +64,7 @@ interface IRouter {
         address pool,
         TokenInput[] calldata inputs,
         bytes calldata data,
-        uint minLiquidity,
+        uint _minLiquidity,
         address callback,
         bytes calldata callbackData
     ) external payable returns (uint liquidity);
@@ -76,7 +76,7 @@ interface IRouter {
         address pool,
         TokenInput[] calldata inputs,
         bytes calldata data,
-        uint minLiquidity,
+        uint _minLiquidity,
         address callback,
         bytes calldata callbackData,
         SplitPermitParams[] memory permits

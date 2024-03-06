@@ -11,7 +11,7 @@ interface IERC7540DepositReceiver {
      * @dev The ERC-7540 smart contract calls this function on the receiver after a deposit request has been submitted
      * @param operator The address which called `requestDeposit` function
      * @param owner The owner of the assets being deposited
-     * @param requestId The ID of the deposit request
+     * @param _requestId The ID of the deposit request
      * @param data Additional data with no specified format, sent in call to `requestDeposit`
      * @return its own signature - `bytes4(keccak256("onERC7540DepositReceived(address,address,uint256,bytes)"))`
      * unless throwing
@@ -19,7 +19,7 @@ interface IERC7540DepositReceiver {
     function onERC7540DepositReceived(
         address operator,
         address owner,
-        uint256 requestId,
+        uint256 _requestId,
         bytes calldata data
     ) external returns (bytes4);
 }

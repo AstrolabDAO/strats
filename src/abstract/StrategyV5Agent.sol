@@ -33,10 +33,10 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         // setInputs(_params.inputs, _params.inputWeights); // done in parent strategy init()
         setRewardTokens(_params.rewardTokens);
         asset = IERC20Metadata(_params.coreAddresses.asset);
-        assetDecimals = asset.decimals();
-        weiPerAsset = 10**assetDecimals;
+        _assetDecimals = asset.decimals();
+        _weiPerAsset = 10**_assetDecimals;
         As4626.init(_params.erc20Metadata, _params.coreAddresses, _params.fees);
-        setSwapperAllowance(MAX_UINT256, true, false, true); // reward allowances already set
+        setSwapperAllowance(_MAX_UINT256, true, false, true); // reward allowances already set
     }
 
     /**
@@ -47,8 +47,8 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         address swapperAddress = address(swapper);
         if (swapperAddress == address(0)) revert AddressZero();
         // we keep the possibility to set allowance to 0 in case of a change of swapper
-        // default is to approve MAX_UINT256
-        _amount = _amount > 0 ? _amount : MAX_UINT256;
+        // default is to approve _MAX_UINT256
+        _amount = _amount > 0 ? _amount : _MAX_UINT256;
 
         if (_inputs) {
             for (uint256 i = 0; i < inputLength; i++) {
@@ -74,7 +74,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         if (_swapper == address(0)) revert AddressZero();
         setSwapperAllowance(0, true, true, true);
         swapper = ISwapper(_swapper);
-        setSwapperAllowance(MAX_UINT256, true, true, true);
+        setSwapperAllowance(_MAX_UINT256, true, true, true);
     }
 
     /**
@@ -92,7 +92,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
 
         // check if there are pending redemptions
         // liquidate() should be called first to ensure rebasing
-        if (req.totalRedemption > 0) revert Unauthorized();
+        if (_req.totalRedemption > 0) revert Unauthorized();
 
         // pre-emptively pause the strategy for manual checks
         _pause();
@@ -105,17 +105,17 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         );
 
         // reset all cached accounted values as a denomination change might change the accounting basis
-        expectedProfits = 0; // reset trailing profits
+        _expectedProfits = 0; // reset trailing profits
         totalLent = 0; // reset totalLent (broken analytics)
         _collectFees(); // claim all pending fees to reset claimableAssetFees
         address swapperAddress = address(swapper);
         if (swapperAddress != address(0)) {
             IERC20Metadata(asset).forceApprove(swapperAddress, 0); // revoke swapper allowance on previous asset
-            IERC20Metadata(_asset).forceApprove(swapperAddress, MAX_UINT256);
+            IERC20Metadata(_asset).forceApprove(swapperAddress, _MAX_UINT256);
         }
         asset = IERC20Metadata(_asset);
-        assetDecimals = asset.decimals();
-        weiPerAsset = 10**assetDecimals;
+        _assetDecimals = asset.decimals();
+        _weiPerAsset = 10**_assetDecimals;
         last.accountedAssets = totalAssets();
         last.accountedSupply = totalSupply();
         last.sharePrice = last.sharePrice.mulDiv(_priceFactor, 1e18); // multiply then debase
@@ -156,7 +156,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
             inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
         }
-        setSwapperAllowance(MAX_UINT256, true, false, false);
+        setSwapperAllowance(_MAX_UINT256, true, false, false);
         inputLength = uint8(_inputs.length);
         setInputWeights(_weights);
     }
@@ -175,7 +175,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
             rewardTokenIndex[_rewardTokens[i]] = i+1;
         }
         rewardLength = uint8(_rewardTokens.length);
-        setSwapperAllowance(MAX_UINT256, false, true, false);
+        setSwapperAllowance(_MAX_UINT256, false, true, false);
     }
 
     /**
@@ -211,7 +211,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
      * @param _token The address of the token to be rescued (use address(1) for native/eth)
      */
     function requestRescue(address _token) external override onlyAdmin {
-        _requestRescue(_token);
+        AsRescuable._requestRescue(_token);
     }
 
     /**
