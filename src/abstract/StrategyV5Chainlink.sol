@@ -65,9 +65,10 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         ChainlinkParams calldata _chainlinkParams
     ) public onlyAdmin {
         setPriceFeed(address(asset), IChainlinkAggregatorV3(_chainlinkParams.assetFeed), _chainlinkParams.assetFeedValidity);
-        for (uint256 i = 0; i < _chainlinkParams.inputFeeds.length; i++) {
+        for (uint256 i = 0; i < _chainlinkParams.inputFeeds.length;) {
             if (address(inputs[i]) == address(0)) break;
             setPriceFeed(address(inputs[i]), IChainlinkAggregatorV3(_chainlinkParams.inputFeeds[i]), _chainlinkParams.inputFeedValidities[i]);
+            unchecked { i++; }
         }
     }
 
