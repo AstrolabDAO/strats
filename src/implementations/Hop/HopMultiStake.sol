@@ -85,10 +85,10 @@ contract HopMultiStake is StrategyV5Chainlink {
             // these can be set externally by setInputs()
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        rewardLength = uint8(_baseParams.rewardTokens.length);
-        inputLength = uint8(_baseParams.inputs.length);
+        _rewardLength = uint8(_baseParams.rewardTokens.length);
+        _inputLength = uint8(_baseParams.inputs.length);
         setParams(_hopParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
@@ -98,14 +98,14 @@ contract HopMultiStake is StrategyV5Chainlink {
      * @return amounts Array of rewards claimed for each reward token
      */
     function claimRewards() public override returns (uint256[] memory amounts) {
-        amounts = new uint256[](rewardLength);
-        for (uint8 i = 0; i < inputLength; i++) {
+        amounts = new uint256[](_rewardLength);
+        for (uint8 i = 0; i < _inputLength; i++) {
             // for (uint8 j = 0; j < rewardPools[i].length; j++) {
             if (address(rewardPools[i][0]) == address(0)) break;
             rewardPools[i][0].getReward();
             // }
         }
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
@@ -149,7 +149,7 @@ contract HopMultiStake is StrategyV5Chainlink {
         uint256 toDeposit;
         uint256 spent;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -197,7 +197,7 @@ contract HopMultiStake is StrategyV5Chainlink {
         uint256 toLiquidate;
         uint256 recovered;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             toLiquidate = _inputToStake(_amounts[i], i);
@@ -236,7 +236,7 @@ contract HopMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             inputs[i].forceApprove(address(stableRouters[i]), _amount);
             lpTokens[i].forceApprove(address(stableRouters[i]), _amount);
             // for (uint8 j = 0; j < rewardPools[i].length; j++) {
@@ -283,7 +283,7 @@ contract HopMultiStake is StrategyV5Chainlink {
         return
             _amount.mulDiv(
                 stableRouters[_index].getVirtualPrice(),
-                10 ** (36 - inputDecimals[_index])
+                10 ** (36 - _inputDecimals[_index])
             ); // 1e18 == lpToken[i] decimals
     }
 
@@ -297,7 +297,7 @@ contract HopMultiStake is StrategyV5Chainlink {
     ) internal view override returns (uint256) {
         return
             _amount.mulDiv(
-                10 ** (36 - inputDecimals[_index]),
+                10 ** (36 - _inputDecimals[_index]),
                 stableRouters[_index].getVirtualPrice()
             );
     }
@@ -326,14 +326,14 @@ contract HopMultiStake is StrategyV5Chainlink {
         override
         returns (uint256[] memory amounts)
     {
-        amounts = uint256(rewardLength).toArray();
-        for (uint8 i = 0; i < inputLength; i++) {
+        amounts = uint256(_rewardLength).toArray();
+        for (uint8 i = 0; i < _inputLength; i++) {
             // uint8 length = uint8(rewardPools[i].length);
             // for (uint8 j = 0; j < length; j++) {
             IStakingRewards pool = rewardPools[i][0];
             if (address(pool) == address(0)) break; // no overflow (static array)
             address rewardToken = tokenByRewardPool[address(rewardPools[i][0])];
-            uint256 index = rewardTokenIndexes[rewardToken];
+            uint256 index = _rewardTokenIndexes[rewardToken];
             if (index == 0) continue;
             amounts[index-1] += pool.earned(address(this));
             // }

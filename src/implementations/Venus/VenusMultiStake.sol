@@ -61,10 +61,10 @@ contract VenusMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < _venusParams.vTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        rewardLength = uint8(_baseParams.rewardTokens.length);
-        inputLength = uint8(_baseParams.inputs.length);
+        _rewardLength = uint8(_baseParams.rewardTokens.length);
+        _inputLength = uint8(_baseParams.inputs.length);
         setParams(_venusParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
@@ -77,11 +77,11 @@ contract VenusMultiStake is StrategyV5Chainlink {
      *  - https://github.com/VenusProtocol/venus-protocol-documentation/blob/f6234c6b70c15b847aaf8645991262c8a3b7c4e3/technical-reference/reference-isolated-pools/rewards/rewards-distributor.md#L233
      */
     function claimRewards() public override returns (uint256[] memory amounts) {
-        amounts = new uint256[](rewardLength);
+        amounts = new uint256[](_rewardLength);
         unitroller.claimVenus(address(this)); // claim for all markets
         // wrap native rewards if needed
         _wrapNative();
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
@@ -105,7 +105,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
         uint256 toDeposit;
         uint256 spent;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -152,7 +152,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
         uint256 recovered;
         uint256 balance;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             balance = vTokens[i].balanceOf(address(this));
@@ -189,7 +189,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++)
+        for (uint8 i = 0; i < _inputLength; i++)
             inputs[i].forceApprove(address(vTokens[i]), _amount);
     }
 
@@ -258,7 +258,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
         returns (uint256[] memory amounts)
     {
         uint256 mainReward = unitroller.venusAccrued(address(this));
-        return rewardLength == 1 ? mainReward.toArray() :
+        return _rewardLength == 1 ? mainReward.toArray() :
             mainReward.toArray(_balance(rewardTokens[1]));
     }
 }

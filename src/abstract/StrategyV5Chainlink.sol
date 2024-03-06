@@ -125,7 +125,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         return
             ChainlinkUtils.exchangeRate(
                 [feed, feedByAsset[address(asset)]],
-                [inputDecimals[_index], _assetDecimals],
+                [_inputDecimals[_index], _assetDecimals],
                 [validityByFeed[feed], validityByFeed[feedByAsset[address(asset)]]]
             );
     }
@@ -142,7 +142,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     ) internal view override returns (uint256) {
         return
             _amount.mulDiv(
-                10 ** inputDecimals[_index],
+                10 ** _inputDecimals[_index],
                 exchangeRate(_index)
             );
     }
@@ -160,7 +160,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         return
             _amount.mulDiv(
                 exchangeRate(_index),
-                10 ** inputDecimals[_index]
+                10 ** _inputDecimals[_index]
             );
     }
 
@@ -180,7 +180,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
             revert InvalidOrStaleValue(updateTime, price);
         return
             _amount.mulDiv(
-                10 ** (uint256(decimalsByFeed[feed]) + inputDecimals[_index] - 6),
+                10 ** (uint256(decimalsByFeed[feed]) + _inputDecimals[_index] - 6),
                 uint256(price)
             ); // eg. (1e6+1e8+1e6)-(1e8+1e6) = 1e6
     }
@@ -198,6 +198,6 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         return _amount.mulDiv(
             ChainlinkUtils.getPriceUsd(feed, validityByFeed[feed], 6),
-            10 ** inputDecimals[_index]);
+            10 ** _inputDecimals[_index]);
     }
 }

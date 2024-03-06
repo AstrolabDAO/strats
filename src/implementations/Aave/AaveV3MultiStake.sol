@@ -61,9 +61,9 @@ contract AaveMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < _aaveParams.aTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        inputLength = uint8(_aaveParams.aTokens.length);
+        _inputLength = uint8(_aaveParams.aTokens.length);
         setParams(_aaveParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
@@ -88,7 +88,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
         uint256 spent;
         IAavePool pool = IAavePool(poolProvider.getPool());
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -139,7 +139,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
         uint256 recovered;
 
         IAavePool pool = IAavePool(poolProvider.getPool());
-        for (uint256 i = 0; i < inputLength; i++) {
+        for (uint256 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             toLiquidate = _inputToStake(_amounts[i], i);
@@ -178,7 +178,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      */
     function _setAllowances(uint256 _amount) internal override {
         IAavePool pool = IAavePool(poolProvider.getPool());
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             inputs[i].forceApprove(address(pool), _amount);
             aTokens[i].forceApprove(address(pool), _amount);
         }

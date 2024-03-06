@@ -63,9 +63,9 @@ contract TorosMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < _torosParams.pools.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        inputLength = uint8(_torosParams.pools.length);
+        _inputLength = uint8(_torosParams.pools.length);
         setParams(_torosParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
@@ -89,7 +89,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
         uint256 toDeposit;
         uint256 spent;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -142,7 +142,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
         uint256 toLiquidate;
         uint256 recovered;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             toLiquidate = _inputToStake(_amounts[i], i);
@@ -181,7 +181,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             inputs[i].forceApprove(address(dHedgeSwapper), _amount);
         }
     }

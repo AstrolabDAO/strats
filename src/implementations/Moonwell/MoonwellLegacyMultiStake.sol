@@ -27,13 +27,13 @@ contract MoonwellLegacyMultiStake is MoonwellMultiStake {
      * @return amounts Array of rewards claimed for each reward token
      */
     function claimRewards() public override returns (uint256[] memory amounts) {
-        amounts = new uint256[](rewardLength);
+        amounts = new uint256[](_rewardLength);
         unitroller.claimReward(0, address(this)); // WELL for all markets
         unitroller.claimReward(1, address(this)); // WGAS for all markets
 
         // wrap native rewards if needed
         _wrapNative();
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }

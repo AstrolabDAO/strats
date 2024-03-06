@@ -61,10 +61,10 @@ contract BenqiMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < _benqiParams.qiTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        rewardLength = uint8(_baseParams.rewardTokens.length);
-        inputLength = uint8(_baseParams.inputs.length);
+        _rewardLength = uint8(_baseParams.rewardTokens.length);
+        _inputLength = uint8(_baseParams.inputs.length);
         setParams(_benqiParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
@@ -74,13 +74,13 @@ contract BenqiMultiStake is StrategyV5Chainlink {
      * @return amounts Array of rewards claimed for each reward token
      */
     function claimRewards() public override returns (uint256[] memory amounts) {
-        amounts = new uint256[](rewardLength);
+        amounts = new uint256[](_rewardLength);
         unitroller.claimReward(0, address(this)); // QI for all markets
         unitroller.claimReward(1, address(this)); // WGAS for all markets
 
         // wrap native rewards if needed
         _wrapNative();
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
@@ -104,7 +104,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
         uint256 toDeposit;
         uint256 spent;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -151,7 +151,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
         uint256 recovered;
         uint256 balance;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             balance = qiTokens[i].balanceOf(address(this));
@@ -188,7 +188,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++)
+        for (uint8 i = 0; i < _inputLength; i++)
             inputs[i].forceApprove(address(qiTokens[i]), _amount);
     }
 
@@ -257,7 +257,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
         returns (uint256[] memory amounts)
     {
         uint256 mainReward = unitroller.compAccrued(address(this));
-        return rewardLength == 1 ? mainReward.toArray() :
+        return _rewardLength == 1 ? mainReward.toArray() :
             mainReward.toArray(_balance(rewardTokens[1]));
     }
 }

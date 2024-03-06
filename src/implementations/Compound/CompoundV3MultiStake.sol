@@ -63,10 +63,10 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < _compoundParams.cTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        rewardLength = uint8(_baseParams.rewardTokens.length);
-        inputLength = uint8(_baseParams.inputs.length);
+        _rewardLength = uint8(_baseParams.rewardTokens.length);
+        _inputLength = uint8(_baseParams.inputs.length);
         setParams(_compoundParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
@@ -98,12 +98,12 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      * @return amounts Array of rewards claimed for each reward token
      */
     function claimRewards() public override returns (uint256[] memory amounts) {
-        amounts = new uint256[](rewardLength);
+        amounts = new uint256[](_rewardLength);
         for (uint8 i = 0; i < cTokens.length; i++) {
             if (address(cTokens[i]) == address(0)) break;
             cometRewards.claim(address(cTokens[i]), address(this), true);
         }
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
@@ -127,7 +127,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         uint256 toDeposit;
         uint256 spent;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -175,7 +175,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         uint256 recovered;
         uint256 balance;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             IComet cToken = IComet(cTokens[i]);
@@ -213,7 +213,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++)
+        for (uint8 i = 0; i < _inputLength; i++)
             inputs[i].forceApprove(address(cTokens[i]), _amount);
     }
 
@@ -278,13 +278,13 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
         override
         returns (uint256[] memory amounts)
     {
-        amounts = new uint256[](rewardLength);
+        amounts = new uint256[](_rewardLength);
 
         for (uint8 i = 0; i < cTokens.length; i++) {
             if (address(cTokens[i]) == address(0)) break;
             amounts[0] += _rebaseAccruedReward(IComet(cTokens[i]).baseTrackingAccrued(address(this)), i);
         }
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] += IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
 

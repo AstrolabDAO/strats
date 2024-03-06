@@ -51,14 +51,14 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         _amount = _amount > 0 ? _amount : _MAX_UINT256;
 
         if (_inputs) {
-            for (uint256 i = 0; i < inputLength;) {
+            for (uint256 i = 0; i < _inputLength;) {
                 if (address(inputs[i]) == address(0)) break;
                 inputs[i].forceApprove(swapperAddress, _amount);
                 unchecked { i++; }
             }
         }
         if (_rewards) {
-            for (uint256 i = 0; i < rewardLength;) {
+            for (uint256 i = 0; i < _rewardLength;) {
                 if (rewardTokens[i] == address(0)) break;
                 IERC20Metadata(rewardTokens[i]).forceApprove(swapperAddress, _amount);
                 unchecked { i++; }
@@ -129,9 +129,9 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     */
     function setInputWeights(uint16[] calldata _weights) public onlyAdmin {
 
-        if (_weights.length != inputLength) revert InvalidData();
+        if (_weights.length != _inputLength) revert InvalidData();
         uint16 totalWeight = 0;
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             inputWeights[i] = _weights[i];
 
             // Check for overflow before adding the weight
@@ -155,12 +155,12 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         setSwapperAllowance(0, true, false, false);
         for (uint256 i = 0; i < _inputs.length;) {
             inputs[i] = IERC20Metadata(_inputs[i]);
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
             unchecked { i++; }
         }
         setSwapperAllowance(_MAX_UINT256, true, false, false);
-        inputLength = uint8(_inputs.length);
+        _inputLength = uint8(_inputs.length);
         setInputWeights(_weights);
     }
 
@@ -175,29 +175,29 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         setSwapperAllowance(0, false, true, false);
         for (uint256 i = 0; i < _rewardTokens.length;) {
             rewardTokens[i] = _rewardTokens[i];
-            rewardTokenIndexes[_rewardTokens[i]] = i+1;
+            _rewardTokenIndexes[_rewardTokens[i]] = i+1;
             unchecked { i++; }
         }
-        rewardLength = uint8(_rewardTokens.length);
+        _rewardLength = uint8(_rewardTokens.length);
         setSwapperAllowance(_MAX_UINT256, false, true, false);
     }
 
     /**
      * @notice Retrieves the share price from the strategy via the proxy
-     * @dev Calls sharePrice function on the IStrategyV5 contract through stratProxy
+     * @dev Calls sharePrice function on the IStrategyV5 contract through _stratProxy
      * @return The current share price from the strategy
      */
     function sharePrice() public view override returns (uint256) {
-        return IStrategyV5(stratProxy).sharePrice();
+        return IStrategyV5(_stratProxy).sharePrice();
     }
 
     /**
      * @notice Retrieves the total assets from the strategy via the proxy
-     * @dev Calls totalAssets function on the IStrategyV5 contract through stratProxy
+     * @dev Calls totalAssets function on the IStrategyV5 contract through _stratProxy
      * @return The total assets managed by the strategy
      */
     function totalAssets() public view override returns (uint256) {
-        return IStrategyV5(stratProxy).totalAssets();
+        return IStrategyV5(_stratProxy).totalAssets();
     }
 
     /**
@@ -206,7 +206,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
      * @return Amount of assets
      */
     function invested() public view override returns (uint256) {
-        return IStrategyV5(stratProxy).invested();
+        return IStrategyV5(_stratProxy).invested();
     }
 
     /**

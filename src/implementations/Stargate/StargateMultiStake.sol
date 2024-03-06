@@ -71,10 +71,10 @@ contract StargateMultiStake is StrategyV5Chainlink {
             // these can be set externally by setInputs()
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        rewardLength = uint8(_baseParams.rewardTokens.length);
-        inputLength = uint8(_baseParams.inputs.length);
+        _rewardLength = uint8(_baseParams.rewardTokens.length);
+        _inputLength = uint8(_baseParams.inputs.length);
         setParams(_stargateParams);
         _setAllowances(_MAX_UINT256);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
@@ -114,7 +114,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
         uint256 toDeposit;
         uint256 spent;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -163,7 +163,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
         uint256 toLiquidate;
         uint256 recovered;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             toLiquidate = _inputToStake(_amounts[i], i);
@@ -199,13 +199,13 @@ contract StargateMultiStake is StrategyV5Chainlink {
      * @return amounts Array of rewards claimed for each reward token
      */
     function claimRewards() public override returns (uint256[] memory amounts) {
-        amounts = new uint256[](rewardLength);
-        for (uint8 i = 0; i < inputLength; i++) {
+        amounts = new uint256[](_rewardLength);
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (address(inputs[i]) == address(0)) break;
             // withdraw/deposit with 0 still claims STG rewards
             lpStaker.withdraw(poolIds[i], 0);
         }
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
@@ -215,7 +215,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             lps[i].approve(address(lpStaker), _amount);
             inputs[i].approve(address(routers[i]), _amount);
         }
@@ -291,8 +291,8 @@ contract StargateMultiStake is StrategyV5Chainlink {
         override
         returns (uint256[] memory amounts)
     {
-        amounts = uint256(rewardLength).toArray();
-        for (uint8 i = 0; i < inputLength; i++) {
+        amounts = uint256(_rewardLength).toArray();
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (address(inputs[i]) == address(0)) break;
             amounts[0] += lpStaker.userInfo(poolIds[i], address(this)).amount;
         }

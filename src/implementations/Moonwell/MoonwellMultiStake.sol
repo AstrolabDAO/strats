@@ -59,10 +59,10 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         for (uint8 i = 0; i < _moonwellParams.mTokens.length; i++) {
             inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
             inputWeights[i] = _baseParams.inputWeights[i];
-            inputDecimals[i] = inputs[i].decimals();
+            _inputDecimals[i] = inputs[i].decimals();
         }
-        rewardLength = uint8(_baseParams.rewardTokens.length);
-        inputLength = uint8(_baseParams.inputs.length);
+        _rewardLength = uint8(_baseParams.rewardTokens.length);
+        _inputLength = uint8(_baseParams.inputs.length);
         setParams(_moonwellParams);
         StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
     }
@@ -72,11 +72,11 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      * @return amounts Array of rewards claimed for each reward token
      */
     function claimRewards() public virtual override returns (uint256[] memory amounts) {
-        amounts = new uint256[](rewardLength);
+        amounts = new uint256[](_rewardLength);
         unitroller.claimReward(address(this)); // claim for all markets
         // wrap native rewards if needed
         _wrapNative();
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint8 i = 0; i < _rewardLength; i++) {
             amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
         }
     }
@@ -100,7 +100,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 toDeposit;
         uint256 spent;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             // We deposit the whole asset balance
@@ -147,7 +147,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         uint256 recovered;
         uint256 balance;
 
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint8 i = 0; i < _inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             balance = mTokens[i].balanceOf(address(this));
@@ -184,7 +184,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
      * @param _amount Allowance amount
      */
     function _setAllowances(uint256 _amount) internal override {
-        for (uint8 i = 0; i < inputLength; i++)
+        for (uint8 i = 0; i < _inputLength; i++)
             inputs[i].forceApprove(address(mTokens[i]), _amount);
     }
 
@@ -257,21 +257,21 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
         MultiRewardDistributorCommon.RewardWithMToken[] memory pendingRewards
             = distributor.getOutstandingRewardsForUser(address(this));
 
-        amounts = new uint256[](rewardLength);
+        amounts = new uint256[](_rewardLength);
 
         for (uint i = 0; i < pendingRewards.length; i++) {
             for (uint j = 0; j < pendingRewards[i].rewards.length; j++) {
                 MultiRewardDistributorCommon.RewardInfo memory info
                     = pendingRewards[i].rewards[j];
                 address token = info.emissionToken;
-                uint256 index = rewardTokenIndexes[token];
+                uint256 index = _rewardTokenIndexes[token];
                 if (index == 0) continue;
                 amounts[index-1] += info.totalAmount;
                 info.totalAmount;
             }
         }
 
-        for (uint i = 0; i < rewardLength; i++)
+        for (uint i = 0; i < _rewardLength; i++)
             amounts[i] += _balance(rewardTokens[i]);
 
         return amounts;
