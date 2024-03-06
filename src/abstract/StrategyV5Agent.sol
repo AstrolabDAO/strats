@@ -197,6 +197,15 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     }
 
     /**
+     * @notice Total amount of invested inputs denominated in asset
+     * @dev Abstract function to be implemented by the strategy
+     * @return Amount of assets
+     */
+    function invested() public view override returns (uint256) {
+        return IStrategyV5(stratProxy).invested();
+    }
+
+    /**
      * @dev Requests a rescue for a specific token
      * Only the admin can call this function
      * @param _token The address of the token to be rescued (use address(1) for native/eth)

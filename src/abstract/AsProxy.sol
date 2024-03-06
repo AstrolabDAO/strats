@@ -15,6 +15,9 @@ import "@openzeppelin/contracts/proxy/Proxy.sol";
  */
 abstract contract AsProxy is Proxy {
 
+    // to match with the payable fallback (not necessary but pleases compiler)
+    receive() external payable {}
+
     /**
      * @notice Delegate a call to an implementation contract using a function selector and calldata encoded parameters
      * @param _implementation The address of the implementation contract

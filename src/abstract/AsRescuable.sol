@@ -62,7 +62,7 @@ abstract contract AsRescuable is AsRescuableAbstract {
     }
 
     // to be overriden with the proper access control by inheriting contracts
-    function requestRescue(address _token) external virtual {}
+    function requestRescue(address _token) external virtual;
 
     /**
      * @dev Internal function to rescue tokens or native tokens (ETH) from the contract

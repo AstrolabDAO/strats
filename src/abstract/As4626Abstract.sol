@@ -130,11 +130,11 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
     }
 
     /**
-     * @notice Total amount of inputs denominated in asset
+     * @notice Total amount of invested inputs denominated in asset
      * @dev Abstract function to be implemented by the strategy
      * @return Amount of assets
      */
-    function invested() public view virtual returns (uint256) {}
+    function invested() public view virtual returns (uint256);
 
     /**
      * @notice Amount of assets available to non-requested withdrawals (excluding seed)

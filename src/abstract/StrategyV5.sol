@@ -108,7 +108,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _liquidate(
         uint256[8] calldata _amounts, // from previewLiquidate()
         bytes[] calldata _params
-    ) internal virtual returns (uint256 assetsRecovered) {}
+    ) internal virtual returns (uint256 assetsRecovered);
 
     /**
      * @dev Reverts if slippage is too high unless panic is true. Extends the functionality of the _liquidate function
@@ -172,7 +172,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     }
 
     // Claim rewards from the protocol
-    function claimRewards() public virtual onlyKeeper returns (uint256[] memory amounts) {}
+    function claimRewards() public virtual onlyKeeper returns (uint256[] memory amounts) {
+        return new uint256[](rewardLength);
+    }
 
     /**
      * @notice Swap rewards to asset
@@ -237,7 +239,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _invest(
         uint256[8] calldata _amounts, // from previewInvest()
         bytes[] calldata _params
-    ) internal virtual returns (uint256 investedAmount, uint256 iouReceived) {}
+    ) internal virtual returns (uint256 investedAmount, uint256 iouReceived);
 
     /**
      * @notice Invests the asset asset into the pool
@@ -316,7 +318,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _assetToInput(
         uint256 _amount,
         uint8 _index
-    ) internal view virtual returns (uint256) {}
+    ) internal view virtual returns (uint256) {
+        return _amount;
+    }
 
     /**
      * @notice Converts input wei amount to asset wei amount
@@ -326,7 +330,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _inputToAsset(
         uint256 _amount,
         uint8 _index
-    ) internal view virtual returns (uint256) {}
+    ) internal view virtual returns (uint256) {
+        return _amount;
+    }
 
     /**
      * @notice Convert LP/staked LP to input
@@ -336,7 +342,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _stakeToInput(
         uint256 _amount,
         uint8 _index
-    ) internal view virtual returns (uint256) {}
+    ) internal view virtual returns (uint256) {
+        return _amount;
+    }
 
     /**
      * @notice Convert input to LP/staked LP
@@ -346,7 +354,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _inputToStake(
         uint256 _amount,
         uint8 _index
-    ) internal view virtual returns (uint256) {}
+    ) internal view virtual returns (uint256) {
+        return _amount;
+    }
 
     /**
      * @notice Returns the invested input converted from the staked LP token
@@ -355,7 +365,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _stakedInput(
         uint8 _index
-    ) internal view virtual returns (uint256) {}
+    ) internal view virtual returns (uint256) {
+        return 0;
+    }
 
     /**
      * @notice Amount of _index input denominated in asset
@@ -363,7 +375,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _index Index of the asset
      * @return Amount of assets
      */
-    function invested(uint8 _index) public view virtual returns (uint256) {}
+    function invested(uint8 _index) public view virtual returns (uint256);
 
     /**
      * @notice Amount of _index input
@@ -371,7 +383,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _index Index of the asset
      * @return Amount of assets
      */
-    function investedInput(uint8 _index) internal view virtual returns (uint256) {}
+    function investedInput(uint8 _index) internal view virtual returns (uint256);
 
     /**
      * @notice Returns the investment in asset asset
@@ -529,7 +541,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         view
         virtual
         returns (uint256[] memory amounts)
-    {}
+    {
+        return new uint256[](rewardLength);
+    }
 
     /**
      * @dev Wraps the contract full native balance (the contract does not need gas)
