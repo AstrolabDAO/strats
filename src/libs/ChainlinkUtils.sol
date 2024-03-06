@@ -11,6 +11,8 @@ import "./AsMaths.sol";
 library ChainlinkUtils {
     using AsMaths for uint256;
 
+    uint8 public constant STANDARD_DECIMALS = 18;
+
     /**
      * @dev Retrieves the latest price in USD from Chainlink's aggregator
      * @param _feed Chainlink aggregator contract
@@ -46,8 +48,8 @@ library ChainlinkUtils {
         if (address(_feeds[0]) == address(_feeds[1]))
             return 10 ** uint256(_decimals[1]); // == weiPerUnit of asset == 1:1
 
-        return getPriceUsd(_feeds[0], _validities[0], 18)
-            .exchangeRate(getPriceUsd(_feeds[1], _validities[1], 18),
+        return getPriceUsd(_feeds[0], _validities[0], STANDARD_DECIMALS)
+            .exchangeRate(getPriceUsd(_feeds[1], _validities[1], STANDARD_DECIMALS),
                 _decimals[1]); // in _baseFeedDecimals
     }
 }

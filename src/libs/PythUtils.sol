@@ -11,6 +11,8 @@ import "./AsMaths.sol";
 library PythUtils {
     using AsMaths for uint256;
 
+    uint8 constant STANDARD_DECIMALS = 18;
+
     /**
      * @notice Converts a Pyth price to a uint256 value with the specified target decimals
      * @dev Reverts if the price is negative, has an invalid exponent, or targetDecimals is greater than 255
@@ -68,8 +70,8 @@ te,     * @param _validities Validity periods for the price feeds [quote,base] e
         if (_feeds[0] == _feeds[1])
             return 10 ** uint256(_decimals[1]); // == weiPerUnit of base == 1:1
 
-        return getPriceUsd(_pyth, _feeds[0], _validities[0], 18)
-            .exchangeRate(getPriceUsd(_pyth, _feeds[1], _validities[1], 18),
+        return getPriceUsd(_pyth, _feeds[0], _validities[0], STANDARD_DECIMALS)
+            .exchangeRate(getPriceUsd(_pyth, _feeds[1], _validities[1], STANDARD_DECIMALS),
                 _decimals[1]); // asset (base) decimals (rate divider)
     }
 }
