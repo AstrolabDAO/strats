@@ -490,11 +490,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
             if (excessInput[i] > 0) {
-                uint256 need = _inputToAsset(excessInput[i].abs(), i);
-                if (need > _amount)
-                    need = _amount;
-                amounts[i] = _assetToInput(need, i);
-                _amount -= need;
+                unchecked {
+                    uint256 need = _inputToAsset(excessInput[i].abs(), i);
+                    if (need > _amount)
+                        need = _amount;
+                    amounts[i] = need;
+                    _amount -= need;
+                }
             }
         }
     }
@@ -515,11 +517,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         for (uint8 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
             if (excessInput[i] < 0) {
-                uint256 need = _inputToAsset(excessInput[i].abs(), i);
-                if (need > _amount)
-                    need = _amount;
-                amounts[i] = need;
-                _amount -= need;
+                unchecked {
+                    uint256 need = _inputToAsset(excessInput[i].abs(), i);
+                    if (need > _amount)
+                        need = _amount;
+                    amounts[i] = need;
+                    _amount -= need;
+                }
             }
         }
     }
