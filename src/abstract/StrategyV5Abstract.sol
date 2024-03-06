@@ -41,7 +41,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     uint8[8] internal inputDecimals; // strategy inputs decimals
     uint16[8] public inputWeights; // array of input weights weights in basis points (100% = 100_00)
     address[8] public rewardTokens; // array of reward tokens harvested at compound and liquidate times
-    mapping(address => uint8) internal rewardTokenIndexes; // reward token index by address
+    mapping(address => uint256) internal rewardTokenIndexes; // reward token index by address
     uint8 internal inputLength; // used length of inputs[] (index of last non-zero element)
     uint8 internal rewardLength; // used length of rewardTokens[] (index of last non-zero element)
 

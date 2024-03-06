@@ -264,7 +264,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
                 MultiRewardDistributorCommon.RewardInfo memory info
                     = pendingRewards[i].rewards[j];
                 address token = info.emissionToken;
-                uint8 index = rewardTokenIndexes[token];
+                uint256 index = rewardTokenIndexes[token];
                 if (index == 0) continue;
                 amounts[index-1] += info.totalAmount;
                 info.totalAmount;

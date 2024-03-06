@@ -333,7 +333,7 @@ contract HopMultiStake is StrategyV5Chainlink {
             IStakingRewards pool = rewardPools[i][0];
             if (address(pool) == address(0)) break; // no overflow (static array)
             address rewardToken = tokenByRewardPool[address(rewardPools[i][0])];
-            uint8 index = rewardTokenIndexes[rewardToken];
+            uint256 index = rewardTokenIndexes[rewardToken];
             if (index == 0) continue;
             amounts[index-1] += pool.earned(address(this));
             // }

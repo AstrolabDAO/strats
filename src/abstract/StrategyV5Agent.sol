@@ -151,7 +151,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     ) public onlyAdmin {
         if (_inputs.length > 8) revert Unauthorized();
         setSwapperAllowance(0, true, false, false);
-        for (uint8 i = 0; i < _inputs.length; i++) {
+        for (uint256 i = 0; i < _inputs.length; i++) {
             inputs[i] = IERC20Metadata(_inputs[i]);
             inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
@@ -170,7 +170,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     ) public onlyManager {
         if (_rewardTokens.length > 8) revert Unauthorized();
         setSwapperAllowance(0, false, true, false);
-        for (uint8 i = 0; i < _rewardTokens.length; i++) {
+        for (uint256 i = 0; i < _rewardTokens.length; i++) {
             rewardTokens[i] = _rewardTokens[i];
             rewardTokenIndexes[_rewardTokens[i]] = i+1;
         }
