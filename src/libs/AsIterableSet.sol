@@ -280,8 +280,10 @@ library AsIterableSet {
      */
     function valuesAsAddress(Set storage q) internal view returns (address[] memory values) {
         values = new address[](q.data.length);
-        for (uint256 i = 0; i < q.data.length; i++) {
-            values[i] = q.data[i].toAddress();
+        unchecked {
+            for (uint256 i = 0; i < q.data.length; i++) {
+                values[i] = q.data[i].toAddress();
+            }
         }
     }
 
