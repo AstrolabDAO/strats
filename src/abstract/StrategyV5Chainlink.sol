@@ -20,8 +20,8 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
 
     // Third party contracts
     mapping (address => IChainlinkAggregatorV3) public feedByAsset;
-    mapping (IChainlinkAggregatorV3 => uint8) internal decimalsByFeed;
-    mapping (IChainlinkAggregatorV3 => uint256) public validityByFeed; // Price feed validity periods by oracle address
+    mapping (IChainlinkAggregatorV3 => uint8) internal decimalsByFeed; // price feed decimals by oracle address
+    mapping (IChainlinkAggregatorV3 => uint256) public validityByFeed; // price feed validity periods by oracle address
 
     constructor() StrategyV5() {}
 
