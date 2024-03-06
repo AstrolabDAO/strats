@@ -88,9 +88,9 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
         if (address(_feed) == address(0)) revert AddressZero();
         // Price of the old asset
         IChainlinkAggregatorV3 retiredFeed = feedByAsset[address(asset)];
-        uint256 retiredPrice = ChainlinkUtils.getPriceUsd(retiredFeed, validityByFeed[retiredFeed], 18);
+        uint256 retiredPrice = ChainlinkUtils.getPriceUsd(retiredFeed, validityByFeed[retiredFeed], ChainlinkUtils.STANDARD_DECIMALS);
         setPriceFeed(_asset, _feed, _validity);
-        uint256 newPrice = ChainlinkUtils.getPriceUsd(_feed, _validity, 18);
+        uint256 newPrice = ChainlinkUtils.getPriceUsd(_feed, _validity, ChainlinkUtils.STANDARD_DECIMALS);
         uint256 rate = retiredPrice.exchangeRate(newPrice, decimals);
         _updateAsset(_asset, _swapData, rate);
     }
