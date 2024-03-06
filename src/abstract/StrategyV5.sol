@@ -476,7 +476,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
 
     /**
      * @dev Preview the amounts that would be liquidated based on the given amount
-     * @param _amount Amount of asset to liquidate with (0 == totalPendingAssetRequest() + allocated.bp(100))
+     * @param _amount Amount of asset to liquidate with (0 == totalPendingAssetRequest() + allocated.bp(150))
      * @return amounts uint256[8] Previewed liquidation amounts for each input
      */
     function previewLiquidate(
