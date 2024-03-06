@@ -184,7 +184,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _swapRewards(uint256[] memory _balances, bytes[] calldata _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
 
         uint256 received;
-        for (uint256 i = 0; i < rewardLength; i++) {
+        for (uint256 i = 0; i < rewardLength;) {
             if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
                 (received, ) = swapper.decodeAndSwap({
                     _input: rewardTokens[i],
@@ -196,6 +196,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
             } else {
                 assetsReceived += _balances[i];
             }
+            unchecked { i++; }
         }
     }
 
@@ -390,8 +391,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @return total Amount invested
      */
     function invested() public view virtual override returns (uint256 total) {
-        for (uint256 i = 0; i < inputLength; i++)
+        for (uint256 i = 0; i < inputLength;) {
             total += invested(i);
+            unchecked { i++; }
+        }
     }
 
     /**
@@ -441,8 +444,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256 _total
     ) internal view returns (int256[8] memory excessWeights) {
         if (_total == 0) _total = invested();
-        for (uint256 i = 0; i < inputLength; i++)
+        for (uint256 i = 0; i < inputLength;) {
             excessWeights[i] = _excessWeight(i, _total);
+            unchecked { i++; }
+        }
     }
 
     /**
@@ -470,8 +475,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256 _total
     ) internal view returns (int256[8] memory excessLiquidity) {
         if (_total == 0) _total = invested();
-        for (uint256 i = 0; i < inputLength; i++)
+        for (uint256 i = 0; i < inputLength;) {
             excessLiquidity[i] = _excessInputLiquidity(i, _total);
+            unchecked { i++; }
+        }
     }
 
     /**
@@ -487,7 +494,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         _amount = AsMaths.min(_amount, allocated);
         // excessInput accounts for the weights and the cash available in the strategy
         int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
-        for (uint256 i = 0; i < inputLength; i++) {
+        for (uint256 i = 0; i < inputLength;) {
             if (_amount < 10) break; // no leftover
             if (excessInput[i] > 0) {
                 unchecked {
@@ -498,6 +505,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
                     _amount -= need;
                 }
             }
+            unchecked { i++; }
         }
     }
 
@@ -514,7 +522,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         // compute the excess liquidity
         // NB: max allocated would be 90% for buffering flows if inputWeights are [30_00,30_00,30_00]
         int256[8] memory excessInput = _excessInputLiquidity(invested() + _amount);
-        for (uint256 i = 0; i < inputLength; i++) {
+        for (uint256 i = 0; i < inputLength;) {
             if (_amount < 10) break; // no leftover
             if (excessInput[i] < 0) {
                 unchecked {
@@ -525,6 +533,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
                     _amount -= need;
                 }
             }
+            unchecked { i++; }
         }
     }
 
