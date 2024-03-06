@@ -22,7 +22,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     using PythUtils for uint256;
 
     // Third party contracts
-    IPythAggregator internal pyth; // Pyth oracle
+    IPythAggregator internal _pyth; // Pyth oracle
     mapping (address => bytes32) public feedByAsset; // PythId by asset
     mapping (bytes32 => uint256) public validityByFeed; // Price feed validity periods by oracle address
 
@@ -56,7 +56,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @param _validity The new validity duration in seconds
      */
     function setPriceFeed(address _address, bytes32 _feed, uint256 _validity) public onlyAdmin {
-        if (!pyth.priceFeedExists(_feed))
+        if (!_pyth.priceFeedExists(_feed))
             revert InvalidData();
         feedByAsset[_address] = _feed;
         validityByFeed[_feed] = _validity;
@@ -67,7 +67,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
      * @param _pythParams Pyth specific parameters
      */
     function updatePyth(PythParams calldata _pythParams) public onlyAdmin {
-        pyth = IPythAggregator(_pythParams.pyth);
+        _pyth = IPythAggregator(_pythParams.pyth);
         setPriceFeed(address(asset), _pythParams.assetFeed, _pythParams.assetValidity);
         for (uint256 i = 0; i < _pythParams.inputFeeds.length; i++) {
             if (address(inputs[i]) == address(0)) break;
@@ -92,7 +92,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
         bytes32 assetFeed = feedByAsset[address(asset)];
         uint256 retiredPrice = PythUtils.getPriceUsd(
-            pyth,
+            _pyth,
             assetFeed,
             validityByFeed[assetFeed],
             18);
@@ -100,7 +100,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
         setPriceFeed(_asset, _feed, _validity);
 
         uint256 newPrice = PythUtils.getPriceUsd(
-            pyth,
+            _pyth,
             _feed,
             validityByFeed[_feed],
             18); // same base as prior price
