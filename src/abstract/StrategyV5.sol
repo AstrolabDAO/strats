@@ -125,8 +125,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         bytes[] calldata _params
     )
         external
-        onlyKeeper
         nonReentrant
+        onlyManager
         returns (uint256 liquidityAvailable)
     {
         // pre-liquidation sharePrice
@@ -158,7 +158,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _liquidateRequest(
         uint256 _amount
-    ) internal virtual returns (uint256) {}
+    ) internal virtual onlyKeeper returns (uint256) {}
 
     /**
      * @notice Order the withdrawal request in strategies with lock
@@ -167,12 +167,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function liquidateRequest(
         uint256 _amount
-    ) external onlyKeeper returns (uint256) {
+    ) external returns (uint256) {
         return _liquidateRequest(_amount);
     }
 
     // Claim rewards from the protocol
-    function claimRewards() public virtual onlyKeeper returns (uint256[] memory amounts) {
+    function claimRewards() public virtual returns (uint256[] memory amounts) {
         return new uint256[](rewardLength);
     }
 
@@ -216,7 +216,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _params Generic callData (e.g., SwapperParams)
      * @return amount Amount of asset assets received (after swap)
      */
-    function harvest(bytes[] calldata _params) public returns (uint256 amount) {
+    function harvest(bytes[] calldata _params) public onlyKeeper returns (uint256 amount) {
         amount = _harvest(_params);
         // reset expected profits to updated value + amount
         _expectedProfits =
@@ -252,7 +252,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function invest(
         uint256[8] calldata _amounts, // from previewInvest()
         bytes[] calldata _params
-    ) public onlyManager returns (uint256 investedAmount, uint256 iouReceived) {
+    ) public onlyKeeper returns (uint256 investedAmount, uint256 iouReceived) {
         (investedAmount, iouReceived) = _invest(_amounts, _params);
         last.invest = uint64(block.timestamp);
         emit Invest(investedAmount, block.timestamp);
@@ -280,12 +280,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
 
         // harvest using the first calldata bytes (swap rewards->asset)
         harvestedRewards = harvest(_harvestParams);
-        (, iouReceived) = _invest(_amounts, _investParams);
+        (, iouReceived) = invest(_amounts, _investParams);
         return (iouReceived, harvestedRewards);
     }
 
     /**
      * @notice Executes the compound operation in the strategy
+     * @dev Function is protected inherently by onlyKeeper since it calls swapRewards()
      * @param _amounts Amounts of inputs to compound (in asset, after harvest-> should include rewards)
      * @param _harvestParams Generic callData SwapperParams
      * @param _investParams Generic callData SwapperParams
@@ -296,13 +297,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256[8] calldata _amounts,
         bytes[] calldata _harvestParams,
         bytes[] calldata _investParams
-    )
-        external
-        onlyKeeper
-        returns (uint256 iouReceived, uint256 harvestedRewards)
-    {
+    ) external returns (uint256 iouReceived, uint256 harvestedRewards) {
         (iouReceived, harvestedRewards) = _compound(_amounts, _harvestParams, _investParams);
-        emit Compound(iouReceived, block.timestamp);
     }
 
     /**

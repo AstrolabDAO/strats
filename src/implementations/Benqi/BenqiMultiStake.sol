@@ -73,7 +73,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
      * @notice Claim rewards from the third party contracts
      * @return amounts Array of rewards claimed for each reward token
      */
-    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+    function claimRewards() public override returns (uint256[] memory amounts) {
         amounts = new uint256[](rewardLength);
         unitroller.claimReward(0, address(this)); // QI for all markets
         unitroller.claimReward(1, address(this)); // WGAS for all markets

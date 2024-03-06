@@ -22,7 +22,6 @@ abstract contract StrategyV5Abstract is As4626Abstract {
     // Events
     event Invest(uint256 amount, uint256 timestamp);
     event Harvest(uint256 amount, uint256 timestamp);
-    event Compound(uint256 amount, uint256 timestamp);
     event Liquidate(
         uint256 amount,
         uint256 liquidityAvailable,

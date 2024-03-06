@@ -71,7 +71,7 @@ abstract contract As4626 is As4626Abstract {
     function mint(
         uint256 _shares,
         address _receiver
-    ) public whenNotPaused returns (uint256 assets) {
+    ) public returns (uint256 assets) {
         return _deposit(0, _shares, _receiver);
     }
 
@@ -87,7 +87,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         uint256 _shares,
         address _receiver
-    ) internal nonReentrant returns (uint256) {
+    ) internal nonReentrant whenNotPaused returns (uint256) {
 
         if (_receiver == address(this)) revert Unauthorized();
         if (_shares == 0 && _amount == 0) revert AmountTooLow(0);
@@ -129,7 +129,7 @@ abstract contract As4626 is As4626Abstract {
     function deposit(
         uint256 _amount,
         address _receiver
-    ) public whenNotPaused returns (uint256 shares) {
+    ) public returns (uint256 shares) {
         return _deposit(_amount, 0, _receiver);
     }
 
@@ -145,7 +145,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         uint256 _minShareAmount,
         address _receiver
-    ) public whenNotPaused returns (uint256 shares) {
+    ) public returns (uint256 shares) {
         shares = _deposit(_amount, 0, _receiver);
         if (shares < _minShareAmount) revert AmountTooLow(shares);
     }
@@ -164,7 +164,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver,
         address _owner
-    ) internal nonReentrant returns (uint256) {
+    ) internal nonReentrant whenNotPaused returns (uint256) {
 
         if (_amount == 0 && _shares == 0) revert AmountTooLow(0);
 
@@ -239,7 +239,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _receiver,
         address _owner
-    ) external whenNotPaused returns (uint256) {
+    ) external returns (uint256) {
         return _withdraw(_amount, 0, _receiver, _owner);
     }
 
@@ -256,7 +256,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minAmount,
         address _receiver,
         address _owner
-    ) public whenNotPaused returns (uint256 amount) {
+    ) public returns (uint256 amount) {
         amount = _withdraw(_amount, 0, _receiver, _owner);
         if (amount < _minAmount) revert AmountTooLow(amount);
     }
@@ -273,7 +273,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver,
         address _owner
-    ) external whenNotPaused returns (uint256 assets) {
+    ) external returns (uint256 assets) {
         return _withdraw(0, _shares, _receiver, _owner);
     }
 
@@ -290,7 +290,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minAmountOut,
         address _receiver,
         address _owner
-    ) external whenNotPaused returns (uint256 assets) {
+    ) external returns (uint256 assets) {
         assets = _withdraw(
             0,
             _shares, // _shares
@@ -303,7 +303,7 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Trigger a fee collection: mints shares to the feeCollector
      */
-    function _collectFees() internal nonReentrant returns (uint256 toMint) {
+    function _collectFees() internal nonReentrant onlyManager returns (uint256 toMint) {
 
         if (feeCollector == address(0))
             revert AddressZero();
@@ -337,14 +337,14 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Trigger a fee collection: mints shares to the feeCollector
      */
-    function collectFees() external onlyKeeper returns (uint256) {
+    function collectFees() external returns (uint256) {
         return _collectFees();
     }
 
     /**
      * @notice Pause the vault
      */
-    function pause() external onlyManager {
+    function pause() external onlyAdmin {
         _pause();
         maxTotalAssets = 0; // This prevents deposit
     }
@@ -352,7 +352,7 @@ abstract contract As4626 is As4626Abstract {
     /**
      * @notice Unpause the vault
      */
-    function unpause() external onlyManager {
+    function unpause() external onlyAdmin {
         _unpause();
     }
 
@@ -369,7 +369,7 @@ abstract contract As4626 is As4626Abstract {
      * @notice Sets the internal slippage
      * @param _slippageBps array of input tokens
      */
-    function setMaxSlippageBps(uint16 _slippageBps) external onlyManager {
+    function setMaxSlippageBps(uint16 _slippageBps) external onlyAdmin {
         _maxSlippageBps = _slippageBps;
     }
 
@@ -377,7 +377,7 @@ abstract contract As4626 is As4626Abstract {
      * @dev Sets the maximum loan amount
      * @param _maxLoan The new maximum loan amount
      */
-    function setMaxLoan(uint256 _maxLoan) external onlyManager {
+    function setMaxLoan(uint256 _maxLoan) external onlyAdmin {
         maxLoan = _maxLoan;
     }
 
@@ -687,6 +687,7 @@ abstract contract As4626 is As4626Abstract {
 
     /**
      * @notice Cancel a redeem request
+     * @dev Not affected by pause(), at it only reduces further liquidation volumes
      * @param _operator Address initiating the request
      * @param _owner The owner of the shares to be redeemed
      */
@@ -828,7 +829,7 @@ abstract contract As4626 is As4626Abstract {
         IFlashLoanReceiver receiver,
         uint256 amount,
         bytes calldata params
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
 
         if (amount > availableBorrowable() || amount > maxLoan) revert AmountTooHigh(amount);
 

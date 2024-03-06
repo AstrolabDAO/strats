@@ -78,7 +78,6 @@ contract LodestarMultiStake is StrategyV5Chainlink {
     function claimRewards()
         public
         override
-        onlyKeeper
         returns (uint256[] memory amounts)
     {
         amounts = new uint256[](rewardLength);

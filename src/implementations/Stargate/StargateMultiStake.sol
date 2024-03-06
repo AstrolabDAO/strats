@@ -198,7 +198,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
      * @notice Claim rewards from the third party contracts
      * @return amounts Array of rewards claimed for each reward token
      */
-    function claimRewards() public onlyKeeper override returns (uint256[] memory amounts) {
+    function claimRewards() public override returns (uint256[] memory amounts) {
         amounts = new uint256[](rewardLength);
         for (uint8 i = 0; i < inputLength; i++) {
             if (address(inputs[i]) == address(0)) break;
