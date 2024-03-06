@@ -96,7 +96,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
             _pyth,
             assetFeed,
             validityByFeed[assetFeed],
-            18);
+            PythUtils.STANDARD_DECIMALS);
 
         setPriceFeed(_asset, _feed, _validity);
 
@@ -104,7 +104,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
             _pyth,
             _feed,
             validityByFeed[_feed],
-            18); // same base as prior price
+            PythUtils.STANDARD_DECIMALS); // same base as prior price
 
         uint256 rate = retiredPrice.exchangeRate(newPrice, decimals);
         _updateAsset(_asset, _swapData, rate);
