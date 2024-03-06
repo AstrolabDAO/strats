@@ -72,14 +72,14 @@ abstract contract As4626 is As4626Abstract {
         uint256 _shares,
         address _receiver
     ) public whenNotPaused returns (uint256 assets) {
-        return _deposit(previewMint(_shares, _receiver), _shares, _receiver);
+        return _deposit(0, _shares, _receiver);
     }
 
     /**
      * @notice Mints shares to the receiver by depositing asset tokens
      * @dev Pausing the contract should prevent depositing by setting maxDepositAmount to 0
-     * @param _amount Amount of asset tokens to deposit
-     * @param _shares Amount of shares minted to the _receiver
+     * @param _amount Amount of asset tokens to deposit OR
+     * @param _shares Shares to minted to the _receiver
      * @param _receiver Address that will get the shares
      * @return shares Amount of shares minted to the _receiver
      */
@@ -89,27 +89,29 @@ abstract contract As4626 is As4626Abstract {
         address _receiver
     ) internal nonReentrant returns (uint256) {
 
-        if (_receiver == address(this) || _amount == 0) revert Unauthorized();
+        if (_receiver == address(this)) revert Unauthorized();
+        if (_shares == 0 && _amount == 0) revert AmountTooLow(0);
 
         // do not allow minting at a price higher than the current share price
         last.sharePrice = sharePrice();
 
-        if (_amount > maxDeposit(address(0)) || _shares > _amount.mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset))
+        if (_amount == 0)
+            _amount = _shares.mulDiv(last.sharePrice * weiPerAsset, WEI_PER_SHARE_SQUARED); // rounded down
+
+        if (_amount > maxDeposit(address(0)))
             revert AmountTooHigh(_amount);
 
+        // use balances to support tax-enabled ERC20s
         uint256 vaultAssets = asset.balanceOf(address(this));
         asset.safeTransferFrom(msg.sender, address(this), _amount);
 
         // reuse the vaulAssets variable to save gas
         uint256 received = asset.balanceOf(address(this)) - vaultAssets;
+        uint256 assetFees = received.bp(exemptionList[_receiver] ? 0 : fees.entry);
+        claimableAssetFees += assetFees;
 
-        // slice the fee from the amount received (gas optimized)
-        if (!exemptionList[_receiver])
-            claimableAssetFees += received.bp(fees.entry);
-
-        // if received amount is less than the requested amount, mint proportionally less shares
-        if (received < _amount)
-           _shares = _shares.mulDiv(received, _amount);
+        // compute the final shares (after fees and ERC20 tax)
+        _shares = (received - assetFees).mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset); // rounded down
 
         _mint(_receiver, _shares);
 
@@ -128,7 +130,7 @@ abstract contract As4626 is As4626Abstract {
         uint256 _amount,
         address _receiver
     ) public whenNotPaused returns (uint256 shares) {
-        return _deposit(_amount, previewDeposit(_amount, _receiver), _receiver);
+        return _deposit(_amount, 0, _receiver);
     }
 
     /**
@@ -144,14 +146,15 @@ abstract contract As4626 is As4626Abstract {
         uint256 _minShareAmount,
         address _receiver
     ) public whenNotPaused returns (uint256 shares) {
-        shares = _deposit(_amount, convertToShares(_amount, false).subBp(exemptionList[_receiver] ? 0 : fees.entry), _receiver);
+        shares = _deposit(_amount, 0, _receiver);
         if (shares < _minShareAmount) revert AmountTooLow(shares);
     }
 
     /**
      * @notice Withdraw by burning _shares from owner and sending _amount of asset to _receiver
      * @dev Unlike safeWithdraw, there's no slippage control here
-     * @param _amount Amount of asset tokens to withdraw
+     * @param _amount Amount of asset tokens to withdraw OR
+     * @param _shares Number of shares to redeem
      * @param _receiver Who will get the withdrawn assets
      * @param _owner Whose shares we'll burn
      * @return shares Amount of shares burned
@@ -162,60 +165,63 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) internal nonReentrant returns (uint256) {
-        if (_amount == 0 || _shares == 0) revert AmountTooLow(0);
+
+        if (_amount == 0 && _shares == 0) revert AmountTooLow(0);
 
         Erc7540Request storage request = req.byOwner[_owner];
-        uint256 price = sharePrice();
-        last.sharePrice = price;
 
-        uint256 claimable = (msg.sender == request.operator || msg.sender == _owner)
+        uint256 claimableShares = (msg.sender == request.operator || msg.sender == _owner)
             ? claimableRedeemRequest(_owner) : 0;
+        last.sharePrice = sharePrice();
 
-        if (claimable >= _shares) {
-            request.shares -= _shares;
-            req.totalRedemption -= AsMaths.min(_shares, req.totalRedemption); // min 0
-            req.totalClaimableRedemption -= AsMaths.min(
-                _shares,
-                req.totalClaimableRedemption); // min 0
+        uint256 worstPrice = last.sharePrice;
+        uint256 claimableAmount;
 
-            price = (claimable >= _shares)
-                ? AsMaths.min(last.sharePrice, request.sharePrice) // worst of if pre-existing request
-                : last.sharePrice; // current price
+        if (claimableShares > 0) {
+            worstPrice = AsMaths.min(last.sharePrice, request.sharePrice);
+            claimableAmount = claimableShares.mulDiv(worstPrice * weiPerAsset, WEI_PER_SHARE_SQUARED); // rounded down
+        }
+
+        if (_amount == 0) {
+            _amount = _shares.mulDiv(worstPrice * weiPerAsset, WEI_PER_SHARE_SQUARED); // rounded down
         } else {
-            // check if the vault available liquidity can cover the withdrawal
-            if (_shares > available().mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset))
-                revert AmountTooHigh(_shares);
+            _shares = _amount.mulDiv(WEI_PER_SHARE_SQUARED, worstPrice * weiPerAsset); // rounded down
+        }
 
+        uint256 assetFees = _amount.bp(exemptionList[_owner] ? 0 : fees.exit);
+
+        if (claimableShares >= _shares) {
+            request.shares -= _shares;
+            req.totalRedemption.subMax0(_shares); // min 0
+            req.totalClaimableRedemption.subMax0(_shares); // min 0
+        } else {
             // allowance is already consumed if requested shares are used, but not here
             if (msg.sender != _owner) {
                 if (allowance(_owner, msg.sender) < _shares)
                     revert Unauthorized();
                 _spendAllowance(_owner, msg.sender, _shares);
             }
+            // check if the vault available liquidity can cover the withdrawal
+            if (_shares > available().mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset))
+                revert AmountTooHigh(_shares);
         }
-
-        // amount/shares cannot be higher than the share price (dictated by the inline convertToAssets below)
-        if (_amount > _shares.mulDiv(price * weiPerAsset, WEI_PER_SHARE_SQUARED))
-            revert AmountTooHigh(_amount);
-
-        if (!exemptionList[_owner])
-            claimableAssetFees += _amount.revBp(fees.exit);
-
         _burn(_owner, _shares);
 
         // check if burning the shares will bring the totalSupply below the minLiquidity
         if (totalSupply() < minLiquidity.mulDiv(WEI_PER_SHARE_SQUARED, last.sharePrice * weiPerAsset)) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
             revert Unauthorized();
 
+        claimableAssetFees += assetFees;
+        _amount -= assetFees;
         asset.safeTransfer(_receiver, _amount);
 
-        uint256 newSupply = totalAccountedSupply();
-        uint256 totalValueBefore = last.sharePrice * (newSupply + _shares);
-        uint256 totalValueAfter = totalValueBefore - (_shares * price);
-
         // re-calculate the sharePrice dynamically to avoid sharePrice() distortion
-        if (newSupply > 1)
+        uint256 newSupply = totalAccountedSupply();
+        if (newSupply > 1) {
+            uint256 totalValueBefore = last.sharePrice * (newSupply + _shares);
+            uint256 totalValueAfter = totalValueBefore - (_shares * worstPrice);
             last.sharePrice = totalValueAfter / newSupply;
+        }
 
         emit Withdraw(msg.sender, _receiver, _owner, _amount, _shares);
         return _amount;
@@ -234,7 +240,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external whenNotPaused returns (uint256) {
-        return _withdraw(_amount, previewWithdraw(_amount, _owner), _receiver, _owner);
+        return _withdraw(_amount, 0, _receiver, _owner);
     }
 
     /**
@@ -251,7 +257,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) public whenNotPaused returns (uint256 amount) {
-        amount = _withdraw(_amount, previewWithdraw(_amount, _owner), _receiver, _owner);
+        amount = _withdraw(_amount, 0, _receiver, _owner);
         if (amount < _minAmount) revert AmountTooLow(amount);
     }
 
@@ -268,7 +274,7 @@ abstract contract As4626 is As4626Abstract {
         address _receiver,
         address _owner
     ) external whenNotPaused returns (uint256 assets) {
-        return _withdraw(previewRedeem(_shares, _owner), _shares, _receiver, _owner);
+        return _withdraw(0, _shares, _receiver, _owner);
     }
 
     /**
@@ -286,7 +292,7 @@ abstract contract As4626 is As4626Abstract {
         address _owner
     ) external whenNotPaused returns (uint256 assets) {
         assets = _withdraw(
-            previewRedeem(_shares, _owner),
+            0,
             _shares, // _shares
             _receiver, // _receiver
             _owner // _owner
@@ -305,7 +311,7 @@ abstract contract As4626 is As4626Abstract {
         (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) = AsAccounting.computeFees(IAs4626(address(this)));
 
         // sum up all fees: feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
-        toMint = convertToShares(feesAmount + claimableAssetFees, false);
+        toMint = (feesAmount + claimableAssetFees).mulDiv(WEI_PER_SHARE_SQUARED, price * weiPerAsset);
 
         // do not mint nor emit event if there are no fees to collect
         if (toMint == 0)
