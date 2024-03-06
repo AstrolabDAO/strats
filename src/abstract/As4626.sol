@@ -172,7 +172,7 @@ abstract contract As4626 is As4626Abstract {
             ? claimableRedeemRequest(_owner) : 0;
 
         if (claimable >= _shares) {
-            req.byOwner[_owner].shares -= _shares;
+            request.shares -= _shares;
             req.totalRedemption -= AsMaths.min(_shares, req.totalRedemption); // min 0
             req.totalClaimableRedemption -= AsMaths.min(
                 _shares,
