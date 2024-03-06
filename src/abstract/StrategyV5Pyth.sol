@@ -69,9 +69,10 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     function updatePyth(PythParams calldata _pythParams) public onlyAdmin {
         _pyth = IPythAggregator(_pythParams.pyth);
         setPriceFeed(address(asset), _pythParams.assetFeed, _pythParams.assetValidity);
-        for (uint256 i = 0; i < _pythParams.inputFeeds.length; i++) {
+        for (uint256 i = 0; i < _pythParams.inputFeeds.length;) {
             if (address(inputs[i]) == address(0)) break;
             setPriceFeed(address(inputs[i]), _pythParams.inputFeeds[i], _pythParams.inputFeedValidities[i]);
+            unchecked { i++; }
         }
     }
 
@@ -122,9 +123,10 @@ abstract contract StrategyV5Pyth is StrategyV5 {
         bytes32[] calldata _feeds,
         uint256[] calldata _validities
     ) external onlyAdmin {
-        for (uint256 i = 0; i < _inputs.length; i++) {
+        for (uint256 i = 0; i < _inputs.length;) {
             if (address(inputs[i]) == address(0)) break;
             setPriceFeed(_inputs[i], _feeds[i], _validities[i]);
+            unchecked { i++; }
         }
         _setInputs(_inputs, _weights);
     }
