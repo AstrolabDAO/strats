@@ -172,7 +172,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         setSwapperAllowance(0, false, true, false);
         for (uint8 i = 0; i < _rewardTokens.length; i++) {
             rewardTokens[i] = _rewardTokens[i];
-            rewardTokenIndex[_rewardTokens[i]] = i+1;
+            rewardTokenIndexes[_rewardTokens[i]] = i+1;
         }
         rewardLength = uint8(_rewardTokens.length);
         setSwapperAllowance(_MAX_UINT256, false, true, false);

@@ -33,23 +33,23 @@ abstract contract StrategyV5Abstract is As4626Abstract {
 
     // State variables (As4626 extension)
     IWETH9 public wgas; // gas/native wrapper contract
-    ISwapper public swapper; // Interface for swapping assets
-    address public agent; // Address of the agent
-    address internal stratProxy; // Address of the strategy proxy
+    ISwapper public swapper; // interface for swapping assets
+    address public agent; // address of the agent
+    address internal stratProxy; // address of the strategy proxy
 
-    IERC20Metadata[8] public inputs; // Array of ERC20 tokens used as inputs
-    uint8[8] internal inputDecimals; // Decimals of the input assets
-    uint16[8] public inputWeights; // Array of input weights weights in basis points (100% = 100_00)
-    address[8] public rewardTokens; // Array of reward tokens harvested at compound and liquidate times
-    mapping(address => uint8) internal rewardTokenIndex; // to keep track of reward token indexes eg. to be aggregated
-    uint8 internal inputLength; // Actual length of the inputs array
-    uint8 internal rewardLength; // Actual length of the reward tokens array
+    IERC20Metadata[8] public inputs; // array of ERC20 tokens used as inputs
+    uint8[8] internal inputDecimals; // strategy inputs decimals
+    uint16[8] public inputWeights; // array of input weights weights in basis points (100% = 100_00)
+    address[8] public rewardTokens; // array of reward tokens harvested at compound and liquidate times
+    mapping(address => uint8) internal rewardTokenIndexes; // reward token index by address
+    uint8 internal inputLength; // used length of inputs[] (index of last non-zero element)
+    uint8 internal rewardLength; // used length of rewardTokens[] (index of last non-zero element)
 
     constructor() As4626Abstract() {}
 
     /**
-     * @notice Calculates the total pending redemption requests in shares (1e8)
-     * @dev Returns the difference between _req.totalClaimableRedemption and _req.totalClaimableRedemption
+     * @notice Calculates the total pending redemption requests in shares
+     * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
      * @return The total amount of pending redemption requests
      */
     function totalPendingRedemptionRequest() public view returns (uint256) {
