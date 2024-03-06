@@ -98,25 +98,6 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     }
 
     /**
-     * @notice Revokes `role` from the calling account
-     *
-     * @dev Roles are often managed via {grantRole} and {revokeRole}: this function's
-     * purpose is to provide a mechanism for accounts to lose their privileges
-     * if they are compromised (such as when a trusted device is misplaced)
-     *
-     * To avoid bricking the contract, admin role can't be renounced
-     * If needed, the admin can grant the role to another account and then revoke the former
-     */
-    function renounceRole(
-        bytes32 role,
-        address caller
-    ) external override {
-        if (caller != msg.sender || role == DEFAULT_ADMIN_ROLE)
-            revert Unauthorized();
-        _revokeRole(role, caller);
-    }
-
-    /**
      * @dev Revokes `role` from `account`
      *
      * If `account` had been granted `role`, emits a {RoleRevoked} event
@@ -136,7 +117,7 @@ abstract contract AsManageable is AsAccessControl, Pausable {
         override
         onlyRole(getRoleAdmin(role))
     {
-        if ((role == DEFAULT_ADMIN_ROLE) && account == msg.sender)
+        if (role == DEFAULT_ADMIN_ROLE)
             revert Unauthorized(); // admin role can't renounce as it would brick the contract
         _revokeRole(role, account);
     }

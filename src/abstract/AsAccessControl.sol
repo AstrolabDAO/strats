@@ -101,11 +101,10 @@ abstract contract AsAccessControl {
     /**
      * @dev Renounce a role for the sender account
      * @param role The role to renounce
-     * @param account The account renouncing the role
      */
-    function renounceRole(bytes32 role, address account) external virtual {
-        if (account != msg.sender) revert Unauthorized();
-        _revokeRole(role, account);
+    function renounceRole(bytes32 role) external virtual {
+        if (role == DEFAULT_ADMIN_ROLE) revert Unauthorized();
+        _revokeRole(role, msg.sender);
     }
 
     /**

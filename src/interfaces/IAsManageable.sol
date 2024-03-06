@@ -21,9 +21,8 @@ interface IAsManageable is IAccessControl, IPausable{
     /**
      * @notice Renounces a role from the calling account
      * @param role The role to be renounced
-     * @param caller The address confirming the renunciation
      */
-    function renounceRole(bytes32 role, address caller) external;
+    function renounceRole(bytes32 role) external;
 
     /**
      * @notice Revokes a role from an account
