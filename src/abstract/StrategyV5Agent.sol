@@ -51,15 +51,17 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
         _amount = _amount > 0 ? _amount : _MAX_UINT256;
 
         if (_inputs) {
-            for (uint256 i = 0; i < inputLength; i++) {
+            for (uint256 i = 0; i < inputLength;) {
                 if (address(inputs[i]) == address(0)) break;
                 inputs[i].forceApprove(swapperAddress, _amount);
+                unchecked { i++; }
             }
         }
         if (_rewards) {
-            for (uint256 i = 0; i < rewardLength; i++) {
+            for (uint256 i = 0; i < rewardLength;) {
                 if (rewardTokens[i] == address(0)) break;
                 IERC20Metadata(rewardTokens[i]).forceApprove(swapperAddress, _amount);
+                unchecked { i++; }
             }
         }
         if (_asset)
@@ -151,10 +153,11 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     ) public onlyAdmin {
         if (_inputs.length > 8) revert Unauthorized();
         setSwapperAllowance(0, true, false, false);
-        for (uint256 i = 0; i < _inputs.length; i++) {
+        for (uint256 i = 0; i < _inputs.length;) {
             inputs[i] = IERC20Metadata(_inputs[i]);
             inputDecimals[i] = inputs[i].decimals();
             inputWeights[i] = _weights[i];
+            unchecked { i++; }
         }
         setSwapperAllowance(_MAX_UINT256, true, false, false);
         inputLength = uint8(_inputs.length);
@@ -170,9 +173,10 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     ) public onlyManager {
         if (_rewardTokens.length > 8) revert Unauthorized();
         setSwapperAllowance(0, false, true, false);
-        for (uint256 i = 0; i < _rewardTokens.length; i++) {
+        for (uint256 i = 0; i < _rewardTokens.length;) {
             rewardTokens[i] = _rewardTokens[i];
             rewardTokenIndexes[_rewardTokens[i]] = i+1;
+            unchecked { i++; }
         }
         rewardLength = uint8(_rewardTokens.length);
         setSwapperAllowance(_MAX_UINT256, false, true, false);
