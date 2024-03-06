@@ -22,6 +22,12 @@ library AsAccounting {
     using AsCast for uint256;
     using AsCast for int256;
 
+    uint256 public constant MAX_PERF_FEE = 5_000; // 50%
+    uint256 public constant MAX_MGMT_FEE = 500; // 5%
+    uint256 public constant MAX_ENTRY_FEE = 200; // 2%
+    uint256 public constant MAX_EXIT_FEE = 200; // 2%
+    uint256 public constant MAX_FLASH_LOAN_FEE = 200; // 2%
+
     /**
      * @dev Computes the fees for the given As4626 contract
      * @param self The As4626 contract instance
@@ -121,10 +127,10 @@ library AsAccounting {
         Fees calldata _fees
     ) public pure returns (bool) {
         return
-            _fees.perf <= 5_000 && // 50%
-            _fees.mgmt <= 500 && // 5%
-            _fees.entry <= 200 && // 2%
-            _fees.exit <= 200 && // 2%
-            _fees.flash <= 200; // 2%
+            _fees.perf <= MAX_PERF_FEE &&
+            _fees.mgmt <= MAX_MGMT_FEE &&
+            _fees.entry <= MAX_ENTRY_FEE &&
+            _fees.exit <= MAX_EXIT_FEE &&
+            _fees.flash <= MAX_FLASH_LOAN_FEE;
     }
 }
