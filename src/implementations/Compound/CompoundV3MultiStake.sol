@@ -221,7 +221,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      * @notice Returns the investment in asset asset for the specified input
      * @return total Amount invested
      */
-    function invested(uint8 _index) public view override returns (uint256) {
+    function invested(uint256 _index) public view override returns (uint256) {
         return _inputToAsset(investedInput(_index), _index);
     }
 
@@ -230,7 +230,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      * @return total Amount invested
      */
     function investedInput(
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return _stakedInput(_index);
     }
@@ -241,7 +241,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      */
     function _stakeToInput(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return _amount; // 1:1 (rebasing, oracle value based)
     }
@@ -252,7 +252,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      */
     function _inputToStake(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return _amount; // 1:1 (rebasing, oracle value based)
     }
@@ -262,7 +262,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
      * @return Input value of the LP/staked balance
      */
     function _stakedInput(
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return IComet(cTokens[_index]).balanceOf(address(this));
     }

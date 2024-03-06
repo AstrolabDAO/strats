@@ -119,7 +119,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      * @dev Used by invested() to compute input->asset (base/quote, eg. USDC/BTC not BTC/USDC)
      * @return The amount available for investment
      */
-    function exchangeRate(uint8 _index) public view returns (uint256) {
+    function exchangeRate(uint256 _index) public view returns (uint256) {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         return
             ChainlinkUtils.exchangeRate(
@@ -137,7 +137,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      */
     function _assetToInput(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return
             _amount.mulDiv(
@@ -154,7 +154,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      */
     function _inputToAsset(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return
             _amount.mulDiv(
@@ -171,7 +171,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      */
     function _usdToInput(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view returns (uint256) {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         (, int256 price, , uint256 updateTime, ) = feed.latestRoundData();
@@ -192,7 +192,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
      */
     function _inputToUsd(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view returns (uint256) {
         IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
         return _amount.mulDiv(

@@ -139,7 +139,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
         uint256 recovered;
 
         IAavePool pool = IAavePool(poolProvider.getPool());
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint256 i = 0; i < inputLength; i++) {
             if (_amounts[i] < 10) continue;
 
             toLiquidate = _inputToStake(_amounts[i], i);
@@ -188,7 +188,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      * @notice Returns the investment in asset asset for the specified input
      * @return total Amount invested
      */
-    function invested(uint8 _index) public view override returns (uint256) {
+    function invested(uint256 _index) public view override returns (uint256) {
         return _inputToAsset(investedInput(_index), _index);
     }
 
@@ -197,7 +197,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      * @return total Amount invested
      */
     function investedInput(
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return _stakedInput(_index);
     }
@@ -208,7 +208,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      */
     function _stakeToInput(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return _amount; // 1:1 (rebasing, oracle value based)
     }
@@ -219,7 +219,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      */
     function _inputToStake(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return _amount; // 1:1 (rebasing, oracle value based)
     }
@@ -229,7 +229,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
      * @return Input value of the LP/staked balance
      */
     function _stakedInput(
-        uint8 _index
+        uint256 _index
     ) internal view override returns (uint256) {
         return aTokens[_index].balanceOf(address(this));
     }

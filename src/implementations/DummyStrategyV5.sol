@@ -43,9 +43,9 @@ contract DummyStrategy is StrategyV5 {
 
     function invested() public view override returns (uint256) {}
 
-    function invested(uint8 _index) public view override returns (uint256) {}
+    function invested(uint256 _index) public view override returns (uint256) {}
 
-    function investedInput(uint8 _index) internal view override returns (uint256) {}
+    function investedInput(uint256 _index) internal view override returns (uint256) {}
 
     function rewardsAvailable()
         public

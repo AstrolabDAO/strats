@@ -184,7 +184,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     function _swapRewards(uint256[] memory _balances, bytes[] calldata _params) internal virtual onlyKeeper returns (uint256 assetsReceived) {
 
         uint256 received;
-        for (uint8 i = 0; i < rewardLength; i++) {
+        for (uint256 i = 0; i < rewardLength; i++) {
             if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
                 (received, ) = swapper.decodeAndSwap({
                     _input: rewardTokens[i],
@@ -317,7 +317,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _assetToInput(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view virtual returns (uint256) {
         return _amount;
     }
@@ -329,7 +329,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _inputToAsset(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view virtual returns (uint256) {
         return _amount;
     }
@@ -341,7 +341,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _stakeToInput(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view virtual returns (uint256) {
         return _amount;
     }
@@ -353,7 +353,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _inputToStake(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view virtual returns (uint256) {
         return _amount;
     }
@@ -364,7 +364,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @dev Abstract function to be implemented by the oracle or the strategy
      */
     function _stakedInput(
-        uint8 _index
+        uint256 _index
     ) internal view virtual returns (uint256) {
         return 0;
     }
@@ -375,7 +375,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _index Index of the asset
      * @return Amount of assets
      */
-    function invested(uint8 _index) public view virtual returns (uint256);
+    function invested(uint256 _index) public view virtual returns (uint256);
 
     /**
      * @notice Amount of _index input
@@ -383,14 +383,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @param _index Index of the asset
      * @return Amount of assets
      */
-    function investedInput(uint8 _index) internal view virtual returns (uint256);
+    function investedInput(uint256 _index) internal view virtual returns (uint256);
 
     /**
      * @notice Returns the investment in asset asset
      * @return total Amount invested
      */
     function invested() public view virtual override returns (uint256 total) {
-        for (uint8 i = 0; i < inputLength; i++)
+        for (uint256 i = 0; i < inputLength; i++)
             total += invested(i);
     }
 
@@ -400,7 +400,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _stakeToAsset(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view returns (uint256) {
         return _inputToAsset(_stakeToInput(_amount, _index), _index);
     }
@@ -411,7 +411,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      */
     function _assetToStake(
         uint256 _amount,
-        uint8 _index
+        uint256 _index
     ) internal view returns (uint256) {
         return _inputToStake(_assetToInput(_amount, _index), _index);
     }
@@ -423,7 +423,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @return int256 Excess weight (/AsMaths.BP_BASIS)
      */
     function _excessWeight(
-        uint8 _index,
+        uint256 _index,
         uint256 _total
     ) internal view returns (int256) {
         if (_total == 0) _total = invested();
@@ -441,7 +441,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256 _total
     ) internal view returns (int256[8] memory excessWeights) {
         if (_total == 0) _total = invested();
-        for (uint8 i = 0; i < inputLength; i++)
+        for (uint256 i = 0; i < inputLength; i++)
             excessWeights[i] = _excessWeight(i, _total);
     }
 
@@ -452,7 +452,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
      * @return int256 Excess liquidity
      */
     function _excessInputLiquidity(
-        uint8 _index,
+        uint256 _index,
         uint256 _total
     ) internal view returns (int256) {
         if (_total == 0) _total = invested();
@@ -470,7 +470,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         uint256 _total
     ) internal view returns (int256[8] memory excessLiquidity) {
         if (_total == 0) _total = invested();
-        for (uint8 i = 0; i < inputLength; i++)
+        for (uint256 i = 0; i < inputLength; i++)
             excessLiquidity[i] = _excessInputLiquidity(i, _total);
     }
 
@@ -487,7 +487,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         _amount = AsMaths.min(_amount, allocated);
         // excessInput accounts for the weights and the cash available in the strategy
         int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint256 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
             if (excessInput[i] > 0) {
                 unchecked {
@@ -514,7 +514,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
         // compute the excess liquidity
         // NB: max allocated would be 90% for buffering flows if inputWeights are [30_00,30_00,30_00]
         int256[8] memory excessInput = _excessInputLiquidity(invested() + _amount);
-        for (uint8 i = 0; i < inputLength; i++) {
+        for (uint256 i = 0; i < inputLength; i++) {
             if (_amount < 10) break; // no leftover
             if (excessInput[i] < 0) {
                 unchecked {
