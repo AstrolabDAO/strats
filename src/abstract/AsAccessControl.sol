@@ -123,8 +123,9 @@ abstract contract AsAccessControl {
      * @param adminRole The admin role to be set
      */
     function _setRoleAdmin(bytes32 role, bytes32 adminRole) internal virtual {
-        bytes32 previousAdminRole = getRoleAdmin(role);
-        _roles[role].adminRole = adminRole;
+        RoleState storage _role = _roles[role];
+        bytes32 previousAdminRole = _role.adminRole;
+        _role.adminRole = adminRole;
         emit RoleAdminChanged(role, previousAdminRole, adminRole);
     }
 
@@ -134,8 +135,10 @@ abstract contract AsAccessControl {
      * @param account The account to grant the role to
      */
     function _grantRole(bytes32 role, address account) internal virtual {
-        if (!hasRole(role, account)) {
-            _roles[role].members.push(account.toBytes32());
+        RoleState storage _role = _roles[role];
+        bytes32 accSig = account.toBytes32();
+        if (!_role.members.has(accSig)) {
+            _role.members.push(accSig);
             emit RoleGranted(role, account, msg.sender);
         }
     }
@@ -146,8 +149,10 @@ abstract contract AsAccessControl {
      * @param account The account to revoke the role from
      */
     function _revokeRole(bytes32 role, address account) internal virtual {
-        if (hasRole(role, account)) {
-            _roles[role].members.remove(account.toBytes32());
+        RoleState storage _role = _roles[role];
+        bytes32 accSig = account.toBytes32();
+        if (_role.members.has(accSig)) {
+            _role.members.remove(accSig);
             emit RoleRevoked(role, account, msg.sender);
         }
     }
