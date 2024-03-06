@@ -174,15 +174,15 @@ library AsArrays {
      * @return arr The filled array
      */
     function fill(uint8 a, uint64 n) internal pure returns (uint8[] memory arr) {
-        arr = new uint8[](n); for (uint64 i = 0; i < n; i++) arr[i] = a;
+        arr = new uint8[](n); for (uint256 i = 0; i < n; i++) arr[i] = a;
     }
 
     function fill(bytes32 a, uint64 n) internal pure returns (bytes32[] memory arr) {
-        arr = new bytes32[](n); for (uint64 i = 0; i < n; i++) arr[i] = a;
+        arr = new bytes32[](n); for (uint256 i = 0; i < n; i++) arr[i] = a;
     }
 
     function fill(uint256 a, uint64 n) internal pure returns (uint256[] memory arr) {
-        arr = new uint256[](n); for (uint64 i = 0; i < n; i++) arr[i] = a;
+        arr = new uint256[](n); for (uint256 i = 0; i < n; i++) arr[i] = a;
     }
 
     /**

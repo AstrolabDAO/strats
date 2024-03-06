@@ -22,7 +22,7 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     struct PendingAcceptance {
         bytes32 role; // by default 0x00 == DEFAULT_ADMIN_ROLE
         address replacing;
-        uint256 timestamp;
+        uint64 timestamp;
     }
 
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER");
@@ -92,7 +92,7 @@ abstract contract AsManageable is AsAccessControl, Pausable {
             replacing: role == DEFAULT_ADMIN_ROLE
                 ? msg.sender
                 : address(0),
-            timestamp: block.timestamp,
+            timestamp: uint64(block.timestamp),
             role: role
         });
     }
