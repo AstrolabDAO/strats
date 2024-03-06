@@ -123,9 +123,8 @@ abstract contract AsAccessControl {
      */
     function _setRoleAdmin(bytes32 role, bytes32 adminRole) internal virtual {
         RoleState storage _role = _roles[role];
-        bytes32 previousAdminRole = _role.adminRole;
+        emit RoleAdminChanged(role, _role.adminRole, adminRole);
         _role.adminRole = adminRole;
-        emit RoleAdminChanged(role, previousAdminRole, adminRole);
     }
 
     /**
