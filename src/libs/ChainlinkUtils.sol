@@ -16,18 +16,18 @@ library ChainlinkUtils {
      * @param _feed Chainlink aggregator contract
      * @param _validity Validity period in seconds for the retrieved price
      * @param _targetDecimals Decimals to convert the retrieved price to
-     * @return Latest price in USD
+     * @return convertedPrice Latest price in USD
      * @dev Throws an error if the retrieved price is not positive or if the validity period has expired
      */
-    function getPriceUsd(IChainlinkAggregatorV3 _feed, uint256 _validity, uint8 _targetDecimals) internal view returns (uint256) {
+    function getPriceUsd(IChainlinkAggregatorV3 _feed, uint256 _validity, uint8 _targetDecimals) internal view returns (uint256 convertedPrice) {
         (, int256 basePrice, , uint updateTime, ) = _feed.latestRoundData();
         uint8 feedDecimals = _feed.decimals();
         require(basePrice > 0 && block.timestamp <= (updateTime + _validity)); // Stale price
-
-        // debase chainlink feed decimals to target decimals
-        return _targetDecimals >= feedDecimals ?
-            uint256(basePrice) * 10 ** uint32(_targetDecimals - feedDecimals) :
-            uint256(basePrice) / 10 ** uint32(feedDecimals - _targetDecimals);
+        unchecked {
+            _targetDecimals >= feedDecimals ? convertedPrice = uint256(basePrice) * 10 ** uint32(_targetDecimals - feedDecimals):
+             convertedPrice = uint256(basePrice) / 10 ** uint32(feedDecimals - _targetDecimals);
+        }
+        return convertedPrice;
     }
 
     /**

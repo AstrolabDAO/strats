@@ -16,12 +16,12 @@ library PythUtils {
      * @dev Reverts if the price is negative, has an invalid exponent, or targetDecimals is greater than 255
      * @param _price Pyth price to convert
      * @param _targetDecimals Desired number of decimals for the result
-     * @return Converted uint256 value
+     * @return convertedPrice Converted uint256 value
      */
     function toUint256(
         PythStructs.Price memory _price,
         uint8 _targetDecimals
-    ) public pure returns (uint256) {
+    ) public pure returns (uint256 convertedPrice) {
 
         require (_price.price >= 0 && _price.expo <= 0 && _price.expo > -256, "Invalid price");
 
@@ -29,9 +29,10 @@ library PythUtils {
         uint64 basePrice = uint64(_price.price);
 
         // debase pyth feed decimals to target decimals
-        return _targetDecimals >= feedDecimals ?
-            basePrice * 10 ** uint32(_targetDecimals - feedDecimals) :
-            basePrice / 10 ** uint32(feedDecimals - _targetDecimals);
+        unchecked { _targetDecimals >= feedDecimals ?
+            convertedPrice = basePrice * 10 ** uint32(_targetDecimals - feedDecimals) :
+            convertedPrice = basePrice / 10 ** uint32(feedDecimals - _targetDecimals);
+        }
     }
 
     /**
