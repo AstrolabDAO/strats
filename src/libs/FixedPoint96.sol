@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: agpl-3
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BSL 1.1
+pragma solidity 0.8.22;
 
 /**
  * @title Uniswap's FixedPoint96
@@ -7,6 +7,6 @@ pragma solidity ^0.8.0;
  * @dev Used in SqrtPriceMath.sol
  */
 library FixedPoint96 {
-    uint8 internal constant RESOLUTION = 96; // Number of bits for representing fixed point numbers
-    uint256 internal constant Q96 = 0x1000000000000000000000000; // 2^96, representing 1 in fixed point format
+  uint8 internal constant RESOLUTION = 96; // number of bits for representing fixed point numbers
+  uint256 internal constant Q96 = 0x1000000000000000000000000; // 2^96, representing 1 in fixed point format
 }

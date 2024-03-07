@@ -1,12 +1,13 @@
-// SPDX-License-Identifier: agpl-3
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BSL 1.1
+pragma solidity 0.8.22;
 
 import "../abstract/AsTypes.sol";
 import "../interfaces/IAs4626.sol";
 import "./AsCast.sol";
 import "./AsMaths.sol";
 
-/**            _             _       _
+/**
+ *             _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
@@ -18,119 +19,98 @@ import "./AsMaths.sol";
  * @dev This library contains functions for calculating fees and PnL
  */
 library AsAccounting {
-    using AsMaths for uint256;
-    using AsCast for uint256;
-    using AsCast for int256;
+  using AsMaths for uint256;
+  using AsCast for uint256;
+  using AsCast for int256;
 
-    uint256 public constant MAX_PERF_FEE = 5_000; // 50%
-    uint256 public constant MAX_MGMT_FEE = 500; // 5%
-    uint256 public constant MAX_ENTRY_FEE = 200; // 2%
-    uint256 public constant MAX_EXIT_FEE = 200; // 2%
-    uint256 public constant MAX_FLASH_LOAN_FEE = 200; // 2%
+  uint256 public constant MAX_PERF_FEE = 5_000; // 50%
+  uint256 public constant MAX_MGMT_FEE = 500; // 5%
+  uint256 public constant MAX_ENTRY_FEE = 200; // 2%
+  uint256 public constant MAX_EXIT_FEE = 200; // 2%
+  uint256 public constant MAX_FLASH_LOAN_FEE = 200; // 2%
 
-    /**
-     * @dev Computes the fees for the given As4626 contract
-     * @param self The As4626 contract instance
-     * @return assets The total assets of the contract
-     * @return price The current share price of the contract
-     * @return profit The calculated profit since the last fee collection
-     * @return feesAmount The amount of fees to be collected
-     */
-    function computeFees(
-        IAs4626 self
-    )
-        public
-        view
-        returns (
-            uint256 assets,
-            uint256 price,
-            uint256 profit,
-            uint256 feesAmount
-        )
-    {
-        Epoch memory last = self.last();
-        Fees memory fees = self.fees();
-        price = self.sharePrice();
+  /**
+   * @dev Computes the fees for the given As4626 contract
+   * @param self The As4626 contract instance
+   * @return assets The total assets of the contract
+   * @return price The current share price of the contract
+   * @return profit The calculated profit since the last fee collection
+   * @return feesAmount The amount of fees to be collected
+   */
+  function computeFees(IAs4626 self)
+    public
+    view
+    returns (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount)
+  {
+    Epoch memory last = self.last();
+    Fees memory fees = self.fees();
+    price = self.sharePrice();
 
-        // Calculate the duration since the last fee collection
-        uint64 duration = uint64(block.timestamp) - last.feeCollection;
+    // calculate the duration since the last fee collection
+    uint64 duration = uint64(block.timestamp) - last.feeCollection;
 
-        // Calculate the profit since the last fee collection
-        int256 change = int256(price) - int256(last.accountedSharePrice); // 1e? - 1e? = 1e?
+    // calculate the profit since the last fee collection
+    int256 change = int256(price) - int256(last.accountedSharePrice); // 1e? - 1e? = 1e?
 
-        // If called within the same block or the share price decreased, no fees are collected
-        if (duration == 0 || change < 0) return (0, price, 0, 0);
+    // if called within the same block or the share price decreased, no fees are collected
+    if (duration == 0 || change < 0) return (0, price, 0, 0);
 
-        // relative profit = (change / last price) on a PRECISION_BP_BASIS scale
-        profit = uint256(change).mulDiv(
-            AsMaths.PRECISION_BP_BASIS,
-            last.accountedSharePrice
-        ); // 1e? * 1e8 / 1e? = 1e8
+    // relative profit = (change / last price) on a _PRECISION_BP_BASIS scale
+    profit = uint256(change).mulDiv(AsMaths._PRECISION_BP_BASIS, last.accountedSharePrice); // 1e? * 1e8 / 1e? = 1e8
 
-        // Calculate management fees as proportion of profits on a PRECISION_BP_BASIS scale
-        // NOTE: This is a linear approximation of the accrued profits (SEC_PER_YEAR ~3e11)
-        uint256 mgmtFeesRel = profit.mulDiv(
-            fees.mgmt * duration,
-            AsMaths.SEC_PER_YEAR
-        ); // 1e8 * 1e4 * 1e? / 1e? = 1e12
+    // calculate management fees as proportion of profits on a _PRECISION_BP_BASIS scale
+    // NOTE: this is a linear approximation of the accrued profits (_SEC_PER_YEAR ~3e11)
+    uint256 mgmtFeesRel = profit.mulDiv(fees.mgmt * duration, AsMaths._SEC_PER_YEAR); // 1e8 * 1e4 * 1e? / 1e? = 1e12
 
-        // Calculate performance fees as proportion of profits on a PRECISION_BP_BASIS scale
-        uint256 perfFeesRel = profit * fees.perf; // 1e8 * 1e4 = 1e12
+    // calculate performance fees as proportion of profits on a _PRECISION_BP_BASIS scale
+    uint256 perfFeesRel = profit * fees.perf; // 1e8 * 1e4 = 1e12
 
-        // Adjust fees if it exceeds profits
-        uint256 feesRel = AsMaths.min(
-            (mgmtFeesRel + perfFeesRel) / AsMaths.BP_BASIS, // 1e12 / 1e4 = 1e8
-            profit
-        );
+    // adjust fees if it exceeds profits
+    uint256 feesRel = AsMaths.min(
+      (mgmtFeesRel + perfFeesRel) / AsMaths._BP_BASIS, // 1e12 / 1e4 = 1e8
+      profit
+    );
 
-        assets = self.totalAssets();
-        // Convert fees to assets
-        feesAmount = feesRel.mulDiv(assets, AsMaths.PRECISION_BP_BASIS); // 1e8 * 1e? / 1e8 = 1e? (asset decimals)
-        return (assets, price, profit, feesAmount);
+    assets = self.totalAssets();
+    // convert fees to assets
+    feesAmount = feesRel.mulDiv(assets, AsMaths._PRECISION_BP_BASIS); // 1e8 * 1e? / 1e8 = 1e? (asset decimals)
+    return (assets, price, profit, feesAmount);
+  }
+
+  /**
+   * @notice Linearization of the accrued profits
+   * @dev This is used to calculate the total assets under management
+   * @param lastHarvest Timestamp of the last harvest
+   * @param _expectedProfits Expected profits since the last harvest
+   * @param _profitCooldown Cooldown period for realizing gains
+   * @return The amount of profits that are not yet realized
+   */
+  function unrealizedProfits(
+    uint256 lastHarvest,
+    uint256 _expectedProfits,
+    uint256 _profitCooldown
+  ) public view returns (uint256) {
+    // if the cooldown period is over, gains are realized
+    if (lastHarvest + _profitCooldown < block.timestamp) {
+      return 0;
     }
 
-    /**
-     * @notice Linearization of the accrued profits
-     * @dev This is used to calculate the total assets under management
-     * @param lastHarvest Timestamp of the last harvest
-     * @param _expectedProfits Expected profits since the last harvest
-     * @param _profitCooldown Cooldown period for realizing gains
-     * @return The amount of profits that are not yet realized
-     */
-    function unrealizedProfits(
-        uint256 lastHarvest,
-        uint256 _expectedProfits,
-        uint256 _profitCooldown
-    ) public view returns (uint256) {
-        // If the cooldown period is over, gains are realized
-        if (lastHarvest + _profitCooldown < block.timestamp) {
-            return 0;
-        }
+    // calculate unrealized profits during cooldown using mulDiv for precision
+    uint256 elapsedTime = block.timestamp - lastHarvest;
+    uint256 realizedProfits = _expectedProfits.mulDiv(elapsedTime, _profitCooldown);
 
-        // Calculate unrealized profits during cooldown using mulDiv for precision
-        uint256 elapsedTime = block.timestamp - lastHarvest;
-        uint256 realizedProfits = _expectedProfits.mulDiv(
-            elapsedTime,
-            _profitCooldown
-        );
+    // return the amount of profits that are not yet realized
+    return _expectedProfits - realizedProfits;
+  }
 
-        // Return the amount of profits that are not yet realized
-        return _expectedProfits - realizedProfits;
-    }
-
-    /**
-     * @notice Check if provided fees are within the allowed maximum fees
-     * @param _fees Struct containing fee parameters (performance, management, entry, exit, flash fees)
-     * @return Whether the provided fees are within the allowed maximum fees
-     */
-    function checkFees(
-        Fees calldata _fees
-    ) public pure returns (bool) {
-        return
-            _fees.perf <= MAX_PERF_FEE &&
-            _fees.mgmt <= MAX_MGMT_FEE &&
-            _fees.entry <= MAX_ENTRY_FEE &&
-            _fees.exit <= MAX_EXIT_FEE &&
-            _fees.flash <= MAX_FLASH_LOAN_FEE;
-    }
+  /**
+   * @notice Check if provided fees are within the allowed maximum fees
+   * @param _fees Struct containing fee parameters (performance, management, entry, exit, flash fees)
+   * @return Whether the provided fees are within the allowed maximum fees
+   */
+  function checkFees(Fees calldata _fees) public pure returns (bool) {
+    return _fees.perf <= MAX_PERF_FEE && _fees.mgmt <= MAX_MGMT_FEE
+      && _fees.entry <= MAX_ENTRY_FEE && _fees.exit <= MAX_EXIT_FEE
+      && _fees.flash <= MAX_FLASH_LOAN_FEE;
+  }
 }

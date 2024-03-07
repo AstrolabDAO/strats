@@ -4362,6 +4362,11 @@ slice-ansi@^4.0.0:
     astral-regex "^2.0.0"
     is-fullwidth-code-point "^3.0.0"
 
+solady@^0.0.177:
+  version "0.0.177"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.177.tgz#a5bdcb0d754d8121993700369452f4f9a8a5e8f5"
+  integrity sha512-ac9eCKPmJMZEcqTXmqtUfy3hQdPh2w+YYupsSncaO2A1mxqH3jvpskJz9TpYEH/o0wDupf6f9NBkjCLGJFyplg==
+
 solc@0.7.3:
   version "0.7.3"
   resolved "https://registry.yarnpkg.com/solc/-/solc-0.7.3.tgz#04646961bd867a744f63d2b4e3c0701ffdc7d78a"

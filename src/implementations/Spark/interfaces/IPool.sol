@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSL 1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.22;
 
 // import {IPoolAddressesProvider} from './IPoolAddressesProvider.sol';
 // import {DataTypes} from '../protocol/libraries/types/DataTypes.sol';
@@ -33,7 +33,9 @@ interface IPool {
    * @param amount The amount added as backing
    * @param fee The amount paid in fees
    */
-  event BackUnbacked(address indexed reserve, address indexed backer, uint256 amount, uint256 fee);
+  event BackUnbacked(
+    address indexed reserve, address indexed backer, uint256 amount, uint256 fee
+  );
 
   /**
    * @dev Emitted on supply()
@@ -58,7 +60,9 @@ interface IPool {
    * @param to The address that will receive the asset
    * @param amount The amount to be withdrawn
    */
-  event Withdraw(address indexed reserve, address indexed user, address indexed to, uint256 amount);
+  event Withdraw(
+    address indexed reserve, address indexed user, address indexed to, uint256 amount
+  );
 
   /**
    * @dev Emitted on borrow() and flashLoan() when debt needs to be opened
@@ -71,15 +75,15 @@ interface IPool {
    * @param borrowRate The numeric rate at which the user has borrowed, expressed in ray
    * @param referralCode The referral code used
    */
-//   event Borrow(
-//     address indexed reserve,
-//     address user,
-//     address indexed onBehalfOf,
-//     uint256 amount,
-//     DataTypes.InterestRateMode interestRateMode,
-//     uint256 borrowRate,
-//     uint16 indexed referralCode
-//   );
+  //   event Borrow(
+  //     address indexed reserve,
+  //     address user,
+  //     address indexed onBehalfOf,
+  //     uint256 amount,
+  //     DataTypes.InterestRateMode interestRateMode,
+  //     uint256 borrowRate,
+  //     uint16 indexed referralCode
+  //   );
 
   /**
    * @dev Emitted on repay()
@@ -103,11 +107,11 @@ interface IPool {
    * @param user The address of the user swapping his rate mode
    * @param interestRateMode The current interest rate mode of the position being swapped: 1 for Stable, 2 for Variable
    */
-//   event SwapBorrowRateMode(
-//     address indexed reserve,
-//     address indexed user,
-//     DataTypes.InterestRateMode interestRateMode
-//   );
+  //   event SwapBorrowRateMode(
+  //     address indexed reserve,
+  //     address indexed user,
+  //     DataTypes.InterestRateMode interestRateMode
+  //   );
 
   /**
    * @dev Emitted on borrow(), repay() and liquidationCall() when using isolated assets
@@ -154,15 +158,15 @@ interface IPool {
    * @param premium The fee flash borrowed
    * @param referralCode The referral code used
    */
-//   event FlashLoan(
-//     address indexed target,
-//     address initiator,
-//     address indexed asset,
-//     uint256 amount,
-//     DataTypes.InterestRateMode interestRateMode,
-//     uint256 premium,
-//     uint16 indexed referralCode
-//   );
+  //   event FlashLoan(
+  //     address indexed target,
+  //     address initiator,
+  //     address indexed asset,
+  //     uint256 amount,
+  //     DataTypes.InterestRateMode interestRateMode,
+  //     uint256 premium,
+  //     uint16 indexed referralCode
+  //   );
 
   /**
    * @dev Emitted when a borrower is liquidated
@@ -232,7 +236,11 @@ interface IPool {
    * @param fee The amount paid in fees
    * @return The backed amount
    */
-  function backUnbacked(address asset, uint256 amount, uint256 fee) external returns (uint256);
+  function backUnbacked(
+    address asset,
+    uint256 amount,
+    uint256 fee
+  ) external returns (uint256);
 
   /**
    * @notice Supplies an `amount` of asset asset into the reserve, receiving in return overlying aTokens
@@ -245,7 +253,12 @@ interface IPool {
    * @param referralCode Code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    */
-  function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
+  function supply(
+    address asset,
+    uint256 amount,
+    address onBehalfOf,
+    uint16 referralCode
+  ) external;
 
   /**
    * @notice Supply with transfer approval of asset to be supplied done via permit function
@@ -474,9 +487,7 @@ interface IPool {
    * @return ltv The loan to value of The user
    * @return healthFactor The current health factor of the user
    */
-  function getUserAccountData(
-    address user
-  )
+  function getUserAccountData(address user)
     external
     view
     returns (
@@ -530,28 +541,28 @@ interface IPool {
    * @param asset The address of the asset asset of the reserve
    * @param configuration The new configuration bitmap
    */
-//   function setConfiguration(
-//     address asset,
-//     DataTypes.ReserveConfigurationMap calldata configuration
-//   ) external;
+  //   function setConfiguration(
+  //     address asset,
+  //     DataTypes.ReserveConfigurationMap calldata configuration
+  //   ) external;
 
   /**
    * @notice Returns the configuration of the reserve
    * @param asset The address of the asset asset of the reserve
    * @return The configuration of the reserve
    */
-//   function getConfiguration(
-//     address asset
-//   ) external view returns (DataTypes.ReserveConfigurationMap memory);
+  //   function getConfiguration(
+  //     address asset
+  //   ) external view returns (DataTypes.ReserveConfigurationMap memory);
 
   /**
    * @notice Returns the configuration of the user across all the reserves
    * @param user The user address
    * @return The configuration of the user
    */
-//   function getUserConfiguration(
-//     address user
-//   ) external view returns (DataTypes.UserConfigurationMap memory);
+  //   function getUserConfiguration(
+  //     address user
+  //   ) external view returns (DataTypes.UserConfigurationMap memory);
 
   /**
    * @notice Returns the normalized income of the reserve
@@ -572,14 +583,17 @@ interface IPool {
    * @param asset The address of the asset asset of the reserve
    * @return The reserve normalized variable debt
    */
-  function getReserveNormalizedVariableDebt(address asset) external view returns (uint256);
+  function getReserveNormalizedVariableDebt(address asset)
+    external
+    view
+    returns (uint256);
 
   /**
    * @notice Returns the state and configuration of the reserve
    * @param asset The address of the asset asset of the reserve
    * @return The state and configuration data of the reserve
    */
-//   function getReserveData(address asset) external view returns (DataTypes.ReserveData memory);
+  //   function getReserveData(address asset) external view returns (DataTypes.ReserveData memory);
 
   /**
    * @notice Validates and finalizes an aToken transfer
@@ -618,7 +632,7 @@ interface IPool {
    * @notice Returns the PoolAddressesProvider connected to this contract
    * @return The address of the PoolAddressesProvider
    */
-//   function ADDRESSES_PROVIDER() external view returns (IPoolAddressesProvider);
+  //   function ADDRESSES_PROVIDER() external view returns (IPoolAddressesProvider);
 
   /**
    * @notice Updates the protocol fee on the bridging
@@ -648,14 +662,14 @@ interface IPool {
    * @param id The id of the category
    * @param config The configuration of the category
    */
-//   function configureEModeCategory(uint8 id, DataTypes.EModeCategory memory config) external;
+  //   function configureEModeCategory(uint8 id, DataTypes.EModeCategory memory config) external;
 
   /**
    * @notice Returns the data of an eMode category
    * @param id The id of the category
    * @return The configuration data of the category
    */
-//   function getEModeCategoryData(uint8 id) external view returns (DataTypes.EModeCategory memory);
+  //   function getEModeCategoryData(uint8 id) external view returns (DataTypes.EModeCategory memory);
 
   /**
    * @notice Allows a user to use the protocol in eMode
@@ -733,5 +747,10 @@ interface IPool {
    * @param referralCode Code used to register the integrator originating the operation, for potential rewards
    *   0 if the action is executed directly by the user, without any middle-man
    */
-  function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
+  function deposit(
+    address asset,
+    uint256 amount,
+    address onBehalfOf,
+    uint16 referralCode
+  ) external;
 }

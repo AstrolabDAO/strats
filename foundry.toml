@@ -1,0 +1,12 @@
+[fmt]
+single_line_statetement_blocks="preserve"
+multiline_func_header="params_first"
+override_spacing=false
+line_length=90
+tab_width=2
+bracket_spacing=false
+int_types="long"
+quote_style="double"
+number_underscore="preserve"
+wrap_comments=false
+ignore=["./node_modules/**/*.sol", "./src/abstract/ERC20.sol"]

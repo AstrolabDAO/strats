@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSL 1.1
-pragma solidity ^0.8.17;
+pragma solidity 0.8.22;
 
 import "../abstract/StrategyV5.sol";
 
-/**            _             _       _
+/**
+ *             _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
@@ -14,43 +15,41 @@ import "../abstract/StrategyV5.sol";
  * @notice Used to export generic unified StrategyV5+StrategyV5Agent ABI
  */
 contract DummyStrategy is StrategyV5 {
+  constructor() StrategyV5() {}
 
-    constructor() StrategyV5() {}
+  // Struct containing the strategy init parameters
+  struct Params {
+    address dummy;
+  }
 
-    // Struct containing the strategy init parameters
-    struct Params { address dummy; }
+  function init(
+    StrategyBaseParams calldata _params,
+    Params calldata _implementationParams
+  ) external onlyAdmin {
+    StrategyV5._init(_params);
+  }
 
-    function init(
-        StrategyBaseParams calldata _params,
-        Params calldata _implementationParams
-    ) external onlyAdmin {
-        StrategyV5._init(_params);
-    }
+  function _harvest(bytes[] calldata _params)
+    internal
+    override
+    returns (uint256 assetsReceived)
+  {}
 
-    function _harvest(
-        bytes[] calldata _params
-    ) internal override returns (uint256 assetsReceived) {}
+  function _invest(
+    uint256[8] calldata _amounts,
+    bytes[] calldata _params
+  ) internal override returns (uint256 investedAmount, uint256 iouReceived) {}
 
-    function _invest(
-        uint256[8] calldata _amounts,
-        bytes[] calldata _params
-    ) internal override returns (uint256 investedAmount, uint256 iouReceived) {}
+  function _liquidate(
+    uint256[8] calldata _amounts,
+    bytes[] calldata _params
+  ) internal override returns (uint256 assetsRecovered) {}
 
-    function _liquidate(
-        uint256[8] calldata _amounts,
-        bytes[] calldata _params
-    ) internal override returns (uint256 assetsRecovered) {}
+  function invested() public view override returns (uint256) {}
 
-    function invested() public view override returns (uint256) {}
+  function invested(uint256 _index) public view override returns (uint256) {}
 
-    function invested(uint256 _index) public view override returns (uint256) {}
+  function investedInput(uint256 _index) internal view override returns (uint256) {}
 
-    function investedInput(uint256 _index) internal view override returns (uint256) {}
-
-    function rewardsAvailable()
-        public
-        view
-        override
-        returns (uint256[] memory amounts)
-    {}
+  function rewardsAvailable() public view override returns (uint256[] memory amounts) {}
 }
