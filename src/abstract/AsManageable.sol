@@ -104,7 +104,7 @@ abstract contract AsManageable is AsAccessControl, Pausable {
     bytes32 _role
   ) private view {
     // make sure the role accepted is the same as the pending one
-    if (_acceptance.role == _role) {
+    if (_acceptance.role != _role) {
       revert Unauthorized();
     }
     // grant the keeper role instantly (no attack surface here)
