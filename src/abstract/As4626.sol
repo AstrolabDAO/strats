@@ -377,16 +377,6 @@ abstract contract As4626 is As4626Abstract {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Mints `_shares` to `_receiver` by depositing equivalent underlying assets (ERC-4626)
-   * @param _shares Amount of shares to be minted to `_receiver`
-   * @param _receiver Receiver of the shares
-   * @return Amount of assets deposited
-   */
-  function mint(uint256 _shares, address _receiver) public returns (uint256) {
-    return _deposit(0, _shares, _receiver);
-  }
-
-  /**
    * @notice Mints shares to `_receiver` by depositing `_amount` of underlying assets
    * @param _amount Amount of underlying assets to deposit OR
    * @param _shares Amount of shares to mint
@@ -404,8 +394,11 @@ abstract contract As4626 is As4626Abstract {
     // do not allow minting at a price higher than the current share price
     last.sharePrice = sharePrice();
 
+    bool minting = false;
+
     if (_amount == 0) {
       _amount = _shares.mulDiv(last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED);
+      minting = true;
     }
 
     if (_amount > maxDeposit(address(0))) {
@@ -429,7 +422,17 @@ abstract contract As4626 is As4626Abstract {
     _mint(_receiver, _shares);
 
     emit Deposit(msg.sender, _receiver, _amount, _shares);
-    return _shares;
+    return minting ? _amount : _shares; // minted shares if `deposit()` was called, the deposited amount if `mint()` was called
+  }
+
+  /**
+   * @notice Mints `_shares` to `_receiver` by depositing equivalent underlying assets (ERC-4626)
+   * @param _shares Amount of shares to be minted to `_receiver`
+   * @param _receiver Receiver of the shares
+   * @return Amount of assets deposited
+   */
+  function mint(uint256 _shares, address _receiver) public returns (uint256) {
+    return _deposit(0, _shares, _receiver);
   }
 
   /**
@@ -441,6 +444,22 @@ abstract contract As4626 is As4626Abstract {
    */
   function deposit(uint256 _amount, address _receiver) public returns (uint256 shares) {
     return _deposit(_amount, 0, _receiver);
+  }
+
+  /**
+   * @notice Mints `_shares` to the `_receiver` by depositing underlying assets under `_maxAmount` constraint (ERC-4626 extension)
+   * @param _shares Amount of shares to mint
+   * @param _maxAmount Maximum amount of assets to be deposited (1-slippage)*shares
+   * @param _receiver Receiver of the shares
+   * @return deposited Amount of underlying assets deposited
+   */
+  function safeMint(
+    uint256 _shares,
+    uint256 _maxAmount,
+    address _receiver
+  ) public returns (uint256 deposited) {
+    deposited = _deposit(0, _shares, _receiver);
+    if (deposited > _maxAmount) revert AmountTooHigh(deposited);
   }
 
   /**
