@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -51,7 +51,7 @@ interface IRouter {
     address pool,
     TokenInput[] calldata inputs,
     bytes calldata data,
-    uint256 _minLiquidity,
+    uint256 minLiquidity,
     address callback,
     bytes calldata callbackData
   ) external payable returns (uint256 liquidity);
@@ -63,7 +63,7 @@ interface IRouter {
     address pool,
     TokenInput[] calldata inputs,
     bytes calldata data,
-    uint256 _minLiquidity,
+    uint256 minLiquidity,
     address callback,
     bytes calldata callbackData
   ) external payable returns (uint256 liquidity);
@@ -75,7 +75,7 @@ interface IRouter {
     address pool,
     TokenInput[] calldata inputs,
     bytes calldata data,
-    uint256 _minLiquidity,
+    uint256 minLiquidity,
     address callback,
     bytes calldata callbackData,
     SplitPermitParams[] memory permits

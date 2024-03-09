@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 /**
@@ -256,7 +256,7 @@ interface IPriceOracleGetter {
 
   /**
    * @notice Returns the base currency unit
-   * @dev 1 ether for ETH, 1e8 for USD
+   * @dev 1 ether for ETH, 1e12 for USD
    * @return Returns the base currency unit
    *
    */

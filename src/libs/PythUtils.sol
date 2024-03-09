@@ -1,41 +1,31 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../interfaces/IPyth.sol";
 import "./AsMaths.sol";
 
 /**
- * @title PythUtils
- * @dev Utilities related to Pyth oracle contracts
+ *             _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
+ *
+ * @title PythUtils - Utilities related to Pyth oracle contracts
+ * @author Astrolab DAO
  */
 library PythUtils {
   using AsMaths for uint256;
 
-  uint8 constant STANDARD_DECIMALS = 18;
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
-  /**
-   * @notice Converts a Pyth price to a uint256 value with the specified target decimals
-   * @dev Reverts if the price is negative, has an invalid exponent, or targetDecimals is greater than 255
-   * @param _price Pyth price to convert
-   * @param _targetDecimals Desired number of decimals for the result
-   * @return convertedPrice Converted uint256 value
-   */
-  function toUint256(
-    PythStructs.Price memory _price,
-    uint8 _targetDecimals
-  ) public pure returns (uint256 convertedPrice) {
-    require(_price.price >= 0 && _price.expo <= 0 && _price.expo > -256, "Invalid price");
+  uint8 constant REBASING_DECIMAL = 18;
 
-    uint8 feedDecimals = uint8(uint32(-_price.expo));
-    uint64 basePrice = uint64(_price.price);
-
-    // debase pyth feed decimals to target decimals
-    unchecked {
-      _targetDecimals >= feedDecimals
-        ? convertedPrice = basePrice * 10 ** uint32(_targetDecimals - feedDecimals)
-        : convertedPrice = basePrice / 10 ** uint32(feedDecimals - _targetDecimals);
-    }
-  }
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
    * @dev Retrieves the latest price in USD from Pyth's aggregator
@@ -76,8 +66,36 @@ library PythUtils {
       return 10 ** uint256(_decimals[1]);
     } // == weiPerUnit of base == 1:1
 
-    return getPriceUsd(_pyth, _feeds[0], _validities[0], STANDARD_DECIMALS).exchangeRate(
-      getPriceUsd(_pyth, _feeds[1], _validities[1], STANDARD_DECIMALS), _decimals[1]
+    return getPriceUsd(_pyth, _feeds[0], _validities[0], REBASING_DECIMAL).exchangeRate(
+      getPriceUsd(_pyth, _feeds[1], _validities[1], REBASING_DECIMAL), _decimals[1]
     ); // asset (base) decimals (rate divider)
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             LOGIC                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Converts a Pyth price to a uint256 value with the specified target decimals
+   * @dev Reverts if the price is negative, has an invalid exponent, or targetDecimals is greater than 255
+   * @param _price Pyth price to convert
+   * @param _targetDecimals Desired number of decimals for the result
+   * @return convertedPrice Converted uint256 value
+   */
+  function toUint256(
+    PythStructs.Price memory _price,
+    uint8 _targetDecimals
+  ) public pure returns (uint256 convertedPrice) {
+    require(_price.price >= 0 && _price.expo <= 0 && _price.expo > -256, "Invalid price");
+
+    uint8 feedDecimals = uint8(uint32(-_price.expo));
+    uint64 basePrice = uint64(_price.price);
+
+    // debase pyth feed decimals to target decimals
+    unchecked {
+      _targetDecimals >= feedDecimals
+        ? convertedPrice = basePrice * 10 ** uint32(_targetDecimals - feedDecimals)
+        : convertedPrice = basePrice / 10 ** uint32(feedDecimals - _targetDecimals);
+    }
   }
 }

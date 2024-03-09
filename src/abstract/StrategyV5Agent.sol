@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../interfaces/IStrategyV5.sol";
@@ -11,23 +11,27 @@ import "./AsRescuable.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title StrategyV5Agent Implementation - back-end contract proxied-to by strategies
+ * @title StrategyV5Agent - Astrolab's strategy back-end implementation
  * @author Astrolab DAO
- * @notice This contract is in charge of executing shared strategy logic (accounting, fees, etc.)
- * @dev Make sure all state variables are in StrategyV5Abstract to match proxy/implementation slots
+ * @notice Common strategy back-end, implementing shared vault/strategy accounting logic
+ * @notice All state variables must be in StrategyV5Abstract to match the proxy base storage layout (StrategyV5)
  */
 contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
   using AsMaths for uint256;
   using AsMaths for int256;
   using SafeERC20 for IERC20Metadata;
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                         INITIALIZATION                         ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   constructor() StrategyV5Abstract() {}
 
   /**
-   * @notice Initialize the strategy
-   * @param _params StrategyBaseParams struct containing strategy parameters
+   * @notice Initializes the strategy with base `_params`
+   * @param _params StrategyBaseParams struct containing strategy parameters (Erc20Metadata, CoreAddresses, Fees, inputs, inputWeights, rewardTokens)
    */
   function init(StrategyBaseParams calldata _params) public onlyAdmin {
     swapper = ISwapper(_params.coreAddresses.swapper);
@@ -40,8 +44,48 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     setSwapperAllowance(_MAX_UINT256, true, false, true); // reward allowances already set
   }
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
-   * @notice Sets the swapper allowance
+   * @notice Retrieves the share price from the strategy via the proxy
+   * @notice Calls sharePrice function on the IStrategyV5 contract through _stratProxy
+   * @return Strategy share price - Amount of underlying assets redeemable for one share
+   */
+  function sharePrice() public view override returns (uint256) {
+    return IStrategyV5(_stratProxy).sharePrice();
+  }
+
+  /**
+   * @return Total assets denominated in underlying assets, including claimable redemptions (strategy delegator `_stratProxy.totalAssets()`)
+   */
+  function totalAssets() public view override returns (uint256) {
+    return IStrategyV5(_stratProxy).totalAssets();
+  }
+
+  /**
+   * @return Total amount of invested inputs denominated in underlying assets
+   */
+  function invested() public view override returns (uint256) {
+    return IStrategyV5(_stratProxy).invested();
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                            SETTERS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Toggles fee exemption for an account
+   * @param _account Account to exempt
+   * @param _isExempt Whether to exempt or not
+   */
+  function setExemption(address _account, bool _isExempt) public onlyAdmin {
+    exemptionList[_account] = _isExempt;
+  }
+
+  /**
+   * @notice Sets the swapper's allowance
    * @param _amount Amount of allowance to set
    * @param _inputs Boolean indicating whether to set input allowances
    * @param _rewards Boolean indicating whether to set reward allowances
@@ -83,7 +127,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
   }
 
   /**
-   * @notice Change the Swapper address, remove allowances and give new ones
+   * @notice Updates the strategy's swapper, revokes allowances to the previous and grants it to the new one
    * @param _swapper Address of the new swapper
    */
   function updateSwapper(address _swapper) public onlyAdmin {
@@ -94,12 +138,11 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
   }
 
   /**
-   * @notice Changes the strategy asset token (automatically pauses the strategy)
-   * make sure to update the oracles by calling eg. StrategyV5Chainlink/Pyth.updateAsset()
-   * if the new asset has a different price (USD denominated), this will cause a sharePrice() sudden change
-   * @param _asset Address of the token
-   * @param _swapData Swap callData oldAsset->newAsset
-   * @param _priceFactor Multiplier of (old asset price * 1e18) / (new asset price)
+   * @notice Updates the strategy's underlying asset (critical, automatically pauses the strategy)
+   * @notice If the new asset has a different price (USD denominated), a sudden `sharePrice()` change is expected
+   * @param _asset Address of the new underlying asset
+   * @param _swapData Swap calldata used to exchange the old `asset` for the new `_asset`
+   * @param _priceFactor Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
    */
   function updateAsset(
     address _asset,
@@ -137,8 +180,8 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
   }
 
   /**
-   * @notice Sets the input weights for the input tokens
-   * @param _weights array of input weights
+   * @notice Sets the input weight of each input
+   * @param _weights Array of input weights
    */
   function setInputWeights(uint16[] calldata _weights) public onlyAdmin {
     if (_weights.length != _inputLength) revert InvalidData();
@@ -156,9 +199,10 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
   }
 
   /**
-   * @notice Sets the input tokens (strategy internals), make sure to liquidate() them first
-   * @param _inputs array of input tokens
-   * @param _weights array of input weights
+   * @notice Sets the strategy inputs and weights
+   * @notice In case of pre-existing inputs, a call to `liquidate()` should precede this in order to not lose track of the strategy's liquidity
+   * @param _inputs Array of input addresses
+   * @param _weights Array of input weights
    */
   function setInputs(
     address[] calldata _inputs,
@@ -180,8 +224,8 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
   }
 
   /**
-   * @notice Sets the reward tokens
-   * @param _rewardTokens array of reward tokens
+   * @notice Sets the strategy reward tokens
+   * @param _rewardTokens Array of reward tokens
    */
   function setRewardTokens(address[] calldata _rewardTokens) public onlyManager {
     if (_rewardTokens.length > 8) revert Unauthorized();
@@ -197,46 +241,22 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     setSwapperAllowance(_MAX_UINT256, false, true, false);
   }
 
-  /**
-   * @notice Retrieves the share price from the strategy via the proxy
-   * @dev Calls sharePrice function on the IStrategyV5 contract through _stratProxy
-   * @return The current share price from the strategy
-   */
-  function sharePrice() public view override returns (uint256) {
-    return IStrategyV5(_stratProxy).sharePrice();
-  }
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             LOGIC                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Retrieves the total assets from the strategy via the proxy
-   * @dev Calls totalAssets function on the IStrategyV5 contract through _stratProxy
-   * @return The total assets managed by the strategy
-   */
-  function totalAssets() public view override returns (uint256) {
-    return IStrategyV5(_stratProxy).totalAssets();
-  }
-
-  /**
-   * @notice Total amount of invested inputs denominated in asset
-   * @dev Abstract function to be implemented by the strategy
-   * @return Amount of assets
-   */
-  function invested() public view override returns (uint256) {
-    return IStrategyV5(_stratProxy).invested();
-  }
-
-  /**
-   * @dev Requests a rescue for a specific token
-   * Only the admin can call this function
-   * @param _token The address of the token to be rescued (use address(1) for native/eth)
+   * @notice Requests a rescue for `_token`, setting `msg.sender` as the receiver
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
    */
   function requestRescue(address _token) external override onlyAdmin {
     AsRescuable._requestRescue(_token);
   }
 
   /**
-   * @dev Rescues a specific token by sending it to the rescueRequest.receiver (admin)
-   * Only the admin can call this function
-   * @param _token The address of the token to be rescued (use address(1) for native/eth)
+   * @notice Rescues the contract's `_token` (ERC20 or native) full balance by sending it to `req.receiver`if a valid rescue request exists
+   * @notice Rescue request must be executed after `RESCUE_TIMELOCK` and before end of validity (`RESCUE_TIMELOCK + RESCUE_VALIDITY`)
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
    */
   function rescue(address _token) external override onlyManager {
     _rescue(_token);

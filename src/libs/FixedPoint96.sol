@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 /**
@@ -7,6 +7,11 @@ pragma solidity 0.8.22;
  * @dev Used in SqrtPriceMath.sol
  */
 library FixedPoint96 {
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   uint8 internal constant RESOLUTION = 96; // number of bits for representing fixed point numbers
   uint256 internal constant Q96 = 0x1000000000000000000000000; // 2^96, representing 1 in fixed point format
 }

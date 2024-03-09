@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../libs/AsCast.sol";
@@ -9,18 +9,35 @@ import "../libs/AsIterableSet.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AsAccessControl - Lighter OZ AccessControlEnumerable
+ * @title AsAccessControl - Astrolab's access controller
  * @author Astrolab DAO
- * @notice Abstract contract to manage roles and contract pausing
- * @dev keeper (routine operator/bot), manager (elevated 1) and admin (elevated 2-multisig)
- * roles are defined by default
+ * @notice Inspired by OZ's AccessControlEnumerable, used for RBAC and contract pausing
  */
 abstract contract AsAccessControl {
   using AsIterableSet for AsIterableSet.Set;
   using AsCast for bytes32;
   using AsCast for address;
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              TYPES                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  struct RoleState {
+    AsIterableSet.Set members;
+    bytes32 adminRole;
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             ERRORS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  error Unauthorized();
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             EVENTS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   event RoleAdminChanged(
     bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole
@@ -32,148 +49,152 @@ abstract contract AsAccessControl {
     bytes32 indexed role, address indexed account, address indexed sender
   );
 
-  error Unauthorized();
-
-  struct RoleState {
-    AsIterableSet.Set members;
-    bytes32 adminRole;
-  }
-
-  mapping(bytes32 => RoleState) private _roles;
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                            STORAGE                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  mapping(bytes32 => RoleState) private _roles;
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           MODIFIERS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
-   * @dev Modifier to check if the caller has a specific role
+   * @notice Checks if the caller has a role
    */
   modifier onlyRole(bytes32 role) {
     _checkRole(role);
     _;
   }
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
-   * @dev Checks if an account has a specific role
-   * @param role The role to check
-   * @param account The account to check
-   * @return True if the account has the role, false otherwise
+   * @notice Checks if `_account` has `_role`
+   * @param _role Role to check
+   * @param account Account to check
+   * @return Boolean indicating if `_account` has `_role`
    */
-  function hasRole(bytes32 role, address account) public view virtual returns (bool) {
-    return _roles[role].members.has(account.toBytes32());
+  function hasRole(bytes32 _role, address account) public view virtual returns (bool) {
+    return _roles[_role].members.has(account.toBytes32());
   }
 
   /**
-   * @dev Internal function to check if the sender has a specific role
-   * @param role The role to check
+   * @notice Checks if `msg.sender` has `_role`
+   * @param _role Role to check
    */
-  function _checkRole(bytes32 role) internal view virtual {
-    _checkRole(role, msg.sender);
+  function _checkRole(bytes32 _role) internal view virtual {
+    _checkRole(_role, msg.sender);
   }
 
   /**
-   * @dev Internal function to check if an account has a specific role
-   * @param role The role to check
-   * @param account The account to check
+   * @notice Checks if `_account` has `_role`
+   * @param _role Role to check
+   * @param _account Account to check
    */
-  function _checkRole(bytes32 role, address account) internal view virtual {
-    if (!hasRole(role, account)) revert Unauthorized();
+  function _checkRole(bytes32 _role, address _account) internal view virtual {
+    if (!hasRole(_role, _account)) revert Unauthorized();
   }
 
   /**
-   * @dev Get the admin role of a specific role
-   * @param role The role to query the admin role of
-   * @return The admin role of the queried role
+   * @notice Gets the admin role of a _role
+   * @param _role Role to query the admin role of
+   * @return Admin role of `_role`
    */
-  function getRoleAdmin(bytes32 role) public view virtual returns (bytes32) {
-    return _roles[role].adminRole;
+  function getRoleAdmin(bytes32 _role) public view virtual returns (bytes32) {
+    return _roles[_role].adminRole;
   }
 
   /**
-   * @dev Grants a role to an account
-   * @param role The role to grant
-   * @param account The account to grant the role to
+   * @notice Gets the members of `_role`
+   * @param _role Role to get members of
+   * @return Array of `_role` members
+   */
+  function getMembers(bytes32 _role) public view virtual returns (address[] memory) {
+    return _roles[_role].members.valuesAsAddress();
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             LOGIC                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Grants `_role` to `_account`
+   * @param _role Role to grant
+   * @param _account Account to grant `_role` to
    */
   function grantRole(
-    bytes32 role,
-    address account
-  ) public virtual onlyRole(getRoleAdmin(role)) {
-    _grantRole(role, account);
+    bytes32 _role,
+    address _account
+  ) public virtual onlyRole(getRoleAdmin(_role)) {
+    _grantRole(_role, _account);
   }
 
   /**
-   * @dev Revokes a role from an account
-   * @param role The role to revoke
-   * @param account The account to revoke the role from
+   * @notice Revokes `_role` from `_account`
+   * @param _role Role to revoke
+   * @param _account Account to revoke `_role` from
    */
   function revokeRole(
-    bytes32 role,
-    address account
-  ) public virtual onlyRole(getRoleAdmin(role)) {
-    _revokeRole(role, account);
+    bytes32 _role,
+    address _account
+  ) public virtual onlyRole(getRoleAdmin(_role)) {
+    _revokeRole(_role, _account);
   }
 
   /**
-   * @dev Renounce a role for the sender account
-   * @param role The role to renounce
+   * @notice Renounces `_role` (revokes from `msg.sender`)
+   * @param _role Role to renounce
    */
-  function renounceRole(bytes32 role) external virtual {
-    if (role == DEFAULT_ADMIN_ROLE) revert Unauthorized();
-    _revokeRole(role, msg.sender);
+  function renounceRole(bytes32 _role) external virtual {
+    if (_role == DEFAULT_ADMIN_ROLE) revert Unauthorized();
+    _revokeRole(_role, msg.sender);
   }
 
   /**
-   * @dev Internal function to set up a role for an account
-   * @param role The role to set up
-   * @param account The account to set up the role for
+   * @notice Sets `_role`'s admin role
+   * @param _role Role to set the admin role of
+   * @param _adminRole Admin role to be set
    */
-  function _setupRole(bytes32 role, address account) internal virtual {
-    _grantRole(role, account);
+  function _setRoleAdmin(bytes32 _role, bytes32 _adminRole) internal virtual {
+    RoleState storage role = _roles[_role];
+    emit RoleAdminChanged(_role, role.adminRole, _adminRole);
+    role.adminRole = _adminRole;
   }
 
   /**
-   * @dev Internal function to set the admin role for a given role
-   * @param role The role to set the admin role of
-   * @param adminRole The admin role to be set
+   * @notice Grants `_role` to `_account`
+   * @param _role Role to grant
+   * @param _account Account to grant `_role` to
    */
-  function _setRoleAdmin(bytes32 role, bytes32 adminRole) internal virtual {
-    RoleState storage _role = _roles[role];
-    emit RoleAdminChanged(role, _role.adminRole, adminRole);
-    _role.adminRole = adminRole;
-  }
-
-  /**
-   * @dev Internal function to grant a role to an account
-   * @param role The role to grant
-   * @param account The account to grant the role to
-   */
-  function _grantRole(bytes32 role, address account) internal virtual {
-    RoleState storage _role = _roles[role];
-    bytes32 accSig = account.toBytes32();
-    if (!_role.members.has(accSig)) {
-      _role.members.push(accSig);
-      emit RoleGranted(role, account, msg.sender);
+  function _grantRole(bytes32 _role, address _account) internal virtual {
+    RoleState storage role = _roles[_role];
+    bytes32 accSig = _account.toBytes32();
+    if (!role.members.has(accSig)) {
+      role.members.push(accSig);
+      emit RoleGranted(_role, _account, msg.sender);
     }
   }
 
   /**
-   * @dev Internal function to revoke a role from an account
-   * @param role The role to revoke
-   * @param account The account to revoke the role from
+   * @notice Revokes `_role` from `_account`
+   * @param _role Role to revoke
+   * @param _account Account to revoke `_role` from
    */
-  function _revokeRole(bytes32 role, address account) internal virtual {
-    RoleState storage _role = _roles[role];
-    bytes32 accSig = account.toBytes32();
-    if (_role.members.has(accSig)) {
-      _role.members.remove(accSig);
-      emit RoleRevoked(role, account, msg.sender);
+  function _revokeRole(bytes32 _role, address _account) internal virtual {
+    RoleState storage role = _roles[_role];
+    bytes32 accSig = _account.toBytes32();
+    if (role.members.has(accSig)) {
+      role.members.remove(accSig);
+      emit RoleRevoked(_role, _account, msg.sender);
     }
-  }
-
-  /**
-   * @dev Gets the members of a specific role
-   * @param role The role to get members of
-   * @return An array of addresses who are members of the role
-   */
-  function getMembers(bytes32 role) public view virtual returns (address[] memory) {
-    return _roles[role].members.valuesAsAddress();
   }
 }

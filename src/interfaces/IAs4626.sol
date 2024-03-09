@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../abstract/AsTypes.sol";
@@ -22,7 +22,7 @@ interface IFlashLoanReceiver {
    * @param premium The premium amount to be repaid along with the debt
    * @param initiator The address initiating the flash loan
    * @param params Additional parameters for the operation
-   * @return A boolean indicating the success of the operation
+   * @return Boolean indicating the success of the operation
    */
   function executeOperation(
     address asset,
@@ -42,7 +42,7 @@ interface IAs4626Abstract is
   function _maxSlippageBps() external view returns (uint16);
   function _profitCooldown() external view returns (uint256);
   function maxTotalAssets() external view returns (uint256);
-  function _minLiquidity() external view returns (uint256);
+  function minLiquidity() external view returns (uint256);
   function asset() external view returns (address);
   function decimals() external view returns (uint8);
   function _WEI_PER_SHARE() external view returns (uint256);

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
@@ -10,67 +10,79 @@ import "./AsRescuableAbstract.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AsRescuable Abstract - Token rescue extension for payable contracts
+ * @title AsRescuable Abstract - Astrolab's token rescuer for payable contracts
  * @author Astrolab DAO
  */
 abstract contract AsRescuable is AsRescuableAbstract {
   using SafeERC20 for IERC20Metadata;
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   uint64 public constant RESCUE_TIMELOCK = 2 days;
   uint64 public constant RESCUE_VALIDITY = 7 days;
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
-   * @dev Checks if a rescue request is locked based on the current timestamp
-   * @param req The rescue request to check
-   * @return A boolean indicating whether the rescue request is locked
+   * @notice Checks if a rescue request `_req` is locked based on the current timestamp
+   * @param _req Rescue request to check
+   * @return Boolean indicating whether `_req` is locked
    */
-  function _isRescueLocked(RescueRequest memory req) internal view returns (bool) {
-    return block.timestamp < (req.timestamp + RESCUE_TIMELOCK);
+  function _isRescueLocked(RescueRequest memory _req) internal view returns (bool) {
+    return block.timestamp < (_req.timestamp + RESCUE_TIMELOCK);
   }
 
   /**
-   * @dev Checks if a rescue request is stale based on the current timestamp
-   * @param req The rescue request to check
-   * @return A boolean indicating whether the rescue request is stale
+   * @notice Checks if a rescue request `_req` is stale based on the current timestamp
+   * @param _req Rescue request to check
+   * @return Boolean indicating whether `_req` is stale
    */
-  function _isRescueExpired(RescueRequest memory req) internal view returns (bool) {
-    return block.timestamp > (req.timestamp + RESCUE_TIMELOCK + RESCUE_VALIDITY);
+  function _isRescueExpired(RescueRequest memory _req) internal view returns (bool) {
+    return block.timestamp > (_req.timestamp + RESCUE_TIMELOCK + RESCUE_VALIDITY);
   }
 
   /**
-   * @dev Checks if a rescue request is unlocked based on the current timestamp
-   * @param req The rescue request to check
-   * @return A boolean indicating whether the rescue request is unlocked
+   * @notice Checks if a rescue request `_req` is unlocked based on the current timestamp
+   * @param _req Rescue request to check
+   * @return Boolean indicating whether `_req` is unlocked
    */
-  function _isRescueUnlocked(RescueRequest memory req) internal view returns (bool) {
-    return !_isRescueExpired(req) && !_isRescueLocked(req);
+  function _isRescueUnlocked(RescueRequest memory _req) internal view returns (bool) {
+    return !_isRescueExpired(_req) && !_isRescueLocked(_req);
   }
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             LOGIC                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
-   * @dev Requests a rescue for a specific token
-   * @param _token The address of the token to be rescued
+   * @notice Requests a rescue for `_token`, setting `msg.sender` as the receiver
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
    */
   function _requestRescue(address _token) internal {
-    RescueRequest storage req = _rescueRequests[_token];
-    require(!_isRescueUnlocked(req));
+    RescueRequest storage _req = _rescueRequests[_token];
+    require(!_isRescueUnlocked(_req));
     // set pending rescue request
-    req.receiver = msg.sender;
-    req.timestamp = block.timestamp;
+    _req.receiver = msg.sender;
+    _req.timestamp = block.timestamp;
   }
 
-  // to be overriden with the proper access control by inheriting contracts
+  /**
+   * @notice Requests a rescue for `_token`, setting `msg.sender` as the receiver
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
+   * @dev This should be overriden with the proper access control by inheriting contracts
+   */
   function requestRescue(address _token) external virtual;
 
   /**
-   * @dev Internal function to rescue tokens or native tokens (ETH) from the contract
-   * @param _token The address of the token to be rescued. Use address(1) for native tokens (ETH)
-   * @notice This function can only be called by the receiver specified in the rescue request
-   * The rescue request must be initiated before the rescue timelock expires
-   * The rescue request remains valid until the rescue validity period expires
-   * If the rescue request is valid, the specified amount of tokens will be transferred to the receiver
-   * If the rescue request is not valid, a new rescue request will be set with the caller as the receiver
+   * @notice Rescues the contract's `_token` (ERC20 or native) full balance by sending it to `req.receiver`if a valid rescue request exists
+   * @notice Rescue request must be executed after `RESCUE_TIMELOCK` and before end of validity (`RESCUE_TIMELOCK + RESCUE_VALIDITY`)
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
    */
   function _rescue(address _token) internal {
     RescueRequest storage req = _rescueRequests[_token];
@@ -93,6 +105,11 @@ abstract contract AsRescuable is AsRescuableAbstract {
     delete _rescueRequests[_token];
   }
 
-  // to be overriden with the proper access control by inheriting contracts
+  /**
+   * @notice Rescues the contract's `_token` (ERC20 or native) full balance by sending it to `req.receiver`if a valid rescue request exists
+   * @notice Rescue request must be executed after `RESCUE_TIMELOCK` and before end of validity (`RESCUE_TIMELOCK + RESCUE_VALIDITY`)
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
+   * @dev This should be overriden with the proper access control by inheriting contracts
+   */
   function rescue(address _token) external virtual {}
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 /**
@@ -6,18 +6,21 @@ pragma solidity 0.8.22;
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AsArrays Library
+ * @title AsArrays Library - Astrolab's Array manipulation library
  * @author Astrolab DAO
- * @notice Astrolab's Array manipulation library
- * @dev This library helps with high level array manipulation
  */
 library AsArrays {
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
    * @notice Returns the sum of all elements in the array
    * @param self Storage array containing uint256 type variables
-   * @return value The sum of all elements, does not check for overflow
+   * @return value Sum of all elements, does not check for overflow
    */
   function sum(uint256[] storage self) public view returns (uint256 value) {
     assembly {
@@ -33,8 +36,8 @@ library AsArrays {
 
   /**
    * @dev Returns the maximum value in the given array
-   * @param self The array to find the maximum value from
-   * @return value The maximum value in the array
+   * @param self Array to find the maximum value from
+   * @return value Maximum value in the array
    */
   function max(uint256[] storage self) public view returns (uint256 value) {
     assembly {
@@ -59,8 +62,8 @@ library AsArrays {
 
   /**
    * @dev Returns the minimum value in the given array
-   * @param self The array to find the minimum value from
-   * @return value The minimum value in the array
+   * @param self Array to find the minimum value from
+   * @return value Minimum value in the array
    */
   function min(uint256[] storage self) public view returns (uint256 value) {
     bool initialized;
@@ -92,10 +95,10 @@ library AsArrays {
 
   /**
    * @dev Slices a portion of a uint256 array
-   * @param data The uint256 array to slice
-   * @param begin The starting index of the slice
-   * @param length The length of the slice
-   * @return The sliced uint256 array
+   * @param data Uint256 array to slice
+   * @param begin Starting index of the slice
+   * @param length Length of the slice
+   * @return Sliced uint256 array
    */
   function slice(
     uint256[] memory data,
@@ -127,10 +130,10 @@ library AsArrays {
 
   /**
    * @dev Slices a portion of a bytes array
-   * @param data The bytes array to slice
-   * @param begin The starting index of the slice
-   * @param length The length of the slice
-   * @return The sliced portion of the bytes array
+   * @param data Bytes array to slice
+   * @param begin Starting index of the slice
+   * @param length Length of the slice
+   * @return Sliced portion of the bytes array
    */
   function slice(
     bytes memory data,
@@ -161,9 +164,9 @@ library AsArrays {
 
   /**
    * @dev Fills a dynamic array with a specific value
-   * @param a The value to fill the array with
-   * @param n The size of the array
-   * @return arr The filled array
+   * @param a Value to fill the array with
+   * @param n Size of the array
+   * @return arr Filled array
    */
   function fill(uint8 a, uint64 n) internal pure returns (uint8[] memory arr) {
     arr = new uint8[](n);
@@ -188,8 +191,8 @@ library AsArrays {
 
   /**
    * @dev Converts a value to a one-element array
-   * @param a The value to convert to an array
-   * @return arr The resulting array
+   * @param a Value to convert to an array
+   * @return arr Resulting array
    */
   function toArray(uint8 a) internal pure returns (uint8[] memory arr) {
     arr = new uint8[](1);

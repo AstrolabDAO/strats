@@ -1,5 +1,20 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
+
+/**
+ *             _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
+ *
+ * @title AsTypes - Astrolab's types
+ * @author Astrolab DAO
+ */
+
+/*═══════════════════════════════════════════════════════════════╗
+║                              TYPES                             ║
+╚═══════════════════════════════════════════════════════════════*/
 
 // As4626 fee structure
 struct Fees {
@@ -23,7 +38,6 @@ struct CoreAddresses {
   address swapper;
   address agent;
 }
-// address allocator;
 
 // StrategyV5 init params
 struct StrategyBaseParams {
@@ -35,7 +49,7 @@ struct StrategyBaseParams {
   address[] rewardTokens;
 }
 
-// ERC7540 Request
+// ERC-7540 Request
 struct Erc7540Request {
   uint256 timestamp; // timestamp of the request
   uint256 sharePrice; // share price at request time
@@ -44,16 +58,16 @@ struct Erc7540Request {
   uint256 requestId; // request ID
 }
 
-// ERC7540 Requests used by strategies to manage asynchronous deposits and redemptions
+// Request context used to manage a vault's asynchronous deposits and redemptions
 struct Requests {
   uint256 redemptionLocktime; // locktime for redemption requests = 2 days
   uint256 totalDeposit; // total amount requested for deposit
-  uint256 totalRedemption; // total shares requested for redemption (1e8)
-  uint256 totalClaimableRedemption; // total shares claimable for redemption (1e8)
-  mapping(address => Erc7540Request) byOwner; // mapping of ERC7540 requests by owner
+  uint256 totalRedemption; // total shares requested for redemption (1e12)
+  uint256 totalClaimableRedemption; // total shares claimable for redemption (1e12)
+  mapping(address => Erc7540Request) byOwner; // mapping of ERC-7540 requests by owner
 }
 
-// Epoch used to by strategies to keep track of latest events
+// Epoch context used to keep track of a vault's latest events
 struct Epoch {
   // dates
   uint64 feeCollection; // last fee collection timestamp
@@ -63,7 +77,7 @@ struct Epoch {
   // values
   uint256 sharePrice; // last used share sharePrice (at deposit/withdraw/liquidate time)
   uint256 accountedSharePrice; // last accounted share price (at fee collection time)
-  uint256 accountedProfit; // last accounted profit (fee collection) 1e8
+  uint256 accountedProfit; // last accounted profit (fee collection) 1e12
   uint256 accountedAssets; // last accounted total assets (fee collection)
   uint256 accountedSupply; // last accounted total supply (fee collection)
 }

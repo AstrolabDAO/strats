@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: BSL 1.1
-pragma solidity 0.8.22;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.0;
 
 import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,21 +11,32 @@ import "./As4626Abstract.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title As4626Abstract - inherited by all strategies
+ * @title StrategyV5 - Astrolab's base Strategy to be extended by implementations
  * @author Astrolab DAO
- * @notice All As4626 calls are delegated to the agent (StrategyV5Agent)
- * @dev Make sure all As4626 state variables here to match proxy/implementation slots
+ * @notice Common strategy back-end extended by implementations, delegating vault logic to StrategyV5Agent
+ * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
 abstract contract StrategyV5Abstract is As4626Abstract {
-  // Events
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             ERRORS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  error InvalidOrStaleValue(uint256 updateTime, int256 value);
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             EVENTS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   event Invest(uint256 amount, uint256 timestamp);
   event Harvest(uint256 amount, uint256 timestamp);
   event Liquidate(uint256 amount, uint256 liquidityAvailable, uint256 timestamp);
 
-  // Errors
-  error InvalidOrStaleValue(uint256 updateTime, int256 value);
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                            STORAGE                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   // State variables (As4626 extension)
   IWETH9 public wgas; // gas/native wrapper contract
@@ -41,7 +52,15 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   uint8 internal _inputLength; // used length of inputs[] (index of last non-zero element)
   uint8 internal _rewardLength; // used length of rewardTokens[] (index of last non-zero element)
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                         INITIALIZATION                         ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   constructor() As4626Abstract() {}
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
    * @notice Calculates the total pending redemption requests in shares

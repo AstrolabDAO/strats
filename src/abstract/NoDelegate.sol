@@ -1,15 +1,22 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 /**
- * @title Prevents delegatecall to a contract
- * @notice Abstract contract that provides a modifier for preventing delegatecalls in implementations
+ *             _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
+ *
+ * @title NoDelegate - Astrolab's delegatecall blocker
+ * @author Astrolab DAO
+ * @notice Provides a modifier for preventing delegatecalls, inspired by Uniswap and Gnosis's implementations
  */
 abstract contract NoDelegate {
   address private immutable root;
 
   /**
-   * @dev Initializes the root address
+   * @notice Initializes the root address
    */
   constructor() {
     // Immutables are computed in the init code of the contract, and then inlined into the deployed bytecode
@@ -18,8 +25,7 @@ abstract contract NoDelegate {
   }
 
   /**
-   * @dev Private method is used instead of inlining into modifier because modifiers are copied into each method,
-   *     and the use of immutable means the address bytes are copied in every place the modifier is used
+   * @notice Ensures that the executing contract is `root` and not another contract
    */
   function checkNotDelegate() private view {
     require(address(this) == root);

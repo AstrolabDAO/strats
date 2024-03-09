@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../../libs/AsArrays.sol";
@@ -11,7 +11,7 @@ import "../Balancer/interfaces/v2/IBalancer.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
  * @title AgaveMultiStake Strategy - Liquidity providing on Agave
  * @author Astrolab DAO
@@ -40,7 +40,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set the strategy specific parameters
+   * @notice Sets the strategy specific parameters
    * @param _params Strategy specific parameters
    */
   function setParams(Params calldata _params) public onlyAdmin {
@@ -222,7 +222,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set allowances for third party contracts (except rewardTokens)
+   * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
   function _setAllowances(uint256 _amount) internal override {
@@ -250,7 +250,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Convert LP/staked LP to input
+   * @notice Converts LP/staked LP to input
    * @return Input value of the LP amount
    */
   function _stakeToInput(
@@ -261,7 +261,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Convert input to LP/staked LP
+   * @notice Converts input to LP/staked LP
    * @return LP value of the input amount
    */
   function _inputToStake(

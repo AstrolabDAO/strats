@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../../libs/AsMaths.sol";
@@ -12,7 +12,7 @@ import "./interfaces/IStakingRewards.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
  * @title HopMultiStake - Liquidity providing on Hop (n stable (max 5), eg. USDC+USDT+DAI)
  * @author Astrolab DAO
@@ -42,7 +42,7 @@ contract HopMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set the strategy parameters
+   * @notice Sets the strategy parameters
    * @param _params Strategy parameters
    */
   function setParams(Params calldata _params) public onlyAdmin {
@@ -56,7 +56,7 @@ contract HopMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set the reward pools
+   * @notice Sets the reward pools
    * @param rewardPools Array of reward pools
    */
   function setRewardPools(address[] calldata rewardPools, uint8 _index) public onlyAdmin {
@@ -224,7 +224,7 @@ contract HopMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set allowances for third party contracts (except rewardTokens)
+   * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
   function _setAllowances(uint256 _amount) internal override {
@@ -255,7 +255,7 @@ contract HopMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Convert LP/staked LP to input
+   * @notice Converts LP/staked LP to input
    * @return Input value of the LP amount
    */
   function _stakeToInput(
@@ -268,7 +268,7 @@ contract HopMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Convert input to LP/staked LP
+   * @notice Converts input to LP/staked LP
    * @return LP value of the input amount
    */
   function _inputToStake(

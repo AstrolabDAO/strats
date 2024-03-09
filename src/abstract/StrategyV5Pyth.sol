@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -11,7 +11,7 @@ import "../interfaces/IPyth.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
  * @title StrategyV5Pyth - Pyth Network oracles aware StrategyV5 extension
  * @author Astrolab DAO
@@ -22,12 +22,9 @@ abstract contract StrategyV5Pyth is StrategyV5 {
   using PythUtils for PythStructs.Price;
   using PythUtils for uint256;
 
-  // Third party contracts
-  IPythAggregator internal _pyth; // Pyth oracle
-  mapping(address => bytes32) public feedByAsset; // PythId by asset
-  mapping(bytes32 => uint256) public validityByFeed; // Price feed validity periods by oracle address
-
-  constructor() StrategyV5() {}
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              TYPES                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   struct PythParams {
     address pyth;
@@ -36,6 +33,22 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     bytes32[] inputFeeds;
     uint256[] inputFeedValidities;
   }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                            STORAGE                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  // Third party contracts
+  IPythAggregator internal _pyth; // Pyth oracle
+  mapping(address => bytes32) public feedByAsset; // PythId by asset
+  mapping(bytes32 => uint256) public validityByFeed; // Price feed validity periods by oracle address
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                         INITIALIZATION                         ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  constructor() StrategyV5() {}
+
 
   /**
    * @dev Initializes the strategy with the specified parameters
@@ -49,6 +62,10 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     updatePyth(_pythParams);
     StrategyV5._init(_params);
   }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             LOGIC                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
    * @dev Sets the validity duration for a single price feed
@@ -87,9 +104,10 @@ abstract contract StrategyV5Pyth is StrategyV5 {
   }
 
   /**
-   * @notice Changes the strategy asset token (automatically pauses the strategy)
-   * @param _asset Address of the token
-   * @param _swapData Swap callData oldAsset->newAsset
+   * @notice Updates the strategy underlying asset (critical, automatically pauses the strategy)
+   * @notice If the new asset has a different price (USD denominated), a sudden `sharePrice()` change is expected
+   * @param _asset Address of the new underlying asset
+   * @param _swapData Swap calldata used to exchange the old `asset` for the new `_asset`
    * @param _feed Pyth price feed id
    * @param _validity The new validity duration in seconds
    */
@@ -103,13 +121,13 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
     bytes32 assetFeed = feedByAsset[address(asset)];
     uint256 retiredPrice = PythUtils.getPriceUsd(
-      _pyth, assetFeed, validityByFeed[assetFeed], PythUtils.STANDARD_DECIMALS
+      _pyth, assetFeed, validityByFeed[assetFeed], PythUtils.REBASING_DECIMAL
     );
 
     setPriceFeed(_asset, _feed, _validity);
 
     uint256 newPrice = PythUtils.getPriceUsd(
-      _pyth, _feed, validityByFeed[_feed], PythUtils.STANDARD_DECIMALS
+      _pyth, _feed, validityByFeed[_feed], PythUtils.REBASING_DECIMAL
     ); // same base as prior price
 
     uint256 rate = retiredPrice.exchangeRate(newPrice, decimals);
@@ -117,9 +135,10 @@ abstract contract StrategyV5Pyth is StrategyV5 {
   }
 
   /**
-   * @notice Changes the strategy input tokens
-   * @param _inputs Array of input token addresses
-   * @param _weights Array of input token weights
+   * @notice Sets the strategy inputs and weights
+   * @notice In case of pre-existing inputs, a call to `liquidate()` should precede this in order to not lose track of the strategy's liquidity
+   * @param _inputs Array of input addresses
+   * @param _weights Array of input weights
    * @param _feeds Array of Pyth price feed ids
    * @param _validities Array of Pyth price feed validity periods
    */

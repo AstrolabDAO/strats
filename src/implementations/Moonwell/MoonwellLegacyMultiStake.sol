@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../../libs/AsArrays.sol";
@@ -10,7 +10,7 @@ import "./interfaces/IMoonwell.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
  * @title MoonwellLegacyMultiStake Strategy - Liquidity providing on Moonwell Artemis/Apollo (Moonbeam/Moonriver)
  * @author Astrolab DAO

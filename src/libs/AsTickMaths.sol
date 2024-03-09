@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 /**
@@ -7,6 +7,11 @@ pragma solidity 0.8.22;
  * prices between 2**-128 and 2**128
  */
 library AsTickMath {
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
    * @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
    */
@@ -27,6 +32,10 @@ library AsTickMath {
    */
   uint160 internal constant _MAX_SQRT_RATIO =
     1461446703485210103287273052203988822378723970342;
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             LOGIC                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
    * @notice Calculates sqrt(1.0001^tick) * 2^96

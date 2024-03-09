@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../../libs/AsArrays.sol";
@@ -10,7 +10,7 @@ import "./interfaces/IBenqi.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
  * @title BenqiMultiStake Strategy - Liquidity providing on Benqi
  * @author Astrolab DAO
@@ -36,7 +36,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set the strategy specific parameters
+   * @notice Sets the strategy specific parameters
    * @param _params Strategy specific parameters
    */
   function setParams(Params calldata _params) public onlyAdmin {
@@ -180,7 +180,7 @@ contract BenqiMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set allowances for third party contracts (except rewardTokens)
+   * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
   function _setAllowances(uint256 _amount) internal override {
@@ -206,25 +206,25 @@ contract BenqiMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Convert LP/staked LP to input
+   * @notice Converts LP/staked LP to input
    * @return Input value of the LP amount
    */
   function _stakeToInput(
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return _amount.mulDiv(_qiTokens[_index].exchangeRateStored(), 1e18); // eg. 1e8+1e(36-8)-1e18 = 1e18
+    return _amount.mulDiv(_qiTokens[_index].exchangeRateStored(), 1e18); // eg. 1e12+1e(36-8)-1e18 = 1e18
   }
 
   /**
-   * @notice Convert input to LP/staked LP
+   * @notice Converts input to LP/staked LP
    * @return LP value of the input amount
    */
   function _inputToStake(
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return _amount.mulDiv(1e18, _qiTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e8
+    return _amount.mulDiv(1e18, _qiTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e12
   }
 
   /**

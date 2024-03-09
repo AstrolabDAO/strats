@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "./As4626Abstract.sol";
@@ -15,17 +15,21 @@ import "../libs/AsAccounting.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title As4626 Abstract - inherited by all strategies
+ * @title As4626 - Astrolab's ERC-4626+ERC-7540 base tokenized vault
  * @author Astrolab DAO
- * @notice All As4626 calls are delegated to the agent (StrategyV5Agent)
- * @dev Make sure all state variables are in As4626Abstract to match proxy/implementation slots
+ * @notice Common vault/strategy back-end extended by StrategyV5Agent, delegated to by StrategyV5 implementations
+ * @dev All state variables must be in As4626Abstract to match the proxy base storage layout (StrategyV5)
  */
 abstract contract As4626 is As4626Abstract {
   using AsMaths for uint256;
   using AsMaths for int256;
   using SafeERC20 for IERC20Metadata;
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             EVENTS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   event FeeCollection(
     address indexed collector,
@@ -38,12 +42,16 @@ abstract contract As4626 is As4626Abstract {
 
   receive() external payable {}
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                         INITIALIZATION                         ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
-   * @dev Initializes the contract with the provided ERC20 metadata, core addresses, and fees
-   * Only the admin can call this function
-   * @param _erc20Metadata The ERC20 metadata including name, symbol, and decimals
-   * @param _coreAddresses The core addresses including the fee collector address
-   * @param _fees The fees structure
+   * @notice Initializes the vault with the provided `_erc20Metadata`, `_coreAddresses`, and `_fees`
+   * @notice This is the end of the initialization call flow, started by `implementation.init()`
+   * @param _erc20Metadata ERC20 metadata [name,symbol,decimals]
+   * @param _coreAddresses Vault ops addreses [wgas,asset,feeCollector,swapper,agent]
+   * @param _fees Fees structure [perf,mgmt,entry,exit,flash]
    */
   function init(
     Erc20Metadata calldata _erc20Metadata,
@@ -64,22 +72,326 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Mints shares to the receiver by depositing asset tokens
-   * @param _shares Amount of shares minted to the _receiver
-   * @param _receiver Shares receiver
-   * @return assets Amount of assets deposited
+   * @notice Seeds the vault liquidity by setting its `maxTotalAssets` and depositing `_seedDeposit` into it
+   * @notice This function should be called after `init()` to enable vault deposits
+   * @param _seedDeposit Amount of assets to seed the vault with
+   * @param _maxTotalAssets Maximum amount of assets that can be deposited
    */
-  function mint(uint256 _shares, address _receiver) public returns (uint256 assets) {
+  function seedLiquidity(
+    uint256 _seedDeposit,
+    uint256 _maxTotalAssets
+  ) external onlyManager {
+    // 1e12 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
+    // allowance should be given to the vault before calling this function
+    if (_seedDeposit < (minLiquidity - totalAssets())) {
+      revert AmountTooLow(_seedDeposit);
+    }
+
+    // seed the vault with some assets if it's empty
+    setMaxTotalAssets(_maxTotalAssets);
+
+    // if the vault is still paused, unpause it
+    if (paused()) _unpause();
+    deposit(_seedDeposit, msg.sender);
+  }
+
+  /**
+   * @notice Pauses the vault
+   */
+  function pause() external onlyAdmin {
+    _pause();
+    maxTotalAssets = 0; // this prevents deposit
+  }
+
+  /**
+   * @notice Unpauses the vault
+   */
+  function unpause() external onlyAdmin {
+    _unpause();
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @return Sums all pending redemption requests
+   */
+  function totalRedemptionRequest() external view returns (uint256) {
+    return _req.totalRedemption;
+  }
+
+  /**
+   * @return Sums all claimable redemption requests
+   */
+  function totalClaimableRedemption() external view returns (uint256) {
+    return _req.totalClaimableRedemption;
+  }
+
+  /**
+   * @notice Gets the redemption request for a specific `_owner` (ERC-7540)
+   * @param _owner Owner of the shares to be redeemed
+   * @return Amount of shares pending redemption
+   */
+  function pendingRedeemRequest(address _owner) external view returns (uint256) {
+    return _req.byOwner[_owner].shares;
+  }
+
+  /**
+   * @notice Gets the redemption request for a specific `_owner` in underlying assets
+   * @param _owner Owner of the shares to be redeemed
+   * @return Amount of underlying assets equivalent to the pending redemption request shares
+   */
+  function pendingAssetRequest(address _owner) external view returns (uint256) {
+    Erc7540Request memory request = _req.byOwner[_owner];
+    return request.shares.mulDiv(
+      AsMaths.min(request.sharePrice, sharePrice()), // worst of
+      _WEI_PER_SHARE
+    );
+  }
+
+  /**
+   * @notice Gets the claimability of a redemption request
+   * @param requestTimestamp Timestamp of the redemption request
+   * @return True if the redemption request is claimable
+   */
+  function isRequestClaimable(uint256 requestTimestamp) public view returns (bool) {
+    return block.timestamp
+      >= AsMaths.min(requestTimestamp + _req.redemptionLocktime, last.liquidate);
+  }
+
+  /**
+   * @return Maximum claimable redemption amount
+   */
+  function maxClaimableAsset() internal view returns (uint256) {
+    return AsMaths.min(convertToAssets(_req.totalRedemption, false), availableClaimable());
+  }
+
+  /**
+   * @param _owner Owner's address
+   * @return Maximum redemption claim for a specific `_owner`
+   */
+  function claimableRedeemRequest(address _owner) public view returns (uint256) {
+    Erc7540Request memory request = _req.byOwner[_owner];
+    return isRequestClaimable(request.timestamp)
+      ? AsMaths.min(request.shares, _req.totalClaimableRedemption)
+      : 0;
+  }
+
+  /**
+   * @notice Previews the amount of underlying assets that has to be deposited to mint `_shares` to `_receiver` (ERC-4626 extension)
+   * @param _shares Amount of shares to mint
+   * @param _receiver Receiver of the shares
+   * @return shares Amount of underlying assets to be deposited
+   */
+  function previewMint(uint256 _shares, address _receiver) public view returns (uint256) {
+    return
+      convertToAssets(_shares.revAddBp(exemptionList[_receiver] ? 0 : fees.entry), true);
+  }
+
+  /**
+   * @notice Previews the amount of underlying that has to be deposited to mint `_shares` to `msg.sender` (ERC-4626)
+   * @dev Use `previewMint(uint256 _shares, address _receiver)` to specify a different `_receiver`
+   * @param _shares Amount of shares to mint
+   * @return shares Amount of underlying assets to be deposited
+   */
+  function previewMint(uint256 _shares) external view returns (uint256) {
+    return previewMint(_shares, msg.sender);
+  }
+
+  /**
+   * @notice Previews the amount of shares that will be minted to `_receiver` for `_amount` of underlying assets (ERC-4626 extension)
+   * @param _amount Amount of underlying assets to deposit
+   * @param _receiver Receiver of the shares
+   * @return Amount of shares to be minted
+   */
+  function previewDeposit(
+    uint256 _amount,
+    address _receiver
+  ) public view returns (uint256) {
+    return
+      convertToShares(_amount.subBp(exemptionList[_receiver] ? 0 : fees.entry), false);
+  }
+
+  /**
+   * @notice Previews the amount of shares that will be minted to `msg.sender` for `_amount` of underlying assets (ERC-4626)
+   * @dev Use `previewDeposit(uint256 _amount, address _receiver)` to specify a different `_receiver`
+   * @param _amount Amount of underlying assets to deposit
+   * @return shares Amount of shares to be minted
+   */
+  function previewDeposit(uint256 _amount) external view returns (uint256) {
+    return previewDeposit(_amount, msg.sender);
+  }
+
+  /**
+   * @notice Previews the amount of shares that `_owner` has to burn to withdraw an underlying `_amount` equivalent (ERC-4626 extension)
+   * @param _amount Amount of underlying assets to withdraw
+   * @param _owner Owner of the shares to be redeemed
+   * @return Amount of shares to be burnt
+   */
+  function previewWithdraw(uint256 _amount, address _owner) public view returns (uint256) {
+    return convertToShares(_amount.revAddBp(exemptionList[_owner] ? 0 : fees.exit), true);
+  }
+
+  /**
+   * @notice Previews the amount of shares that `msg.sender` has to burn to withdraw an underlying `_amount` equivalent (ERC-4626)
+   * @notice Use `previewWithdraw(uint256 _amount, address _owner)` to specify a different `_owner`
+   * @param _amount Amount of underlying assets to withdraw
+   * @return Amount of shares to be burnt
+   */
+  function previewWithdraw(uint256 _amount) external view returns (uint256) {
+    return previewWithdraw(_amount, address(0));
+  }
+
+  /**
+   * @notice Previews the amount of underlying assets that `_owner` would receive for burning `_shares` (ERC-4626)
+   * @param _shares Amount of shares to redeem
+   * @param _owner Owner of the shares to be redeemed
+   * @return Amount of underlying assets received
+   */
+  function previewRedeem(uint256 _shares, address _owner) public view returns (uint256) {
+    return convertToAssets(_shares.subBp(exemptionList[_owner] ? 0 : fees.exit), false);
+  }
+
+  /**
+   * @notice Previews the amount of underlying assets that `msg.sender` would receive for burning `_shares` (ERC-4626)
+   * @notice Use `previewRedeem(uint256 _shares, address _owner)` to specify a different `_owner`
+   * @param _shares Amount of shares to redeem
+   * @return Amount of underlying assets received
+   */
+  function previewRedeem(uint256 _shares) external view returns (uint256) {
+    return previewRedeem(_shares, address(0));
+  }
+
+  /**
+   * @return Maximum amount of underlying assets that can be deposited in the vault based on `maxTotalAssets`
+   */
+  function maxDeposit(address) public view returns (uint256) {
+    return paused() ? 0 : maxTotalAssets.subMax0(totalAssets());
+  }
+
+  /**
+   * @return Maximum amount of shares that can be minted based on `maxDeposit()`
+   */
+  function maxMint(address) public view returns (uint256) {
+    return paused() ? 0 : convertToShares(maxDeposit(address(0)), false);
+  }
+
+  /**
+   * @param _owner Owner of the shares to be redeemed
+   * @return Maximum amount of underlying assets that can currently be withdrawn by `_owner`
+   */
+  function maxWithdraw(address _owner) public view returns (uint256) {
+    return paused() ? 0 : convertToAssets(maxRedeem(_owner), false);
+  }
+
+  /**
+   * @param _owner Owner of the shares to be redeemed
+   * @return Maximum amount of shares that can currently be redeemed by `_owner`
+   */
+  function maxRedeem(address _owner) public view returns (uint256) {
+    return paused()
+      ? 0
+      : AsMaths.min(
+        balanceOf(msg.sender),
+        AsMaths.max(claimableRedeemRequest(_owner), convertToShares(available(), false))
+      );
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                            SETTERS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Sets the fee collector (recipient of the collected fees)
+   * @param _feeCollector Collector of the fees
+   */
+  function setFeeCollector(address _feeCollector) external onlyAdmin {
+    if (_feeCollector == address(0)) revert AddressZero();
+    feeCollector = _feeCollector;
+  }
+
+  /**
+   * @notice Sets the vault `_maxSlippageBps` (internal swap slippage)
+   * @param _bps Slippage in basis points (100 = 1%)
+   */
+  function setMaxSlippageBps(uint16 _bps) external onlyAdmin {
+    _maxSlippageBps = _bps;
+  }
+
+  /**
+   * @notice Sets the vault `_maxLoan` originated in underlying assets
+   * @param _amount Maximum loan amount
+   */
+  function setMaxLoan(uint256 _amount) external onlyAdmin {
+    maxLoan = _amount;
+  }
+
+  /**
+   * @notice Sets the maximum amount of assets that can be deposited
+   * @notice This is used to cap the vault's deposits
+   * @param _maxTotalAssets Maximum amount of assets
+   */
+  function setMaxTotalAssets(uint256 _maxTotalAssets) public onlyAdmin {
+    maxTotalAssets = _maxTotalAssets;
+  }
+
+  /**
+   * @notice Sets the vault `fees`
+   * @param _fees Fees structure [perf,mgmt,entry,exit,flash]
+   */
+  function setFees(Fees calldata _fees) public onlyAdmin {
+    if (!AsAccounting.checkFees(_fees)) revert Unauthorized();
+    fees = _fees;
+  }
+
+  /**
+   * @notice Sets the minimum `_amount` of assets to keep the vault running
+   * @notice This minimum liquidity helps prevent `sharePrice` manipulation when liquidity is low
+   * @param _amount Minimum amount of assets to seed the vault
+   */
+  function setMinLiquidity(uint256 _amount) external onlyAdmin {
+    minLiquidity = _amount;
+  }
+
+  /**
+   * @notice Sets the `_cooldown` period for realizing profits
+   * @notice This profit linearization helps prevent arbitrage/MEV related to `sharePrice` front-running
+   * @param _cooldown Cooldown period for realizing profits
+   */
+  function setProfitCooldown(uint256 _cooldown) external onlyAdmin {
+    _profitCooldown = _cooldown;
+  }
+
+  /**
+   * @notice Sets the redemption request `_locktime`
+   * @notice This locktime helps prevent liquidity arbitrage and front-running
+   * @param _locktime Redemption request locktime
+   */
+  function setRedemptionRequestLocktime(uint256 _locktime) external onlyAdmin {
+    _req.redemptionLocktime = _locktime;
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                      ERC-4626 SYNC LOGIC                       ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Mints `_shares` to `_receiver` by depositing equivalent underlying assets (ERC-4626)
+   * @param _shares Amount of shares to be minted to `_receiver`
+   * @param _receiver Receiver of the shares
+   * @return Amount of assets deposited
+   */
+  function mint(uint256 _shares, address _receiver) public returns (uint256) {
     return _deposit(0, _shares, _receiver);
   }
 
   /**
-   * @notice Mints shares to the receiver by depositing asset tokens
-   * @dev Pausing the contract should prevent depositing by setting maxDepositAmount to 0
-   * @param _amount Amount of asset tokens to deposit OR
-   * @param _shares Shares to minted to the _receiver
-   * @param _receiver Address that will get the shares
-   * @return shares Amount of shares minted to the _receiver
+   * @notice Mints shares to `_receiver` by depositing `_amount` of underlying assets
+   * @param _amount Amount of underlying assets to deposit OR
+   * @param _shares Amount of shares to mint
+   * @param _receiver Receiver of the shares
+   * @return shares Amount of shares minted
    */
   function _deposit(
     uint256 _amount,
@@ -94,7 +406,7 @@ abstract contract As4626 is As4626Abstract {
 
     if (_amount == 0) {
       _amount = _shares.mulDiv(last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED);
-    } // rounded down
+    }
 
     if (_amount > maxDeposit(address(0))) {
       revert AmountTooHigh(_amount);
@@ -121,23 +433,22 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Mints shares to the receiver by depositing asset tokens
-   * @dev Unlike safeDeposit, there's no slippage control here
-   * @param _amount Amount of asset tokens to deposit
-   * @param _receiver Address that will get the shares
-   * @return shares Amount of shares minted to the _receiver
+   * @notice Mints shares to `_receiver` by depositing `_amount` of underlying assets (ERC-4626)
+   * @notice Use `safeDeposit` for slippage control
+   * @param _amount Amount of underlying assets to deposit
+   * @param _receiver Receiver of the shares
+   * @return shares Amount of shares minted
    */
   function deposit(uint256 _amount, address _receiver) public returns (uint256 shares) {
     return _deposit(_amount, 0, _receiver);
   }
 
   /**
-   * @notice Mints shares to the receiver by depositing asset tokens
-   * @dev Overloaded version with slippage control
-   * @param _amount Amount of asset tokens to deposit
+   * @notice Mints shares to the `_receiver` by depositing `_amount` underlying assets under `_minShareAmount` constraint (ERC-4626 extension)
+   * @param _amount Amount of underlying assets to deposit
    * @param _minShareAmount Minimum amount of shares to be minted (1-slippage)*amount
-   * @param _receiver Address that will get the shares
-   * @return shares Amount of shares minted to the _receiver
+   * @param _receiver Receiver of the shares
+   * @return shares Amount of shares minted
    */
   function safeDeposit(
     uint256 _amount,
@@ -149,13 +460,13 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Withdraw by burning _shares from owner and sending _amount of asset to _receiver
-   * @dev Unlike safeWithdraw, there's no slippage control here
-   * @param _amount Amount of asset tokens to withdraw OR
-   * @param _shares Number of shares to redeem
-   * @param _receiver Who will get the withdrawn assets
-   * @param _owner Whose shares we'll burn
-   * @return shares Amount of shares burned
+   * @notice Burns `_shares` from `_owner` and sends the equivalent `_amount` of underlying assets to `_receiver`
+   * @dev Use `safeWithdraw()` for slippage control
+   * @param _amount Amount of underlying assets to withdraw OR
+   * @param _shares Amount of shares to redeem
+   * @param _receiver Receiver of the assets
+   * @param _owner Owner of the shares to be redeemed
+   * @return shares Amount of shares burnt
    */
   function _withdraw(
     uint256 _amount,
@@ -211,10 +522,10 @@ abstract contract As4626 is As4626Abstract {
     }
     _burn(_owner, _shares);
 
-    // check if burning the shares will bring the totalSupply below the _minLiquidity
+    // check if burning the shares will bring the totalSupply below the minLiquidity
     if (
       totalSupply()
-        < _minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6+(1e8+1e8)-(1e8+1e6) = 1e8
+        < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6+(1e12+1e12)-(1e12+1e6) = 1e12
     ) {
       revert Unauthorized();
     }
@@ -236,11 +547,11 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Withdraw by burning the equivalent _owner's shares and sending _amount of asset to _receiver
-   * @dev Beware, there's no slippage control - use safeWithdraw if you want it
-   * @param _amount Amount of asset tokens to withdraw
-   * @param _receiver Who will get the withdrawn assets
-   * @param _owner Whose shares we'll burn
+   * @notice Burns shares from `_owner` and sends the equivalent `_amount` of underlying assets to `_receiver` (ERC-4626)
+   * @dev Use `safeWithdraw()` for slippage control
+   * @param _amount Amount of underlying assets to withdraw
+   * @param _receiver Receiver of the assets
+   * @param _owner Owner of the shares to be redeemed
    * @return shares Amount of shares burned
    */
   function withdraw(
@@ -252,12 +563,11 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Withdraw assets denominated in asset
-   * @dev Overloaded version with slippage control
-   * @param _amount Amount of asset tokens to withdraw
-   * @param _receiver Who will get the withdrawn assets
-   * @param _owner Whose shares we'll burn
-   * @return amount Amount of shares burned
+   * @notice Burns shares from `_owner` and sends the equivalent `_amount` of underlying assets to `_receiver` under `_minAmount` constraint (ERC-4626 extension)
+   * @param _amount Amount of underlying assets to withdraw
+   * @param _receiver Receiver of the assets
+   * @param _owner Owner of the shares to be redeemed
+   * @return amount Amount of assets withdrawn
    */
   function safeWithdraw(
     uint256 _amount,
@@ -270,356 +580,83 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Redeems/burns _owner's shares and sends the equivalent amount in asset to _receiver
-   * @dev Beware, there's no slippage control - you need to use the overloaded function if you want it
+   * @notice Burns `_shares` from `_owner` and sends the equivalent underlying assets to `_receiver` (ERC-4626)
+   * @dev Use `safeRedeem()` for slippage control
    * @param _shares Amount of shares to redeem
-   * @param _receiver Who will get the withdrawn assets
-   * @param _owner Whose shares we'll burn
-   * @return assets Amount of assets withdrawn
+   * @param _receiver Receiver of the assets
+   * @param _owner Owner of the shares to be redeemed
+   * @return Amount of assets withdrawn
    */
   function redeem(
     uint256 _shares,
     address _receiver,
     address _owner
-  ) external returns (uint256 assets) {
+  ) external returns (uint256) {
     return _withdraw(0, _shares, _receiver, _owner);
   }
 
   /**
-   * @dev Overloaded version with slippage control
+   * @notice Burns `_shares` from `_owner` and sends the equivalent underlying assets to `_receiver` under `_minAmountOut` constraint (ERC-4626 extension)
    * @param _shares Amount of shares to redeem
-   * @param _minAmountOut The minimum amount of assets accepted
-   * @param _receiver Who will get the withdrawn assets
-   * @param _owner Whose shares we'll burn
-   * @return assets Amount of assets withdrawn
+   * @param _minAmountOut Minimum amount of assets to be withdrawn
+   * @param _receiver Receiver of the assets
+   * @param _owner Owner of the shares to be redeemed
+   * @return amount Amount of assets withdrawn
    */
   function safeRedeem(
     uint256 _shares,
     uint256 _minAmountOut,
     address _receiver,
     address _owner
-  ) external returns (uint256 assets) {
-    assets = _withdraw(
+  ) external returns (uint256 amount) {
+    amount = _withdraw(
       0,
       _shares, // _shares
       _receiver, // _receiver
       _owner // _owner
     );
-    if (assets < _minAmountOut) revert AmountTooLow(assets);
+    if (amount < _minAmountOut) revert AmountTooLow(amount);
   }
 
-  /**
-   * @notice Trigger a fee collection: mints shares to the feeCollector
-   * @return toMint Amount of shares minted to the feeCollector
-   */
-  function _collectFees() internal nonReentrant onlyManager returns (uint256 toMint) {
-    if (feeCollector == address(0)) {
-      revert AddressZero();
-    }
-
-    (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) =
-      AsAccounting.computeFees(IAs4626(address(this)));
-
-    // sum up all fees: feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
-    toMint = (feesAmount + claimableAssetFees).mulDiv(
-      _WEI_PER_SHARE_SQUARED, price * _weiPerAsset
-    );
-
-    // do not mint nor emit event if there are no fees to collect
-    if (toMint == 0) {
-      return 0;
-    }
-
-    emit FeeCollection(
-      feeCollector,
-      assets,
-      price,
-      profit, // basis AsMaths._BP_BASIS**2
-      feesAmount,
-      toMint
-    );
-    _mint(feeCollector, toMint);
-    last.feeCollection = uint64(block.timestamp);
-    last.accountedAssets = assets;
-    last.accountedSharePrice = price;
-    last.accountedProfit = profit;
-    last.accountedSupply = totalSupply();
-    claimableAssetFees = 0;
-  }
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                      ERC-7540 ASYNC LOGIC                      ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Trigger a fee collection: mints shares to the feeCollector
-   * @return Amount of shares minted to the feeCollector
+   * @notice Initiates a deposit request on behalf on `_owner` for `_amount` of underlying assets (ERC-7540 polyfill)
+   * @param _amount Amount of underlying assets to deposit
+   * @param _operator Request initiator
+   * @param _receiver Receiver of the shares to be minted
+   * @param _data Callback data to be passed to `IERC7540DepositReceiver(_owner).onERC7540DepositReceived(data)`
+   * @return requestId Unique ID of the request
    */
-  function collectFees() external returns (uint256) {
-    return _collectFees();
-  }
-
-  /**
-   * @notice Pause the vault
-   */
-  function pause() external onlyAdmin {
-    _pause();
-    maxTotalAssets = 0; // This prevents deposit
-  }
-
-  /**
-   * @notice Unpause the vault
-   */
-  function unpause() external onlyAdmin {
-    _unpause();
-  }
-
-  /**
-   * @notice Update Fee Recipient address
-   * @param _feeCollector The new address for fee collection
-   */
-  function setFeeCollector(address _feeCollector) external onlyAdmin {
-    if (_feeCollector == address(0)) revert AddressZero();
-    feeCollector = _feeCollector;
-  }
-
-  /**
-   * @notice Sets the internal slippage
-   * @param _slippageBps array of input tokens
-   */
-  function setMaxSlippageBps(uint16 _slippageBps) external onlyAdmin {
-    _maxSlippageBps = _slippageBps;
-  }
-
-  /**
-   * @notice Sets the maximum loan amount
-   * @param _maxLoan The new maximum loan amount
-   */
-  function setMaxLoan(uint256 _maxLoan) external onlyAdmin {
-    maxLoan = _maxLoan;
-  }
-
-  /**
-   * @notice Set the max amount of total assets that can be deposited
-   * @param _maxTotalAssets The maximum amount of assets
-   */
-  function setMaxTotalAssets(uint256 _maxTotalAssets) public onlyAdmin {
-    maxTotalAssets = _maxTotalAssets;
-  }
-
-  /**
-   * @notice Set maxTotalAssets + deposits seed liquidity into the vault
-   * @dev Deposits are disabled when the assets reach this limit
-   * @param _seedDeposit amount of assets to seed the vault
-   * @param _maxTotalAssets max amount of assets
-   */
-  function seedLiquidity(
-    uint256 _seedDeposit,
-    uint256 _maxTotalAssets
-  ) external onlyManager {
-    // 1e8 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
-    // allowance should be given to the vault before calling this function
-    if (_seedDeposit < (_minLiquidity - totalAssets())) {
-      revert AmountTooLow(_seedDeposit);
-    }
-
-    // seed the vault with some assets if it's empty
-    setMaxTotalAssets(_maxTotalAssets);
-
-    // if the vault is still paused, unpause it
-    if (paused()) _unpause();
-    deposit(_seedDeposit, msg.sender);
-  }
-
-  /**
-   * @notice Set the fees if compliant with MAX_FEES constant
-   * @dev Maximum fees are registered as constants
-   * @param _fees.perf Fee on performance
-   */
-  function setFees(Fees calldata _fees) public onlyAdmin {
-    if (!AsAccounting.checkFees(_fees)) revert Unauthorized();
-    fees = _fees;
-  }
-
-  /**
-   * @notice Set the minimum amount of assets to seed the vault
-   * @dev This is to avoid dust amounts of assets
-   * @param minLiquidity The minimum amount of assets to seed the vault
-   */
-  function setMinLiquidity(uint256 minLiquidity) external onlyAdmin {
-    _minLiquidity = minLiquidity;
-  }
-
-  /**
-   * @notice Set the cooldown period for realizing profits
-   * @dev Helps avoid MEV/arbs on the sharePrice
-   * @param profitCooldown The cooldown period for realizing profits
-   */
-  function setProfitCooldown(uint256 profitCooldown) external onlyAdmin {
-    _profitCooldown = profitCooldown;
-  }
-
-  /**
-   * @notice Set the redemption request locktime
-   * @dev Helps avoid MEV/arbs on the vault liquidity
-   * @param _redemptionLocktime The redemption request locktime
-   */
-  function setRedemptionRequestLocktime(uint256 _redemptionLocktime) external onlyAdmin {
-    _req.redemptionLocktime = _redemptionLocktime;
-  }
-
-  /**
-   * @notice Preview how much asset tokens the caller has to pay to acquire x shares
-   * @param _shares Amount of shares that we acquire
-   * @param _receiver The owner of the shares to be redeemed
-   * @return shares Amount of asset tokens that the caller should pay
-   */
-  function previewMint(uint256 _shares, address _receiver) public view returns (uint256) {
-    return
-      convertToAssets(_shares.revAddBp(exemptionList[_receiver] ? 0 : fees.entry), true);
-  }
-
-  /**
-   * @notice Preview how much asset tokens the caller has to pay to acquire x shares
-   * @dev Use previewMint(uint256 _shares, address _receiver) to get the exact fee exempted Amount
-   * @dev This function is the ERC4626 one
-   * @param _shares Amount of shares that we acquire
-   * @return shares Amount of asset tokens that the caller should pay
-   */
-  function previewMint(uint256 _shares) external view returns (uint256) {
-    return previewMint(_shares, address(0));
-  }
-
-  /**
-   * @notice Previews the amount of shares that will be minted for a given deposit amount
-   * @param _amount Amount of asset tokens to deposit
-   * @param _receiver The future owner of the shares to be minted
-   * @return shares Amount of shares that will be minted
-   */
-  function previewDeposit(
+  function requestDeposit(
     uint256 _amount,
-    address _receiver
-  ) public view returns (uint256 shares) {
-    return
-      convertToShares(_amount.subBp(exemptionList[_receiver] ? 0 : fees.entry), false);
-  }
-
-  /**
-   * @notice Previews the amount of shares that will be minted for a given deposit amount
-   * @dev Use previewDeposit(uint256 _amount, address _receiver) to get the exact fee exempted Amount
-   * @dev This function is the ERC4626 one
-   * @param _amount Amount of asset tokens to deposit
-   * @return shares Amount of shares that will be minted
-   */
-  function previewDeposit(uint256 _amount) external view returns (uint256 shares) {
-    return previewDeposit(_amount, address(0));
-  }
-
-  /**
-   * @notice Preview how many shares the caller needs to burn to get his assets back
-   * @dev You may get less asset tokens than you expect due to slippage
-   * @param _assets How much we want to get
-   * @param _owner The owner of the shares to be redeemed
-   * @return How many shares will be burnt
-   */
-  function previewWithdraw(uint256 _assets, address _owner) public view returns (uint256) {
-    return convertToShares(_assets.revAddBp(exemptionList[_owner] ? 0 : fees.exit), true);
-  }
-
-  /**
-   * @notice Preview how many shares the caller needs to burn to get his assets back
-   * @dev Use previewWithdraw(uint256 _assets, address _owner) to get the exact fee exempted amount
-   * @dev This function is the ERC4626 one
-   * @param _assets How much we want to get
-   * @return How many shares will be burnt
-   */
-  function previewWithdraw(uint256 _assets) external view returns (uint256) {
-    return previewWithdraw(_assets, address(0));
-  }
-
-  /**
-   * @notice Preview how many asset tokens the caller will get for burning his _shares
-   * @param _shares Amount of shares that we burn
-   * @param _owner The owner of the shares to be redeemed
-   * @return Preview amount of asset tokens that the caller will get for his shares
-   */
-  function previewRedeem(uint256 _shares, address _owner) public view returns (uint256) {
-    return convertToAssets(_shares.subBp(exemptionList[_owner] ? 0 : fees.exit), false);
-  }
-
-  /**
-   * @notice Preview how many asset tokens the caller will get for burning his _shares
-   * @dev Use previewRedeem(uint256 _shares, address _owner) to get the exact fee exempted amount
-   * @dev This function is the ERC4626 one
-   * @param _shares Amount of shares that we burn
-   * @return Preview amount of asset tokens that the caller will get for his shares
-   */
-  function previewRedeem(uint256 _shares) external view returns (uint256) {
-    return previewRedeem(_shares, address(0));
-  }
-
-  /**
-   * @return The maximum amount of assets that can be deposited
-   */
-  function maxDeposit(address) public view returns (uint256) {
-    return paused() ? 0 : maxTotalAssets.subMax0(totalAssets());
-  }
-
-  /**
-   * @return The maximum amount of shares that can be minted
-   */
-  function maxMint(address) public view returns (uint256) {
-    return paused() ? 0 : convertToShares(maxDeposit(address(0)), false);
-  }
-
-  /**
-   * @return The maximum amount of assets that can be withdrawn
-   */
-  function maxWithdraw(address _owner) public view returns (uint256) {
-    return paused() ? 0 : convertToAssets(maxRedeem(_owner), false);
-  }
-
-  /**
-   * @return The maximum amount of shares that can be redeemed by the owner in a single transaction
-   */
-  function maxRedeem(address _owner) public view returns (uint256) {
-    return paused()
-      ? 0
-      : AsMaths.min(
-        balanceOf(msg.sender),
-        AsMaths.max(claimableRedeemRequest(_owner), convertToShares(available(), false))
-      );
-  }
-
-  /**
-   * @notice Initiate a deposit request for _amount denominated in asset
-   * @dev polyfill satisfying the ERC7540 interface
-   * @param _amount Amount of asset tokens to deposit
-   * @param _operator Address initiating the request
-   * @return requestId The ID of the deposit request
-   */
-  function requestDeposit(uint256 _amount, address _operator, address _owner, bytes memory _data)
-      external
-      virtual
-      nonReentrant
-      whenNotPaused
-      returns (uint256 requestId)
-  {
-      requestId = ++_requestId;
-      if (_data.length != 0) {
-          // the caller contract must implement onERC7540DepositReceived callback (0xe74d2a41 selector)
-          if (
-              IERC7540DepositReceiver(_owner).onERC7540DepositReceived(_operator, _owner, requestId, _data)
-                  != IERC7540DepositReceiver.onERC7540DepositReceived.selector
-          ) {
-              revert Unauthorized();
-          }
+    address _operator,
+    address _receiver,
+    bytes memory _data
+  ) external virtual nonReentrant whenNotPaused returns (uint256 requestId) {
+    requestId = ++_requestId;
+    if (_data.length != 0) {
+      // the caller contract must implement onERC7540DepositReceived callback (0xe74d2a41 selector)
+      if (
+        IERC7540DepositReceiver(_receiver).onERC7540DepositReceived(
+          _operator, _receiver, requestId, _data
+        ) != IERC7540DepositReceiver.onERC7540DepositReceived.selector
+      ) {
+        revert Unauthorized();
       }
-      emit DepositRequest(_owner, _owner, requestId, _operator, _amount);
+    }
+    emit DepositRequest(_receiver, _receiver, requestId, _operator, _amount);
   }
 
   /**
-   * @notice Initiate a redeem request for shares
+   * @notice Initiates a redeem request on behalf of `_owner` for `_shares` (ERC-7540)
    * @param _shares Amount of shares to redeem
-   * @param _operator Address initiating the request
-   * @param _owner The owner of the shares to be redeemed
-   * @return requestId The ID of the redeem request
+   * @param _operator Request initiator
+   * @param _owner Owner of the shares to be redeemed
+   * @param _data Callback data to be passed to `IERC7540RedeemReceiver(_owner).onERC7540RedeemReceived(data)`
+   * @return requestId Unique ID of the request
    */
   function requestRedeem(
     uint256 _shares,
@@ -682,12 +719,12 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Initiate a withdraw request for assets denominated in asset
-   * @param _amount Amount of asset tokens to withdraw
-   * @param _operator Address initiating the request
-   * @param _owner The owner of the shares to be redeemed
-   * @param _data Additional data
-   * @return _requestId The ID of the withdraw request
+   * @notice Initiates a withdraw request on behalf of `_owner` for `_amount` of underlying assets (ERC-7540)
+   * @param _amount Amount of underlying assets to withdraw
+   * @param _operator Request initiator
+   * @param _owner Owner of the shares to be redeemed
+   * @param _data Callback data to be passed to `IERC7540RedeemReceiver(_owner).onERC7540RedeemReceived(data)`
+   * @return _requestId Unique ID of the request
    */
   function requestWithdraw(
     uint256 _amount,
@@ -702,7 +739,7 @@ abstract contract As4626 is As4626Abstract {
   //  * @notice Cancel a deposit request
   //  * @dev as per the EIP7540, cancel functions are not mandatory, hence not polyfilled
   //  * @param operator Address initiating the request
-  //  * @param owner The owner of the shares to be redeemed
+  //  * @param owner Owner of the shares to be redeemed
   //  */
   // function cancelDepositRequest(
   //     address operator,
@@ -710,10 +747,10 @@ abstract contract As4626 is As4626Abstract {
   // ) external virtual nonReentrant {}
 
   /**
-   * @notice Cancel a redeem request
-   * @dev Not affected by pause(), at it only reduces further liquidation volumes
+   * @notice Cancels a pending redeem request on behalf of `_owner` (ERC-7540)
+   * @notice Not affected by `pause()`, at it only reduces further liquidation volumes
    * @param _operator Address initiating the request
-   * @param _owner The owner of the shares to be redeemed
+   * @param _owner Owner of the shares to be redeemed
    */
   function cancelRedeemRequest(address _operator, address _owner) external nonReentrant {
     Erc7540Request storage request = _req.byOwner[_owner];
@@ -741,7 +778,7 @@ abstract contract As4626 is As4626Abstract {
       // burn the excess shares from the loss incurred while not farming
       // with the idle funds (opportunity cost)
       opportunityCost =
-        shares.mulDiv(last.sharePrice - request.sharePrice, _WEI_PER_SHARE); // eg. 1e8+1e8-1e8 = 1e8
+        shares.mulDiv(last.sharePrice - request.sharePrice, _WEI_PER_SHARE); // eg. 1e12+1e12-1e12 = 1e12
       _burn(_owner, opportunityCost);
     }
 
@@ -751,7 +788,7 @@ abstract contract As4626 is As4626Abstract {
       _req.totalClaimableRedemption -= shares;
     }
 
-    // Adjust the operator's allowance after burning shares, only if operator != owner
+    // adjust the operator's allowance after burning shares, only if operator != owner
     if (opportunityCost > 0 && _owner != msg.sender) {
       uint256 currentAllowance = allowance(_owner, _operator);
       _approve(_owner, _operator, currentAllowance - opportunityCost);
@@ -762,101 +799,88 @@ abstract contract As4626 is As4626Abstract {
     emit RedeemRequestCanceled(_owner, shares);
   }
 
-  /**
-   * @dev Returns the total number of redemption requests
-   * @return The total number of redemption requests
-   */
-  function totalRedemptionRequest() external view returns (uint256) {
-    return _req.totalRedemption;
-  }
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                          FEES LOGIC                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @dev Returns the total amount of redemption that can be claimed
-   * @return The total amount of redemption that can be claimed
+   * @notice Triggers a fee collection - Claims all fees by minting the equivalent `toMint` shares to `feeCollector`
+   * @return toMint Amount of shares minted to the feeCollector
    */
-  function totalClaimableRedemption() external view returns (uint256) {
-    return _req.totalClaimableRedemption;
-  }
+  function _collectFees() internal nonReentrant onlyManager returns (uint256 toMint) {
+    if (feeCollector == address(0)) {
+      revert AddressZero();
+    }
 
-  /**
-   * @notice Get the pending redeem request for a specific owner
-   * @param _owner The owner's address
-   * @return Amount of shares pending redemption
-   */
-  function pendingRedeemRequest(address _owner) external view returns (uint256) {
-    return _req.byOwner[_owner].shares;
-  }
+    (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) =
+      AsAccounting.computeFees(IAs4626(address(this)));
 
-  /**
-   * @notice Get the pending redeem request in asset for a specific owner
-   * @param _owner The owner's address
-   * @return Amount of assets pending redemption
-   */
-  function pendingAssetRequest(address _owner) external view returns (uint256) {
-    Erc7540Request memory request = _req.byOwner[_owner];
-    return request.shares.mulDiv(
-      AsMaths.min(request.sharePrice, sharePrice()), // worst of
-      _WEI_PER_SHARE
+    // sum up all fees: feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
+    toMint = (feesAmount + claimableAssetFees).mulDiv(
+      _WEI_PER_SHARE_SQUARED, price * _weiPerAsset
     );
+
+    // do not mint nor emit event if there are no fees to collect
+    if (toMint == 0) {
+      return 0;
+    }
+
+    emit FeeCollection(
+      feeCollector,
+      assets,
+      price,
+      profit, // basis AsMaths._BP_BASIS**2
+      feesAmount,
+      toMint
+    );
+    _mint(feeCollector, toMint);
+    last.feeCollection = uint64(block.timestamp);
+    last.accountedAssets = assets;
+    last.accountedSharePrice = price;
+    last.accountedProfit = profit;
+    last.accountedSupply = totalSupply();
+    claimableAssetFees = 0;
   }
 
   /**
-   * @notice Check if a redemption request is claimable
-   * @param requestTimestamp The timestamp of the redemption request
-   * @return Whether the redemption request is claimable
+   * @notice Triggers a fee collection - Claims all fees by minting the equivalent `toMint` shares to `feeCollector`
+   * @return Amount of shares minted to the `feeCollector`
    */
-  function isRequestClaimable(uint256 requestTimestamp) public view returns (bool) {
-    return block.timestamp
-      >= AsMaths.min(requestTimestamp + _req.redemptionLocktime, last.liquidate);
+  function collectFees() external returns (uint256) {
+    return _collectFees();
   }
 
-  /**
-   * @notice Get the maximum claimable redemption amount
-   * @return The maximum claimable redemption amount
-   */
-  function maxClaimableAsset() internal view returns (uint256) {
-    return AsMaths.min(convertToAssets(_req.totalRedemption, false), availableClaimable());
-  }
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                          LOANS LOGIC                           ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Get the maximum redemption claim for a specific owner
-   * @param _owner The owner's address
-   * @return The maximum redemption claim for the owner
-   */
-  function claimableRedeemRequest(address _owner) public view returns (uint256) {
-    Erc7540Request memory request = _req.byOwner[_owner];
-    return isRequestClaimable(request.timestamp)
-      ? AsMaths.min(request.shares, _req.totalClaimableRedemption)
-      : 0;
-  }
-
-  /**
-   * @dev Executes a flash loan by transferring a specified amount of tokens to a receiver contract and executing an operation
-   * @param receiver The contract that will receive the flash loan tokens and execute the operation
-   * @param amount The amount of tokens to be borrowed in the flash loan
-   * @param params Additional parameters to be passed to the receiver contract's executeOperation function
+   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams`
+   * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
+   * @param _amount Amount of underlying assets to lend
+   * @param _data Callback data to be passed to `_receiver.executeOperation(_data)` function
    */
   function flashLoanSimple(
-    IFlashLoanReceiver receiver,
-    uint256 amount,
-    bytes calldata params
+    IFlashLoanReceiver _receiver,
+    uint256 _amount,
+    bytes calldata _data
   ) external nonReentrant whenNotPaused {
-    if (amount > availableBorrowable() || amount > maxLoan) {
-      revert AmountTooHigh(amount);
+    if (_amount > availableBorrowable() || _amount > maxLoan) {
+      revert AmountTooHigh(_amount);
     }
 
-    uint256 fee = exemptionList[msg.sender] ? 0 : amount.bp(fees.flash);
+    uint256 fee = exemptionList[msg.sender] ? 0 : _amount.bp(fees.flash);
     uint256 balanceBefore = asset.balanceOf(address(this));
 
-    totalLent += amount;
+    totalLent += _amount;
 
-    asset.safeTransfer(address(receiver), amount);
-    receiver.executeOperation(address(asset), amount, fee, msg.sender, params);
+    asset.safeTransfer(address(_receiver), _amount);
+    _receiver.executeOperation(address(asset), _amount, fee, msg.sender, _data);
 
     if ((asset.balanceOf(address(this)) - balanceBefore) < fee) {
-      revert FlashLoanDefault(msg.sender, amount);
+      revert FlashLoanDefault(msg.sender, _amount);
     }
 
-    emit FlashLoan(msg.sender, amount, fee);
+    emit FlashLoan(msg.sender, _amount, fee);
   }
 }

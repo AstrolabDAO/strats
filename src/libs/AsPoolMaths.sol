@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "./AsMaths.sol";
@@ -13,6 +13,10 @@ library AsPoolMaths {
   using AsMaths for uint256;
   using AsCast for uint256;
   using AsCast for int256;
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             LOGIC                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
    * @notice Computes the amount of liquidity received for a given amount of token0 and price range

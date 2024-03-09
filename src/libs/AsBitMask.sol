@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 /**
@@ -6,83 +6,89 @@ pragma solidity 0.8.22;
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AsBitMask Library
+ * @title AsBitMask Library - Astrolab's bit masking library
  * @author Astrolab DAO
- * @notice Astrolab's bit masking library used to store bools/flags in uint256
- * @dev This library helps with high level bit masking
  */
 library AsBitMask {
-  /**
-   * @dev Throws an error if the specified bit position is invalid
-   */
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             ERRORS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   error WrongPosition();
 
-  /**
-   * @dev Maximum value for bits (all bits set to 1)
-   */
-  uint256 private constant BITS = type(uint256).max;
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  uint256 private constant BITS = type(uint256).max; // maximum value for bits (all bits set to 1)
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                         INITIALIZATION                         ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Initializes a new bitmask
-   * @return The initialized bitmask
+   * @return Initializes a new bitmask to 0x0
    */
   function initialize() internal pure returns (uint256) {
     return 0;
   }
 
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             VIEWS                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
   /**
-   * @notice Sets a specific bit in the bitmask to 1
-   * @param bitmask The original bitmask
-   * @param position The position of the bit to set (0-indexed)
-   * @return The updated bitmask
+   * @notice Sets a specific bit in `_bitmask` to 1
+   * @param _bitmask Target bitmask
+   * @param position Position of the bit to set (0-indexed)
+   * @return Updated bitmask
+   */
+  function setBit(uint256 _bitmask, uint8 position) internal pure returns (uint256) {
+    if (position > 256) revert WrongPosition();
+    return _bitmask | (1 << position);
+  }
+
+  /**
+   * @notice Gets the value of a specific bit in `_bitmask`
+   * @param _bitmask Bitmask to query
+   * @param position Position of the bit to check (0-indexed)
+   * @return Boolean indicating if the bit is set
+   */
+  function getBit(uint256 _bitmask, uint8 position) internal pure returns (bool) {
+    if (position > 256) revert WrongPosition();
+    return (_bitmask & (1 << position)) != 0;
+  }
+
+  /**
+   * @notice Resets a specific bit in `_bitmask` to 0
+   * @param _bitmask Target bitmask
+   * @param position Position of the bit to reset (0-indexed)
+   * @return Updated bitmask
    * @dev Throws WrongPosition error if the specified position is invalid
    */
-  function setBit(uint256 bitmask, uint8 position) internal pure returns (uint256) {
+  function resetBit(uint256 _bitmask, uint8 position) internal pure returns (uint256) {
     if (position > 256) revert WrongPosition();
-    return bitmask | (1 << position);
+    return _bitmask & ~(1 << position);
   }
 
   /**
-   * @notice Gets the value of a specific bit in the bitmask
-   * @param bitmask The bitmask to query
-   * @param position The position of the bit to check (0-indexed)
-   * @return True if the bit is set, false otherwise
-   * @dev Throws WrongPosition error if the specified position is invalid
+   * @notice Resets all bits in `_bitmask` to 0
+   * @param _bitmask Target bitmask
+   * @return Updated `_bitmask`
    */
-  function getBit(uint256 bitmask, uint8 position) internal pure returns (bool) {
-    if (position > 256) revert WrongPosition();
-    return (bitmask & (1 << position)) != 0;
+  function resetAllBits(uint256 _bitmask) internal pure returns (uint256) {
+    return _bitmask & 0;
   }
 
   /**
-   * @notice Resets a specific bit in the bitmask to 0
-   * @param bitmask The original bitmask
-   * @param position The position of the bit to reset (0-indexed)
-   * @return The updated bitmask
-   * @dev Throws WrongPosition error if the specified position is invalid
+   * @notice Checks if all bits in the _bitmask are set to 1
+   * @param _bitmask The bitmask to check
+   * @return Boolean indicating if all bits are set
    */
-  function resetBit(uint256 bitmask, uint8 position) internal pure returns (uint256) {
-    if (position > 256) revert WrongPosition();
-    return bitmask & ~(1 << position);
-  }
-
-  /**
-   * @notice Resets all bits in the bitmask to 0
-   * @param bitmask The original bitmask
-   * @return The updated bitmask
-   */
-  function resetAllBits(uint256 bitmask) internal pure returns (uint256) {
-    return bitmask & 0;
-  }
-
-  /**
-   * @notice Checks if all bits in the bitmask are set to 1
-   * @param bitmask The bitmask to check
-   * @return True if all bits are set, false otherwise
-   */
-  function allBitsSet(uint256 bitmask) internal pure returns (bool) {
-    return bitmask == BITS;
+  function allBitsSet(uint256 _bitmask) internal pure returns (bool) {
+    return _bitmask == BITS;
   }
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSL 1.1
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
 import "../../libs/AsArrays.sol";
@@ -10,7 +10,7 @@ import "./interfaces/ISonne.sol";
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
- *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2023
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
  * @title SonneMultiStake Strategy - Liquidity providing on Sonne
  * @author Astrolab DAO
@@ -36,7 +36,7 @@ contract SonneMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set the strategy specific parameters
+   * @notice Sets the strategy specific parameters
    * @param _params Strategy specific parameters
    */
   function setParams(Params calldata _params) public onlyAdmin {
@@ -178,7 +178,7 @@ contract SonneMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Set allowances for third party contracts (except rewardTokens)
+   * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
   function _setAllowances(uint256 _amount) internal override {
@@ -206,7 +206,7 @@ contract SonneMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Convert LP/staked LP to input
+   * @notice Converts LP/staked LP to input
    * @param _amount Amount of LP/staked LP
    * @param _index Index of the LP token
    * @return Input value of the LP amount
@@ -215,11 +215,11 @@ contract SonneMultiStake is StrategyV5Chainlink {
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return _amount.mulDiv(_cTokens[_index].exchangeRateStored(), 1e18); // eg. 1e8+1e(36-8)-1e18 = 1e18
+    return _amount.mulDiv(_cTokens[_index].exchangeRateStored(), 1e18); // eg. 1e12+1e(36-8)-1e18 = 1e18
   }
 
   /**
-   * @notice Convert input to LP/staked LP
+   * @notice Converts input to LP/staked LP
    * @param _amount Amount of input
    * @param _index Index of the input
    * @return LP value of the input amount
@@ -228,7 +228,7 @@ contract SonneMultiStake is StrategyV5Chainlink {
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return _amount.mulDiv(1e18, _cTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e8
+    return _amount.mulDiv(1e18, _cTokens[_index].exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e12
   }
 
   /**
