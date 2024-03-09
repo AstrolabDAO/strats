@@ -459,7 +459,7 @@ interface IAavePool {
    * as long as the amount taken plus a fee is returned
    * @dev IMPORTANT There are security concerns for developers of flashloan receiver contracts that must be kept
    * into consideration. For further details please visit https://developers.aave.com
-   * @param receiverAddress The address of the contract receiving the funds, implementing IFlashLoanReceiver interface
+   * @param receiverAddress The address of the contract receiving the funds, implementing IERC3156FlashBorrower interface
    * @param assets The addresses of the assets being flash-borrowed
    * @param amounts The amounts of the assets being flash-borrowed
    * @param interestRateModes Types of the debt to open if the flash loan is not returned:

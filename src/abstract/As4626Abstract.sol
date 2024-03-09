@@ -83,6 +83,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   uint256 internal constant _MAX_UINT256 = type(uint256).max;
   uint256 internal constant _WEI_PER_SHARE = 1e12; // weis in a share (base unit)
   uint256 internal constant _WEI_PER_SHARE_SQUARED = _WEI_PER_SHARE ** 2;
+  bytes32 internal constant _FLASH_LOAN_SIG = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║

@@ -7,37 +7,56 @@ import "./IAsManageable.sol";
 import "./IAsRescuable.sol";
 
 /**
- * @title IFlashLoanReceiver
- * @author Astrolab DAO, based on AAVE's work (cf. https://github.com/aave/aave-v3-core/blob/master/contracts/flashloan/interfaces/IFlashLoanReceiver.sol)
+ * @title IERC3156FlashBorrower - Ex FlashLoanReceiver
+ * @author Astrolab DAO
  * @notice Defines the basic interface of a flashloan-receiver contract
  * @dev Implement this interface to develop a flashloan-compatible flashLoanReceiver contract
  */
-interface IFlashLoanReceiver {
+interface IERC3156FlashBorrower {
+  // /**
+  //  * @notice Deprecated flash loan (AAVE compatible)
+  //  * @dev Executes an operation after receiving the borrowed assets
+  //  * @dev Ensure that the contract can return the debt + premium, e.g., has
+  //  *      enough funds to repay and has approved the Pool to pull the total amount
+  //  * @param asset Address of the borrowed asset (typically the lending vault's underlying asset)
+  //  * @param amount Amount of the borrowed asset
+  //  * @param fee Fee charged for the flash loan
+  //  * @param initiator Account initiating the flash loan
+  //  * @param params Parameters for the function call
+  //  * @return Boolean indicating the success of the operation
+  //  */
+  // function executeOperation(
+  //   address asset,
+  //   uint256 amount,
+  //   uint256 fee,
+  //   address initiator,
+  //   bytes calldata params
+  // ) external returns (bool);
+
   /**
-   * @notice Executes an operation after receiving the flash-borrowed assets
-   * @dev Ensure that the contract can return the debt + premium, e.g., has
-   *      enough funds to repay and has approved the Pool to pull the total amount
-   * @param asset The address of the flash-borrowed asset
-   * @param amount The amount of the flash-borrowed asset
-   * @param premium The premium amount to be repaid along with the debt
-   * @param initiator The address initiating the flash loan
-   * @param params Additional parameters for the operation
-   * @return Boolean indicating the success of the operation
+   * @notice ERC-3156 compliant flash loan
+   * @dev Executes an operation after receiving the borrowed assets
+   * @param initiator Account initiating the flash loan
+   * @param token Address of the borrowed asset (typically the lending vault's underlying asset)
+   * @param amount Amount of tokens being borrowed
+   * @param fee Fee charged for the flash loan
+   * @param params Parameters for the function call
+   * @return The operation signature (keccak256("ERC3156FlashBorrower.onFlashLoan"))
    */
-  function executeOperation(
-    address asset,
-    uint256 amount,
-    uint256 premium,
+  function onFlashLoan(
     address initiator,
+    address token,
+    uint256 amount,
+    uint256 fee,
     bytes calldata params
-  ) external returns (bool);
+  ) external returns (bytes32);
 }
 
 interface IAs4626Abstract is
   IERC20Permit,
   IAsManageable,
   IAsRescuable,
-  IFlashLoanReceiver
+  IERC3156FlashBorrower
 {
   function _maxSlippageBps() external view returns (uint16);
   function _profitCooldown() external view returns (uint256);
@@ -136,9 +155,9 @@ interface IAs4626 is IAs4626Abstract {
   function totalRedemptionRequest() external view returns (uint256);
   function totalClaimableRedemption() external view returns (uint256);
   function flashLoanSimple(
-    IFlashLoanReceiver receiver,
+    IERC3156FlashBorrower receiver,
     uint256 amount,
     bytes calldata params
   ) external;
-  function maxLoan(address _token) external view returns (uint256);
+  function maxFlashLoan(address _token) external view returns (uint256);
 }

@@ -168,7 +168,7 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @param _owner Owner's address
+   * @param _owner Address of the owner
    * @return Maximum redemption claim for a specific `_owner`
    */
   function claimableRedeemRequest(address _owner) public view returns (uint256) {
@@ -851,36 +851,116 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                          LOANS LOGIC                           ║
+  ║                       ERC-3156 LOANS LOGIC                     ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams`
+   * @notice Fee to be charged for a given loan (ERC-3156 extension)
+   * @param _token Loan currency
+   * @param _borrower Address of the borrower
+   * @param _amount Amount of `_token` lent
+   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
+   */
+  function flashFee(
+    address _token,
+    address _borrower,
+    uint256 _amount
+  ) external view returns (uint256) {
+    if (_token != address(asset)) {
+      revert Unauthorized();
+    }
+    return _flashFee(_borrower, _amount);
+  }
+
+  /**
+   * @notice Calculates the flash fee for a given borrower and amount (ERC-3156 extension)
+   * @param _borrower Address of the borrower
+   * @param _amount Amount of underlying assets lent
+   * @return Amount of underlying assets to be charged for the loan, on top of the returned principal
+   */
+  function _flashFee(address _borrower, uint256 _amount) public view returns (uint256) {
+    return exemptionList[_borrower] ? 0 : _amount.bp(fees.flash);
+  }
+
+  /**
+   * @notice Amount of underlying assets available to be lent
+   * @param _token Loan currency
+   * @return Amount of `_token` that can currently be borrowed through `flashLoan`
+   */
+  function maxFlashLoan(address _token) external view returns (uint256) {
+    return address(asset) == _token ? AsMaths.min(availableBorrowable(), maxLoan) : 0;
+  }
+
+  /**
+   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156 extension)
    * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
    * @param _amount Amount of underlying assets to lend
    * @param _data Callback data to be passed to `_receiver.executeOperation(_data)` function
    */
-  function flashLoanSimple(
-    IFlashLoanReceiver _receiver,
+  function _flashLoan(
+    address _receiver,
     uint256 _amount,
     bytes calldata _data
-  ) external nonReentrant whenNotPaused {
+  ) internal nonReentrant whenNotPaused {
+    address token = address(asset); // Assuming 'asset' is your ERC20 Address of the token
     if (_amount > availableBorrowable() || _amount > maxLoan) {
       revert AmountTooHigh(_amount);
     }
 
-    uint256 fee = exemptionList[msg.sender] ? 0 : _amount.bp(fees.flash);
+    uint256 fee = _flashFee(_receiver, _amount);
     uint256 balanceBefore = asset.balanceOf(address(this));
 
     totalLent += _amount;
 
-    asset.safeTransfer(address(_receiver), _amount);
-    _receiver.executeOperation(address(asset), _amount, fee, msg.sender, _data);
+    // Transfer the tokens to the receiver
+    asset.safeTransfer(_receiver, _amount);
 
-    if ((asset.balanceOf(address(this)) - balanceBefore) < fee) {
-      revert FlashLoanDefault(msg.sender, _amount);
+    // Callback to the receiver's onFlashLoan method
+    require(
+      IERC3156FlashBorrower(_receiver).onFlashLoan(msg.sender, token, _amount, fee, _data)
+        == _FLASH_LOAN_SIG
+    ); // callback failure
+
+    // Verify the repayment and fee
+    uint256 balanceAfter = asset.balanceOf(address(this));
+    if (balanceAfter < balanceBefore + fee) {
+      revert FlashLoanDefault(_receiver, _amount);
     }
 
     emit FlashLoan(msg.sender, _amount, fee);
+  }
+
+  /**
+   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156)
+   * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
+   * @param _token Loan currency
+   * @param _amount Amount of `_token` lent
+   * @param _data Callback data to be passed to `_receiver.executeOperation(_data)` function
+   */
+  function flashLoan(
+    address _receiver,
+    address _token,
+    uint256 _amount,
+    bytes calldata _data
+  ) external returns (bool) {
+    if (_token != address(asset)) {
+      revert Unauthorized();
+    }
+    _flashLoan(_receiver, _amount, _data);
+    return true;
+  }
+
+  /**
+   * @notice Fee to be charged for a given loan (ERC-3156)
+   * @notice Use `flashFee(address _token, address _borrower, uint256 _amount)` to specify a different `_borrower`
+   * @param _token Loan currency
+   * @param _amount Amount of `_token` lent
+   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
+   */
+  function flashFee(address _token, uint256 _amount) external view returns (uint256) {
+    if (_token != address(asset)) {
+      revert Unauthorized();
+    }
+    return _flashFee(msg.sender, _amount);
   }
 }
