@@ -14,26 +14,9 @@ import "@openzeppelin/contracts/proxy/Proxy.sol";
  * @author Astrolab DAO
  * @notice OZ's Proxy extension to manage call delegation
  * @dev Make sure to make proxy/implementation storage slots match when used as UUPS / transparent proxy
+ * @dev Extending contracts should implement the ERC-897 `initialized()` and `implementation()` functions
  */
 abstract contract AsProxy is Proxy {
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                              VIEWS                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @return Address of the implementation contract (EIP-1967/EIP-897 slot 0)
-   */
-  function implementation() external view virtual returns (address) {
-    return _implementation();
-  }
-
-  /**
-   * @return EIP-897 proxy type (1 == forwarding, 2 == upgradeable)
-   */
-  function proxyType() external pure virtual returns (uint256) {
-    return 2;
-  }
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║

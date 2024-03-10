@@ -26,6 +26,15 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   using AsMaths for uint256;
 
   /*═══════════════════════════════════════════════════════════════╗
+  ║                              TYPES                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  struct As4626StorageExt {
+    uint256 totalLent;
+    uint256 maxLoan;
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
   ║                             ERRORS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
@@ -85,6 +94,10 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   uint256 internal constant _WEI_PER_SHARE_SQUARED = _WEI_PER_SHARE ** 2;
   bytes32 internal constant _FLASH_LOAN_SIG = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
+  // Upgrade dedicated storage to prevent collisions (EIP-7201)
+  // keccak256(abi.encode(uint256(keccak256("as4626.main")) - 1)) & ~bytes32(uint256(0xff));
+  bytes32 internal constant _AS4626_STORAGE_EXT_SLOT = 0xafe45af2a41a6a85da8347675245d4fb4960b308fc41e3b57cdf7ce45ec4b900;
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -111,9 +124,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   Requests internal _req;
   uint256 internal _requestId; // redeem request id
 
-  // Flash loan
-  uint256 public totalLent;
-  uint256 public maxLoan = 1e12; // maximum amount of flash loan allowed (default to 1e12 eg. 1m usdc)
+  // NB: DO NOT EXTEND THIS STORAGE, TO PREVENT COLLISION USE `_4626Storage()`
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                         INITIALIZATION                         ║
@@ -126,6 +137,13 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @return $ Upgradable As4626 storage extension slot
+   */
+  function _as4626StorageExt() internal pure returns (As4626StorageExt storage $) {
+    assembly { $.slot := _AS4626_STORAGE_EXT_SLOT }
+  }
 
   /**
    * @dev Must be overridden by StrategyV5 implementations

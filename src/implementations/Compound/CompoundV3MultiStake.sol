@@ -237,7 +237,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
   function _stakeToInput(
     uint256 _amount,
     uint256 _index
-  ) internal view override returns (uint256) {
+  ) internal pure override returns (uint256) {
     return _amount; // 1:1 (rebasing, oracle value based)
   }
 
@@ -248,7 +248,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
   function _inputToStake(
     uint256 _amount,
     uint256 _index
-  ) internal view override returns (uint256) {
+  ) internal pure override returns (uint256) {
     return _amount; // 1:1 (rebasing, oracle value based)
   }
 

@@ -36,14 +36,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @param _params StrategyBaseParams struct containing strategy parameters
    */
   function _init(StrategyBaseParams calldata _params) internal onlyAdmin {
+    if (_params.coreAddresses.agent == address(0)) revert AddressZero();
     // setExemption(msg.sender, true);
     // done in As4626 but required for swapper
-    _stratProxy = address(this);
-    agent = _params.coreAddresses.agent;
-    wgas = IWETH9(_params.coreAddresses.wgas);
-    if (agent == address(0)) revert AddressZero();
+    _wgas = IWETH9(_params.coreAddresses.wgas);
+    agent = IStrategyV5(_params.coreAddresses.agent);
+    _agentStorageExt().delegator = IStrategyV5(address(this));
     _delegateToSelector(
-      agent, // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights.rewardTokens
+      _params.coreAddresses.agent, // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights.rewardTokens
       0x83904ca7, // keccak256("init(((string,string,uint8),(address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))") == StrategyV5Agent.init(_params)
       msg.data[4:]
     );
@@ -54,17 +54,24 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @return Agent's initialization state
+   * @return Agent's initialization state (ERC-897)
    */
   function initialized() public view virtual returns (bool) {
-    return _initialized && agent != address(0) && address(asset) != address(0);
+    return _initialized && address(agent) != address(0) && address(asset) != address(0);
   }
 
   /**
-   * @return Agent's address
+   * @return Agent's implementation address (OZ Proxy's internal override)
    */
   function _implementation() internal view override returns (address) {
-    return agent;
+    return address(agent);
+  }
+
+  /**
+   * @return Agent's implementation address (ERC-897)
+   */
+  function implementation() external view returns (address) {
+    return address(agent);
   }
 
   /**
@@ -335,8 +342,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @return Balance of `_token` in the strategy
    */
   function _balance(address _token) internal view virtual returns (uint256) {
-    return (_token == address(1) || _token == address(wgas))
-      ? address(this).balance + wgas.balanceOf(address(this)) // native+wrapped native
+    return (_token == address(1) || _token == address(_wgas))
+      ? address(this).balance + _wgas.balanceOf(address(this)) // native+wrapped native
       : IERC20Metadata(_token).balanceOf(address(this));
   }
 
@@ -357,7 +364,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     uint256 _priceFactor
   ) internal {
     _delegateToSelectorMemory(
-      agent,
+      address(agent),
       0x7a1ed234, // keccak256("updateAsset(address,bytes,uint256)") == StrategyV5Agent.updateAsset(_asset, _swapData, _priceFactor)
       abi.encode(_asset, _swapData, _priceFactor)
     );
@@ -371,7 +378,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    */
   function _setInputs(address[] calldata _inputs, uint16[] calldata _weights) internal {
     _delegateToSelectorMemory(
-      agent,
+      address(agent),
       0xd0d37333, // keccak256("setInputs(address[],uint16[])") == StrategyV5Agent.setInputs(_inputs, _weights)
       abi.encode(_inputs, _weights)
     );
@@ -383,7 +390,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    */
   function updateAgent(address _agent) external onlyAdmin {
     if (_agent == address(0)) revert AddressZero();
-    agent = _agent;
+    agent = IStrategyV5(_agent);
   }
 
   /**
@@ -620,7 +627,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
   function _wrapNative() internal virtual returns (uint256 amount) {
     amount = address(this).balance;
     if (amount > 0) {
-      IWETH9(wgas).deposit{value: amount}();
+      _wgas.deposit{value: amount}();
     }
   }
 }

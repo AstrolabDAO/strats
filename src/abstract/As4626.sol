@@ -60,6 +60,7 @@ abstract contract As4626 is As4626Abstract {
   ) public virtual onlyAdmin {
     // check that the fees are not too high
     setFees(_fees);
+    _as4626StorageExt().maxLoan = 1e12;
     feeCollector = _coreAddresses.feeCollector;
     _req.redemptionLocktime = 6 hours;
     last.accountedSharePrice = _WEI_PER_SHARE;
@@ -298,6 +299,14 @@ abstract contract As4626 is As4626Abstract {
       );
   }
 
+  /**
+   * @dev Returns the total amount lent by `flashLoan()` in the current underlying assets
+   * @return The total amount lent as a uint256 value
+   */
+  function totalLent() external view returns (uint256) {
+    return _as4626StorageExt().totalLent;
+  }
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                            SETTERS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -324,7 +333,7 @@ abstract contract As4626 is As4626Abstract {
    * @param _amount Maximum loan amount
    */
   function setMaxLoan(uint256 _amount) external onlyAdmin {
-    maxLoan = _amount;
+    _as4626StorageExt().maxLoan = _amount;
   }
 
   /**
@@ -874,6 +883,16 @@ abstract contract As4626 is As4626Abstract {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
+   * @notice Calculates the flash fee for a given borrower and amount (ERC-3156 extension)
+   * @param _borrower Address of the borrower
+   * @param _amount Amount of underlying assets lent
+   * @return Amount of underlying assets to be charged for the loan, on top of the returned principal
+   */
+  function _flashFee(address _borrower, uint256 _amount) internal view returns (uint256) {
+    return exemptionList[_borrower] ? 0 : _amount.bp(fees.flash);
+  }
+
+  /**
    * @notice Fee to be charged for a given loan (ERC-3156 extension)
    * @param _token Loan currency
    * @param _borrower Address of the borrower
@@ -892,22 +911,26 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Calculates the flash fee for a given borrower and amount (ERC-3156 extension)
-   * @param _borrower Address of the borrower
-   * @param _amount Amount of underlying assets lent
-   * @return Amount of underlying assets to be charged for the loan, on top of the returned principal
+   * @notice Fee to be charged for a given loan (ERC-3156 polyfill)
+   * @notice Use `flashFee(address _token, address _borrower, uint256 _amount)` to specify a different `_borrower`
+   * @param _token Loan currency
+   * @param _amount Amount of `_token` lent
+   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
    */
-  function _flashFee(address _borrower, uint256 _amount) public view returns (uint256) {
-    return exemptionList[_borrower] ? 0 : _amount.bp(fees.flash);
+  function flashFee(address _token, uint256 _amount) external view returns (uint256) {
+    if (_token != address(asset)) {
+      revert Unauthorized();
+    }
+    return _flashFee(msg.sender, _amount);
   }
 
   /**
-   * @notice Amount of underlying assets available to be lent
+   * @notice Amount of underlying assets available to be lent (ERC-3156 polyfill)
    * @param _token Loan currency
    * @return Amount of `_token` that can currently be borrowed through `flashLoan`
    */
   function maxFlashLoan(address _token) external view returns (uint256) {
-    return address(asset) == _token ? AsMaths.min(availableBorrowable(), maxLoan) : 0;
+    return address(asset) == _token ? AsMaths.min(availableBorrowable(), _as4626StorageExt().maxLoan) : 0;
   }
 
   /**
@@ -922,14 +945,17 @@ abstract contract As4626 is As4626Abstract {
     bytes calldata _data
   ) internal nonReentrant whenNotPaused {
     address token = address(asset); // Assuming 'asset' is your ERC20 Address of the token
-    if (_amount > availableBorrowable() || _amount > maxLoan) {
+
+    As4626StorageExt storage $ = _as4626StorageExt();
+
+    if (_amount > availableBorrowable() || _amount > $.maxLoan) {
       revert AmountTooHigh(_amount);
     }
 
     uint256 fee = _flashFee(_receiver, _amount);
     uint256 balanceBefore = asset.balanceOf(address(this));
 
-    totalLent += _amount;
+    $.totalLent += _amount;
 
     // Transfer the tokens to the receiver
     asset.safeTransfer(_receiver, _amount);
@@ -950,7 +976,7 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156)
+   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156 polyfill)
    * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
    * @param _token Loan currency
    * @param _amount Amount of `_token` lent
@@ -967,19 +993,5 @@ abstract contract As4626 is As4626Abstract {
     }
     _flashLoan(_receiver, _amount, _data);
     return true;
-  }
-
-  /**
-   * @notice Fee to be charged for a given loan (ERC-3156)
-   * @notice Use `flashFee(address _token, address _borrower, uint256 _amount)` to specify a different `_borrower`
-   * @param _token Loan currency
-   * @param _amount Amount of `_token` lent
-   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
-   */
-  function flashFee(address _token, uint256 _amount) external view returns (uint256) {
-    if (_token != address(asset)) {
-      revert Unauthorized();
-    }
-    return _flashFee(msg.sender, _amount);
   }
 }

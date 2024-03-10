@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IWETH9.sol";
+import "../interfaces/IStrategyV5.sol";
 import "./As4626Abstract.sol";
 
 /**
@@ -21,6 +22,15 @@ import "./As4626Abstract.sol";
 abstract contract StrategyV5Abstract is As4626Abstract {
 
   /*═══════════════════════════════════════════════════════════════╗
+  ║                              TYPES                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  // Upgradable strategy agent's storage struct
+  struct AgentStorageExt {
+    IStrategyV5 delegator;
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
   ║                             ERRORS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
@@ -35,14 +45,21 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   event Liquidate(uint256 amount, uint256 liquidityAvailable, uint256 timestamp);
 
   /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  // Upgrade dedicated storage to prevent collisions (EIP-7201)
+  // keccak256(abi.encode(uint256(keccak256("strategy.agent")) - 1)) & ~bytes32(uint256(0xff));
+  bytes32 internal constant _AGENT_STORAGE_EXT_SLOT = 0x821ff15c18486d780e69cedd37d14f117c16526e6b0b6969fd23bc9dd7ffc900;
+
+  /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   // State variables (As4626 extension)
-  IWETH9 public wgas; // gas/native wrapper contract
+  IWETH9 internal _wgas; // gas/native wrapper contract (immutable set in `init()`)
   ISwapper public swapper; // interface for swapping assets
-  address public agent; // address of the agent
-  address internal _stratProxy; // address of the strategy proxy
+  IStrategyV5 public agent; // strategy agent contract
 
   IERC20Metadata[8] public inputs; // array of ERC20 tokens used as inputs
   uint8[8] internal _inputDecimals; // strategy inputs decimals
@@ -61,6 +78,13 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @return $ Upgradable agent storage extension slot
+   */
+  function _agentStorageExt() internal pure returns (AgentStorageExt storage $) {
+    assembly { $.slot := _AGENT_STORAGE_EXT_SLOT }
+  }
 
   /**
    * @notice Calculates the total pending redemption requests in shares

@@ -192,28 +192,6 @@ contract AaveMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @notice Converts LP/staked LP to input
-   * @return Input value of the LP amount
-   */
-  function _stakeToInput(
-    uint256 _amount,
-    uint256 _index
-  ) internal view override returns (uint256) {
-    return _amount; // 1:1 (rebasing, oracle value based)
-  }
-
-  /**
-   * @notice Converts input to LP/staked LP
-   * @return LP value of the input amount
-   */
-  function _inputToStake(
-    uint256 _amount,
-    uint256 _index
-  ) internal view override returns (uint256) {
-    return _amount; // 1:1 (rebasing, oracle value based)
-  }
-
-  /**
    * @notice Returns the invested input converted from the staked LP token
    * @return Input value of the LP/staked balance
    */

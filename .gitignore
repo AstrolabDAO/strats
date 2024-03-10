@@ -46,6 +46,7 @@ jspm_packages/
 artifacts/
 artifacts-dbg/
 cache/
+libs/
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

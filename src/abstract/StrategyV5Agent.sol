@@ -50,25 +50,25 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
 
   /**
    * @notice Retrieves the share price from the strategy via the proxy
-   * @notice Calls sharePrice function on the IStrategyV5 contract through _stratProxy
+   * @notice Calls sharePrice function on the IStrategyV5 contract through `_stratProxy` (delegator's address)
    * @return Strategy share price - Amount of underlying assets redeemable for one share
    */
   function sharePrice() public view override returns (uint256) {
-    return IStrategyV5(_stratProxy).sharePrice();
+    return _agentStorageExt().delegator.sharePrice();
   }
 
   /**
    * @return Total assets denominated in underlying assets, including claimable redemptions (strategy delegator `_stratProxy.totalAssets()`)
    */
   function totalAssets() public view override returns (uint256) {
-    return IStrategyV5(_stratProxy).totalAssets();
+    return _agentStorageExt().delegator.totalAssets();
   }
 
   /**
    * @return Total amount of invested inputs denominated in underlying assets
    */
   function invested() public view override returns (uint256) {
-    return IStrategyV5(_stratProxy).invested();
+    return _agentStorageExt().delegator.invested();
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -164,7 +164,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
 
     // reset all cached accounted values as a denomination change might change the accounting basis
     _expectedProfits = 0; // reset trailing profits
-    totalLent = 0; // reset totalLent (broken analytics)
+    _as4626StorageExt().totalLent = 0; // reset totalLent (broken analytics)
     _collectFees(); // claim all pending fees to reset claimableAssetFees
     address swapperAddress = address(swapper);
     if (swapperAddress != address(0)) {
