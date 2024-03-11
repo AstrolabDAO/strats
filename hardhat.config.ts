@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
-// import "hardhat-contract-sizer";
+import "hardhat-contract-sizer";
 import { config } from "@astrolabs/hardhat/dist/hardhat.config";
 
 config.solidity!.compilers = [
@@ -8,7 +8,7 @@ config.solidity!.compilers = [
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: 10
       },
       viaIR: false,
       evmVersion: `shanghai`

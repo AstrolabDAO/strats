@@ -1,55 +1,61 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity ^0.8.0;
 
-import "./IAs4626.sol";
+import "./IStrategyV5Agent.sol";
+import "./IAsProxy.sol";
+import "./IAsRescuable.sol";
 
-interface IStrategyV5Abstract is IAs4626 {
-  function swapper() external view returns (address);
-  function agent() external view returns (address);
-  function inputs() external view returns (address[8] memory);
-  function inputWeights() external view returns (uint16[8] memory);
-  function rewardTokens() external view returns (address[8] memory);
-}
+interface IStrategyV5 is IStrategyV5Agent, IAsProxy, IAsRescuable {
+  // Custom types defined in StrategyV5Abstract and StrategyV5
+  struct AgentStorageExt {
+    address delegator;
+    uint256 maxLoan;
+    uint256 totalLent;
+  }
 
-interface IStrategyV5 is IStrategyV5Abstract {
-  function claimRewards() external returns (uint256[] memory amounts);
+  // Errors defined in StrategyV5Abstract
+  error InvalidOrStaleValue(uint256 updateTime, int256 value);
 
-  function rewardsAvailable() external view returns (uint256[] memory amounts);
+  // Events defined in StrategyV5Abstract
+  event Invest(uint256 amount, uint256 timestamp);
+  event Harvest(uint256 amount, uint256 timestamp);
+  event Liquidate(uint256 amount, uint256 liquidityAvailable, uint256 timestamp);
 
-  function previewInvest(uint256 _amount)
-    external
-    view
-    returns (uint256[8] memory amounts);
-
-  function previewLiquidate(uint256 _amount)
-    external
-    view
-    returns (uint256[8] memory amounts);
-
+  // Interface methods
+  function updateAgent(address _agent) external;
+  function liquidateRequest(uint256 _amount) external returns (uint256);
   function invest(
     uint256[8] calldata _amounts,
     bytes[] calldata _params
   ) external returns (uint256 investedAmount, uint256 iouReceived);
-
-  function harvest(bytes[] calldata _params) external returns (uint256 amount);
-
-  function compound(
-    uint256[8] calldata _amounts,
-    uint256 _minIouReceived,
-    bytes[] memory _harvestParams,
-    bytes[] memory _investParams
-  ) external returns (uint256 iouReceived, uint256 harvestedRewards);
-
   function liquidate(
-    uint256[8] calldata _amount,
-    uint256 minLiquidity,
+    uint256[8] calldata _amounts,
+    uint256 _minLiquidity,
     bool _panic,
     bytes[] calldata _params
-  ) external returns (uint256 liquidityAvailable);
+  ) external returns (uint256 assetsRecovered);
+  function claimRewards() external returns (uint256[] memory);
+  function harvest(bytes[] calldata _params) external returns (uint256 assetsReceived);
+  function rewardsAvailable() external view returns (uint256[] memory);
+  function compound(
+    uint256[8] calldata _amounts,
+    bytes[] calldata _harvestParams,
+    bytes[] calldata _investParams
+  ) external returns (uint256 iouReceived, uint256 harvestedRewards);
+  function requestRescue(address _token) external;
+  function rescue(address _token) external;
 
-  function liquidateRequest(uint256 _amount) external returns (uint256);
+  function invested(uint256 _index) external view returns (uint256);
+  function invested() external view returns (uint256);
+  function available() external view returns (uint256);
 
-  function rescueToken(address _token, bool _onlyETH) external;
+  function setInputs(address[] calldata _inputs, uint16[] calldata _weights) external;
+  function updateAsset(
+    address _asset,
+    bytes calldata _swapData,
+    uint256 _priceFactor
+  ) external;
 
-  function supportsInterface(bytes4 interfaceId) external view returns (bool);
+  function previewLiquidate(uint256 _amount) external returns (uint256[8] memory amounts);
+  function previewInvest(uint256 _amount) external returns (uint256[8] memory amounts);
 }

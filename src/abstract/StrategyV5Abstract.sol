@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IWETH9.sol";
 import "../interfaces/IStrategyV5.sol";
 import "./As4626Abstract.sol";
+import "./AsManageable.sol";
 
 /**
  *             _             _       _
@@ -19,7 +20,7 @@ import "./As4626Abstract.sol";
  * @notice Common strategy back-end extended by implementations, delegating vault logic to StrategyV5Agent
  * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
-abstract contract StrategyV5Abstract is As4626Abstract {
+  contract StrategyV5Abstract {
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              TYPES                             ║
@@ -28,6 +29,8 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   // Upgradable strategy agent's storage struct
   struct AgentStorageExt {
     IStrategyV5 delegator;
+    uint256 maxLoan;
+    uint256 totalLent;
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -35,6 +38,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   ╚═══════════════════════════════════════════════════════════════*/
 
   error InvalidOrStaleValue(uint256 updateTime, int256 value);
+  error FlashLoanDefault(address borrower, uint256 amount);
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             EVENTS                             ║
@@ -43,6 +47,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   event Invest(uint256 amount, uint256 timestamp);
   event Harvest(uint256 amount, uint256 timestamp);
   event Liquidate(uint256 amount, uint256 liquidityAvailable, uint256 timestamp);
+  event FlashLoan(address indexed borrower, uint256 amount, uint256 fee);
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                           CONSTANTS                            ║
@@ -51,6 +56,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   // Upgrade dedicated storage to prevent collisions (EIP-7201)
   // keccak256(abi.encode(uint256(keccak256("strategy.agent")) - 1)) & ~bytes32(uint256(0xff));
   bytes32 internal constant _AGENT_STORAGE_EXT_SLOT = 0x821ff15c18486d780e69cedd37d14f117c16526e6b0b6969fd23bc9dd7ffc900;
+  bytes32 internal constant _FLASH_LOAN_SIG = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║
@@ -73,7 +79,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() As4626Abstract() {}
+  constructor() {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
@@ -84,23 +90,5 @@ abstract contract StrategyV5Abstract is As4626Abstract {
    */
   function _agentStorageExt() internal pure returns (AgentStorageExt storage $) {
     assembly { $.slot := _AGENT_STORAGE_EXT_SLOT }
-  }
-
-  /**
-   * @notice Calculates the total pending redemption requests in shares
-   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
-   * @return The total amount of pending redemption requests
-   */
-  function totalPendingRedemptionRequest() public view returns (uint256) {
-    return _req.totalRedemption - _req.totalClaimableRedemption;
-  }
-
-  /**
-   * @notice Calculates the total pending asset requests based on redemption requests
-   * @dev Converts the total pending redemption requests to their asset asset value for precision
-   * @return The total amount of asset assets requested pending redemption
-   */
-  function totalPendingAssetRequest() public view returns (uint256) {
-    return convertToAssets(totalPendingRedemptionRequest(), false);
   }
 }

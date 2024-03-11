@@ -125,7 +125,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
       uint256 supplied = _lTokens[i].balanceOf(address(this)) - iouBefore;
 
       // unified slippage check (swap+add liquidity)
-      if (supplied < _inputToStake(toDeposit, i).subBp(_maxSlippageBps * 2)) {
+      if (supplied < _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
         revert AmountTooLow(supplied);
       }
 
@@ -171,7 +171,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
       }
 
       // unified slippage check (unstake+remove liquidity+swap out)
-      if (recovered < _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)) {
+      if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
         revert AmountTooLow(recovered);
       }
 
@@ -194,16 +194,10 @@ contract LodestarMultiStake is StrategyV5Chainlink {
    * @return total Amount invested
    */
   function invested(uint256 _index) public view override returns (uint256) {
-    return _inputToAsset(investedInput(_index), _index);
+    return _inputToAsset(_investedInput(_index), _index);
   }
 
-  /**
-   * @notice Returns the investment in asset asset for the specified input
-   * @return total Amount invested
-   */
-  function investedInput(uint256 _index) internal view override returns (uint256) {
-    return _stakedInput(_index);
-  }
+  
 
   /**
    * @notice Converts LP/staked LP to input
@@ -231,7 +225,7 @@ contract LodestarMultiStake is StrategyV5Chainlink {
    * @notice Returns the invested input converted from the staked LP tokene
    * @return Input value of the LP/staked balance
    */
-  function _stakedInput(uint256 _index) internal view override returns (uint256) {
+  function _investedInput(uint256 _index) internal view override returns (uint256) {
     return _stakeToInput(_lTokens[_index].balanceOf(address(this)), _index);
   }
 

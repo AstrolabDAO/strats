@@ -2,11 +2,14 @@
 pragma solidity 0.8.22;
 
 import "../interfaces/IStrategyV5.sol";
-import "./StrategyV5Abstract.sol";
-import "./AsRescuableAbstract.sol";
-import "./AsProxy.sol";
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
+import "./AsManageable.sol";
+import "./AsRescuable.sol";
+import "./AsProxy.sol";
+import "./ERC20Abstract.sol";
+import "./As4626Abstract.sol";
+import "./StrategyV5Abstract.sol";
 
 /**
  *             _             _       _
@@ -20,7 +23,7 @@ import "../libs/AsMaths.sol";
  * @notice Common strategy back-end extended by implementations, delegating vault logic to StrategyV5Agent
  * @dev All state variables must be in StrategyV5abstract to match the proxy base storage layout (StrategyV5)
  */
-abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy {
+contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProxy, AsRescuable, AsManageable {
   using AsMaths for uint256;
   using AsMaths for int256;
   using AsArrays for bytes[];
@@ -29,7 +32,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() StrategyV5Abstract() {}
+  constructor() StrategyV5Abstract() {
+    _pause();
+  }
 
   /**
    * @notice Initializes the strategy using `_params`
@@ -156,7 +161,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @return Input equivalent to the full LP/staked LP balance
    * @dev This should be overriden by strategy implementations
    */
-  function _stakedInput(uint256 _index) internal view virtual returns (uint256) {
+  function _investedInput(uint256 _index) internal view virtual returns (uint256) {
     return 0;
   }
 
@@ -165,27 +170,38 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @param _index Index of the input
    * @return Amount of underlying assets equivalent to the full input balance
    */
-  function invested(uint256 _index) public view virtual returns (uint256);
+  function _invested(uint256 _index) internal view virtual returns (uint256) {
+    _inputToAsset(_investedInput(_index), _index);
+  }
 
   /**
-   * @notice Gets the amount of a specific input (`inputs[_index]`) invested in the strategy, LP or staked
+   * @notice Converts a full input balance (`inputs[_index]`) to underlying assets
    * @param _index Index of the input
-   * @return Amount of input invested
-   * @dev This should be overriden by strategy implementations
+   * @return Amount of underlying assets equivalent to the full input balance
    */
-  function investedInput(uint256 _index) internal view virtual returns (uint256);
+  function invested(uint256 _index) external view virtual returns (uint256) {
+    return _invested(_index);
+  }
 
   /**
    * @notice Sums all inputs invested in the strategy, LP or staked, in underlying assets
    * @return total Amount invested
    */
-  function invested() public view virtual override returns (uint256 total) {
+  function _invested() internal view virtual override returns (uint256 total) {
     for (uint256 i = 0; i < _inputLength;) {
-      total += invested(i);
+      total += _invested(i);
       unchecked {
         i++;
       }
     }
+  }
+
+  /**
+   * @notice Sums all inputs invested in the strategy, LP or staked, in underlying assets
+   * @return total Amount invested
+   */
+  function invested() external view virtual returns (uint256 total) {
+    return _invested();
   }
 
   /**
@@ -195,8 +211,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @return Excess input weight in basis points
    */
   function _excessWeight(uint256 _index, uint256 _total) internal view returns (int256) {
-    if (_total == 0) _total = invested();
-    return int256(invested(_index).mulDiv(AsMaths._BP_BASIS, _total))
+    if (_total == 0) _total = _invested();
+    return int256(_invested(_index).mulDiv(AsMaths._BP_BASIS, _total))
       - int256(uint256(inputWeights[_index])); // de-facto safe as weights are sanitized
   }
 
@@ -210,7 +226,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     view
     returns (int256[8] memory excessWeights)
   {
-    if (_total == 0) _total = invested();
+    if (_total == 0) _total = _invested();
     for (uint256 i = 0; i < _inputLength;) {
       excessWeights[i] = _excessWeight(i, _total);
       unchecked {
@@ -229,8 +245,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     uint256 _index,
     uint256 _total
   ) internal view returns (int256) {
-    if (_total == 0) _total = invested();
-    return int256(investedInput(_index))
+    if (_total == 0) _total = _invested();
+    return int256(_investedInput(_index))
       - int256(
         _assetToInput(
           _total.mulDiv(uint256(inputWeights[_index]), AsMaths._BP_BASIS), _index
@@ -248,7 +264,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     view
     returns (int256[8] memory excessLiquidity)
   {
-    if (_total == 0) _total = invested();
+    if (_total == 0) _total = _invested();
     for (uint256 i = 0; i < _inputLength;) {
       excessLiquidity[i] = _excessInputLiquidity(i, _total);
       unchecked {
@@ -262,13 +278,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @param _amount Amount of underlying assets to recover
    * @return amounts Array[8] of previewed liquidated amounts
    */
-  function previewLiquidate(uint256 _amount)
-    public
-    view
-    returns (uint256[8] memory amounts)
+  function previewLiquidate(uint256 _amount) public returns (uint256[8] memory amounts)
   {
-    uint256 allocated = invested();
-    _amount += totalPendingAssetRequest() + allocated.bp(150);
+    uint256 allocated = _invested();
+    uint256 pending = _pendingAssetsRequest();
+    _amount += pending + allocated.bp(150);
     _amount = AsMaths.min(_amount, allocated);
     // excessInput accounts for the weights and the cash available in the strategy
     int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
@@ -295,13 +309,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @param _amount Amount of underlying assets to invest
    * @return amounts Array[8] of previewed invested amounts
    */
-  function previewInvest(uint256 _amount) public view returns (uint256[8] memory amounts) {
+  function previewInvest(uint256 _amount) public returns (uint256[8] memory amounts) {
     if (_amount == 0) {
-      _amount = available();
+      _amount = _available();
     }
     // compute the excess liquidity
     // NB: max allocated would be 90% for buffering flows if inputWeights are [30_00,30_00,30_00]
-    int256[8] memory excessInput = _excessInputLiquidity(invested() + _amount);
+    int256[8] memory excessInput = _excessInputLiquidity(_invested() + _amount);
     for (uint256 i = 0; i < _inputLength;) {
       if (_amount < 10) break; // no leftover
       if (excessInput[i] < 0) {
@@ -385,6 +399,70 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
   }
 
   /**
+   * @notice Calculates the total pending redemption requests in underlying assets
+   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
+   * @return Underlying assets equivalent of the total pending redemption requests
+   */
+  function _pendingAssetsRequest() internal returns (uint256) {
+    (bool success, bytes memory result) = _delegateToSelector(
+      address(agent),
+      0x4d5b6164, // keccak256("totalPendingAssetRequest()") == StrategyV5Agent.totalPendingAssetRequest()
+      msg.data
+    );
+    return success ? abi.decode(result, (uint256)) : 0;
+  }
+
+  /**
+   * @notice Calculates the total pending redemption requests in shares
+   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
+   * @return The total amount of pending redemption requests
+   */
+  function _pendingRedemptionRequest() internal returns (uint256) {
+    (bool success, bytes memory result) = _delegateToSelector(
+      address(agent),
+      0x7ed76e63, // keccak256("totalPendingRedemptionRequest()") == StrategyV5Agent.totalPendingRedemptionRequest()
+      msg.data
+    );
+    return success ? abi.decode(result, (uint256)) : 0;
+  }
+
+  /**
+   * @return Total amount of underlying assets available to withdraw
+   */
+  function _availableClaimable() internal returns (uint256) {
+    (bool success, bytes memory result) = _delegateToSelector(
+      address(agent),
+      0x8f1c290a, // keccak256("availableClaimable()") == StrategyV5Agent.availableClaimable()
+      msg.data
+    );
+    return success ? abi.decode(result, (uint256)) : 0;
+  }
+
+  /**
+   * @return Amount of underlying assets available to non-requested withdrawals, excluding `minLiquidity`
+   */
+  function _available() internal virtual returns (uint256) {
+    (bool success, bytes memory result) = _delegateToSelector(
+      address(agent),
+      0x48a0d754, // keccak256("available()") == StrategyV5Agent.available()
+      msg.data
+    );
+    return success ? abi.decode(result, (uint256)) : 0;
+  }
+
+  /**
+   * @return Share price - Amount of underlying assets redeemable for one share
+   */
+  function _sharePrice() internal virtual returns (uint256) {
+    (bool success, bytes memory result) = _delegateToSelector(
+      address(agent),
+      0x87269729, // keccak256("sharePrice()") == StrategyV5Agent.sharePrice()
+      msg.data
+    );
+    return success ? abi.decode(result, (uint256)) : 0;
+  }
+
+  /**
    * @notice Sets the strategy agent implementation
    * @param _agent Address of the new agent
    */
@@ -398,7 +476,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
    * @notice This should be overriden by strategy implementations
    * @param _amount Amount for which to set the allowances
    */
-  function _setAllowances(uint256 _amount) internal virtual;
+  function _setAllowances(uint256 _amount) internal virtual {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║
@@ -413,7 +491,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
   function _liquidate(
     uint256[8] calldata _amounts, // from previewLiquidate()
     bytes[] calldata _params
-  ) internal virtual returns (uint256 assetsRecovered);
+  ) internal virtual returns (uint256 assetsRecovered) {}
 
   /**
    * @notice Liquidates inputs according to `_amounts` using `_params` for swaps, expecting to recover at least `_minLiquidity` of underlying assets
@@ -430,10 +508,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     bytes[] calldata _params
   ) external nonReentrant onlyManager returns (uint256 liquidityAvailable) {
     // pre-liquidation sharePrice
-    last.sharePrice = sharePrice();
+    last.sharePrice = _sharePrice();
 
     // in share
-    uint256 pendingRedemption = totalPendingRedemptionRequest();
+    uint256 pendingRedemption = _pendingRedemptionRequest();
 
     // liquidate protocol positions
     uint256 liquidated = _liquidate(_amounts, _params);
@@ -441,7 +519,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     _req.totalClaimableRedemption += pendingRedemption;
 
     // we use availableClaimable() and not availableBorrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
-    liquidityAvailable = availableClaimable().subMax0(
+    liquidityAvailable = _availableClaimable().subMax0(
       _req.totalClaimableRedemption.mulDiv(
         last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED
       )
@@ -557,7 +635,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
   function _invest(
     uint256[8] calldata _amounts, // from previewInvest()
     bytes[] calldata _params
-  ) internal virtual returns (uint256 investedAmount, uint256 iouReceived);
+  ) internal virtual returns (uint256 investedAmount, uint256 iouReceived) {}
 
   /**
    * @notice Invests `_amounts` of underlying assets in the strategy inputs
@@ -629,5 +707,26 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuableAbstract, AsProxy
     if (amount > 0) {
       _wgas.deposit{value: amount}();
     }
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                          RESCUE LOGIC                          ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Requests a rescue for `_token`, setting `msg.sender` as the receiver
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
+   */
+  function requestRescue(address _token) external override onlyAdmin {
+    AsRescuable._requestRescue(_token);
+  }
+
+  /**
+   * @notice Rescues the contract's `_token` (ERC20 or native) full balance by sending it to `req.receiver`if a valid rescue request exists
+   * @notice Rescue request must be executed after `RESCUE_TIMELOCK` and before end of validity (`RESCUE_TIMELOCK + RESCUE_VALIDITY`)
+   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
+   */
+  function rescue(address _token) external override onlyManager {
+    _rescue(_token);
   }
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ERC20.sol";
@@ -21,7 +20,7 @@ import "../libs/AsAccounting.sol";
  * @notice This contract lays out the common storage for all strategies
  * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
-abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
+abstract contract As4626Abstract {
   using SafeERC20 for IERC20Metadata;
   using AsMaths for uint256;
 
@@ -30,8 +29,7 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   ╚═══════════════════════════════════════════════════════════════*/
 
   struct As4626StorageExt {
-    uint256 totalLent;
-    uint256 maxLoan;
+    uint16 maxSlippageBps; // strategy default internal ops slippage
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -42,7 +40,6 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   error AmountTooHigh(uint256 amount);
   error AmountTooLow(uint256 amount);
   error AddressZero();
-  error FlashLoanDefault(address borrower, uint256 amount);
   error InvalidData(); // invalid calldata / inputs
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -82,9 +79,6 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   // event DepositRequestCanceled(address indexed owner, uint256 assets);
   event RedeemRequestCanceled(address indexed owner, uint256 assets);
 
-  // Flash loan
-  event FlashLoan(address indexed borrower, uint256 amount, uint256 fee);
-
   /*═══════════════════════════════════════════════════════════════╗
   ║                           CONSTANTS                            ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -92,7 +86,6 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   uint256 internal constant _MAX_UINT256 = type(uint256).max;
   uint256 internal constant _WEI_PER_SHARE = 1e12; // weis in a share (base unit)
   uint256 internal constant _WEI_PER_SHARE_SQUARED = _WEI_PER_SHARE ** 2;
-  bytes32 internal constant _FLASH_LOAN_SIG = keccak256("ERC3156FlashBorrower.onFlashLoan");
 
   // Upgrade dedicated storage to prevent collisions (EIP-7201)
   // keccak256(abi.encode(uint256(keccak256("as4626.main")) - 1)) & ~bytes32(uint256(0xff));
@@ -105,7 +98,6 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   // Share/underlying asset accounting
   uint256 public maxTotalAssets = 0; // maximum total assets that can be deposited
   uint256 internal minLiquidity = 1e7; // minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
-  uint16 internal _maxSlippageBps = 100; // strategy default internal ops slippage 1%
 
   IERC20Metadata public asset; // ERC20 token used as the base denomination
   uint8 internal _assetDecimals; // ERC20 token decimals
@@ -127,168 +119,20 @@ abstract contract As4626Abstract is ERC20, AsManageable, ReentrancyGuard {
   // NB: DO NOT EXTEND THIS STORAGE, TO PREVENT COLLISION USE `_4626Storage()`
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                         INITIALIZATION                         ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  constructor() {
-    _pause();
-  }
-
-  /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
    * @return $ Upgradable As4626 storage extension slot
    */
-  function _as4626StorageExt() internal pure returns (As4626StorageExt storage $) {
+  function _4626StorageExt() internal pure returns (As4626StorageExt storage $) {
     assembly { $.slot := _AS4626_STORAGE_EXT_SLOT }
   }
 
   /**
-   * @dev Must be overridden by StrategyV5 implementations
    * @return Total amount of invested inputs denominated in underlying assets
    */
-  function invested() public view virtual returns (uint256);
+  function _invested() internal view virtual returns (uint256);
 
-  /**
-   * @return Amount of underlying assets available to non-requested withdrawals, excluding `minLiquidity`
-   */
-  function available() public view returns (uint256) {
-    return
-      availableBorrowable().subMax0(convertToAssets(_req.totalClaimableRedemption, false));
-  }
-
-  /**
-   * @return Total amount of underlying assets available to withdraw
-   */
-  function availableClaimable() internal view returns (uint256) {
-    return asset.balanceOf(address(this)).subMax0(
-      claimableAssetFees
-        + AsAccounting.unrealizedProfits(last.harvest, _expectedProfits, _profitCooldown)
-    );
-  }
-
-  /**
-   * @return Amount of borrowable underlying assets available to `flashLoan()`
-   */
-  function availableBorrowable() internal view returns (uint256) {
-    return availableClaimable();
-  }
-
-  /**
-   * @return Total assets denominated in underlying, including claimable redemptions
-   */
-  function totalAssets() public view virtual returns (uint256) {
-    return availableClaimable() + invested();
-  }
-
-  /**
-   * @return Total assets denominated in underlying, excluding claimable redemptions (used to calculate `sharePrice()`)
-   */
-  function totalAccountedAssets() public view returns (uint256) {
-    return totalAssets().subMax0(
-      _req.totalClaimableRedemption.mulDiv(
-        last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED
-      )
-    ); // eg. (1e12+1e12+1e6)-(1e12+1e12) = 1e6
-  }
-
-  /**
-   * @return Total amount of shares outstanding, excluding claimable redemptions (used to calculate `sharePrice()`)
-   */
-  function totalAccountedSupply() public view returns (uint256) {
-    return totalSupply().subMax0(_req.totalClaimableRedemption);
-  }
-
-  /**
-   * @return Share price - Amount of underlying assets redeemable for one share
-   */
-  function sharePrice() public view virtual returns (uint256) {
-    uint256 supply = totalAccountedSupply();
-    return supply == 0
-      ? _WEI_PER_SHARE
-      : totalAccountedAssets().mulDiv( // eg. e6
-        _WEI_PER_SHARE_SQUARED, // 1e12*2
-        supply * _weiPerAsset
-      ); // eg. (1e6+1e12+1e12)-(1e12+1e6)
-  }
-
-  /**
-   * @param _owner Owner of the shares
-   * @return Value of the owner's shares denominated in underlying assets
-   */
-  function assetsOf(address _owner) public view returns (uint256) {
-    return convertToAssets(balanceOf(_owner), false);
-  }
-
-  /**
-   * @notice Converts `_amount` of underlying assets to shares at the current share price
-   * @param _amount Amount of underlying assets to convert
-   * @param _roundUp Round up if true, round down otherwise
-   * @return Amount of shares equivalent to `_amount` assets
-   */
-  function convertToShares(
-    uint256 _amount,
-    bool _roundUp
-  ) internal view returns (uint256) {
-    return _amount.mulDiv(
-      _WEI_PER_SHARE_SQUARED,
-      sharePrice() * _weiPerAsset,
-      _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
-    ); // eg. 1e6+(1e12+1e12)-(1e12+1e6) = 1e12
-  }
-
-  /**
-   * @notice Converts `_amount` of underlying assets to shares at the current share price
-   * @param _amount Amount of assets to convert
-   * @return Amount of shares equivalent to `_amount` assets
-   */
-  function convertToShares(uint256 _amount) external view returns (uint256) {
-    return convertToShares(_amount, false);
-  }
-
-  /**
-   * @notice Converts `_shares` to underlying assets at the current share price
-   * @param _shares Amount of shares to convert
-   * @param _roundUp Round up if true, round down otherwise
-   * @return Amount of assets equivalent to `_shares`
-   */
-  function convertToAssets(
-    uint256 _shares,
-    bool _roundUp
-  ) internal view returns (uint256) {
-    return _shares.mulDiv(
-      sharePrice() * _weiPerAsset,
-      _WEI_PER_SHARE_SQUARED,
-      _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
-    ); // eg. 1e12+(1e12+1e6)-(1e12+1e12) = 1e6
-  }
-
-  /**
-   * @notice Converts `_shares` to underlying assets at the current share price
-   * @param _shares Amount of shares to convert
-   * @return Amount of assets equivalent to `_shares`
-   */
-  function convertToAssets(uint256 _shares) external view returns (uint256) {
-    return convertToAssets(_shares, false);
-  }
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                             LOGIC                              ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @dev Transfers `_amount` of shares from `msg.sender` to `_receiver`
-   * @param _receiver Receiver of the shares
-   * @param _amount Amount of shares to transfer
-   * @return Boolean indicating whether the transfer was successful or not
-   */
-  function transfer(address _receiver, uint256 _amount) public override(ERC20) returns (bool) {
-    Erc7540Request storage request = _req.byOwner[msg.sender];
-    if (_amount > (balanceOf(msg.sender) - request.shares)) {
-      revert AmountTooHigh(_amount);
-    }
-    return ERC20.transfer(_receiver, _amount);
-  }
+  // NB: `_available()` and `_sharePrice()` is payable in StrategyV5 as result of a delegatecall to StrategyV5Agent
 }

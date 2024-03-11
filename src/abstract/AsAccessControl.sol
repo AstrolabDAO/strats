@@ -3,6 +3,7 @@ pragma solidity 0.8.22;
 
 import "../libs/AsCast.sol";
 import "../libs/AsIterableSet.sol";
+import "./AsAccessControlAbstract.sol";
 
 /**
  *             _             _       _
@@ -15,51 +16,10 @@ import "../libs/AsIterableSet.sol";
  * @author Astrolab DAO
  * @notice Inspired by OZ's AccessControlEnumerable, used for RBAC and contract pausing
  */
-abstract contract AsAccessControl {
+abstract contract AsAccessControl is AsAccessControlAbstract {
   using AsIterableSet for AsIterableSet.Set;
   using AsCast for bytes32;
   using AsCast for address;
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                              TYPES                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  struct RoleState {
-    AsIterableSet.Set members;
-    bytes32 adminRole;
-  }
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                             ERRORS                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  error Unauthorized();
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                             EVENTS                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  event RoleAdminChanged(
-    bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole
-  );
-  event RoleGranted(
-    bytes32 indexed role, address indexed account, address indexed sender
-  );
-  event RoleRevoked(
-    bytes32 indexed role, address indexed account, address indexed sender
-  );
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                           CONSTANTS                            ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                            STORAGE                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  mapping(bytes32 => RoleState) private _roles;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                           MODIFIERS                            ║
@@ -68,7 +28,7 @@ abstract contract AsAccessControl {
   /**
    * @notice Checks if the caller has a role
    */
-  modifier onlyRole(bytes32 role) {
+  modifier onlyRole(bytes32 role) override {
     _checkRole(role);
     _;
   }

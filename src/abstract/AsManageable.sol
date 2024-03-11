@@ -2,6 +2,7 @@
 pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./AsAccessControl.sol";
 
 /**
@@ -16,7 +17,7 @@ import "./AsAccessControl.sol";
  * @notice Abstract contract to manage roles and contract pausing
  * @notice Default roles are KEEPER (operator/bot), MANAGER (elevated DAO member) and ADMIN (elevated DAO council multisig)
  */
-abstract contract AsManageable is AsAccessControl, Pausable {
+contract AsManageable is AsAccessControl, Pausable, ReentrancyGuard {
   using AsIterableSet for AsIterableSet.Set;
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -161,6 +162,20 @@ abstract contract AsManageable is AsAccessControl, Pausable {
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║
   ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Pauses the vault
+   */
+  function pause() public onlyAdmin {
+    _pause();
+  }
+
+  /**
+   * @notice Unpauses the vault
+   */
+  function unpause() public onlyAdmin {
+    _unpause();
+  }
 
   /**
    * @notice Grants `_role` to `_account`

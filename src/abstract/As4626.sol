@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./As4626Abstract.sol";
 import "./AsTypes.sol";
 import "../interfaces/IAs4626.sol";
 import "../interfaces/IERC7540RedeemReceiver.sol";
 import "../interfaces/IERC7540DepositReceiver.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
+import "./AsManageableAbstract.sol";
+import "./ERC20.sol";
 
 /**
  *             _             _       _
@@ -22,7 +24,7 @@ import "../libs/AsAccounting.sol";
  * @notice Common vault/strategy back-end extended by StrategyV5Agent, delegated to by StrategyV5 implementations
  * @dev All state variables must be in As4626Abstract to match the proxy base storage layout (StrategyV5)
  */
-abstract contract As4626 is As4626Abstract {
+abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
   using AsMaths for uint256;
   using AsMaths for int256;
   using SafeERC20 for IERC20Metadata;
@@ -60,7 +62,7 @@ abstract contract As4626 is As4626Abstract {
   ) public virtual onlyAdmin {
     // check that the fees are not too high
     setFees(_fees);
-    _as4626StorageExt().maxLoan = 1e12;
+    _4626StorageExt().maxSlippageBps = 100; // 1% max internal swap slippage
     feeCollector = _coreAddresses.feeCollector;
     _req.redemptionLocktime = 6 hours;
     last.accountedSharePrice = _WEI_PER_SHARE;
@@ -92,28 +94,23 @@ abstract contract As4626 is As4626Abstract {
     setMaxTotalAssets(_maxTotalAssets);
 
     // if the vault is still paused, unpause it
-    if (paused()) _unpause();
+    if (paused()) unpause();
     deposit(_seedDeposit, msg.sender);
-  }
-
-  /**
-   * @notice Pauses the vault
-   */
-  function pause() external onlyAdmin {
-    _pause();
-    maxTotalAssets = 0; // this prevents deposit
-  }
-
-  /**
-   * @notice Unpauses the vault
-   */
-  function unpause() external onlyAdmin {
-    _unpause();
   }
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @return Amount of underlying assets available to non-requested withdrawals, excluding `minLiquidity`
+   */
+  function _available() internal view virtual returns (uint256);
+
+  /**
+   * @return Total amount of underlying assets available to withdraw
+   */
+  function availableClaimable() public view virtual returns (uint256);
 
   /**
    * @return Sums all pending redemption requests
@@ -146,7 +143,7 @@ abstract contract As4626 is As4626Abstract {
   function pendingAssetRequest(address _owner) external view returns (uint256) {
     Erc7540Request memory request = _req.byOwner[_owner];
     return request.shares.mulDiv(
-      AsMaths.min(request.sharePrice, sharePrice()), // worst of
+      AsMaths.min(request.sharePrice, _sharePrice()), // worst of
       _WEI_PER_SHARE
     );
   }
@@ -290,21 +287,133 @@ abstract contract As4626 is As4626Abstract {
    * @param _owner Owner of the shares to be redeemed
    * @return Maximum amount of shares that can currently be redeemed by `_owner`
    */
-  function maxRedeem(address _owner) public view returns (uint256) {
-    return paused()
-      ? 0
-      : AsMaths.min(
-        balanceOf(msg.sender),
-        AsMaths.max(claimableRedeemRequest(_owner), convertToShares(available(), false))
-      );
+  function maxRedeem(address _owner) public view virtual returns (uint256) {
+    return 0;
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                     ERC4626 DERIVED VIEWS                      ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @return Total assets denominated in underlying, including claimable redemptions
+   */
+  function totalAssets() public view virtual returns (uint256);
+
+  /**
+   * @return Total assets denominated in underlying, excluding claimable redemptions (used to calculate `sharePrice()`)
+   */
+  function totalAccountedAssets() public view returns (uint256) {
+    return totalAssets().subMax0(
+      _req.totalClaimableRedemption.mulDiv(
+        last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED
+      )
+    ); // eg. (1e12+1e12+1e6)-(1e12+1e12) = 1e6
   }
 
   /**
-   * @dev Returns the total amount lent by `flashLoan()` in the current underlying assets
-   * @return The total amount lent as a uint256 value
+   * @return Total amount of shares outstanding, excluding claimable redemptions (used to calculate `sharePrice()`)
    */
-  function totalLent() external view returns (uint256) {
-    return _as4626StorageExt().totalLent;
+  function totalAccountedSupply() public view returns (uint256) {
+    return totalSupply().subMax0(_req.totalClaimableRedemption);
+  }
+
+  /**
+   * @return Share price - Amount of underlying assets redeemable for one share
+   */
+  function _sharePrice() internal view virtual returns (uint256) {
+    uint256 supply = totalAccountedSupply();
+    return supply == 0
+      ? _WEI_PER_SHARE
+      : totalAccountedAssets().mulDiv( // eg. e6
+        _WEI_PER_SHARE_SQUARED, // 1e12*2
+        supply * _weiPerAsset
+      ); // eg. (1e6+1e12+1e12)-(1e12+1e6)
+  }
+
+  /**
+   * @return Share price - Amount of underlying assets redeemable for one share
+   */
+  function sharePrice() external view virtual returns (uint256) {
+    return _sharePrice();
+  }
+
+  /**
+   * @param _owner Owner of the shares
+   * @return Value of the owner's shares denominated in underlying assets
+   */
+  function assetsOf(address _owner) public view returns (uint256) {
+    return convertToAssets(balanceOf(_owner), false);
+  }
+
+  /**
+   * @notice Converts `_amount` of underlying assets to shares at the current share price
+   * @param _amount Amount of underlying assets to convert
+   * @param _roundUp Round up if true, round down otherwise
+   * @return Amount of shares equivalent to `_amount` assets
+   */
+  function convertToShares(
+    uint256 _amount,
+    bool _roundUp
+  ) internal view virtual returns (uint256) {
+    return _amount.mulDiv(
+      _WEI_PER_SHARE_SQUARED,
+      _sharePrice() * _weiPerAsset,
+      _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
+    ); // eg. 1e6+(1e12+1e12)-(1e12+1e6) = 1e12
+  }
+
+  /**
+   * @notice Converts `_amount` of underlying assets to shares at the current share price
+   * @param _amount Amount of assets to convert
+   * @return Amount of shares equivalent to `_amount` assets
+   */
+  function convertToShares(uint256 _amount) external view returns (uint256) {
+    return convertToShares(_amount, false);
+  }
+
+  /**
+   * @notice Converts `_shares` to underlying assets at the current share price
+   * @param _shares Amount of shares to convert
+   * @param _roundUp Round up if true, round down otherwise
+   * @return Amount of assets equivalent to `_shares`
+   */
+  function convertToAssets(
+    uint256 _shares,
+    bool _roundUp
+  ) internal view returns (uint256) {
+    return _shares.mulDiv(
+      _sharePrice() * _weiPerAsset,
+      _WEI_PER_SHARE_SQUARED,
+      _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
+    ); // eg. 1e12+(1e12+1e6)-(1e12+1e12) = 1e6
+  }
+
+  /**
+   * @notice Converts `_shares` to underlying assets at the current share price
+   * @param _shares Amount of shares to convert
+   * @return Amount of assets equivalent to `_shares`
+   */
+  function convertToAssets(uint256 _shares) external view returns (uint256) {
+    return convertToAssets(_shares, false);
+  }
+
+  /**
+   * @notice Calculates the total pending redemption requests in shares
+   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
+   * @return The total amount of pending redemption requests
+   */
+  function totalPendingRedemptionRequest() public view returns (uint256) {
+    return _req.totalRedemption - _req.totalClaimableRedemption;
+  }
+
+  /**
+   * @notice Calculates the total pending asset requests based on redemption requests
+   * @dev Converts the total pending redemption requests to their asset asset value for precision
+   * @return The total amount of asset assets requested pending redemption
+   */
+  function totalPendingAssetRequest() public view returns (uint256) {
+    return convertToAssets(totalPendingRedemptionRequest(), false);
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -321,19 +430,11 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /**
-   * @notice Sets the vault `_maxSlippageBps` (internal swap slippage)
+   * @notice Sets the vault `_4626StorageExt().maxSlippageBps` (internal swap slippage)
    * @param _bps Slippage in basis points (100 = 1%)
    */
   function setMaxSlippageBps(uint16 _bps) external onlyAdmin {
-    _maxSlippageBps = _bps;
-  }
-
-  /**
-   * @notice Sets the vault `_maxLoan` originated in underlying assets
-   * @param _amount Maximum loan amount
-   */
-  function setMaxLoan(uint256 _amount) external onlyAdmin {
-    _as4626StorageExt().maxLoan = _amount;
+    _4626StorageExt().maxSlippageBps = _bps;
   }
 
   /**
@@ -382,6 +483,24 @@ abstract contract As4626 is As4626Abstract {
   }
 
   /*═══════════════════════════════════════════════════════════════╗
+  ║                        ERC20 OVERRIDES                         ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @dev Transfers `_amount` of shares from `msg.sender` to `_receiver`
+   * @param _receiver Receiver of the shares
+   * @param _amount Amount of shares to transfer
+   * @return Boolean indicating whether the transfer was successful or not
+   */
+  function transfer(address _receiver, uint256 _amount) public override(ERC20) returns (bool) {
+    Erc7540Request storage request = _req.byOwner[msg.sender];
+    if (_amount > (balanceOf(msg.sender) - request.shares)) {
+      revert AmountTooHigh(_amount);
+    }
+    return ERC20.transfer(_receiver, _amount);
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
   ║                      ERC-4626 SYNC LOGIC                       ║
   ╚═══════════════════════════════════════════════════════════════*/
 
@@ -401,7 +520,7 @@ abstract contract As4626 is As4626Abstract {
     if (_shares == 0 && _amount == 0) revert AmountTooLow(0);
 
     // do not allow minting at a price higher than the current share price
-    last.sharePrice = sharePrice();
+    last.sharePrice = _sharePrice();
 
     bool minting = false;
 
@@ -466,7 +585,7 @@ abstract contract As4626 is As4626Abstract {
     uint256 _shares,
     uint256 _maxAmount,
     address _receiver
-  ) public returns (uint256 deposited) {
+  ) external returns (uint256 deposited) {
     deposited = _deposit(0, _shares, _receiver);
     if (deposited > _maxAmount) revert AmountTooHigh(deposited);
   }
@@ -482,7 +601,7 @@ abstract contract As4626 is As4626Abstract {
     uint256 _amount,
     uint256 _minShareAmount,
     address _receiver
-  ) public returns (uint256 shares) {
+  ) external returns (uint256 shares) {
     shares = _deposit(_amount, 0, _receiver);
     if (shares < _minShareAmount) revert AmountTooLow(shares);
   }
@@ -509,7 +628,7 @@ abstract contract As4626 is As4626Abstract {
     uint256 claimableShares = (msg.sender == request.operator || msg.sender == _owner)
       ? claimableRedeemRequest(_owner)
       : 0;
-    last.sharePrice = sharePrice();
+    last.sharePrice = _sharePrice();
 
     uint256 worstPrice = last.sharePrice;
     uint256 claimableAmount;
@@ -543,7 +662,7 @@ abstract contract As4626 is As4626Abstract {
       // check if the vault available liquidity can cover the withdrawal
       if (
         _shares
-          > available().mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset)
+          > _available().mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset)
       ) {
         revert AmountTooHigh(_shares);
       }
@@ -602,7 +721,7 @@ abstract contract As4626 is As4626Abstract {
     uint256 _minAmount,
     address _receiver,
     address _owner
-  ) public returns (uint256 amount) {
+  ) external returns (uint256 amount) {
     amount = _withdraw(_amount, 0, _receiver, _owner);
     if (amount < _minAmount) revert AmountTooLow(amount);
   }
@@ -710,7 +829,7 @@ abstract contract As4626 is As4626Abstract {
     Erc7540Request storage request = _req.byOwner[_owner];
     if (request.operator != _operator) request.operator = _operator;
 
-    last.sharePrice = sharePrice();
+    last.sharePrice = _sharePrice();
     if (request.shares > 0) {
       if (request.shares > _shares) {
         revert AmountTooLow(_shares);
@@ -800,7 +919,7 @@ abstract contract As4626 is As4626Abstract {
 
     if (shares == 0) revert AmountTooLow(0);
 
-    last.sharePrice = sharePrice();
+    last.sharePrice = _sharePrice();
     uint256 opportunityCost = 0;
     if (last.sharePrice > request.sharePrice) {
       // burn the excess shares from the loss incurred while not farming
@@ -876,122 +995,5 @@ abstract contract As4626 is As4626Abstract {
    */
   function collectFees() external returns (uint256) {
     return _collectFees();
-  }
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                       ERC-3156 LOANS LOGIC                     ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @notice Calculates the flash fee for a given borrower and amount (ERC-3156 extension)
-   * @param _borrower Address of the borrower
-   * @param _amount Amount of underlying assets lent
-   * @return Amount of underlying assets to be charged for the loan, on top of the returned principal
-   */
-  function _flashFee(address _borrower, uint256 _amount) internal view returns (uint256) {
-    return exemptionList[_borrower] ? 0 : _amount.bp(fees.flash);
-  }
-
-  /**
-   * @notice Fee to be charged for a given loan (ERC-3156 extension)
-   * @param _token Loan currency
-   * @param _borrower Address of the borrower
-   * @param _amount Amount of `_token` lent
-   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
-   */
-  function flashFee(
-    address _token,
-    address _borrower,
-    uint256 _amount
-  ) external view returns (uint256) {
-    if (_token != address(asset)) {
-      revert Unauthorized();
-    }
-    return _flashFee(_borrower, _amount);
-  }
-
-  /**
-   * @notice Fee to be charged for a given loan (ERC-3156 polyfill)
-   * @notice Use `flashFee(address _token, address _borrower, uint256 _amount)` to specify a different `_borrower`
-   * @param _token Loan currency
-   * @param _amount Amount of `_token` lent
-   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
-   */
-  function flashFee(address _token, uint256 _amount) external view returns (uint256) {
-    if (_token != address(asset)) {
-      revert Unauthorized();
-    }
-    return _flashFee(msg.sender, _amount);
-  }
-
-  /**
-   * @notice Amount of underlying assets available to be lent (ERC-3156 polyfill)
-   * @param _token Loan currency
-   * @return Amount of `_token` that can currently be borrowed through `flashLoan`
-   */
-  function maxFlashLoan(address _token) external view returns (uint256) {
-    return address(asset) == _token ? AsMaths.min(availableBorrowable(), _as4626StorageExt().maxLoan) : 0;
-  }
-
-  /**
-   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156 extension)
-   * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
-   * @param _amount Amount of underlying assets to lend
-   * @param _data Callback data to be passed to `_receiver.executeOperation(_data)` function
-   */
-  function _flashLoan(
-    address _receiver,
-    uint256 _amount,
-    bytes calldata _data
-  ) internal nonReentrant whenNotPaused {
-    address token = address(asset); // Assuming 'asset' is your ERC20 Address of the token
-
-    As4626StorageExt storage $ = _as4626StorageExt();
-
-    if (_amount > availableBorrowable() || _amount > $.maxLoan) {
-      revert AmountTooHigh(_amount);
-    }
-
-    uint256 fee = _flashFee(_receiver, _amount);
-    uint256 balanceBefore = asset.balanceOf(address(this));
-
-    $.totalLent += _amount;
-
-    // Transfer the tokens to the receiver
-    asset.safeTransfer(_receiver, _amount);
-
-    // Callback to the receiver's onFlashLoan method
-    require(
-      IERC3156FlashBorrower(_receiver).onFlashLoan(msg.sender, token, _amount, fee, _data)
-        == _FLASH_LOAN_SIG
-    ); // callback failure
-
-    // Verify the repayment and fee
-    uint256 balanceAfter = asset.balanceOf(address(this));
-    if (balanceAfter < balanceBefore + fee) {
-      revert FlashLoanDefault(_receiver, _amount);
-    }
-
-    emit FlashLoan(msg.sender, _amount, fee);
-  }
-
-  /**
-   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156 polyfill)
-   * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
-   * @param _token Loan currency
-   * @param _amount Amount of `_token` lent
-   * @param _data Callback data to be passed to `_receiver.executeOperation(_data)` function
-   */
-  function flashLoan(
-    address _receiver,
-    address _token,
-    uint256 _amount,
-    bytes calldata _data
-  ) external returns (bool) {
-    if (_token != address(asset)) {
-      revert Unauthorized();
-    }
-    _flashLoan(_receiver, _amount, _data);
-    return true;
   }
 }

@@ -2,9 +2,10 @@
 pragma solidity 0.8.22;
 
 import "../interfaces/IStrategyV5.sol";
+import "../interfaces/IERC3156FlashBorrower.sol";
 import "./StrategyV5Abstract.sol";
+import "./AsRescuableAbstract.sol";
 import "./As4626.sol";
-import "./AsRescuable.sol";
 
 /**
  *             _             _       _
@@ -18,7 +19,7 @@ import "./AsRescuable.sol";
  * @notice Common strategy back-end, implementing shared vault/strategy accounting logic
  * @notice All state variables must be in StrategyV5Abstract to match the proxy base storage layout (StrategyV5)
  */
-contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
+contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
   using AsMaths for uint256;
   using AsMaths for int256;
   using SafeERC20 for IERC20Metadata;
@@ -40,6 +41,7 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     asset = IERC20Metadata(_params.coreAddresses.asset);
     _assetDecimals = asset.decimals();
     _weiPerAsset = 10 ** _assetDecimals;
+    _agentStorageExt().maxLoan = 1e12;
     As4626.init(_params.erc20Metadata, _params.coreAddresses, _params.fees);
     setSwapperAllowance(_MAX_UINT256, true, false, true); // reward allowances already set
   }
@@ -49,26 +51,18 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Retrieves the share price from the strategy via the proxy
-   * @notice Calls sharePrice function on the IStrategyV5 contract through `_stratProxy` (delegator's address)
-   * @return Strategy share price - Amount of underlying assets redeemable for one share
-   */
-  function sharePrice() public view override returns (uint256) {
-    return _agentStorageExt().delegator.sharePrice();
-  }
-
-  /**
-   * @return Total assets denominated in underlying assets, including claimable redemptions (strategy delegator `_stratProxy.totalAssets()`)
-   */
-  function totalAssets() public view override returns (uint256) {
-    return _agentStorageExt().delegator.totalAssets();
-  }
-
-  /**
    * @return Total amount of invested inputs denominated in underlying assets
    */
-  function invested() public view override returns (uint256) {
+  function _invested() internal view override returns (uint256) {
     return _agentStorageExt().delegator.invested();
+  }
+
+  /**
+   * @dev Returns the total amount lent by `flashLoan()` in the current underlying assets
+   * @return The total amount lent as a uint256 value
+   */
+  function totalLent() external view returns (uint256) {
+    return _agentStorageExt().totalLent;
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -157,14 +151,14 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     if (_req.totalRedemption > 0) revert Unauthorized();
 
     // pre-emptively pause the strategy for manual checks
-    _pause();
+    pause();
 
     // slippage is checked within Swapper >> no need to use (received, spent)
     swapper.decodeAndSwapBalance(address(asset), _asset, _swapData);
 
     // reset all cached accounted values as a denomination change might change the accounting basis
     _expectedProfits = 0; // reset trailing profits
-    _as4626StorageExt().totalLent = 0; // reset totalLent (broken analytics)
+    _agentStorageExt().totalLent = 0; // reset totalLent (broken analytics)
     _collectFees(); // claim all pending fees to reset claimableAssetFees
     address swapperAddress = address(swapper);
     if (swapperAddress != address(0)) {
@@ -241,24 +235,180 @@ contract StrategyV5Agent is StrategyV5Abstract, AsRescuable, As4626 {
     setSwapperAllowance(_MAX_UINT256, false, true, false);
   }
 
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                             LOGIC                              ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
   /**
-   * @notice Requests a rescue for `_token`, setting `msg.sender` as the receiver
-   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
+   * @return Amount of underlying assets available to non-requested withdrawals, excluding `minLiquidity`
    */
-  function requestRescue(address _token) external override onlyAdmin {
-    AsRescuable._requestRescue(_token);
+  function _available() internal view override returns (uint256) {
+    return
+      availableBorrowable().subMax0(convertToAssets(_req.totalClaimableRedemption, false));
   }
 
   /**
-   * @notice Rescues the contract's `_token` (ERC20 or native) full balance by sending it to `req.receiver`if a valid rescue request exists
-   * @notice Rescue request must be executed after `RESCUE_TIMELOCK` and before end of validity (`RESCUE_TIMELOCK + RESCUE_VALIDITY`)
-   * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
+   * @return Amount of underlying assets available to non-requested withdrawals, excluding `minLiquidity`
    */
-  function rescue(address _token) external override onlyManager {
-    _rescue(_token);
+  function available() public view returns (uint256) {
+    return _available();
+  }
+
+  /**
+   * @return Total amount of underlying assets available to withdraw
+   */
+  function availableClaimable() public view override returns (uint256) {
+    return asset.balanceOf(address(this)).subMax0(
+      claimableAssetFees
+        + AsAccounting.unrealizedProfits(last.harvest, _expectedProfits, _profitCooldown)
+    );
+  }
+
+  /**
+   * @return Amount of borrowable underlying assets available to `flashLoan()`
+   */
+  function availableBorrowable() internal view returns (uint256) {
+    return availableClaimable();
+  }
+
+  /**
+   * @return Total assets denominated in underlying, including claimable redemptions
+   */
+  function totalAssets() public view virtual override returns (uint256) {
+    return availableClaimable() + _invested();
+  }
+
+  /**
+   * @param _owner Owner of the shares to be redeemed
+   * @return Maximum amount of shares that can currently be redeemed by `_owner`
+   */
+  function maxRedeem(address _owner) public view override returns (uint256) {
+    return paused()
+      ? 0
+      : AsMaths.min(
+        balanceOf(msg.sender),
+        AsMaths.max(claimableRedeemRequest(_owner), convertToShares(_available(), false))
+      );
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                       ERC-3156 LOANS LOGIC                     ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Sets the vault `_maxLoan` originated in underlying assets
+   * @param _amount Maximum loan amount
+   */
+  function setMaxLoan(uint256 _amount) external onlyAdmin {
+    _agentStorageExt().maxLoan = _amount;
+  }
+
+  /**
+   * @notice Calculates the flash fee for a given borrower and amount (ERC-3156 extension)
+   * @param _borrower Address of the borrower
+   * @param _amount Amount of underlying assets lent
+   * @return Amount of underlying assets to be charged for the loan, on top of the returned principal
+   */
+  function _flashFee(address _borrower, uint256 _amount) internal view returns (uint256) {
+    return exemptionList[_borrower] ? 0 : _amount.bp(fees.flash);
+  }
+
+  /**
+   * @notice Fee to be charged for a given loan (ERC-3156 extension)
+   * @param _token Loan currency
+   * @param _borrower Address of the borrower
+   * @param _amount Amount of `_token` lent
+   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
+   */
+  function flashFee(
+    address _token,
+    address _borrower,
+    uint256 _amount
+  ) external view returns (uint256) {
+    if (_token != address(asset)) {
+      revert Unauthorized();
+    }
+    return _flashFee(_borrower, _amount);
+  }
+
+  /**
+   * @notice Fee to be charged for a given loan (ERC-3156 polyfill)
+   * @notice Use `flashFee(address _token, address _borrower, uint256 _amount)` to specify a different `_borrower`
+   * @param _token Loan currency
+   * @param _amount Amount of `_token` lent
+   * @return Amount of `_token` to be charged for the loan, on top of the returned principal
+   */
+  function flashFee(address _token, uint256 _amount) external view returns (uint256) {
+    if (_token != address(asset)) {
+      revert Unauthorized();
+    }
+    return _flashFee(msg.sender, _amount);
+  }
+
+  /**
+   * @notice Amount of underlying assets available to be lent (ERC-3156 polyfill)
+   * @param _token Loan currency
+   * @return Amount of `_token` that can currently be borrowed through `flashLoan`
+   */
+  function maxFlashLoan(address _token) external view returns (uint256) {
+    return address(asset) == _token ? AsMaths.min(availableBorrowable(), _agentStorageExt().maxLoan) : 0;
+  }
+
+  /**
+   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156 extension)
+   * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
+   * @param _amount Amount of underlying assets to lend
+   * @param _data Callback data to be passed to `_receiver.executeOperation(_data)` function
+   */
+  function _flashLoan(
+    address _receiver,
+    uint256 _amount,
+    bytes calldata _data
+  ) internal nonReentrant whenNotPaused {
+    address token = address(asset); // Assuming 'asset' is your ERC20 Address of the token
+
+    AgentStorageExt storage $ = _agentStorageExt();
+
+    if (_amount > availableBorrowable() || _amount > $.maxLoan) {
+      revert AmountTooHigh(_amount);
+    }
+
+    uint256 fee = _flashFee(_receiver, _amount);
+    uint256 balanceBefore = asset.balanceOf(address(this));
+
+    $.totalLent += _amount;
+
+    // Transfer the tokens to the receiver
+    asset.safeTransfer(_receiver, _amount);
+
+    // Callback to the receiver's onFlashLoan method
+    require(
+      IERC3156FlashBorrower(_receiver).onFlashLoan(msg.sender, token, _amount, fee, _data)
+        == _FLASH_LOAN_SIG
+    ); // callback failure
+
+    // Verify the repayment and fee
+    uint256 balanceAfter = asset.balanceOf(address(this));
+    if (balanceAfter < balanceBefore + fee) {
+      revert FlashLoanDefault(_receiver, _amount);
+    }
+
+    emit FlashLoan(msg.sender, _amount, fee);
+  }
+
+  /**
+   * @notice Lends `_amount` of underlying assets to `_receiver` contract while executing `_dataparams` (ERC-3156 polyfill)
+   * @param _receiver Borrower executing the flash loan, must be a contract implementing `ISimpleLoanReceiver` and not an EOA
+   * @param _token Loan currency
+   * @param _amount Amount of `_token` lent
+   * @param _data Callback data to be passed to `_receiver.executeOperation(_data)` function
+   */
+  function flashLoan(
+    address _receiver,
+    address _token,
+    uint256 _amount,
+    bytes calldata _data
+  ) external returns (bool) {
+    if (_token != address(asset)) {
+      revert Unauthorized();
+    }
+    _flashLoan(_receiver, _amount, _data);
+    return true;
   }
 }

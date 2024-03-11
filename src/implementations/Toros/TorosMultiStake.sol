@@ -101,7 +101,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
         investedAmount += _amounts[i];
         toDeposit = _amounts[i];
       }
-      uint256 expectedIou = _inputToStake(toDeposit, i).subBp(_maxSlippageBps);
+      uint256 expectedIou = _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps);
       uint256 iouBefore = _pools[i].balanceOf(address(this));
 
       dHedgeSwapper.deposit({
@@ -146,7 +146,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
         pool: address(_pools[i]),
         fundTokenAmount: toLiquidate,
         withdrawalAsset: address(inputs[i]),
-        expectedAmountOut: _amounts[i].subBp(_maxSlippageBps)
+        expectedAmountOut: _amounts[i].subBp(_4626StorageExt().maxSlippageBps)
       });
 
       // swap the unstaked tokens (inputs[0]) for the asset asset if different
@@ -162,7 +162,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
       }
 
       // unified slippage check (unstake+remove liquidity+swap out)
-      if (recovered < _inputToAsset(_amounts[i], i).subBp(_maxSlippageBps * 2)) {
+      if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
         revert AmountTooLow(recovered);
       }
 
@@ -185,16 +185,10 @@ contract TorosMultiStake is StrategyV5Chainlink {
    * @return total Amount invested
    */
   function invested(uint256 _index) public view override returns (uint256) {
-    return _inputToAsset(investedInput(_index), _index);
+    return _inputToAsset(_investedInput(_index), _index);
   }
 
-  /**
-   * @notice Returns the investment in asset asset for the specified input
-   * @return total Amount invested
-   */
-  function investedInput(uint256 _index) internal view override returns (uint256) {
-    return _stakedInput(_index);
-  }
+  
 
   /**
    * @notice Converts LP/staked LP to input
@@ -224,7 +218,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
    * @notice Returns the invested input converted from the staked LP token
    * @return Input value of the LP/staked balance
    */
-  function _stakedInput(uint256 _index) internal view override returns (uint256) {
+  function _investedInput(uint256 _index) internal view override returns (uint256) {
     return _stakeToInput(_pools[_index].balanceOf(address(this)), _index);
   }
 

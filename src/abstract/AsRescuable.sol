@@ -15,15 +15,8 @@ import "./AsRescuableAbstract.sol";
  * @title AsRescuable Abstract - Astrolab's token rescuer for payable contracts
  * @author Astrolab DAO
  */
-abstract contract AsRescuable is AsRescuableAbstract {
+contract AsRescuable is AsRescuableAbstract {
   using SafeERC20 for IERC20Metadata;
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                           CONSTANTS                            ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  uint64 public constant RESCUE_TIMELOCK = 2 days;
-  uint64 public constant RESCUE_VALIDITY = 7 days;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
@@ -77,7 +70,7 @@ abstract contract AsRescuable is AsRescuableAbstract {
    * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
    * @dev This should be overriden with the proper access control by inheriting contracts
    */
-  function requestRescue(address _token) external virtual;
+  function requestRescue(address _token) external virtual {}
 
   /**
    * @notice Rescues the contract's `_token` (ERC20 or native) full balance by sending it to `req.receiver`if a valid rescue request exists

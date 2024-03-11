@@ -32,7 +32,7 @@ abstract contract AsProxy is Proxy {
     address _implementation,
     bytes4 _selector,
     bytes calldata _data
-  ) internal {
+  ) internal returns (bool success, bytes memory result) {
     assembly {
       _selector := and(_selector, 0xffffffff) // clear selector bytes after 4
       let paramsSize := calldataload(_data.offset) // determine _data size from calldata
@@ -41,7 +41,7 @@ abstract contract AsProxy is Proxy {
       mstore(callData, _selector) // store selector in the first 4 bytes
       calldatacopy(add(callData, 0x4), _data.offset, paramsSize) // copy params after the selector in the new calldata
       mstore(0x40, add(callData, calldataSize)) // update free ptr
-      let result :=
+      success :=
         delegatecall(
           gas(),
           _implementation, // implementation address
@@ -54,9 +54,14 @@ abstract contract AsProxy is Proxy {
       let ptr := mload(0x40) // free ptr
       returndatacopy(ptr, 0, size) // copy return data to free ptr
       mstore(0x40, add(ptr, size)) // update free ptr
-      switch result
+      switch success
       case 0 { revert(ptr, size) }
-      default { return(ptr, size) }
+      default {
+        mstore(ptr, size) // store the size of the return data
+        returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
+        mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
+        result := ptr // point to start of bytes array layout
+      }
     }
   }
 
@@ -70,7 +75,7 @@ abstract contract AsProxy is Proxy {
     address _implementation,
     bytes4 _selector,
     bytes memory _data
-  ) internal {
+  ) internal returns (bool success, bytes memory result) {
     assembly {
       _selector := and(_selector, 0xffffffff) // clear selector bytes after 4
       let paramsSize := mload(_data) // determine _data size from in-memory array
@@ -78,7 +83,7 @@ abstract contract AsProxy is Proxy {
       let callData := mload(0x40) // free ptr
       mstore(callData, _selector) // store selector in the first 4 bytes
       mstore(0x40, add(callData, calldataSize)) // copy the params to the free memory pointer (post size slot)
-      let result :=
+      success :=
         delegatecall(
           gas(),
           _implementation, // implementation address
@@ -90,9 +95,14 @@ abstract contract AsProxy is Proxy {
       let size := returndatasize() // return data size
       let ptr := mload(0x40) // free ptr
       returndatacopy(ptr, 0, size) // copy return data to free ptr
-      switch result
+      switch success
       case 0 { revert(ptr, size) }
-      default { return(ptr, size) }
+      default {
+        mstore(ptr, size) // store the size of the return data
+        returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
+        mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
+        result := ptr // point to start of bytes array layout
+      }
     }
   }
 
