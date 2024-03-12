@@ -23,7 +23,7 @@ import "./StrategyV5Abstract.sol";
  * @notice Common strategy back-end extended by implementations, delegating vault logic to StrategyV5Agent
  * @dev All state variables must be in StrategyV5abstract to match the proxy base storage layout (StrategyV5)
  */
-contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProxy, AsRescuable, AsManageable {
+contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProxy, AsManageable, AsRescuable {
   using AsMaths for uint256;
   using AsMaths for int256;
   using AsArrays for bytes[];
@@ -171,7 +171,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
    * @return Amount of underlying assets equivalent to the full input balance
    */
   function _invested(uint256 _index) internal view virtual returns (uint256) {
-    _inputToAsset(_investedInput(_index), _index);
+    _inputToAsset(investedInput(_index), _index);
   }
 
   /**
@@ -182,6 +182,14 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
   function invested(uint256 _index) external view virtual returns (uint256) {
     return _invested(_index);
   }
+
+  /**
+   * @notice Gets the amount of a specific input (`inputs[_index]`) invested in the strategy, LP or staked
+   * @param _index Index of the input
+   * @return Amount of input invested
+   * @dev This should be overriden by strategy implementations
+   */
+  function investedInput(uint256 _index) internal view virtual returns (uint256) {}
 
   /**
    * @notice Sums all inputs invested in the strategy, LP or staked, in underlying assets
@@ -246,7 +254,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
     uint256 _total
   ) internal view returns (int256) {
     if (_total == 0) _total = _invested();
-    return int256(_investedInput(_index))
+    return int256(investedInput(_index))
       - int256(
         _assetToInput(
           _total.mulDiv(uint256(inputWeights[_index]), AsMaths._BP_BASIS), _index

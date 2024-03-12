@@ -102,18 +102,18 @@ abstract contract As4626Abstract {
   IERC20Metadata public asset; // ERC20 token used as the base denomination
   uint8 internal _assetDecimals; // ERC20 token decimals
   uint256 internal _weiPerAsset; // amount of wei in one underlying asset unit (1e(decimals))
-  Epoch public last; // epoch tracking latest events
+  Epoch public last; // epoch tracking latest events (6 slots)
 
   // Profit-related variables
   uint256 internal _profitCooldown = 10 days; // profit linearization period (profit locktime)
   uint256 internal _expectedProfits; // expected profits
 
-  Fees public fees; // current fee structure
+  Fees public fees; // current fee structure (2 slots)
   address public feeCollector; // address to collect fees
   uint256 public claimableAssetFees; // amount of asset fees (entry+exit) that can be claimed
   mapping(address => bool) public exemptionList; // list of addresses exempted from fees
 
-  Requests internal _req;
+  Requests internal _req; // (5 slots)
   uint256 internal _requestId; // redeem request id
 
   // NB: DO NOT EXTEND THIS STORAGE, TO PREVENT COLLISION USE `_4626Storage()`

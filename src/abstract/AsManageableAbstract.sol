@@ -15,15 +15,16 @@ import "./AsAccessControlAbstract.sol";
  * @notice Abstract contract to manage roles and contract pausing
  * @notice Default roles are KEEPER (operator/bot), MANAGER (elevated DAO member) and ADMIN (elevated DAO council multisig)
  */
-abstract contract AsManageableAbstract is AsAccessControlAbstract {
+abstract contract AsManageableAbstract {
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  uint256 private _status; // OZ's ReentrancyGuard slot
+  mapping(address => bytes) public pendingAcceptance; // AsManageable slot
+  mapping(bytes32 => bytes) internal _roles; // AsAccessControl's slot
   bool private _paused; // OZ's Pausable slot
-  mapping(address => bytes) public pendingAcceptance;
+  uint256 private _status; // OZ's ReentrancyGuard slot
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                           MODIFIERS                            ║

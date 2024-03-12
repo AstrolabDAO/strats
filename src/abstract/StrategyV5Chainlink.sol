@@ -45,7 +45,6 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
 
   constructor() StrategyV5() {}
 
-
   /**
    * @dev Initializes the strategy with the specified parameters
    * @param _params StrategyBaseParams struct containing strategy parameters

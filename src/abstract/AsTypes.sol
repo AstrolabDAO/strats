@@ -53,9 +53,9 @@ struct StrategyBaseParams {
 struct Erc7540Request {
   uint256 timestamp; // timestamp of the request
   uint256 sharePrice; // share price at request time
-  address operator; // request owner (can claim the owner's request)
   uint256 shares; // amount of shares in the request
   uint256 requestId; // request ID
+  address operator; // request owner (can claim the owner's request)
 }
 
 // Request context used to manage a vault's asynchronous deposits and redemptions
