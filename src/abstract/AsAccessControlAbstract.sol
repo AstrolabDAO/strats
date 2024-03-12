@@ -29,7 +29,7 @@ abstract contract AsAccessControlAbstract {
   ║                             ERRORS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  error Unauthorized();
+  // error Unauthorized();
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             EVENTS                             ║

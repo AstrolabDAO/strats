@@ -106,7 +106,7 @@ contract AsManageable is AsAccessControl, Pausable, ReentrancyGuard {
   ) private view {
     // make sure the role accepted is the same as the pending one
     if (_acceptance.role != _role) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     }
     // grant the keeper role instantly (no attack surface here)
     if (_acceptance.role == KEEPER_ROLE) return;
@@ -212,7 +212,7 @@ contract AsManageable is AsAccessControl, Pausable, ReentrancyGuard {
     address _account
   ) public override onlyRole(getRoleAdmin(_role)) {
     if (_role == DEFAULT_ADMIN_ROLE) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     } // admin role can't renounce as it would brick the contract
     _revokeRole(_role, _account);
   }

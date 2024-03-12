@@ -165,7 +165,7 @@ contract HopMultiStake is StrategyV5Chainlink {
 
       // unified slippage check (swap+add liquidity)
       if (toStake < _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert AmountTooLow(toStake);
+        revert Errors.AmountTooLow(toStake);
       }
 
       // we only support single rewardPool staking (index 0)
@@ -216,7 +216,7 @@ contract HopMultiStake is StrategyV5Chainlink {
 
       // unified slippage check (unstake+remove liquidity+swap out)
       if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert AmountTooLow(recovered);
+        revert Errors.AmountTooLow(recovered);
       }
 
       assetsRecovered += recovered;

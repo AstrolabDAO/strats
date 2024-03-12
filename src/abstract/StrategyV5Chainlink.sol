@@ -112,7 +112,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     IChainlinkAggregatorV3 feed = feedByAsset[address(inputs[_index])];
     (, int256 price,, uint256 updateTime,) = feed.latestRoundData();
     if (block.timestamp > (updateTime + validityByFeed[feed])) {
-      revert InvalidOrStaleValue(updateTime, price);
+      revert Errors.InvalidOrStaleValue(updateTime, price);
     }
     return _amount.mulDiv(
       10 ** (uint256(_decimalsByFeed[feed]) + _inputDecimals[_index] - 6), uint256(price)
@@ -190,7 +190,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     IChainlinkAggregatorV3 _feed,
     uint256 _validity
   ) external onlyAdmin {
-    if (address(_feed) == address(0)) revert AddressZero();
+    if (address(_feed) == address(0)) revert Errors.AddressZero();
     // Price of the old asset
     IChainlinkAggregatorV3 retiredFeed = feedByAsset[address(asset)];
     uint256 retiredPrice = ChainlinkUtils.getPriceUsd(
@@ -218,7 +218,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     uint256[] calldata _validities
   ) internal onlyAdmin {
     for (uint256 i = 0; i < _inputs.length; i++) {
-      if (_feeds[i] == address(0)) revert AddressZero();
+      if (_feeds[i] == address(0)) revert Errors.AddressZero();
       setPriceFeed(_inputs[i], IChainlinkAggregatorV3(_feeds[i]), _validities[i]);
     }
     _setInputs(_inputs, _weights);

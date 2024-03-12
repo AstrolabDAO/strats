@@ -3,6 +3,7 @@ pragma solidity 0.8.22;
 
 import "../libs/AsCast.sol";
 import "../libs/AsIterableSet.sol";
+import "./AsTypes.sol";
 import "./AsAccessControlAbstract.sol";
 
 /**
@@ -61,7 +62,7 @@ abstract contract AsAccessControl is AsAccessControlAbstract {
    * @param _account Account to check
    */
   function _checkRole(bytes32 _role, address _account) internal view virtual {
-    if (!hasRole(_role, _account)) revert Unauthorized();
+    if (!hasRole(_role, _account)) revert Errors.Unauthorized();
   }
 
   /**
@@ -115,7 +116,7 @@ abstract contract AsAccessControl is AsAccessControlAbstract {
    * @param _role Role to renounce
    */
   function renounceRole(bytes32 _role) external virtual {
-    if (_role == DEFAULT_ADMIN_ROLE) revert Unauthorized();
+    if (_role == DEFAULT_ADMIN_ROLE) revert Errors.Unauthorized();
     _revokeRole(_role, msg.sender);
   }
 

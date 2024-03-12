@@ -150,7 +150,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
 
       // unified slippage check (swap+add liquidity)
       if (supplied < _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert AmountTooLow(supplied);
+        revert Errors.AmountTooLow(supplied);
       }
 
       // NB: better return ious[]
@@ -197,7 +197,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
 
       // unified slippage check (unstake+remove liquidity+swap out)
       if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert AmountTooLow(recovered);
+        revert Errors.AmountTooLow(recovered);
       }
 
       assetsRecovered += recovered;

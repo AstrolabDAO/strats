@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.22;
+pragma solidity 0.8.22;
 
 import "./IAs4626.sol";
 import "./IERC3156FlashLender.sol";
@@ -7,7 +7,7 @@ import "../abstract/AsTypes.sol";
 
 interface IStrategyV5Agent is IAs4626, IERC3156FlashLender {
     // Custom types from inherited contracts and StrategyV5Agent specific
-    struct StrategyBaseParams {
+    struct BaseParams {
         Erc20Metadata erc20Metadata;
         CoreAddresses coreAddresses;
         Fees fees;

@@ -92,7 +92,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     bool _asset
   ) public onlyAdmin {
     address swapperAddress = address(swapper);
-    if (swapperAddress == address(0)) revert AddressZero();
+    if (swapperAddress == address(0)) revert Errors.AddressZero();
     // we keep the possibility to set allowance to 0 in case of a change of swapper
     // default is to approve _MAX_UINT256
     _amount = _amount > 0 ? _amount : _MAX_UINT256;
@@ -125,7 +125,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
    * @param _swapper Address of the new swapper
    */
   function updateSwapper(address _swapper) public onlyAdmin {
-    if (_swapper == address(0)) revert AddressZero();
+    if (_swapper == address(0)) revert Errors.AddressZero();
     setSwapperAllowance(0, true, true, true);
     swapper = ISwapper(_swapper);
     setSwapperAllowance(_MAX_UINT256, true, true, true);
@@ -143,12 +143,12 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     bytes calldata _swapData,
     uint256 _priceFactor
   ) external virtual onlyAdmin {
-    if (_asset == address(0)) revert AddressZero();
+    if (_asset == address(0)) revert Errors.AddressZero();
     if (_asset == address(asset)) return;
 
     // check if there are pending redemptions
     // liquidate() should be called first to ensure rebasing
-    if (_req.totalRedemption > 0) revert Unauthorized();
+    if (_req.totalRedemption > 0) revert Errors.Unauthorized();
 
     // pre-emptively pause the strategy for manual checks
     pause();
@@ -178,14 +178,14 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
    * @param _weights Array of input weights
    */
   function setInputWeights(uint16[] calldata _weights) public onlyAdmin {
-    if (_weights.length != _inputLength) revert InvalidData();
+    if (_weights.length != _inputLength) revert Errors.InvalidData();
     uint16 totalWeight = 0;
     for (uint8 i = 0; i < _inputLength; i++) {
       inputWeights[i] = _weights[i];
 
       // check for overflow before adding the weight
       if (totalWeight > AsMaths._BP_BASIS - _weights[i]) {
-        revert InvalidData();
+        revert Errors.InvalidData();
       }
 
       totalWeight += _weights[i];
@@ -202,7 +202,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     address[] calldata _inputs,
     uint16[] calldata _weights
   ) public onlyAdmin {
-    if (_inputs.length > 8) revert Unauthorized();
+    if (_inputs.length > 8) revert Errors.Unauthorized();
     setSwapperAllowance(0, true, false, false);
     for (uint256 i = 0; i < _inputs.length;) {
       inputs[i] = IERC20Metadata(_inputs[i]);
@@ -222,7 +222,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
    * @param _rewardTokens Array of reward tokens
    */
   function setRewardTokens(address[] calldata _rewardTokens) public onlyManager {
-    if (_rewardTokens.length > 8) revert Unauthorized();
+    if (_rewardTokens.length > 8) revert Errors.Unauthorized();
     setSwapperAllowance(0, false, true, false);
     for (uint256 i = 0; i < _rewardTokens.length;) {
       rewardTokens[i] = _rewardTokens[i];
@@ -322,7 +322,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     uint256 _amount
   ) external view returns (uint256) {
     if (_token != address(asset)) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     }
     return _flashFee(_borrower, _amount);
   }
@@ -336,7 +336,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
    */
   function flashFee(address _token, uint256 _amount) external view returns (uint256) {
     if (_token != address(asset)) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     }
     return _flashFee(msg.sender, _amount);
   }
@@ -366,7 +366,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     AgentStorageExt storage $ = _agentStorageExt();
 
     if (_amount > availableBorrowable() || _amount > $.maxLoan) {
-      revert AmountTooHigh(_amount);
+      revert Errors.AmountTooHigh(_amount);
     }
 
     uint256 fee = _flashFee(_receiver, _amount);
@@ -386,7 +386,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     // Verify the repayment and fee
     uint256 balanceAfter = asset.balanceOf(address(this));
     if (balanceAfter < balanceBefore + fee) {
-      revert FlashLoanDefault(_receiver, _amount);
+      revert Errors.FlashLoanDefault(_receiver, _amount);
     }
 
     emit FlashLoan(msg.sender, _amount, fee);
@@ -406,7 +406,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     bytes calldata _data
   ) external returns (bool) {
     if (_token != address(asset)) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     }
     _flashLoan(_receiver, _amount, _data);
     return true;

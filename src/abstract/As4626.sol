@@ -87,7 +87,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     // 1e12 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
     // allowance should be given to the vault before calling this function
     if (_seedDeposit < (minLiquidity - totalAssets())) {
-      revert AmountTooLow(_seedDeposit);
+      revert Errors.AmountTooLow(_seedDeposit);
     }
 
     // seed the vault with some assets if it's empty
@@ -425,7 +425,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
    * @param _feeCollector Collector of the fees
    */
   function setFeeCollector(address _feeCollector) external onlyAdmin {
-    if (_feeCollector == address(0)) revert AddressZero();
+    if (_feeCollector == address(0)) revert Errors.AddressZero();
     feeCollector = _feeCollector;
   }
 
@@ -451,7 +451,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
    * @param _fees Fees structure [perf,mgmt,entry,exit,flash]
    */
   function setFees(Fees calldata _fees) public onlyAdmin {
-    if (!AsAccounting.checkFees(_fees)) revert Unauthorized();
+    if (!AsAccounting.checkFees(_fees)) revert Errors.Unauthorized();
     fees = _fees;
   }
 
@@ -495,7 +495,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
   function transfer(address _receiver, uint256 _amount) public override(ERC20) returns (bool) {
     Erc7540Request storage request = _req.byOwner[msg.sender];
     if (_amount > (balanceOf(msg.sender) - request.shares)) {
-      revert AmountTooHigh(_amount);
+      revert Errors.AmountTooHigh(_amount);
     }
     return ERC20.transfer(_receiver, _amount);
   }
@@ -516,8 +516,8 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     uint256 _shares,
     address _receiver
   ) internal nonReentrant whenNotPaused returns (uint256) {
-    if (_receiver == address(this)) revert Unauthorized();
-    if (_shares == 0 && _amount == 0) revert AmountTooLow(0);
+    if (_receiver == address(this)) revert Errors.Unauthorized();
+    if (_shares == 0 && _amount == 0) revert Errors.AmountTooLow(0);
 
     // do not allow minting at a price higher than the current share price
     last.sharePrice = _sharePrice();
@@ -530,7 +530,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     }
 
     if (_amount > maxDeposit(address(0))) {
-      revert AmountTooHigh(_amount);
+      revert Errors.AmountTooHigh(_amount);
     }
 
     // use balances to support tax-enabled ERC20s
@@ -587,7 +587,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     address _receiver
   ) external returns (uint256 deposited) {
     deposited = _deposit(0, _shares, _receiver);
-    if (deposited > _maxAmount) revert AmountTooHigh(deposited);
+    if (deposited > _maxAmount) revert Errors.AmountTooHigh(deposited);
   }
 
   /**
@@ -603,7 +603,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     address _receiver
   ) external returns (uint256 shares) {
     shares = _deposit(_amount, 0, _receiver);
-    if (shares < _minShareAmount) revert AmountTooLow(shares);
+    if (shares < _minShareAmount) revert Errors.AmountTooLow(shares);
   }
 
   /**
@@ -621,7 +621,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     address _receiver,
     address _owner
   ) internal nonReentrant whenNotPaused returns (uint256) {
-    if (_amount == 0 && _shares == 0) revert AmountTooLow(0);
+    if (_amount == 0 && _shares == 0) revert Errors.AmountTooLow(0);
 
     Erc7540Request storage request = _req.byOwner[_owner];
 
@@ -655,7 +655,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
       // allowance is already consumed if requested shares are used, but not here
       if (msg.sender != _owner) {
         if (allowance(_owner, msg.sender) < _shares) {
-          revert Unauthorized();
+          revert Errors.Unauthorized();
         }
         _spendAllowance(_owner, msg.sender, _shares);
       }
@@ -664,7 +664,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
         _shares
           > _available().mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset)
       ) {
-        revert AmountTooHigh(_shares);
+        revert Errors.AmountTooHigh(_shares);
       }
     }
     _burn(_owner, _shares);
@@ -674,7 +674,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
       totalSupply()
         < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6+(1e12+1e12)-(1e12+1e6) = 1e12
     ) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     }
 
     claimableAssetFees += assetFees;
@@ -723,7 +723,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     address _owner
   ) external returns (uint256 amount) {
     amount = _withdraw(_amount, 0, _receiver, _owner);
-    if (amount < _minAmount) revert AmountTooLow(amount);
+    if (amount < _minAmount) revert Errors.AmountTooLow(amount);
   }
 
   /**
@@ -762,7 +762,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
       _receiver, // _receiver
       _owner // _owner
     );
-    if (amount < _minAmountOut) revert AmountTooLow(amount);
+    if (amount < _minAmountOut) revert Errors.AmountTooLow(amount);
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -791,7 +791,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
           _operator, _receiver, requestId, _data
         ) != IERC7540DepositReceiver.onERC7540DepositReceived.selector
       ) {
-        revert Unauthorized();
+        revert Errors.Unauthorized();
       }
     }
     emit DepositRequest(_receiver, _receiver, requestId, _operator, _amount);
@@ -812,16 +812,16 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     bytes memory _data
   ) public nonReentrant whenNotPaused returns (uint256 requestId) {
     if (_operator != msg.sender) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     }
 
     if (_shares == 0 || balanceOf(_owner) < _shares) {
-      revert AmountTooLow(_shares);
+      revert Errors.AmountTooLow(_shares);
     }
 
     if (_owner != msg.sender) {
       if (allowance(_owner, _operator) < _shares) {
-        revert Unauthorized();
+        revert Errors.Unauthorized();
       }
       _spendAllowance(_owner, _operator, _shares);
     }
@@ -832,7 +832,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     last.sharePrice = _sharePrice();
     if (request.shares > 0) {
       if (request.shares > _shares) {
-        revert AmountTooLow(_shares);
+        revert Errors.AmountTooLow(_shares);
       }
 
       // reinit the request (re-added lower)
@@ -859,7 +859,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
           _operator, _owner, requestId, _data
         ) != IERC7540RedeemReceiver.onERC7540RedeemReceived.selector
       ) {
-        revert Unauthorized();
+        revert Errors.Unauthorized();
       }
     }
     emit RedeemRequest(_owner, _owner, requestId, request.operator, _shares);
@@ -904,20 +904,20 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     uint256 shares = request.shares;
 
     if (_operator != msg.sender) {
-      revert Unauthorized();
+      revert Errors.Unauthorized();
     }
 
     if (_owner != msg.sender) {
       if (allowance(_owner, _operator) < shares) {
-        revert Unauthorized();
+        revert Errors.Unauthorized();
       }
 
       if (request.operator != _operator) {
-        revert Unauthorized();
+        revert Errors.Unauthorized();
       }
     }
 
-    if (shares == 0) revert AmountTooLow(0);
+    if (shares == 0) revert Errors.AmountTooLow(0);
 
     last.sharePrice = _sharePrice();
     uint256 opportunityCost = 0;
@@ -956,7 +956,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
    */
   function _collectFees() internal nonReentrant onlyManager returns (uint256 toMint) {
     if (feeCollector == address(0)) {
-      revert AddressZero();
+      revert Errors.AddressZero();
     }
 
     (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) =

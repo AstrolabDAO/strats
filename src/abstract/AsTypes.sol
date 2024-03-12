@@ -81,3 +81,18 @@ struct Epoch {
   uint256 accountedAssets; // last accounted total assets (fee collection)
   uint256 accountedSupply; // last accounted total supply (fee collection)
 }
+
+library Errors {
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             ERRORS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  error Unauthorized();
+  error AmountTooHigh(uint256 amount);
+  error AmountTooLow(uint256 amount);
+  error AddressZero();
+  error InvalidData(); // invalid calldata / inputs
+  error InvalidOrStaleValue(uint256 updateTime, int256 value);
+  error FlashLoanDefault(address borrower, uint256 amount);
+}

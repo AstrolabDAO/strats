@@ -45,7 +45,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
    */
   function setParams(Params calldata _params) public onlyAdmin {
     if (_params.lpStaker == address(0)) {
-      revert AddressZero();
+      revert Errors.AddressZero();
     }
     lpStaker = ILPStaking(_params.lpStaker);
     for (uint8 i = 0; i < _params.lps.length; i++) {
@@ -135,7 +135,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
 
       // unified slippage check (swap+add liquidity)
       if (toStake < _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert AmountTooLow(toStake);
+        revert Errors.AmountTooLow(toStake);
       }
 
       uint256 balanceBefore = lpStaker.userInfo(stakingIds[i], address(this)).amount;
@@ -185,7 +185,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
 
       // unified slippage check (unstake+remove liquidity+swap out)
       if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert AmountTooLow(recovered);
+        revert Errors.AmountTooLow(recovered);
       }
 
       assetsRecovered += recovered;

@@ -41,7 +41,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
    * @param _params StrategyBaseParams struct containing strategy parameters
    */
   function _init(StrategyBaseParams calldata _params) internal onlyAdmin {
-    if (_params.coreAddresses.agent == address(0)) revert AddressZero();
+    if (_params.coreAddresses.agent == address(0)) revert Errors.AddressZero();
     // setExemption(msg.sender, true);
     // done in As4626 but required for swapper
     _wgas = IWETH9(_params.coreAddresses.wgas);
@@ -475,7 +475,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
    * @param _agent Address of the new agent
    */
   function updateAgent(address _agent) external onlyAdmin {
-    if (_agent == address(0)) revert AddressZero();
+    if (_agent == address(0)) revert Errors.AddressZero();
     agent = IStrategyV5(_agent);
   }
 
@@ -534,7 +534,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
     );
     // check if we have enough cash to repay redemption requests
     if (liquidityAvailable < _minLiquidity && !_panic) {
-      revert AmountTooLow(liquidityAvailable);
+      revert Errors.AmountTooLow(liquidityAvailable);
     }
 
     last.liquidate = uint64(block.timestamp);
@@ -679,7 +679,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
   ) internal virtual returns (uint256 iouReceived, uint256 harvestedRewards) {
     // we expect the SwapData to cover harvesting + investing
     if (_harvestParams.length != _rewardLength || _investParams.length != _inputLength) {
-      revert InvalidData();
+      revert Errors.InvalidData();
     }
 
     // harvest using the first calldata bytes (swap rewards->asset)

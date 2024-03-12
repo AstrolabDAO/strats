@@ -79,7 +79,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     uint256 _validity
   ) public onlyAdmin {
     if (!_pyth.priceFeedExists(_feed)) {
-      revert InvalidData();
+      revert Errors.InvalidData();
     }
     feedByAsset[_address] = _feed;
     validityByFeed[_feed] = _validity;
@@ -117,7 +117,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     bytes32 _feed,
     uint256 _validity
   ) external onlyAdmin {
-    if (_feed == bytes32(0)) revert AddressZero();
+    if (_feed == bytes32(0)) revert Errors.AddressZero();
 
     bytes32 assetFeed = feedByAsset[address(asset)];
     uint256 retiredPrice = PythUtils.getPriceUsd(

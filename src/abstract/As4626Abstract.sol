@@ -33,16 +33,6 @@ abstract contract As4626Abstract {
   }
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                             ERRORS                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  // Errors
-  error AmountTooHigh(uint256 amount);
-  error AmountTooLow(uint256 amount);
-  error AddressZero();
-  error InvalidData(); // invalid calldata / inputs
-
-  /*═══════════════════════════════════════════════════════════════╗
   ║                             EVENTS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
