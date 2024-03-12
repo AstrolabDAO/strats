@@ -17,7 +17,6 @@ import "@openzeppelin/contracts/proxy/Proxy.sol";
  * @dev Extending contracts should implement the ERC-897 `initialized()` and `implementation()` functions
  */
 abstract contract AsProxy is Proxy {
-
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -33,35 +32,30 @@ abstract contract AsProxy is Proxy {
     bytes4 _selector,
     bytes calldata _data
   ) internal returns (bool success, bytes memory result) {
+    /// @solidity memory-safe-assembly
     assembly {
       _selector := and(_selector, 0xffffffff) // clear selector bytes after 4
-      let paramsSize := calldataload(_data.offset) // determine _data size from calldata
-      let calldataSize := add(0x4, paramsSize) // total calldata size (selector + params)
-      let callData := mload(0x40) // free ptr
-      mstore(callData, _selector) // store selector in the first 4 bytes
-      calldatacopy(add(callData, 0x4), _data.offset, paramsSize) // copy params after the selector in the new calldata
-      mstore(0x40, add(callData, calldataSize)) // update free ptr
+      let ptr := mload(0x40) // get free ptr
+      mstore(ptr, _selector) // store selector first
+      calldatacopy(add(ptr, 0x4), _data.offset, _data.length) // copy _data after the selector
+      mstore(0x40, add(ptr, _data.length)) // update free ptr
       success :=
         delegatecall(
           gas(),
           _implementation, // implementation address
-          callData, // inputs
-          calldataSize, // input size
+          ptr, // inputs
+          _data.length, // input size
           0, // output location
           0 // output size
         )
       let size := returndatasize() // return data size
-      let ptr := mload(0x40) // free ptr
-      returndatacopy(ptr, 0, size) // copy return data to free ptr
-      mstore(0x40, add(ptr, size)) // update free ptr
+      ptr := mload(0x40) // free ptr
+      mstore(ptr, size) // store the size of the return data
+      returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
+      mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
       switch success
       case 0 { revert(ptr, size) }
-      default {
-        mstore(ptr, size) // store the size of the return data
-        returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
-        mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
-        result := ptr // point to start of bytes array layout
-      }
+      default { result := ptr }
     }
   }
 
@@ -76,36 +70,40 @@ abstract contract AsProxy is Proxy {
     bytes4 _selector,
     bytes memory _data
   ) internal returns (bool success, bytes memory result) {
+    /// @solidity memory-safe-assembly
     assembly {
       _selector := and(_selector, 0xffffffff) // clear selector bytes after 4
-      let paramsSize := mload(_data) // determine _data size from in-memory array
-      let calldataSize := add(0x4, paramsSize) // total calldata size (selector + params)
-      let callData := mload(0x40) // free ptr
-      mstore(callData, _selector) // store selector in the first 4 bytes
-      mstore(0x40, add(callData, calldataSize)) // copy the params to the free memory pointer (post size slot)
+      let ptr := mload(0x40) // get free ptr
+      mstore(ptr, _selector) // store selector first
+      // mstore(add(ptr, 0x4), add(_data, 0x20)) // store the actual data location
+      // let size := mload(_data) // load the _data size
+      for { let i := 0x20 } lt(i, mload(_data)) { i := add(i, 0x20) } {
+          // Copy the input data after the selector
+          mstore(add(ptr, i), mload(add(_data, i)))
+      }
+
+      let size := add(mload(_data), 0x4) // Calculate the total input size (selector + data size)
+
       success :=
         delegatecall(
           gas(),
           _implementation, // implementation address
-          add(callData, 0x20), // inputs stored at callData + 0x20 (size slot)
-          calldataSize, // input size
+          ptr, // inputs stored at callData + 0x4 (data pointer slot)
+          size, // input size (data pointer + data size)
           0, // output location
           0 // output size
         )
-      let size := returndatasize() // return data size
-      let ptr := mload(0x40) // free ptr
-      returndatacopy(ptr, 0, size) // copy return data to free ptr
+      size := returndatasize() // return data size
+      ptr := mload(0x40) // free ptr
+      mstore(ptr, size) // store the size of the return data
+      returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
+      mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
       switch success
       case 0 { revert(ptr, size) }
-      default {
-        mstore(ptr, size) // store the size of the return data
-        returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
-        mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
-        result := ptr // point to start of bytes array layout
-      }
+      default { result := ptr }
     }
   }
-
   // to match with the payable fallback (not necessary but pleases compiler)
+
   receive() external payable {}
 }
