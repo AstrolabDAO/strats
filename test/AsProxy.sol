@@ -3,17 +3,31 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../src/abstract/AsProxy.sol";
 
 contract Impl {
 
-  function hello() public {
-    console.log("Hello world");
+  modifier onlyOwner() {
+    console.log("Wrong modifier called");
+    _;
+  }
+
+  function dummy() public onlyOwner returns (bool) {
+    return true;
   }
 }
 
-contract AsProxyTest is Test {
+contract AccessControlProxy is Test{
   address implementation;
+  address admin;
+
+  modifier onlyOwner() {
+    require(msg.sender == admin, "Caller is not the owner");
+    _;
+  }
+
+  function delegate(address to, bytes memory data) public onlyOwner {
+    (bool success, bytes memory result) = to.delegatecall(data);
+  }
 
   function testDelegate() public {
 
