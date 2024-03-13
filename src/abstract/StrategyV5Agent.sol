@@ -53,7 +53,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
   /**
    * @return Proxy type (ERC-897: 1 == forwarder, 2 == upgradable)
    */
-  function proxyType() internal view override returns (uint256) {
+  function proxyType() external pure returns (uint256) {
     return 2;
   }
 

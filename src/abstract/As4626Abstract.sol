@@ -87,7 +87,7 @@ abstract contract As4626Abstract {
 
   // Share/underlying asset accounting
   uint256 public maxTotalAssets = 0; // maximum total assets that can be deposited
-  uint256 internal minLiquidity = 1e7; // minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
+  uint256 public minLiquidity = 1e7; // minimum amount to seed liquidity is 1e7 wei (e.g., 10 USDC)
 
   IERC20Metadata public asset; // ERC20 token used as the base denomination
   uint8 internal _assetDecimals; // ERC20 token decimals
