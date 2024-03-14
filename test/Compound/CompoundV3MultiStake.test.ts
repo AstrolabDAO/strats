@@ -52,6 +52,7 @@ describe(`test.${desc.name}`, () => {
       addresses,
     )) as IStrategyDeploymentEnv;
     // load environment+deploy+verify the strategy stack
+    const oracleAssets = desc.inputs.includes(desc.asset) ? desc.inputs : [desc.asset, ...desc.inputs];
     env = await setupStrat(
       desc.contract,
       desc.name,
@@ -69,10 +70,9 @@ describe(`test.${desc.name}`, () => {
         },
         {
           // chainlink oracle params
-          assetFeed: oracles[`Crypto.${desc.asset}/USD`],
-          assetFeedValidity: 86400,
-          inputFeeds: desc.inputs.map((i) => oracles[`Crypto.${i}/USD`]),
-          inputFeedValidities: desc.inputs.map((i) => 86400),
+          assets: oracleAssets.map((i) => addr.tokens[i]),
+          feeds: oracleAssets.map((i) => oracles[`Crypto.${i}/USD`]),
+          validities: oracleAssets.map((i) => 86400),
         },
         {
           // strategy specific params
@@ -81,7 +81,7 @@ describe(`test.${desc.name}`, () => {
         },
       ] as IStrategyChainlinkParams,
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
+      ["AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
       env, // deployment environment
       false, // force verification (after deployment)
     );

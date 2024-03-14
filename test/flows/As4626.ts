@@ -75,8 +75,8 @@ export async function seedLiquidity(
   await logState(env, "Before SeedLiquidity");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
-    // .seedLiquidity(amount, MaxUint256, getOverrides(env))
+    // .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
+    .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 2_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted

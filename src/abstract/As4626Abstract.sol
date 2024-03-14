@@ -3,8 +3,9 @@ pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./ERC20.sol";
+import "./ERC20Abstract.sol";
 import "./AsManageable.sol";
+import "./AsRescuableAbstract.sol";
 import "./AsTypes.sol";
 import "../libs/AsAccounting.sol";
 
@@ -20,7 +21,7 @@ import "../libs/AsAccounting.sol";
  * @notice This contract lays out the common storage for all strategies
  * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
-abstract contract As4626Abstract {
+abstract contract As4626Abstract is ERC20Abstract, AsRescuableAbstract, AsManageable {
   using SafeERC20 for IERC20Metadata;
   using AsMaths for uint256;
 
@@ -107,6 +108,12 @@ abstract contract As4626Abstract {
   uint256 internal _requestId; // redeem request id
 
   // NB: DO NOT EXTEND THIS STORAGE, TO PREVENT COLLISION USE `_4626Storage()`
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                         INITIALIZATION                         ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  constructor(address accessController) AsManageable(accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║

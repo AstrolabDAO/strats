@@ -109,8 +109,8 @@ abstract contract ERC20 is ERC20Abstract {
   /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
   function _init(
-    string calldata _name,
-    string calldata _symbol,
+    string memory _name,
+    string memory _symbol,
     uint8 _decimals
   ) internal {
     require(!_initialized);

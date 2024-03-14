@@ -119,6 +119,12 @@ export interface IStrategyDesc {
   seedLiquidityUsd: number;
 }
 
+// construction params
+export interface IStrategyConstructorParams {
+  accessController: string;
+}
+
+// init params
 export interface IStrategyBaseParams {
   erc20Metadata: Erc20Metadata;
   coreAddresses: Partial<CoreAddresses>;
@@ -130,17 +136,15 @@ export interface IStrategyBaseParams {
 
 export interface IPythParams {
   pyth: string;
-  assetFeed: string;
-  assetValidity: number;
-  inputFeeds: string[];
-  inputValidities: number[];
+  assets: string[];
+  feeds: string[];
+  validities: number[];
 }
 
 export interface IChainlinkParams {
-  assetFeed: string;
-  assetFeedValidity: number;
-  inputFeeds: string[];
-  inputFeedValidities: number[];
+  assets: string[];
+  feeds: string[];
+  validities: number[];
 }
 
 export type IStrategyParams = [IStrategyBaseParams, any];
@@ -157,6 +161,7 @@ export interface IStrategyDeployment extends IDeployment {
   // compilation/verification dependencies
   swapper: Contract;
   agent: Contract;
+  accessController: Contract;
   libraries: { [name: string]: string };
   // product of deployment
   strat: SafeContract;

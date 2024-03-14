@@ -27,7 +27,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
   uint8[8] internal _poolDecimals;
   IDhedgeEasySwapper dHedgeSwapper;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {

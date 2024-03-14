@@ -26,7 +26,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
   IMToken[8] internal _mTokens; // LP token/pool
   IUnitroller internal _unitroller;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {
@@ -242,7 +242,7 @@ contract MoonwellMultiStake is StrategyV5Chainlink {
   {
     IMultiRewardDistributor distributor =
       IMultiRewardDistributor(_unitroller.rewardDistributor());
-    // return unitroller.rewardAccrued(address(this)).toArray();
+    // return unitroller.rewardAccrued(address(this)).toArray256();
     // return distributor.getOutstandingRewardsForUser(address(this));
     MultiRewardDistributorCommon.RewardWithMToken[] memory pendingRewards =
       distributor.getOutstandingRewardsForUser(address(this));

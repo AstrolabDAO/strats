@@ -89,10 +89,25 @@ library Errors {
   ╚═══════════════════════════════════════════════════════════════*/
 
   error Unauthorized();
+  error FailedDelegateCall();
   error AmountTooHigh(uint256 amount);
   error AmountTooLow(uint256 amount);
   error AddressZero();
   error InvalidData(); // invalid calldata / inputs
   error InvalidOrStaleValue(uint256 updateTime, int256 value);
   error FlashLoanDefault(address borrower, uint256 amount);
+  error AcceptanceExpired();
+  error AcceptanceLocked();
+  error ContractNonCompliant();
+}
+
+library Roles {
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                           CONSTANTS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  bytes32 constant internal ADMIN = 0x00;
+  bytes32 constant internal KEEPER = keccak256("KEEPER");
+  bytes32 constant internal MANAGER = keccak256("MANAGER");
 }

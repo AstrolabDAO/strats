@@ -28,10 +28,9 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
   struct PythParams {
     address pyth;
-    bytes32 assetFeed;
-    uint256 assetValidity;
-    bytes32[] inputFeeds;
-    uint256[] inputFeedValidities;
+    address[] assets;
+    bytes32[] feeds;
+    uint256[] validities;
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -47,7 +46,7 @@ abstract contract StrategyV5Pyth is StrategyV5 {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() StrategyV5() {}
+  constructor(address accessController) StrategyV5(accessController) {}
 
 
   /**
@@ -59,8 +58,8 @@ abstract contract StrategyV5Pyth is StrategyV5 {
     StrategyBaseParams calldata _params,
     PythParams calldata _pythParams
   ) internal onlyAdmin {
-    updatePyth(_pythParams);
     StrategyV5._init(_params);
+    updatePyth(_pythParams);
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -87,16 +86,20 @@ abstract contract StrategyV5Pyth is StrategyV5 {
 
   /**
    * @notice Updates the Pyth oracle and the input Pyth ids
-   * @param _pythParams Pyth specific parameters
+   * @param _params Pyth specific parameters
    */
-  function updatePyth(PythParams calldata _pythParams) public onlyAdmin {
-    _pyth = IPythAggregator(_pythParams.pyth);
-    setPriceFeed(address(asset), _pythParams.assetFeed, _pythParams.assetValidity);
-    for (uint256 i = 0; i < _pythParams.inputFeeds.length;) {
-      if (address(inputs[i]) == address(0)) break;
-      setPriceFeed(
-        address(inputs[i]), _pythParams.inputFeeds[i], _pythParams.inputFeedValidities[i]
-      );
+  function updatePyth(PythParams calldata _params) public onlyAdmin {
+    _pyth = IPythAggregator(_params.pyth);
+    for (uint256 i = 0; i < _params.assets.length;) {
+      setPriceFeed(_params.assets[i], _params.feeds[i], _params.validities[i]);
+      unchecked {
+        i++;
+      }
+    }
+    for (uint256 i = 0; i < _inputLength;) {
+      if (feedByAsset[address(inputs[i])] == bytes32(0)) {
+        revert Errors.InvalidData();
+      }
       unchecked {
         i++;
       }
@@ -143,10 +146,10 @@ abstract contract StrategyV5Pyth is StrategyV5 {
    * @param _validities Array of Pyth price feed validity periods
    */
   function setInputs(
-    address[] calldata _inputs,
-    uint16[] calldata _weights,
-    bytes32[] calldata _feeds,
-    uint256[] calldata _validities
+    address[] memory _inputs,
+    uint16[] memory _weights,
+    bytes32[] memory _feeds,
+    uint256[] memory _validities
   ) external onlyAdmin {
     for (uint256 i = 0; i < _inputs.length;) {
       if (address(inputs[i]) == address(0)) break;

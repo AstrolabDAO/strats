@@ -20,7 +20,7 @@ import "./AsManageable.sol";
  * @notice Common strategy back-end extended by implementations, delegating vault logic to StrategyV5Agent
  * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
-  contract StrategyV5Abstract {
+abstract contract StrategyV5Abstract is As4626Abstract {
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              TYPES                             ║
@@ -72,7 +72,7 @@ import "./AsManageable.sol";
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() {}
+  constructor(address accessController) As4626Abstract(accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║

@@ -9,7 +9,6 @@ import "../interfaces/IERC7540RedeemReceiver.sol";
 import "../interfaces/IERC7540DepositReceiver.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
-import "./AsManageableAbstract.sol";
 import "./ERC20.sol";
 
 /**
@@ -24,7 +23,7 @@ import "./ERC20.sol";
  * @notice Common vault/strategy back-end extended by StrategyV5Agent, delegated to by StrategyV5 implementations
  * @dev All state variables must be in As4626Abstract to match the proxy base storage layout (StrategyV5)
  */
-abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
+abstract contract As4626 is ERC20, As4626Abstract {
   using AsMaths for uint256;
   using AsMaths for int256;
   using SafeERC20 for IERC20Metadata;
@@ -48,6 +47,8 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
+  constructor() {}
+
   /**
    * @notice Initializes the vault with the provided `_erc20Metadata`, `_coreAddresses`, and `_fees`
    * @notice This is the end of the initialization call flow, started by `implementation.init()`
@@ -56,11 +57,10 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
    * @param _fees Fees structure [perf,mgmt,entry,exit,flash]
    */
   function _init(
-    Erc20Metadata calldata _erc20Metadata,
-    CoreAddresses calldata _coreAddresses,
-    Fees calldata _fees
+    Erc20Metadata memory _erc20Metadata,
+    CoreAddresses memory _coreAddresses,
+    Fees memory _fees
   ) internal virtual onlyAdmin {
-
     ERC20._init(_erc20Metadata.name, _erc20Metadata.symbol, _erc20Metadata.decimals); // super().init()
     asset = IERC20Metadata(_coreAddresses.asset);
     _assetDecimals = asset.decimals();
@@ -88,10 +88,10 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
   function seedLiquidity(
     uint256 _seedDeposit,
     uint256 _maxTotalAssets
-  ) external onlyManager {
+  ) external onlyAdmin {
     // 1e12 is the minimum amount of assets required to seed the vault (1 USDC or .1Gwei ETH)
     // allowance should be given to the vault before calling this function
-    if (_seedDeposit < (minLiquidity - totalAssets())) {
+    if (_seedDeposit < minLiquidity.subMax0(totalAssets())) {
       revert Errors.AmountTooLow(_seedDeposit);
     }
 
@@ -99,7 +99,9 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     setMaxTotalAssets(_maxTotalAssets);
 
     // if the vault is still paused, unpause it
-    if (paused()) unpause();
+    if (paused()) {
+      unpause();
+    }
     deposit(_seedDeposit, msg.sender);
   }
 
@@ -455,7 +457,7 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
    * @notice Sets the vault `fees`
    * @param _fees Fees structure [perf,mgmt,entry,exit,flash]
    */
-  function setFees(Fees calldata _fees) public onlyAdmin {
+  function setFees(Fees memory _fees) public onlyAdmin {
     if (!AsAccounting.checkFees(_fees)) revert Errors.Unauthorized();
     fees = _fees;
   }
@@ -497,7 +499,10 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
    * @param _amount Amount of shares to transfer
    * @return Boolean indicating whether the transfer was successful or not
    */
-  function transfer(address _receiver, uint256 _amount) public override(ERC20) returns (bool) {
+  function transfer(
+    address _receiver,
+    uint256 _amount
+  ) public override(ERC20) returns (bool) {
     Erc7540Request storage request = _req.byOwner[msg.sender];
     if (_amount > (balanceOf(msg.sender) - request.shares)) {
       revert Errors.AmountTooHigh(_amount);
