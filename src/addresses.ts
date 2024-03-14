@@ -1,5 +1,7 @@
 import { networkBySlug } from "@astrolabs/hardhat";
 
+const symbolByAddress: { [chainId: number]: { [address: string]: string } } = {};
+
 export function findSymbolByAddress(address: string, chainId: number): string | undefined {
   const networkAddresses = addresses[chainId];
   if (!networkAddresses) {
@@ -7,9 +9,17 @@ export function findSymbolByAddress(address: string, chainId: number): string | 
     return;
   }
 
+  if (symbolByAddress[chainId]?.[address]) {
+    return symbolByAddress[chainId][address];
+  }
+
   const tokens = networkAddresses.tokens;
   for (const symbol in tokens) {
-    if (tokens[symbol].toLowerCase() === address.toLowerCase()) {
+    const candidate = tokens[symbol];
+    if (candidate.toLowerCase() === address.toLowerCase()) {
+      // cache the symbol for future lookups
+      if (!symbolByAddress[chainId]) symbolByAddress[chainId] = {};
+      symbolByAddress[chainId][address] = symbol;
       return symbol;
     }
   }
@@ -50,15 +60,12 @@ export const addresses = {
       AsMaths: "",
       AsArrays: "",
       AsAccounting: "",
-      PythUtils: "",
-      ChainlinkUtils: "",
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
       // Swapper: "0xac64a35e398699dd3f22d4ba2252e5153c40fe9c",
       StrategyV5Agent: "",
-      "Astrolab CompoundV3 MetaStable" : "",
+      "Astrolab CompoundV3 USD" : "",
     },
     tokens: {
       WETH: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
@@ -135,15 +142,12 @@ export const addresses = {
       AsMaths: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
       AsArrays: "",
       AsAccounting: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
-      PythUtils: "",
-      ChainlinkUtils: "0x9c14f9137fc7327f336cc73d4218d310f3faba11",
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894", // PROD
       // Swapper: "0xac64a35e398699dd3f22d4ba2252e5153c40fe9c",
       StrategyV5Agent: "0xbe15f86da4800c03fca8f457cff30d6ef9fb7bff",
-      "Astrolab Sonne MetaStable" : "0xe395a274de8195fad99fbce161c99472bf31b0b2",
+      "Astrolab Sonne USD" : "0xe395a274de8195fad99fbce161c99472bf31b0b2",
     },
     tokens: {
       OP: "0x4200000000000000000000000000000000000042",
@@ -199,14 +203,11 @@ export const addresses = {
       AsMaths: "",
       AsArrays: "",
       AsAccounting: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
-      PythUtils: "",
-      ChainlinkUtils: "0x1761ff905292548ff2254620166eabd988e48718",
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
       StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
-      "Astrolab Venus MetaStable": "0xf3ecad6a4aab1d3e3add9ab61f13cf96e5a5b51f",
+      "Astrolab Venus USD": "0xf3ecad6a4aab1d3e3add9ab61f13cf96e5a5b51f",
     },
     tokens: {
       WBNB: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
@@ -250,17 +251,14 @@ export const addresses = {
       AsMaths: "0x3Ad84F7Dd934D7ba3dc3A6EE42d900237F5ADa0C", // prod
       AsArrays: "",
       AsAccounting: "0x55B5e5C8541feAC305BeBDe91a7558a1a685FbFD", // prod
-      PythUtils: "",
-      ChainlinkUtils: "0x597a3df5638CF5F5713F2C74147Fbc096E4dBDb0", // prod
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0x47A84E64a9b50D6f489F9AB58DB1ab7a2719C42b", // prod
       StrategyV5Agent: "0x39291B9dc8Fc83E731Bd7318922D34C90081e0DF",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
-      "Astrolab Hop MetaStable": "",
-      "Astrolab Aave MetaStable": "0xB72F246bB229F67eCBbb1c4bd1b61f6fAA0AC40B",
+      "Astrolab Hop USD": "",
+      "Astrolab Aave USD": "0xB72F246bB229F67eCBbb1c4bd1b61f6fAA0AC40B",
     },
     tokens: {
       WXDAI: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
@@ -298,18 +296,15 @@ export const addresses = {
       AsMaths: "0x78D5ECF1fBd052F7D8914DFBd7e3e5B5cD9aa6BB",
       AsArrays: "",
       AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718",
-      PythUtils: "",
-      ChainlinkUtils: "0x7221EbDd4176b1A21C3C014fd70bAB46E697E272",
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
       StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a",
       "HopSingleStake.USDC": "",
       "HopSingleStake.WETH": "",
-      "Astrolab Hop MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11",
-      "Astrolab Aave MetaStable": "0x11c8f790d252f4a49cfbff5766310873898bf5d3",
-      "Astrolab Stargate MetaStable": "",
+      "Astrolab Hop USD": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11",
+      "Astrolab Aave USD": "0x11c8f790d252f4a49cfbff5766310873898bf5d3",
+      "Astrolab Stargate USD": "",
     },
     tokens: {
       WBTC: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
@@ -452,14 +447,11 @@ export const addresses = {
       AsMaths: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
       AsArrays: "",
       AsAccounting: "0x73f65FAEFB2bE3b7d868300fD5E3A9054E1769A6", // PROD
-      PythUtils: "",
-      ChainlinkUtils: "0x11656B8F95613b1617A5862d089873ed67E43128", // PROD
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
       StrategyV5Agent: "0x98bC71A155A11D516a2f4E675F4CD0DF04aA1d2B", // PROD
-      "Astrolab Moonwell MetaStable": "0x11C8f790d252F4A49cFBFf5766310873898BF5D3", // PROD
+      "Astrolab Moonwell USD": "0x11C8f790d252F4A49cFBFf5766310873898BF5D3", // PROD
     },
     tokens: {
       WGLMR: "0xAcc15dC74880C9944775448304B263D191c6077F",
@@ -553,20 +545,16 @@ export const addresses = {
       AsArrays: "",
       // AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718", // PROD
       AsAccounting: "",
-      PythUtils: "",
-      // ChainlinkUtils: "0x7221EbDd4176b1A21C3C014fd70bAB46E697E272", // PROD
-      ChainlinkUtils: "",
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
       // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
       StrategyV5Agent: "",
-      "Astrolab Moonwell MetaStable": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
-      "Astrolab Stargate MetaStable": "",
-      "Astrolab Aave MetaStable": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
-      "Astrolab CompoundV3 MetaStable": "",
-      "Astrolab Sonne MetaStable": "",
+      "Astrolab Moonwell USD": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
+      "Astrolab Stargate USD": "",
+      "Astrolab Aave USD": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
+      "Astrolab CompoundV3 USD": "",
+      "Astrolab Sonne USD": "",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -613,15 +601,13 @@ export const addresses = {
       AsMaths: "",
       AsArrays: "",
       AsAccounting: "",
-      PythUtils: "",
-      ChainlinkUtils: "",
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
+      AccessController: "",
       StrategyV5Agent: "",
-      "Astrolab Lodestar MetaStable": "0xceb2aa13906633b28f35f57fab2422043f7cfb8",
-      "Astrolab CompoundV3 MetaStable": "",
+      "Astrolab Lodestar USD": "",
+      "Astrolab CompoundV3 USD": "",
     },
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -708,14 +694,11 @@ export const addresses = {
       AsMaths: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
       AsArrays: "",
       AsAccounting: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
-      PythUtils: "",
-      ChainlinkUtils: "0x1761ff905292548ff2254620166eabd988e48718",
-      RedStoneUtils: "",
     },
     astrolab: {
       Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
       StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
-      "Astrolab Benqi MetaStable": "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
+      "Astrolab Benqi USD": "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
     },
     tokens: {
       WBTCe: "0x50b7545627a5162F82A992c33b87aDc75187B218",

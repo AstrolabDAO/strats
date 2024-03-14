@@ -16,7 +16,7 @@ library StablePoolUserData {
   }
 }
 
-// Applies to StablePool, MetaStablePool, StablePool V2
+// Applies to StablePool, USDPool, StablePool V2
 library LegacyStablePoolUserData {
   enum JoinKind {
     INIT,

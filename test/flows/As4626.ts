@@ -75,10 +75,10 @@ export async function seedLiquidity(
   await logState(env, "Before SeedLiquidity");
   // only exec if static call is successful
   const receipt = await strat
-    // .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
-    .seedLiquidity(amount, MaxUint256, getOverrides(env))
+    .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
+    // .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After SeedLiquidity", 2_000);
+  await logState(env, "After SeedLiquidity", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted
 }
 
@@ -169,7 +169,7 @@ export async function swapSafeDeposit(
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After SwapSafeDeposit", 2_000);
+  await logState(env, "After SwapSafeDeposit", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
@@ -210,7 +210,7 @@ export async function withdraw(
     )
     // .safeWithdraw(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Withdraw", 2_000);
+  await logState(env, "After Withdraw", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
 }
 
@@ -255,7 +255,7 @@ export async function requestWithdraw(
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After RequestWithdraw", 2_000);
+  await logState(env, "After RequestWithdraw", 1_000);
   return (
     getTxLogData(receipt, ["address, address, address, uint256"], 3) ??
     BigNumber.from(0)
@@ -299,7 +299,7 @@ export async function redeem(
     )
     // .safeRedeem(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Redeem", 2_000);
+  await logState(env, "After Redeem", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
 }
 
@@ -344,7 +344,7 @@ export async function requestRedeem(
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After RequestRedeem", 2_000);
+  await logState(env, "After RequestRedeem", 1_000);
   return (
     getTxLogData(receipt, ["address, address, address, uint256"], 3) ??
     BigNumber.from(0)
@@ -379,7 +379,7 @@ export async function collectFees(
     asset.multi.balanceOf(feeCollector),
     strat.multi.balanceOf(feeCollector),
   ]);
-  await logState(env, "After CollectFees", 2_000);
+  await logState(env, "After CollectFees", 1_000);
   console.log(
     `FeeCollector balances after: ${asset.toAmount(balancesAfter[0])} ${
       asset.sym

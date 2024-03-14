@@ -30,6 +30,7 @@ library AsMaths {
     Ceil, // Toward positive infinity
     Trunc, // Toward zero
     Expand // Away from zero
+
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -38,15 +39,15 @@ library AsMaths {
 
   error MathOverflowedMulDiv(); // overflow during multiplication or division
 
-
   /*═══════════════════════════════════════════════════════════════╗
   ║                           CONSTANTS                            ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   // Constants
-  uint256 internal constant _BP_BASIS = 100_00; // 50% == 5_000 == 5e3
-  uint256 internal constant _PRECISION_BP_BASIS = _BP_BASIS ** 2; // 50% == 50_000_000 == 5e7
-  uint256 internal constant _SEC_PER_YEAR = 31_556_952; // 365.2425 days, more precise than 365 days const
+  uint256 internal constant BP_BASIS = 100_00; // 50% == 5_000 == 5e3
+  uint256 internal constant PRECISION_BP_BASIS = BP_BASIS ** 2; // 50% == 50_000_000 == 5e7
+  uint256 internal constant SEC_PER_YEAR = 31_556_952; // 365.2425 days, more precise than 365 days const
+  uint256 internal constant MAX_UINT256 = type(uint256).max;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
@@ -63,7 +64,7 @@ library AsMaths {
    * @return Result of subtracting the proportion
    */
   function subBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, _BP_BASIS - basisPoints, _BP_BASIS);
+    return mulDiv(amount, BP_BASIS - basisPoints, BP_BASIS);
   }
 
   /**
@@ -73,40 +74,40 @@ library AsMaths {
    * @return Result of adding the proportion
    */
   function addBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, _BP_BASIS + basisPoints, _BP_BASIS);
+    return mulDiv(amount, BP_BASIS + basisPoints, BP_BASIS);
   }
 
   /**
    * @notice Calculates the proportion of a given amount
    * @param amount Initial amount
    * @param basisPoints Proportion to calculate
-   * @return Calculated proportion of the amount /_BP_BASIS
+   * @return Calculated proportion of the amount /BP_BASIS
    */
   function bp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, basisPoints, _BP_BASIS);
+    return mulDiv(amount, basisPoints, BP_BASIS);
   }
 
   /**
    * @notice Calculates the proportion of a given amount (inverted)
    * @param amount Initial amount
    * @param basisPoints Proportion to calculate
-   * @return Calculated proportion of the amount /_BP_BASIS
+   * @return Calculated proportion of the amount /BP_BASIS
    */
   function revBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, basisPoints, _BP_BASIS - basisPoints);
+    return mulDiv(amount, basisPoints, BP_BASIS - basisPoints);
   }
 
   /**
    * @notice Calculates the precise proportion of a given amount
    * @param amount Initial amount
    * @param basisPoints Proportion to calculate
-   * @return Calculated proportion of the amount /_PRECISION_BP_BASIS
+   * @return Calculated proportion of the amount /PRECISION_BP_BASIS
    */
   function precisionBp(
     uint256 amount,
     uint256 basisPoints
   ) internal pure returns (uint256) {
-    return mulDiv(amount, basisPoints, _PRECISION_BP_BASIS);
+    return mulDiv(amount, basisPoints, PRECISION_BP_BASIS);
   }
 
   /**
@@ -116,7 +117,7 @@ library AsMaths {
    * @return Result of reverse adding the proportion
    */
   function revAddBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, _BP_BASIS, _BP_BASIS - basisPoints);
+    return mulDiv(amount, BP_BASIS, BP_BASIS - basisPoints);
   }
 
   /**
@@ -126,7 +127,7 @@ library AsMaths {
    * @return Result of reverse subtracting the proportion
    */
   function revSubBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, _BP_BASIS, _BP_BASIS + basisPoints);
+    return mulDiv(amount, BP_BASIS, BP_BASIS + basisPoints);
   }
 
   /**
@@ -795,15 +796,18 @@ library AsMaths {
   }
 
   /**
-   * @notice Calculates the exchange rate in bps (100_00 == 100%) between two prices (in wei)
-   * @dev Reverts if either value is zero
-   * @param p1 Quote currency price in wei
-   * @param p2 Base currency price in wei
-   * @param d2 Base decimal places for the second price
-   * @return Exchange rate (in bps * 10 ** base decimals)
+   * @notice Computes the `_base` per `_quote` exchange rate in bps
+   * @param _base Address of the base token
+   * @param _baseDecimals Decimals of the base token
+   * @param _quote Address of the quote token
+   * @return Exchange rate in quote bps
    */
-  function exchangeRate(uint256 p1, uint256 p2, uint8 d2) internal pure returns (uint256) {
-    require(p1 > 0 && p2 > 0);
-    return (p1 * (10 ** uint256(d2))) / p2;
+  function exchangeRate(
+    uint256 _base,
+    uint8 _baseDecimals,
+    uint256 _quote
+  ) internal pure returns (uint256) {
+    require(_quote > 0 && _base > 0);
+    return (_quote * (10 ** uint256(_baseDecimals))) / _base;
   }
 }

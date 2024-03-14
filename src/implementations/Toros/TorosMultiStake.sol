@@ -2,7 +2,7 @@
 pragma solidity 0.8.22;
 
 import "../../libs/AsArrays.sol";
-import "../../abstract/StrategyV5Chainlink.sol";
+import "../../abstract/StrategyV5.sol";
 import "./interfaces/IDHedge.sol";
 
 /**
@@ -17,157 +17,53 @@ import "./interfaces/IDHedge.sol";
  * @notice Liquidity providing strategy for Toros (https://toros.finance/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract TorosMultiStake is StrategyV5Chainlink {
+contract TorosMultiStake is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;
 
-  // Third party contracts
-  IDHedgePool[8] internal _pools;
-  uint8[8] internal _poolDecimals;
-  IDhedgeEasySwapper dHedgeSwapper;
+  // strategy specific params
+  IDhedgeEasySwapper internal _dHedgeSwapper;
 
-  constructor(address accessController) StrategyV5Chainlink(accessController) {}
-
-  // Struct containing the strategy init parameters
-  struct Params {
-    address[] pools;
-    address dHedgeSwapper;
-  }
+  constructor(address _accessController) StrategyV5(_accessController) {}
 
   /**
    * @notice Sets the strategy specific parameters
    * @param _params Strategy specific parameters
    */
-  function setParams(Params calldata _params) public onlyAdmin {
-    dHedgeSwapper = IDhedgeEasySwapper(_params.dHedgeSwapper);
-    for (uint8 i = 0; i < _params.pools.length; i++) {
-      _pools[i] = IDHedgePool(_params.pools[i]);
-      _poolDecimals[i] = uint8(_pools[i].decimals());
-    }
-    _setAllowances(_MAX_UINT256);
+  function _setParams(bytes memory _params) internal override {
+    address dHedgeSwapper = abi.decode(_params, (address));
+    _dHedgeSwapper = IDhedgeEasySwapper(dHedgeSwapper);
+    _setAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
-   * @dev Initializes the strategy with the specified parameters
-   * @param _baseParams StrategyBaseParams struct containing strategy parameters
-   * @param _chainlinkParams Chainlink specific parameters
-   * @param _torosParams Aave specific parameters
+   * @notice Stakes or provides `_amount` from `input[_index]` to `lpTokens[_index]`
+   * @param _index Index of the input to stake
+   * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  function init(
-    StrategyBaseParams calldata _baseParams,
-    ChainlinkParams calldata _chainlinkParams,
-    Params calldata _torosParams
-  ) external onlyAdmin {
-    for (uint8 i = 0; i < _torosParams.pools.length; i++) {
-      inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
-      inputWeights[i] = _baseParams.inputWeights[i];
-      _inputDecimals[i] = inputs[i].decimals();
-    }
-    _inputLength = uint8(_torosParams.pools.length);
-    setParams(_torosParams);
-    StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
+  function _stake(uint8 _index, uint256 _amount) internal override {
+    _dHedgeSwapper.deposit({
+      pool: address(lpTokens[_index]),
+      depositAsset: address(inputs[_index]),
+      amount: _amount,
+      poolDepositAsset: address(inputs[_index]),
+      expectedLiquidityMinted: 1 // _inputToStake(_amount, _index).subBp(_4626StorageExt().maxSlippageBps)
+    });
   }
 
   /**
-   * @notice Invests the asset asset into the pool
-   * @param _amounts Amounts of asset to invest in each input
-   * @param _params Swaps calldata
-   * @return investedAmount Amount invested
-   * @return iouReceived Amount of LP tokens received
+   * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
+   * @param _index Index of the input to liquidate
+   * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _invest(
-    uint256[8] calldata _amounts, // from previewInvest()
-    bytes[] calldata _params
-  ) internal override nonReentrant returns (uint256 investedAmount, uint256 iouReceived) {
-    uint256 toDeposit;
-    uint256 spent;
-
-    for (uint8 i = 0; i < _inputLength; i++) {
-      if (_amounts[i] < 10) continue;
-
-      // We deposit the whole asset balance
-      if (asset != inputs[i] && _amounts[i] > 10) {
-        (toDeposit, spent) = swapper.decodeAndSwap({
-          _input: address(asset),
-          _output: address(inputs[i]),
-          _amount: _amounts[i],
-          _params: _params[i]
-        });
-        investedAmount += spent;
-        // pick up any input dust (eg. from previous liquidate()), not just the swap output
-        toDeposit = inputs[i].balanceOf(address(this));
-      } else {
-        investedAmount += _amounts[i];
-        toDeposit = _amounts[i];
-      }
-      uint256 expectedIou = _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps);
-      uint256 iouBefore = _pools[i].balanceOf(address(this));
-
-      dHedgeSwapper.deposit({
-        pool: address(_pools[i]),
-        depositAsset: address(inputs[i]),
-        amount: toDeposit,
-        poolDepositAsset: address(inputs[i]),
-        expectedLiquidityMinted: expectedIou
-      });
-
-      uint256 supplied = _pools[i].balanceOf(address(this)) - iouBefore;
-
-      // unified slippage check (swap+add liquidity)
-      if (supplied < expectedIou) {
-        revert Errors.AmountTooLow(supplied);
-      }
-
-      // NB: better return ious[]
-      iouReceived += supplied;
-    }
-  }
-
-  /**
-   * @notice Withdraw asset function, can remove all funds in case of emergency
-   * @param _amounts Amounts of asset to withdraw
-   * @param _params Swaps calldata
-   * @return assetsRecovered Amount of asset withdrawn
-   */
-  function _liquidate(
-    uint256[8] calldata _amounts, // from previewLiquidate()
-    bytes[] calldata _params
-  ) internal override returns (uint256 assetsRecovered) {
-    uint256 toLiquidate;
-    uint256 recovered;
-
-    for (uint8 i = 0; i < _inputLength; i++) {
-      if (_amounts[i] < 10) continue;
-
-      toLiquidate = _inputToStake(_amounts[i], i);
-
-      dHedgeSwapper.withdraw({
-        pool: address(_pools[i]),
-        fundTokenAmount: toLiquidate,
-        withdrawalAsset: address(inputs[i]),
-        expectedAmountOut: _amounts[i].subBp(_4626StorageExt().maxSlippageBps)
-      });
-
-      // swap the unstaked tokens (inputs[0]) for the asset asset if different
-      if (inputs[i] != asset && toLiquidate > 10) {
-        (recovered,) = swapper.decodeAndSwap({
-          _input: address(inputs[i]),
-          _output: address(asset),
-          _amount: _amounts[i],
-          _params: _params[i]
-        });
-      } else {
-        recovered = toLiquidate;
-      }
-
-      // unified slippage check (unstake+remove liquidity+swap out)
-      if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert Errors.AmountTooLow(recovered);
-      }
-
-      assetsRecovered += recovered;
-    }
+  function _unstake(uint8 _index, uint256 _amount) internal override {
+    _dHedgeSwapper.withdraw({
+      pool: address(lpTokens[_index]),
+      fundTokenAmount: _amount,
+      withdrawalAsset: address(inputs[_index]),
+      expectedAmountOut: 1
+    });
   }
 
   /**
@@ -176,19 +72,9 @@ contract TorosMultiStake is StrategyV5Chainlink {
    */
   function _setAllowances(uint256 _amount) internal override {
     for (uint8 i = 0; i < _inputLength; i++) {
-      inputs[i].forceApprove(address(dHedgeSwapper), _amount);
+      inputs[i].forceApprove(address(_dHedgeSwapper), _amount);
     }
   }
-
-  /**
-   * @notice Returns the investment in asset asset for the specified input
-   * @return total Amount invested
-   */
-  function invested(uint256 _index) public view override returns (uint256) {
-    return _inputToAsset(_investedInput(_index), _index);
-  }
-
-  
 
   /**
    * @notice Converts LP/staked LP to input
@@ -198,7 +84,9 @@ contract TorosMultiStake is StrategyV5Chainlink {
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return _usdToInput(_amount.mulDiv(_pools[_index].tokenPrice(), 1e12), _index);
+    return _usdToInput(
+      _amount.mulDiv(IDHedgePool(address(lpTokens[_index])).tokenPrice(), 1e12), _index
+    );
   }
 
   /**
@@ -210,7 +98,8 @@ contract TorosMultiStake is StrategyV5Chainlink {
     uint256 _index
   ) internal view override returns (uint256) {
     return _inputToUsd(_amount, _index).mulDiv(
-      1e12 * _poolDecimals[_index], _pools[_index].tokenPrice()
+      1e12 * 10 ** _lpTokenDecimals[_index],
+      IDHedgePool(address(lpTokens[_index])).tokenPrice()
     ); // eg. 1e6+1e12+1e18-1e18 = 1e18
   }
 
@@ -219,7 +108,7 @@ contract TorosMultiStake is StrategyV5Chainlink {
    * @return Input value of the LP/staked balance
    */
   function _investedInput(uint256 _index) internal view override returns (uint256) {
-    return _stakeToInput(_pools[_index].balanceOf(address(this)), _index);
+    return _stakeToInput(lpTokens[_index].balanceOf(address(this)), _index);
   }
 
   /**

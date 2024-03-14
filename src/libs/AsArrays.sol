@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
+import "./AsCast.sol";
+
 /**
  *             _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
@@ -12,6 +14,7 @@ pragma solidity 0.8.22;
  * @author Astrolab DAO
  */
 library AsArrays {
+  using AsCast for address;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                              VIEWS                             ║
@@ -203,12 +206,12 @@ library AsArrays {
    * @param a Value to convert to an array
    * @return arr Resulting array
    */
-  function toArray8(uint8 a) internal pure returns (uint8[] memory arr) {
+  function toArray(uint8 a) internal pure returns (uint8[] memory arr) {
     arr = new uint8[](1);
     arr[0] = a;
   }
 
-  function toArray8(uint8 a, uint8 b) internal pure returns (uint8[] memory arr) {
+  function toArray(uint8 a, uint8 b) internal pure returns (uint8[] memory arr) {
     arr = new uint8[](2);
     (arr[0], arr[1]) = (a, b);
   }
@@ -223,53 +226,111 @@ library AsArrays {
     (arr[0], arr[1]) = (a, b);
   }
 
-  function toArray256(uint256 a) internal pure returns (uint256[] memory arr) {
+  function toArray(uint256 a) internal pure returns (uint256[] memory arr) {
     arr = new uint256[](1);
     arr[0] = a;
   }
 
-  function toArray256(uint256 a, uint256 b) internal pure returns (uint256[] memory arr) {
+  function toArray(uint256 a, uint256 b) internal pure returns (uint256[] memory arr) {
     arr = new uint256[](2);
     (arr[0], arr[1]) = (a, b);
   }
 
-  function toArray256(address a) internal pure returns (address[] memory arr) {
+  function toArray(
+    uint256 a,
+    uint256 b,
+    uint256 c
+  ) internal pure returns (uint256[] memory arr) {
+    arr = new uint256[](3);
+    (arr[0], arr[1], arr[2]) = (a, b, c);
+  }
+
+  function toArray(address a) internal pure returns (address[] memory arr) {
     arr = new address[](1);
     arr[0] = a;
   }
 
-  function toArray256(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
+  function toArray(address a, address b) internal pure returns (address[] memory arr) {
+    arr = new address[](2);
+    (arr[0], arr[1]) = (a, b);
+  }
+
+  function toArray(
+    address a,
+    address b,
+    address c
+  ) internal pure returns (address[] memory arr) {
+    arr = new address[](3);
+    (arr[0], arr[1], arr[2]) = (a, b, c);
+  }
+
+  function toBytes32Array(address a) internal pure returns (bytes32[] memory arr) {
+    arr = new bytes32[](1);
+    arr[0] = a.toBytes32();
+  }
+
+  function toBytes32Array(
+    address a,
+    address b
+  ) internal pure returns (bytes32[] memory arr) {
+    arr = new bytes32[](2);
+    (arr[0], arr[1]) = (a.toBytes32(), b.toBytes32());
+  }
+
+  function toBytes32Array(
+    address a,
+    address b,
+    address c
+  ) internal pure returns (bytes32[] memory arr) {
+    arr = new bytes32[](3);
+    (arr[0], arr[1], arr[2]) = (a.toBytes32(), b.toBytes32(), c.toBytes32());
+  }
+
+  function toArray(bytes32 a) internal pure returns (bytes32[] memory arr) {
+    arr = new bytes32[](1);
+    arr[0] = a;
+  }
+
+  function toArray(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
     arr = new bytes32[](2);
     (arr[0], arr[1]) = (a, b);
   }
 
-  function dynamic(uint256[8] memory fixedArray) internal pure returns (uint256[] memory arr) {
-      arr = new uint256[](fixedArray.length);
-      for (uint256 i = 0; i < fixedArray.length;) {
-          arr[i] = fixedArray[i];
-          unchecked {
-            i++;
-          }
+  function dynamic(uint256[8] memory fixedArray)
+    internal
+    pure
+    returns (uint256[] memory arr)
+  {
+    arr = new uint256[](fixedArray.length);
+    for (uint256 i = 0; i < fixedArray.length;) {
+      arr[i] = fixedArray[i];
+      unchecked {
+        i++;
       }
+    }
   }
 
-  function dynamic(uint16[8] memory fixedArray) internal pure returns (uint16[] memory arr) {
-      arr = new uint16[](fixedArray.length);
-      for (uint256 i = 0; i < fixedArray.length;) {
-          arr[i] = fixedArray[i];
-          unchecked {
-            i++;
-          }
+  function dynamic(uint16[8] memory fixedArray)
+    internal
+    pure
+    returns (uint16[] memory arr)
+  {
+    arr = new uint16[](fixedArray.length);
+    for (uint256 i = 0; i < fixedArray.length;) {
+      arr[i] = fixedArray[i];
+      unchecked {
+        i++;
       }
+    }
   }
 
   function dynamic(uint8[8] memory fixedArray) internal pure returns (uint8[] memory arr) {
-      arr = new uint8[](fixedArray.length);
-      for (uint256 i = 0; i < fixedArray.length;) {
-          arr[i] = fixedArray[i];
-          unchecked {
-            i++;
-          }
+    arr = new uint8[](fixedArray.length);
+    for (uint256 i = 0; i < fixedArray.length;) {
+      arr[i] = fixedArray[i];
+      unchecked {
+        i++;
       }
+    }
   }
 }

@@ -62,24 +62,24 @@ library AsAccounting {
     if (duration == 0 || change < 0) return (0, price, 0, 0);
 
     // relative profit = (change / last price) on a _PRECISION_BP_BASIS scale
-    profit = uint256(change).mulDiv(AsMaths._PRECISION_BP_BASIS, last.accountedSharePrice); // 1e? * 1e12 / 1e? = 1e12
+    profit = uint256(change).mulDiv(AsMaths.PRECISION_BP_BASIS, last.accountedSharePrice); // 1e? * 1e12 / 1e? = 1e12
 
     // calculate management fees as proportion of profits on a _PRECISION_BP_BASIS scale
     // NOTE: this is a linear approximation of the accrued profits (_SEC_PER_YEAR ~3e11)
-    uint256 mgmtFeesRel = profit.mulDiv(fees.mgmt * duration, AsMaths._SEC_PER_YEAR); // 1e12 * 1e4 * 1e? / 1e? = 1e12
+    uint256 mgmtFeesRel = profit.mulDiv(fees.mgmt * duration, AsMaths.SEC_PER_YEAR); // 1e12 * 1e4 * 1e? / 1e? = 1e12
 
     // calculate performance fees as proportion of profits on a _PRECISION_BP_BASIS scale
     uint256 perfFeesRel = profit * fees.perf; // 1e12 * 1e4 = 1e12
 
     // adjust fees if it exceeds profits
     uint256 feesRel = AsMaths.min(
-      (mgmtFeesRel + perfFeesRel) / AsMaths._BP_BASIS, // 1e12 / 1e4 = 1e12
+      (mgmtFeesRel + perfFeesRel) / AsMaths.BP_BASIS, // 1e12 / 1e4 = 1e12
       profit
     );
 
     assets = self.totalAssets();
     // convert fees to assets
-    feesAmount = feesRel.mulDiv(assets, AsMaths._PRECISION_BP_BASIS); // 1e12 * 1e? / 1e12 = 1e? (asset decimals)
+    feesAmount = feesRel.mulDiv(assets, AsMaths.PRECISION_BP_BASIS); // 1e12 * 1e? / 1e12 = 1e? (asset decimals)
     return (assets, price, profit, feesAmount);
   }
 

@@ -60,7 +60,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     Erc20Metadata memory _erc20Metadata,
     CoreAddresses memory _coreAddresses,
     Fees memory _fees
-  ) internal virtual onlyAdmin {
+  ) internal {
     ERC20._init(_erc20Metadata.name, _erc20Metadata.symbol, _erc20Metadata.decimals); // super().init()
     asset = IERC20Metadata(_coreAddresses.asset);
     _assetDecimals = asset.decimals();
@@ -96,7 +96,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     }
 
     // seed the vault with some assets if it's empty
-    setMaxTotalAssets(_maxTotalAssets);
+    _setMaxTotalAssets(_maxTotalAssets);
 
     // if the vault is still paused, unpause it
     if (paused()) {
@@ -106,13 +106,13 @@ abstract contract As4626 is ERC20, As4626Abstract {
   }
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                              VIEWS                             ║
+  ║                             VIEWS                              ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
    * @return Amount of underlying assets available to non-requested withdrawals, excluding `minLiquidity`
    */
-  function _available() internal view virtual returns (uint256);
+  function available() public view virtual returns (uint256);
 
   /**
    * @return Total amount of underlying assets available to withdraw
@@ -150,7 +150,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
   function pendingAssetRequest(address _owner) external view returns (uint256) {
     Erc7540Request memory request = _req.byOwner[_owner];
     return request.shares.mulDiv(
-      AsMaths.min(request.sharePrice, _sharePrice()), // worst of
+      AsMaths.min(request.sharePrice, sharePrice()), // worst of
       _WEI_PER_SHARE
     );
   }
@@ -169,7 +169,8 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return Maximum claimable redemption amount
    */
   function maxClaimableAsset() internal view returns (uint256) {
-    return AsMaths.min(convertToAssets(_req.totalRedemption, false), availableClaimable());
+    return
+      AsMaths.min(_convertToAssets(_req.totalRedemption, false), availableClaimable());
   }
 
   /**
@@ -191,7 +192,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    */
   function previewMint(uint256 _shares, address _receiver) public view returns (uint256) {
     return
-      convertToAssets(_shares.revAddBp(exemptionList[_receiver] ? 0 : fees.entry), true);
+      _convertToAssets(_shares.revAddBp(exemptionList[_receiver] ? 0 : fees.entry), true);
   }
 
   /**
@@ -215,7 +216,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _receiver
   ) public view returns (uint256) {
     return
-      convertToShares(_amount.subBp(exemptionList[_receiver] ? 0 : fees.entry), false);
+      _convertToShares(_amount.subBp(exemptionList[_receiver] ? 0 : fees.entry), false);
   }
 
   /**
@@ -235,7 +236,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return Amount of shares to be burnt
    */
   function previewWithdraw(uint256 _amount, address _owner) public view returns (uint256) {
-    return convertToShares(_amount.revAddBp(exemptionList[_owner] ? 0 : fees.exit), true);
+    return _convertToShares(_amount.revAddBp(exemptionList[_owner] ? 0 : fees.exit), true);
   }
 
   /**
@@ -255,7 +256,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return Amount of underlying assets received
    */
   function previewRedeem(uint256 _shares, address _owner) public view returns (uint256) {
-    return convertToAssets(_shares.subBp(exemptionList[_owner] ? 0 : fees.exit), false);
+    return _convertToAssets(_shares.subBp(exemptionList[_owner] ? 0 : fees.exit), false);
   }
 
   /**
@@ -279,7 +280,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return Maximum amount of shares that can be minted based on `maxDeposit()`
    */
   function maxMint(address) public view returns (uint256) {
-    return paused() ? 0 : convertToShares(maxDeposit(address(0)), false);
+    return paused() ? 0 : _convertToShares(maxDeposit(address(0)), false);
   }
 
   /**
@@ -287,7 +288,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return Maximum amount of underlying assets that can currently be withdrawn by `_owner`
    */
   function maxWithdraw(address _owner) public view returns (uint256) {
-    return paused() ? 0 : convertToAssets(maxRedeem(_owner), false);
+    return paused() ? 0 : _convertToAssets(maxRedeem(_owner), false);
   }
 
   /**
@@ -328,7 +329,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
   /**
    * @return Share price - Amount of underlying assets redeemable for one share
    */
-  function _sharePrice() internal view virtual returns (uint256) {
+  function sharePrice() public view virtual returns (uint256) {
     uint256 supply = totalAccountedSupply();
     return supply == 0
       ? _WEI_PER_SHARE
@@ -339,18 +340,11 @@ abstract contract As4626 is ERC20, As4626Abstract {
   }
 
   /**
-   * @return Share price - Amount of underlying assets redeemable for one share
-   */
-  function sharePrice() external view virtual returns (uint256) {
-    return _sharePrice();
-  }
-
-  /**
    * @param _owner Owner of the shares
    * @return Value of the owner's shares denominated in underlying assets
    */
   function assetsOf(address _owner) public view returns (uint256) {
-    return convertToAssets(balanceOf(_owner), false);
+    return _convertToAssets(balanceOf(_owner), false);
   }
 
   /**
@@ -359,13 +353,13 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @param _roundUp Round up if true, round down otherwise
    * @return Amount of shares equivalent to `_amount` assets
    */
-  function convertToShares(
+  function _convertToShares(
     uint256 _amount,
     bool _roundUp
   ) internal view virtual returns (uint256) {
     return _amount.mulDiv(
       _WEI_PER_SHARE_SQUARED,
-      _sharePrice() * _weiPerAsset,
+      sharePrice() * _weiPerAsset,
       _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
     ); // eg. 1e6+(1e12+1e12)-(1e12+1e6) = 1e12
   }
@@ -376,7 +370,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return Amount of shares equivalent to `_amount` assets
    */
   function convertToShares(uint256 _amount) external view returns (uint256) {
-    return convertToShares(_amount, false);
+    return _convertToShares(_amount, false);
   }
 
   /**
@@ -385,12 +379,12 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @param _roundUp Round up if true, round down otherwise
    * @return Amount of assets equivalent to `_shares`
    */
-  function convertToAssets(
+  function _convertToAssets(
     uint256 _shares,
     bool _roundUp
   ) internal view returns (uint256) {
     return _shares.mulDiv(
-      _sharePrice() * _weiPerAsset,
+      sharePrice() * _weiPerAsset,
       _WEI_PER_SHARE_SQUARED,
       _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
     ); // eg. 1e12+(1e12+1e6)-(1e12+1e12) = 1e6
@@ -402,7 +396,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return Amount of assets equivalent to `_shares`
    */
   function convertToAssets(uint256 _shares) external view returns (uint256) {
-    return convertToAssets(_shares, false);
+    return _convertToAssets(_shares, false);
   }
 
   /**
@@ -420,7 +414,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return The total amount of asset assets requested pending redemption
    */
   function totalPendingAssetRequest() public view returns (uint256) {
-    return convertToAssets(totalPendingRedemptionRequest(), false);
+    return _convertToAssets(totalPendingRedemptionRequest(), false);
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -449,8 +443,17 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @notice This is used to cap the vault's deposits
    * @param _maxTotalAssets Maximum amount of assets
    */
-  function setMaxTotalAssets(uint256 _maxTotalAssets) public onlyAdmin {
+  function _setMaxTotalAssets(uint256 _maxTotalAssets) internal {
     maxTotalAssets = _maxTotalAssets;
+  }
+
+  /**
+   * @notice Sets the maximum amount of assets that can be deposited
+   * @notice This is used to cap the vault's deposits
+   * @param _maxTotalAssets Maximum amount of assets
+   */
+  function setMaxTotalAssets(uint256 _maxTotalAssets) external onlyAdmin {
+    _setMaxTotalAssets(_maxTotalAssets);
   }
 
   /**
@@ -530,7 +533,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     if (_shares == 0 && _amount == 0) revert Errors.AmountTooLow(0);
 
     // do not allow minting at a price higher than the current share price
-    last.sharePrice = _sharePrice();
+    last.sharePrice = sharePrice();
 
     bool minting = false;
 
@@ -638,7 +641,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     uint256 claimableShares = (msg.sender == request.operator || msg.sender == _owner)
       ? claimableRedeemRequest(_owner)
       : 0;
-    last.sharePrice = _sharePrice();
+    last.sharePrice = sharePrice();
 
     uint256 worstPrice = last.sharePrice;
     uint256 claimableAmount;
@@ -672,7 +675,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
       // check if the vault available liquidity can cover the withdrawal
       if (
         _shares
-          > _available().mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset)
+          > available().mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset)
       ) {
         revert Errors.AmountTooHigh(_shares);
       }
@@ -839,7 +842,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     Erc7540Request storage request = _req.byOwner[_owner];
     if (request.operator != _operator) request.operator = _operator;
 
-    last.sharePrice = _sharePrice();
+    last.sharePrice = sharePrice();
     if (request.shares > 0) {
       if (request.shares > _shares) {
         revert Errors.AmountTooLow(_shares);
@@ -889,7 +892,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _owner,
     bytes memory _data
   ) external returns (uint256) {
-    return requestRedeem(convertToShares(_amount, false), _operator, _owner, _data);
+    return requestRedeem(_convertToShares(_amount, false), _operator, _owner, _data);
   }
 
   // /**
@@ -929,7 +932,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
 
     if (shares == 0) revert Errors.AmountTooLow(0);
 
-    last.sharePrice = _sharePrice();
+    last.sharePrice = sharePrice();
     uint256 opportunityCost = 0;
     if (last.sharePrice > request.sharePrice) {
       // burn the excess shares from the loss incurred while not farming
@@ -986,7 +989,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
       feeCollector,
       assets,
       price,
-      profit, // basis AsMaths._BP_BASIS**2
+      profit, // basis AsMaths.BP_BASIS**2
       feesAmount,
       toMint
     );

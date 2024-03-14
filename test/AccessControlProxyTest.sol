@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.22;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 contract Impl {
-
   modifier onlyOwner() {
     console.log("Wrong modifier called");
     _;
@@ -23,7 +22,7 @@ contract Impl {
   }
 }
 
-contract AccessControlProxyTest is Test{
+contract AccessControlProxyTest is Test {
   address implementation;
   address admin;
 
@@ -42,7 +41,6 @@ contract AccessControlProxyTest is Test{
   }
 
   function testDelegate() public {
-
     implementation = address(implementation);
     // Set the owner of the implementation contract to a different address
     admin = address(0);

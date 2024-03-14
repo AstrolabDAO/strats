@@ -37,16 +37,19 @@ struct CoreAddresses {
   address feeCollector;
   address swapper;
   address agent;
+  address oracle;
 }
 
 // StrategyV5 init params
-struct StrategyBaseParams {
+struct StrategyParams {
   Erc20Metadata erc20Metadata;
   CoreAddresses coreAddresses;
   Fees fees;
   address[] inputs;
   uint16[] inputWeights;
+  address[] lpTokens;
   address[] rewardTokens;
+  bytes extension;
 }
 
 // ERC-7540 Request
@@ -83,7 +86,6 @@ struct Epoch {
 }
 
 library Errors {
-
   /*═══════════════════════════════════════════════════════════════╗
   ║                             ERRORS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -96,18 +98,19 @@ library Errors {
   error InvalidData(); // invalid calldata / inputs
   error InvalidOrStaleValue(uint256 updateTime, int256 value);
   error FlashLoanDefault(address borrower, uint256 amount);
+  error FlashLoanCallbackFailed();
   error AcceptanceExpired();
   error AcceptanceLocked();
   error ContractNonCompliant();
+  error MissingOracle();
 }
 
 library Roles {
-
   /*═══════════════════════════════════════════════════════════════╗
   ║                           CONSTANTS                            ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  bytes32 constant internal ADMIN = 0x00;
-  bytes32 constant internal KEEPER = keccak256("KEEPER");
-  bytes32 constant internal MANAGER = keccak256("MANAGER");
+  bytes32 internal constant ADMIN = 0x00;
+  bytes32 internal constant KEEPER = keccak256("KEEPER");
+  bytes32 internal constant MANAGER = keccak256("MANAGER");
 }

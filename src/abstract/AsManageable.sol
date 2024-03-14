@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../interfaces/IAccessController.sol";
 import "./AsTypes.sol";
+import "./AsPermissioned.sol";
 
 /**
  *             _             _       _
@@ -17,65 +18,12 @@ import "./AsTypes.sol";
  * @author Astrolab DAO
  * @notice Abstract contract to check roles against AccessController and contract pausing
  */
-contract AsManageable is Pausable, ReentrancyGuard {
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                            STORAGE                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  IAccessController private _ac;
-
+contract AsManageable is AsPermissioned, Pausable, ReentrancyGuard {
   /*═══════════════════════════════════════════════════════════════╗
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor(address _accessController) {
-    (bool success,) = _accessController.staticcall(
-      abi.encodeWithSelector(IAccessController.isAdmin.selector, msg.sender)
-    );
-    if (!success) {
-      revert Errors.ContractNonCompliant();
-    }
-    _ac = IAccessController(_accessController);
-  }
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                           MODIFIERS                            ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @notice Checks if `_account` has `_role`
-   * @param _role Role to check
-   * @param _account Account to check
-   * @return Boolean indicating if `_account` has `_role`
-   */
-  function _hasRole(bytes32 _role, address _account) internal view returns (bool) {
-    return _ac.hasRole(_role, _account);
-  }
-
-  /**
-   * @notice Checks if an account has the keeper role
-   */
-  modifier onlyKeeper() {
-    _ac.checkRole(Roles.KEEPER, msg.sender);
-    _;
-  }
-
-  /**
-   * @notice Checks if an account has the manager role
-   */
-  modifier onlyManager() {
-    _ac.checkRole(Roles.MANAGER, msg.sender);
-    _;
-  }
-
-  /**
-   * @notice Checks if an account has the admin role
-   */
-  modifier onlyAdmin() {
-    _ac.checkRole(Roles.ADMIN, msg.sender);
-    _;
-  }
+  constructor(address _accessController) AsPermissioned(_accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                        PAUSING LOGIC                           ║

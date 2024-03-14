@@ -2,7 +2,6 @@
 pragma solidity ^0.8.22;
 
 interface IAccessController {
-
   event RoleAdminChanged(
     bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole
   );

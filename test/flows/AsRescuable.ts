@@ -13,10 +13,10 @@ import {
 
 /**
  * Transfers assets to a specified receiver
- * @param env - Strategy deployment environment
- * @param amount - Amount of assets to transfer
- * @param asset - Asset to transfer
- * @param receiver - Receiver's address (optional)
+ * @param env Strategy deployment environment
+ * @param amount Amount of assets to transfer
+ * @param asset Asset to transfer
+ * @param receiver Receiver's address (optional)
  * @returns Boolean indicating whether the transfer was successful
  */
 export async function transferAssetsTo(
@@ -55,9 +55,9 @@ export async function transferAssetsTo(
 
 /**
  * Requests a rescue for a specific token on a contract (admin only)
- * @param env - Strategy deployment environment
- * @param token - Token you want to rescue
- * @param signer - Signer with address. Defaults to the deployer (rescuer) if not provided
+ * @param env Strategy deployment environment
+ * @param token Token you want to rescue
+ * @param signer Signer with address. Defaults to the deployer (rescuer) if not provided
  * @returns Boolean indicating the success of the rescue operation
  */
 export async function requestRescue(
@@ -82,9 +82,9 @@ export async function requestRescue(
 
 /**
  * Rescues the specified token from the contract after request (admin only)
- * @param env - Strategy deployment environment
- * @param token - Token you want to rescue
- * @param signer - Signer with address. Defaults to the deployer (rescuer)
+ * @param env Strategy deployment environment
+ * @param token Token you want to rescue
+ * @param signer Signer with address. Defaults to the deployer (rescuer)
  * @returns Boolean indicating the success of the rescue operation
  */
 export async function rescue(

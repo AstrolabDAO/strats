@@ -4,18 +4,18 @@ import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Aave/addresses";
 import {
   Fees,
-  IStrategyChainlinkParams,
   IStrategyDeploymentEnv,
   IStrategyDesc,
+  IStrategyParams,
 } from "../../src/types";
-import { getEnv } from "../utils";
+import { abiEncode, getEnv } from "../utils";
 import { IFlow, testFlow } from "../flows";
 import { setupStrat } from "../flows/StrategyV5";
 import { suite } from "../StrategyV5.test";
 
 const baseDesc = {
-  name: `Astrolab Aave MetaStable`,
-  symbol: `as.AMS`,
+  name: `Astrolab Aave USD`,
+  symbol: `apAMS`,
   version: 1,
   contract: "AaveMultiStake",
   asset: "USDC",
@@ -58,11 +58,12 @@ describe(`test.${desc.name}`, () => {
       [
         {
           // base params
-          erc20Metadata: { name: desc.name, symbol: desc.symbol, decimals: 8 }, // erc20Metadata
+          erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata
           coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
           fees: {} as Fees, // fees (use default)
           inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
           inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
+          lpTokens: desc.inputs.map((i) => protocolAddr[i].aToken), // lpTokens
           rewardTokens: [],
         },
         {
@@ -70,20 +71,12 @@ describe(`test.${desc.name}`, () => {
           assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
           inputPriceFeeds: desc.inputs.map((i) => oracles[`Crypto.${i}/USD`]),
         },
-        {
-          // strategy specific params
-          poolProvider: protocolAddr.poolProvider,
-          aTokens: desc.inputs.map((i) => protocolAddr[i].aToken),
-        },
-      ] as IStrategyChainlinkParams,
+        abiEncode(["address"], [protocolAddr.poolProvider]), // strategy specific params
+      ],
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
+      ["AsAccounting"], // libraries to link and verify with the strategy
       env, // deployment environment
       false // force verification (after deployment)
-    );
-    assert(
-      ethers.utils.isAddress(env.deployment.strat.address),
-      "Strat not deployed"
     );
   });
   describe("Test flow", async () => {

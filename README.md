@@ -2,7 +2,7 @@
   <img border-radius="25px" max-height="250px" src="./banner.png" />
   <h1>Astrolab Strategies</h1>
   <p>
-    <strong>by <a href="https://astrolab.fi">Astrolab<a></strong>
+    <strong>by <a href="https://astrolab.fi">Astrolab DAO<a></strong>
   </p>
   <p>
     <!-- <a href="https://github.com/AstrolabDAO/strats/actions"><img alt="Build Status" src="https://github.com/AstrolabDAO/strats/actions/workflows/tests.yaml/badge.svg" /></a> -->
@@ -12,30 +12,55 @@
   </p>
 </div>
 
-This repo holds Astrolab DAO's yield primitives.
-
-- Strategy abstract contracts 🎯
-  - [As4626.sol](./src/abstract/As4626.sol) (light-weight, full-featured ERC4626 tokenized vault implementation)
-  - [StrategyV5.sol](./src/abstract/StrategyV5.sol) (strategy contract, extended by strategies, transparent proxy delegating to StrategyV5Agent)
-  - [StrategyV5Agent.sol](./src/abstract/StrategyV5Agent.sol) (common strategy logic, implementation inheriting from As4626)
-  - Add-ons 🧩
-    - [StrategyV5Chainlink.sol](./src/abstract/StrategyV5Chainlink.sol)
-    - [StrategyV5Pyth.sol](./src/abstract/StrategyV5Pyth.sol)
-
-- Implementations of DeFi multi-protocol, multi-chain strategies ([cf. below](#strategies))
-
-- Libs 📚
-  - [AsMaths.sol](./src/libs/AsMaths.sol)
-  - [AsArrays.sol](./src/libs/AsArrays.sol)
-  - [AsAccounting.sol](./src/libs/AsAccounting.sol) Strategy accounting helpers
-  - [ChainlinkUtils.sol](./src/libs/ChainlinkUtils.sol) Chainlink specific oracle utils
-  - [PythUtils.sol](./src/libs/PythUtils.sol) Pyth specific oracle utils
+This repo holds Astrolab DAO's yield primitives and dependencies.
 
 Besides harvesting/compounding automation (cf. [Astrolab Botnet](https://github.com/AstrolabDAO/monorepo/nptnet)), some of the strategies have off-chain components (eg. cross-chain arb, statistical arb, triangular arb, carry trading etc.), which are not part of this repository, and kept closed-source as part of our Protocol secret sauce.
 
 ## Disclaimer ⚠️
 Astrolab DAO and its core team members will not be held accountable for losses related to the deployment and use of this repository's codebase.
 As per the [licence](./LICENCE) states, the code is provided as-is and is under active development. The codebase, documentation, and other aspects of the project may be subject to changes and improvements over time.
+
+## Content
+- Core contracts
+  - [StrategyV5.sol](./src/abstract/StrategyV5.sol) 🎯
+    Strategy base contract, extended by all, delegating common logic to StrategyV5Agent
+  - [StrategyV5Agent.sol](./src/abstract/StrategyV5Agent.sol) 🎭
+    Shared strategy back-end, inheriting from As4626
+
+- Base contracts
+  - [As4626.sol](./src/abstract/As4626.sol) 📦
+    Full-featured ERC4626 tokenized vault implementation
+  - [AsPermissioned](./src/abstract/AsPermissioned.sol) 🛡️
+    `AccessController` consummer enabling contract RBAC
+  - [AsPriceAware](./src/abstract/AsPermissioned.sol) 📡
+    `PriceProvider` consummer feeding contracts with live exchange rates
+  - [AsFlashLender](./src/abstract/AsPermissioned.sol) 🏦
+    Grants the contract EIP-3156 flash lending capabilitites
+  - [AsRescuable](./src/abstract/AsRescuable.sol) ⛑️
+    Grants the contract native and ERC20 emergency token rescue capabilities
+
+- Standalone deployments
+  - [AccessController](./src/abstract/AccessController.sol) 🛡️
+    DAO's standalone access controller used for RBAC
+  - [PriceProvider](./src/abstract/PriceProvider.sol) 📡
+    Oracle adapter dedicated to price retrieval from Chainlink, Pyth, Redstone and more
+  - [BridgeAdapter](./) ⛓️
+    Bridge adapter dedicated to cross-chain interoperability through Axelar, LayerZero and more.
+    Powers the DAO's cross-chain composite Strategies, acUSD, acETH and acBTC (to be migrated from v1 repo)
+  - [Swapper](https://github.com/AstrolabFinance/swapper) ♻️
+    DAO's standalone liquidity aggregator
+
+- Implementations of DeFi multi-protocol, multi-chain strategies ([cf. below](#strategies))
+
+- Libs 📚
+  - [AsCast.sol](./src/libs/AsCast.sol)
+    Safe and unsafe casting
+  - [AsMaths.sol](./src/libs/AsMaths.sol)
+    Standard maths library, built from OZ's, ABDK's, PRB's, Uniswap and more
+  - [AsArrays.sol](./src/libs/AsArrays.sol)
+    Array manipulation
+  - [AsAccounting.sol](./src/libs/AsAccounting.sol)
+    Strategy accounting helpers
 
 ## Testing
 Testing As4626+StrategyV5 with Hardhat (make sure to set `HARDHAT_CHAIN_ID=42161` in `.env` to run the below test to be successful):
@@ -48,7 +73,9 @@ Testing As4626+StrategyV5 with Tenderly (make sure to set `TENDERLY_CHAIN_ID=421
 yarn test-tenderly # yarn hardhat test test/Compound/CompoundV3MultiStake.test.ts --network tenderly
 ```
 
-The repo imports [@astrolabs/hardhat](https://github.com/AstrolabDAO/hardhat), therefore you can use our generic deployment functions for fine-grain partial deployments of the stack:
+Foundry tests are also in the works, used for fuzzing, drafting and debugging (not integration as test suites require extensive data manipulation and http querying).
+
+The repo depends on [@astrolabs/hardhat](https://github.com/AstrolabDAO/hardhat), therefore you can use our generic deployment functions for fine-grain partial deployments of the stack:
 ```typescript
 import { deployAll } from "@astrolabs/hardhat";
 
@@ -75,7 +102,7 @@ async function main() {
 - [StargateMultiStake](./src/implementations/Stargate/StargateMultiStake.sol)
 - [AgaveMultiStake](./src/implementations/Agave/AgaveMultiStake.sol)
 - [BenqiMultiStake](./src/implementations/Benqi/BenqiMultiStake.sol)
-- ...
+- and more
 
 ## Integrated/Watched Protocols 👀
 

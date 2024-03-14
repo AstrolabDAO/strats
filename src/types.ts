@@ -1,9 +1,9 @@
-import { IDeployment, getDeployer } from "@astrolabs/hardhat";
+import { IDeployment, getDeployer, network } from "@astrolabs/hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, Contract, providers } from "ethers";
 import * as ethers from "ethers";
 import { Network } from "hardhat/types";
-import { NetworkAddresses } from "./addresses";
+import { NetworkAddresses, findSymbolByAddress } from "./addresses";
 import {
   Provider as MulticallProvider,
   Contract as MulticallContract,
@@ -39,8 +39,8 @@ export class SafeContract extends Contract {
       c.multi = new MulticallContract(address, abi as any[]);
       if ("symbol" in c) {
         // c is a token
-        c.sym = await c.symbol?.();
-        c.scale = await c.decimals?.() || 8;
+        c.sym = findSymbolByAddress(c.address, network.config.chainId!) || await c.symbol?.();
+        c.scale = await c.decimals?.() || 12;
         c.weiPerUnit = 10 ** c.scale;
       }
       return c;
@@ -94,6 +94,7 @@ export interface CoreAddresses {
   feeCollector?: string;
   swapper?: string;
   agent?: string;
+  oracle?: string;
   allocator?: string;
 }
 
@@ -104,9 +105,6 @@ export interface Fees {
   exit: number;
   flash: number;
 }
-
-// fees, asset, feeCollector
-export type As4626InitParams = [Erc20Metadata, CoreAddresses, Fees, string, string];
 
 export interface IStrategyDesc {
   name: string;
@@ -125,13 +123,15 @@ export interface IStrategyConstructorParams {
 }
 
 // init params
-export interface IStrategyBaseParams {
+export interface IStrategyParams {
   erc20Metadata: Erc20Metadata;
   coreAddresses: Partial<CoreAddresses>;
   fees: Fees;
   inputs: string[];
   inputWeights: number[];
+  lpTokens: string[];
   rewardTokens: string[];
+  extension?: string;
 }
 
 export interface IPythParams {
@@ -147,21 +147,14 @@ export interface IChainlinkParams {
   validities: number[];
 }
 
-export type IStrategyParams = [IStrategyBaseParams, any];
-export type IStrategyPythParams = [IStrategyBaseParams, IPythParams, any];
-export type IStrategyChainlinkParams = [
-  IStrategyBaseParams,
-  IChainlinkParams,
-  any,
-];
-
 export interface IStrategyDeployment extends IDeployment {
   // constructor/init params
-  initParams: [IStrategyBaseParams, ...any];
+  initParams: [IStrategyParams, ...any];
   // compilation/verification dependencies
-  swapper: Contract;
-  agent: Contract;
-  accessController: Contract;
+  Swapper: Contract;
+  StrategyV5Agent: Contract;
+  AccessController: Contract;
+  ChainlinkProvider: Contract;
   libraries: { [name: string]: string };
   // product of deployment
   strat: SafeContract;

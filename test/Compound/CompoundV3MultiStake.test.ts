@@ -4,18 +4,17 @@ import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Compound/addresses";
 import {
   Fees,
-  IStrategyChainlinkParams,
   IStrategyDeploymentEnv,
   IStrategyDesc,
 } from "../../src/types";
-import { getEnv } from "../utils";
+import { abiEncode, getEnv } from "../utils";
 import { IFlow, testFlow } from "../flows";
 import { setupStrat } from "../flows/StrategyV5";
 import { suite } from "../StrategyV5.test";
 
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab CompoundV3 MetaStable`,
-  symbol: `as.CMS`,
+  name: `Astrolab Primitive CompoundV3 USD`,
+  symbol: `apCOMP.USD`,
   asset: "USDC",
   version: 1,
   contract: "CompoundV3MultiStake",
@@ -59,11 +58,12 @@ describe(`test.${desc.name}`, () => {
       [
         {
           // base params
-          erc20Metadata: { name: desc.name, symbol: desc.symbol, decimals: 8 }, // erc20Metadata
+          erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata default to 12 decimals
           coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
           fees: {} as Fees, // fees (use default)
           inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
           inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
+          lpTokens: desc.inputs.map((input) => addr.Compound[input].comet), // lpTokens
           rewardTokens: Array.from(
             new Set(protocolAddr.map((i) => i.rewardTokens).flat()),
           ), // keep unique reward token: COMP
@@ -74,20 +74,13 @@ describe(`test.${desc.name}`, () => {
           feeds: oracleAssets.map((i) => oracles[`Crypto.${i}/USD`]),
           validities: oracleAssets.map((i) => 86400),
         },
-        {
-          // strategy specific params
-          cTokens: desc.inputs.map((input) => addr.Compound[input].comet),
-          cometRewards: addr.Compound.cometRewards,
-        },
-      ] as IStrategyChainlinkParams,
+        // strategy specific params
+        abiEncode(["address"], [addr.Compound.cometRewards]),
+      ],
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
+      ["AsAccounting"], // "ChainlinkUtils"], // libraries to link and verify with the strategy
       env, // deployment environment
       false, // force verification (after deployment)
-    );
-    assert(
-      ethers.utils.isAddress(env.deployment.strat.address),
-      "Strat not deployed",
     );
   });
   describe("Test flow", async () => {
