@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.22;
 
 import {Test} from "forge-std/Test.sol";
 import "forge-std/StdUtils.sol";
-import "forge-std/Strings.sol";
 import {console} from "forge-std/console.sol";
 import {
-  StrategyBaseParams,
+  StrategyParams,
   Fees,
   CoreAddresses,
   Erc20Metadata,
@@ -16,13 +15,14 @@ import {
 import {AsArrays} from "../src/libs/AsArrays.sol";
 import {IStrategyV5} from "../src/interfaces/IStrategyV5.sol";
 import {AccessController} from "../src/abstract/AccessController.sol";
+import {ChainlinkProvider} from "../src/abstract/ChainlinkProvider.sol";
 import {CompoundV3MultiStake} from
   "../src/implementations/Compound/CompoundV3MultiStake.sol";
-import {StrategyV5Chainlink} from "../src/abstract/StrategyV5Chainlink.sol";
+import {StrategyV5} from "../src/abstract/StrategyV5.sol";
 import {StrategyV5Agent} from "../src/abstract/StrategyV5Agent.sol";
 import {ERC20} from "../src/abstract/ERC20.sol";
 
-contract CompoundV3MultistakeTest is Test {
+contract CompoundV3MultiStakeTest is Test {
   using AsArrays for address;
   using AsArrays for uint16;
   using AsArrays for uint256;
@@ -44,6 +44,7 @@ contract CompoundV3MultistakeTest is Test {
 
   AccessController accessController;
   IStrategyV5 strat;
+  ChainlinkProvider oracle;
   address agent;
   ERC20 usdc = ERC20(USDC);
   ERC20 weth = ERC20(WETH);
@@ -55,14 +56,14 @@ contract CompoundV3MultistakeTest is Test {
 
   constructor() Test() {
     // create arbitrum fork and deal test tokens
-    vm.createSelectFork(vm.rpcUrl("https://rpc.ankr.com/arbitrum"));
+    vm.createSelectFork(vm.rpcUrl(vm.envString("arbitrum-private-rpc")));
     vm.startPrank(rich);
     // deal(USDC, admin, 100e6);
     // deal(USDC, manager, 100e6);
     // deal(USDC, user, 100e6);
     usdc.transfer(admin, 100e6);
     usdc.transfer(manager, 100e6);
-    usdc.transfer(user, 100e6);
+    usdc.transfer(user, 10000e6);
     vm.stopPrank();
   }
 
@@ -86,7 +87,7 @@ contract CompoundV3MultistakeTest is Test {
     uint256[] memory previewLiquidate = strat.previewLiquidate(0).dynamic();
     vm.serializeUint(s, "previewLiquidate", previewLiquidate);
     uint256[] memory previewInvest = strat.previewInvest(0).dynamic();
-    vm.serializeUint(s, "previewInvest", previewInvest);
+    s = vm.serializeUint(s, "previewInvest", previewInvest);
     console.log(_msg, s);
   }
 
@@ -97,58 +98,60 @@ contract CompoundV3MultistakeTest is Test {
     accessController = new AccessController();
     console.log("is admin: ", accessController.hasRole(Roles.ADMIN, admin));
 
+    oracle = new ChainlinkProvider(address(accessController));
+    oracle.update(
+      abi.encode(
+        ChainlinkProvider.Params({
+          assets: USDC.toArray(), // [USDC]
+          feeds: USDC_FEED.toBytes32Array(), // Chainlink USDC
+          validities: uint256(3600).toArray() // Chainlink default validity
+        })
+      )
+    );
     agent = address(new StrategyV5Agent(address(accessController)));
     strat = IStrategyV5(address(new CompoundV3MultiStake(address(accessController))));
     vm.stopPrank();
   }
 
   function init() public {
-
     vm.startPrank(admin);
 
     // initialize the strategy
     // ERC20 metadata
-    Erc20Metadata memory erc20Meta =
-      Erc20Metadata({name: "Astrolab Primitive Compound USD", symbol: "apCOMP-USD", decimals: 12});
+    Erc20Metadata memory erc20Meta = Erc20Metadata({
+      name: "Astrolab Primitive Compound USD",
+      symbol: "apCOMP-USD",
+      decimals: 12
+    });
     // startegy core addresses
     CoreAddresses memory coreAddresses = CoreAddresses({
       wgas: WETH,
       asset: USDC,
       feeCollector: manager,
       swapper: swapper,
-      agent: agent
+      agent: agent,
+      oracle: address(oracle)
     });
     // fees
     Fees memory mockFees = Fees({perf: 10_00, mgmt: 0, entry: 2, exit: 2, flash: 2}); // 10% perf, 0% mgmt, .02% entry, .02% exit, .02% flash
     // aggregated strategy base parameters
-    StrategyBaseParams memory baseParams = StrategyBaseParams({
+    StrategyParams memory params = StrategyParams({
       erc20Metadata: erc20Meta,
       coreAddresses: coreAddresses,
       fees: mockFees,
-      inputs: USDC.toArray256(), // [USDC]
+      inputs: USDC.toArray(), // [USDC]
       inputWeights: uint16(100_00).toArray16(), // 100% weight on USDC
-      rewardTokens: COMP.toArray256() // [COMP]
-    });
-    // oracle specific (chainlink) params
-    StrategyV5Chainlink.ChainlinkParams memory chainlinkParams = StrategyV5Chainlink
-      .ChainlinkParams({
-        assets: USDC.toArray256(), // [USDC]
-        feeds: USDC_FEED.toArray256(), // Chainlink USDC
-        validities: uint256(3600).toArray256() // Chainlink default validity
-      });
-    // yield protocol specific (compound) params
-    CompoundV3MultiStake.Params memory compoundParams = CompoundV3MultiStake.Params({
-      cTokens: cUSDC.toArray256(),
-      cometRewards: cometRewards
+      lpTokens: cUSDC.toArray(),
+      rewardTokens: COMP.toArray(), // [COMP]
+      extension: abi.encode(cometRewards) // compound specific init params
     });
 
     // initialize (admin only)
-    CompoundV3MultiStake(payable(address(strat))).init(baseParams, chainlinkParams, compoundParams);
+    strat.init(params);
     vm.stopPrank();
   }
 
   function grantRoles() public {
-
     vm.startPrank(admin);
 
     // grant roles
@@ -158,7 +161,6 @@ contract CompoundV3MultistakeTest is Test {
   }
 
   function seedLiquidity() public {
-
     vm.startPrank(admin);
     logState("before seed liquidity");
     // set vault minimum liquidity
@@ -175,8 +177,8 @@ contract CompoundV3MultistakeTest is Test {
   function deposit() public {
     vm.startPrank(user);
     logState("before deposit");
-    usdc.approve(address(strat), 10e6);
-    strat.deposit(10e6, user);
+    usdc.approve(address(strat), 10000e6);
+    strat.deposit(10000e6, user);
     logState("after deposit");
     vm.stopPrank();
   }

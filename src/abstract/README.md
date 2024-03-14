@@ -1,13 +1,5 @@
 # StrategyV5 on-chain Architecture
 
-Core abstract contracts
-- [As4626.sol](./src/abstract/As4626.sol) (full-featured tokenized vault ERC4626/ERC7540 hybrid implementation)
-- [StrategyV5.sol](./src/abstract/StrategyV5.sol) (base strategy contract, extended by all strategies, transparent proxy delegating to StrategyV5Agent)
-- [StrategyV5Agent.sol](./src/abstract/StrategyV5Agent.sol) (shared strategy logic, implementation inheriting from As4626)
-- Add-ons
-  - [StrategyV5Chainlink.sol](./src/abstract/StrategyV5Chainlink.sol)
-  - [StrategyV5Pyth.sol](./src/abstract/StrategyV5Pyth.sol)
-
 ## Agent delegate calls (ERC-897 transparent proxy)
 
 `StrategyV5` is a transparent proxy that delegates to `StrategyV5Agent`, this is done to minimize redundancy and lighten the strategies deployment size.
@@ -54,114 +46,145 @@ The above transparent proxy architecture means that storage slots of the two con
 The following contract hierarchy dictates the storage layout, which must remain compatible between a `StrategyV5` revision and its `StrategyV5Agent` back-end.
 
 ```
-StrategyV5 (54 slots)
-├───┬─── AsManageable.sol (4 slots)
+StrategyV5 (57 slots total)
+├─── AsManageable.sol (0 slot, 2 slots total)
 |   ├─── ReentrancyGuard.sol (1 slot)
 |   ├─── Pausable.sol (1 slot)
-|   ╰─── AccessController.sol (1 slot)
-|       ╰─── AccessControllerAbstract (1 slot)
-├─── AsProxy.sol (0 slot)
-├─── ERC20Abstract (3 slots)
-├─── As4626Abstract (24 slots)
-├─── AsRescuable (1 slot)
-|   ╰─── AsRescuableAbstract (1 slot)
-╰─── StrategyV5Abstract (22 slots)
+|   ╰─── AsPermissioned.sol (0 slot)
+├─── AsRescuable (0 slot)
+├─── StrategyV5Abstract (30 slots, 55 slots total)
+|   ╰─── As4626Abstract (22 slots, 25 slots total)
+|       ╰─── ERC20Abstract (3 slots)
+╰─── AsPriceAware.sol (0 slot)
 
-StrategyV5Agent (54 slots)
-├─── As4626.sol (31 slots)
-|   ├─── AsManageableAbstract.sol (4 slots)
-|   |   ├─── AccessControllerAbstract.sol (1 slot)
-|   |   ╰─── ERC20 (3 slots)
-|   |       ╰─── ERC20Abstract (3 slots)
-|   ╰─── As4626Abstract.sol (24 slots)
-├─── AsRescuableAbstract (1 slot)
-╰─── StrategyV5Abstract (22 slots)
+StrategyV5Agent (57 slots total)
+╰─── StrategyV5Abstract (30 slots, 57 slots total)
+|   ╰─── As4626Abstract (22 slots, 27 slots total)
+|       ├─── ERC20Abstract (3 slots, 5 slots total)
+|       ╰─── AsManageable.sol (0 slot, 2 slots total)
+|           ├─── ReentrancyGuard.sol (1 slot)
+|           ├─── Pausable.sol (1 slot)
+|           ╰─── AsPermissioned.sol (0 slot)
+╰─── AsFlashLender.sol (0 slot)
 ```
 
 ### Table view
 
 Here is a table view of the above described sequential storage layout
 
-| Slots | Variable | StrategyV5 inheritance | StrategyV5Agent inheritance |
-| --- | --- | --- | --- |
-| 0 | IWETH9 _wgas | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 1 | ISwapper swapper | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 2 | IStrategyV5 agent | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 3->10| IERC20Metadata[8] inputs | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 11 | uint8[8] _inputDecimals | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 12 | uint16[8] inputWeights | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 13->20 | address[8] rewardTokens | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 21 | mapping _rewardTokenIndexes | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 22 | uint8 _inputLength | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 22 | uint8 _rewardLength | StrategyV5Abstract.sol | StrategyV5Abstract.sol |
-| 23 | uint256 maxTotalAssets | As4626Abstract.sol | As4626.sol |
-| 24 | uint256 minLiquidity | As4626Abstract.sol | As4626.sol |
-| 25 | IERC20Metadata asset | As4626Abstract.sol | As4626.sol |
-| 25 | uint8 _assetDecimals | As4626Abstract.sol | As4626.sol |
-| 26 | uint256 _weiPerAsset | As4626Abstract.sol | As4626.sol |
-| 27->32 | Epoch last | As4626Abstract.sol | As4626.sol |
-| 33 | uint256 _profitCooldown | As4626Abstract.sol | As4626.sol |
-| 34 | uint256 _expectedProfits | As4626Abstract.sol | As4626.sol |
-| 35->36 | Fees fees | As4626Abstract.sol | As4626.sol |
-| 37 | address feeCollector | As4626Abstract.sol | As4626.sol |
-| 38 | uint256 claimableAssetFees | As4626Abstract.sol | As4626.sol |
-| 39 | mapping exemptionList | As4626Abstract.sol | As4626.sol |
-| 40->44 | Requests _req | As4626Abstract.sol | As4626.sol |
-| 45 | uint256 _requestId | As4626Abstract.sol | As4626.sol |
-| 46 | string name | ERC20Abstract.sol | ERC20.sol |
-| 47 | string symbol | ERC20Abstract.sol | ERC20.sol |
-| 48 | uint8 decimals | ERC20Abstract.sol | ERC20.sol |
-| 48 | bool _initialized | ERC20Abstract.sol | ERC20.sol |
-| 49 | mapping _roles | AccessController.sol | AsManageableAbstract.sol |
-| 50 | bool private _paused | Pausable.sol | AsManageableAbstract.sol |
-| 51 | uint256 _status | ReentrancyGuard.sol | AsManageableAbstract.sol |
-| 52 | mapping pendingAcceptance | AsManageable.sol | AsManageableAbstract.sol |
-| 53 | mapping _rescueRequests | AsRescuable.sol | AsRescuableAbstract.sol |
+| Name                | Type                        | Slot | Offset | Bytes |
+|---------------------|-----------------------------|------|--------|-------|
+| name                | string                      | 0    | 0      | 32    |
+| symbol              | string                      | 1    | 0      | 32    |
+| decimals            | uint8                       | 2    | 0      | 1     |
+| _initialized        | bool                        | 2    | 1      | 1     |
+| _paused             | bool                        | 2    | 2      | 1     |
+| _status             | uint256                     | 3    | 0      | 32    |
+| maxTotalAssets      | uint256                     | 4    | 0      | 32    |
+| minLiquidity        | uint256                     | 5    | 0      | 32    |
+| asset               | contract IERC20Metadata     | 6    | 0      | 20    |
+| _assetDecimals      | uint8                       | 6    | 20     | 1     |
+| _weiPerAsset        | uint256                     | 7    | 0      | 32    |
+| last                | struct Epoch                | 8    | 0      | 192   |
+| _profitCooldown     | uint256                     | 14   | 0      | 32    |
+| _expectedProfits    | uint256                     | 15   | 0      | 32    |
+| fees                | struct Fees                 | 16   | 0      | 64    |
+| feeCollector        | address                     | 18   | 0      | 20    |
+| claimableAssetFees  | uint256                     | 19   | 0      | 32    |
+| exemptionList       | mapping(address => bool)    | 20   | 0      | 32    |
+| _req                | struct Requests             | 21   | 0      | 160   |
+| _requestId          | uint256                     | 26   | 0      | 32    |
+| _wgas               | contract IWETH9             | 27   | 0      | 20    |
+| swapper             | contract ISwapper           | 28   | 0      | 20    |
+| inputs              | contract IERC20Metadata[8]  | 29   | 0      | 256   |
+| _inputDecimals      | uint8[8]                    | 37   | 0      | 32    |
+| inputWeights        | uint16[8]                   | 38   | 0      | 32    |
+| lpTokens            | contract IERC20Metadata[8]  | 39   | 0      | 256   |
+| _lpTokenDecimals    | uint8[8]                    | 47   | 0      | 32    |
+| rewardTokens        | address[8]                  | 48   | 0      | 256   |
+| _rewardTokenIndexes | mapping(address => uint256) | 56   | 0      | 32    |
+| _inputLength        | uint8                       | 57   | 0      | 1     |
+| _rewardLength       | uint8                       | 57   | 1      | 1     |
 
-#### A strategy's storage compliance can be ensured using forge storage slots inspector:
+#### The above storage layout and compliance can be checked using forge storage slots inspector
 
 ```bash
 $> forge inspect --pretty CompoundV3MultiStake storage-layout`
 ```
 
-| Name                | Type                                                | Slot | Offset | Bytes | Contract                   |
-|---------------------|-----------------------------------------------------|------|--------|-------|----------------------------|
-| _wgas               | contract IWETH9                                     | 0    | 0      | 20    | ./CompoundV3MultiStake.sol |
-| swapper             | contract ISwapper                                   | 1    | 0      | 20    | ./CompoundV3MultiStake.sol |
-| agent               | contract IStrategyV5                                | 2    | 0      | 20    | ./CompoundV3MultiStake.sol |
-| inputs              | contract IERC20Metadata[8]                          | 3    | 0      | 256   | ./CompoundV3MultiStake.sol |
-| _inputDecimals      | uint8[8]                                            | 11   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| inputWeights        | uint16[8]                                           | 12   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| rewardTokens        | address[8]                                          | 13   | 0      | 256   | ./CompoundV3MultiStake.sol |
-| _rewardTokenIndexes | mapping(address => uint256)                         | 21   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| _inputLength        | uint8                                               | 22   | 0      | 1     | ./CompoundV3MultiStake.sol |
-| _rewardLength       | uint8                                               | 22   | 1      | 1     | ./CompoundV3MultiStake.sol |
-| maxTotalAssets      | uint256                                             | 23   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| minLiquidity        | uint256                                             | 24   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| asset               | contract IERC20Metadata                             | 25   | 0      | 20    | ./CompoundV3MultiStake.sol |
-| _assetDecimals      | uint8                                               | 25   | 20     | 1     | ./CompoundV3MultiStake.sol |
-| _weiPerAsset        | uint256                                             | 26   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| last                | struct Epoch                                        | 27   | 0      | 192   | ./CompoundV3MultiStake.sol |
-| _profitCooldown     | uint256                                             | 33   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| _expectedProfits    | uint256                                             | 34   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| fees                | struct Fees                                         | 35   | 0      | 64    | ./CompoundV3MultiStake.sol |
-| feeCollector        | address                                             | 37   | 0      | 20    | ./CompoundV3MultiStake.sol |
-| claimableAssetFees  | uint256                                             | 38   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| exemptionList       | mapping(address => bool)                            | 39   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| _req                | struct Requests                                     | 40   | 0      | 160   | ./CompoundV3MultiStake.sol |
-| _requestId          | uint256                                             | 45   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| name                | string                                              | 46   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| symbol              | string                                              | 47   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| decimals            | uint8                                               | 48   | 0      | 1     | ./CompoundV3MultiStake.sol |
-| _initialized        | bool                                                | 48   | 1      | 1     | ./CompoundV3MultiStake.sol |
-| _roles              | mapping(bytes32 => struct RoleState)                | 49   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| _paused             | bool                                                | 50   | 0      | 1     | ./CompoundV3MultiStake.sol |
-| _status             | uint256                                             | 51   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| pendingAcceptance   | mapping(address => struct PendingAcceptance)        | 52   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| _rescueRequests     | mapping(address => struct RescueRequest)            | 53   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| feedByAsset         | mapping(address => contract IChainlinkAggregatorV3) | 54   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| _decimalsByFeed     | mapping(contract IChainlinkAggregatorV3 => uint8)   | 55   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| validityByFeed      | mapping(contract IChainlinkAggregatorV3 => uint256) | 56   | 0      | 32    | ./CompoundV3MultiStake.sol |
-| cTokens             | address[8]                                          | 57   | 0      | 256   | ./CompoundV3MultiStake.sol |
-| _cometRewards       | contract ICometRewards                              | 65   | 0      | 20    | ./CompoundV3MultiStake.sol |
-| _rewardConfigs      | struct ICometRewards.RewardConfig[8]                | 66   | 0      | 512   | ./CompoundV3MultiStake.sol |
+| Name                | Type                                 | Slot | Offset | Bytes | Contract                   |
+|---------------------|--------------------------------------|------|--------|-------|----------------------------|
+| name                | string                               | 0    | 0      | 32    | ./CompoundV3MultiStake.sol |
+| symbol              | string                               | 1    | 0      | 32    | ./CompoundV3MultiStake.sol |
+| decimals            | uint8                                | 2    | 0      | 1     | ./CompoundV3MultiStake.sol |
+| _initialized        | bool                                 | 2    | 1      | 1     | ./CompoundV3MultiStake.sol |
+| _paused             | bool                                 | 2    | 2      | 1     | ./CompoundV3MultiStake.sol |
+| _status             | uint256                              | 3    | 0      | 32    | ./CompoundV3MultiStake.sol |
+| maxTotalAssets      | uint256                              | 4    | 0      | 32    | ./CompoundV3MultiStake.sol |
+| minLiquidity        | uint256                              | 5    | 0      | 32    | ./CompoundV3MultiStake.sol |
+| asset               | contract IERC20Metadata              | 6    | 0      | 20    | ./CompoundV3MultiStake.sol |
+| _assetDecimals      | uint8                                | 6    | 20     | 1     | ./CompoundV3MultiStake.sol |
+| _weiPerAsset        | uint256                              | 7    | 0      | 32    | ./CompoundV3MultiStake.sol |
+| last                | struct Epoch                         | 8    | 0      | 192   | ./CompoundV3MultiStake.sol |
+| _profitCooldown     | uint256                              | 14   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| _expectedProfits    | uint256                              | 15   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| fees                | struct Fees                          | 16   | 0      | 64    | ./CompoundV3MultiStake.sol |
+| feeCollector        | address                              | 18   | 0      | 20    | ./CompoundV3MultiStake.sol |
+| claimableAssetFees  | uint256                              | 19   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| exemptionList       | mapping(address => bool)             | 20   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| _req                | struct Requests                      | 21   | 0      | 160   | ./CompoundV3MultiStake.sol |
+| _requestId          | uint256                              | 26   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| _wgas               | contract IWETH9                      | 27   | 0      | 20    | ./CompoundV3MultiStake.sol |
+| swapper             | contract ISwapper                    | 28   | 0      | 20    | ./CompoundV3MultiStake.sol |
+| inputs              | contract IERC20Metadata[8]           | 29   | 0      | 256   | ./CompoundV3MultiStake.sol |
+| _inputDecimals      | uint8[8]                             | 37   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| inputWeights        | uint16[8]                            | 38   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| lpTokens            | contract IERC20Metadata[8]           | 39   | 0      | 256   | ./CompoundV3MultiStake.sol |
+| _lpTokenDecimals    | uint8[8]                             | 47   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| rewardTokens        | address[8]                           | 48   | 0      | 256   | ./CompoundV3MultiStake.sol |
+| _rewardTokenIndexes | mapping(address => uint256)          | 56   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| _inputLength        | uint8                                | 57   | 0      | 1     | ./CompoundV3MultiStake.sol |
+| _rewardLength       | uint8                                | 57   | 1      | 1     | ./CompoundV3MultiStake.sol |
+| _rewardController   | contract ICometRewards               | 57   | 2      | 20    | ./CompoundV3MultiStake.sol |
+| _rewardConfigs      | struct ICometRewards.RewardConfig[8] | 58   | 0      | 512   | ./CompoundV3MultiStake.sol |
+
+### Alternatively, [hardhat-storage-layout](https://github.com/aurora-is-near/hardhat-storage-layout) is just as good
+
+```bash
+$> yarn hardhat check
+```
+
+| contract         | state_variable    | storage_slot | offset | type                                           | idx | artifact               | numberOfBytes |
+|------------------|-------------------|--------------|--------|------------------------------------------------|-----|------------------------|---------------|
+| AaveMultiStake   | name              | 0            | 0      | t_string_storage                               | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | symbol            | 1            | 0      | t_string_storage                               | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | decimals          | 2            | 0      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveMultiStake   | _initialized      | 2            | 1      | t_bool                                         | 0   | /build-info/xxx.json   | 1             |
+| AaveMultiStake   | _paused           | 2            | 2      | t_bool                                         | 0   | /build-info/xxx.json   | 1             |
+| AaveMultiStake   | _status           | 3            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | maxTotalAssets    | 4            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | minLiquidity      | 5            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | asset             | 6            | 0      | t_contract(IERC20Metadata)495                  | 0   | /build-info/xxx.json   | 20            |
+| AaveMultiStake   | _assetDecimals    | 6            | 20     | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveMultiStake   | _weiPerAsset      | 7            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | last              | 8            | 0      | t_struct(Epoch)5391_storage                    | 0   | /build-info/xxx.json   | 192           |
+| AaveMultiStake   | _profitCooldown   | 14           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | _expectedProfits  | 15           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | fees              | 16           | 0      | t_struct(Fees)5303_storage                     | 0   | /build-info/xxx.json   | 64            |
+| AaveMultiStake   | feeCollector      | 18           | 0      | t_address                                      | 0   | /build-info/xxx.json   | 20            |
+| AaveMultiStake   | claimableAssetFees| 19           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | exemptionList     | 20           | 0      | t_mapping(t_address,t_bool)                    | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | _req              | 21           | 0      | t_struct(Requests)5372_storage                 | 0   | /build-info/xxx.json   | 160           |
+| AaveMultiStake   | _requestId        | 26           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | _wgas             | 27           | 0      | t_contract(IWETH9)29126                        | 0   | /build-info/xxx.json   | 20            |
+| AaveMultiStake   | swapper           | 28           | 0      | t_contract(ISwapper)273                        | 0   | /build-info/xxx.json   | 20            |
+| AaveMultiStake   | inputs            | 29           | 0      | t_array(t_contract(IERC20Metadata)495)8_storage| 0   | /build-info/xxx.json   | 256           |
+| AaveMultiStake   | _inputDecimals    | 37           | 0      | t_array(t_uint8)8_storage                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | inputWeights      | 38           | 0      | t_array(t_uint16)8_storage                     | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | lpTokens          | 39           | 0      | t_array(t_contract(IERC20Metadata)495)8_storage| 0   | /build-info/xxx.json   | 256           |
+| AaveMultiStake   | _lpTokenDecimals  | 47           | 0      | t_array(t_uint8)8_storage                      | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | rewardTokens      | 48           | 0      | t_array(t_address)8_storage                    | 0   | /build-info/xxx.json   | 256           |
+| AaveMultiStake   | _rewardTokenIndexes | 56        | 0      | t_mapping(t_address,t_uint256)                 | 0   | /build-info/xxx.json   | 32            |
+| AaveMultiStake   | _inputLength      | 57           | 0      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveMultiStake   | _rewardLength     | 57           | 1      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveMultiStake   | _poolProvider     | 57           | 2      | t_contract(IPoolAddressesProvider)11015       | 0   | /build-info/xxx.json   | 20            |

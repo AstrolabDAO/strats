@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@aashutoshrathi/word-wrap/-/word-wrap-1.2.6.tgz#bd9154aec9983f77b3a034ecaa015c2e4201f6cf"
   integrity sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==
 
-"@astrolabs/hardhat@^1.0.91":
-  version "1.0.91"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.91.tgz#981885236b638d64222c614e622220a913f02718"
-  integrity sha512-qyKuWYq7I/aQJVP1V8YK+qm4C0O/xsYAs3aupA6Rxf4X7Vp/KJNpFikCd6HsjIuaeP7MoC/8PjSUsAkOvdxvTQ==
+"@astrolabs/hardhat@^1.0.93":
+  version "1.0.93"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.0.93.tgz#932d711dbe9317733b400a74651c1fce0ba1b14a"
+  integrity sha512-gipyAR0HZWMPAG8O4m+SUzZ8Gf+acQdJ3SII0/ccUuyZ1ffn5Qlrcam3jJ+mAoXj31WLzZCxaIqCJD1G6+Z2VQ==
   dependencies:
     "@nomiclabs/hardhat-ethers" "^2.1.0"
     "@tenderly/hardhat-tenderly" "^1.7.7"
@@ -1861,6 +1861,13 @@ concat-map@0.0.1:
   resolved "https://registry.yarnpkg.com/concat-map/-/concat-map-0.0.1.tgz#d8a96bd77fd68df7793a73036a3ba0d5405d477b"
   integrity sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==
 
+console-table-printer@^2.9.0:
+  version "2.12.0"
+  resolved "https://registry.yarnpkg.com/console-table-printer/-/console-table-printer-2.12.0.tgz#c1547684f7c34c5f129be7e524d9f62288d79cf5"
+  integrity sha512-Q/Ax+UOpZw0oPZGmv8bH8/W5NpC2rAYy6cX20BVLGQ45v944oL+srmLTZAse/5a3vWDl0MXR/0GTEdsz2dDTbg==
+  dependencies:
+    simple-wcswidth "^1.0.1"
+
 content-disposition@0.5.4:
   version "0.5.4"
   resolved "https://registry.yarnpkg.com/content-disposition/-/content-disposition-0.5.4.tgz#8b82b4efac82512a02bb0b1dcec9d2c5e8eb5bfe"
@@ -2896,6 +2903,13 @@ hardhat-deploy@^0.11.14:
     murmur-128 "^0.2.1"
     qs "^6.9.4"
     zksync-web3 "^0.14.3"
+
+hardhat-storage-layout@^0.1.7:
+  version "0.1.7"
+  resolved "https://registry.yarnpkg.com/hardhat-storage-layout/-/hardhat-storage-layout-0.1.7.tgz#ad8a5afd8593ee51031eb1dd9476b4a2ed981785"
+  integrity sha512-q723g2iQnJpRdMC6Y8fbh/stG6MLHKNxa5jq/ohjtD5znOlOzQ6ojYuInY8V4o4WcPyG3ty4hzHYunLf66/1+A==
+  dependencies:
+    console-table-printer "^2.9.0"
 
 hardhat@^2.10.2, hardhat@^2.19.1:
   version "2.19.4"
@@ -4342,6 +4356,11 @@ signal-exit@^4.0.1:
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-4.1.0.tgz#952188c1cbd546070e2dd20d0f41c0ae0530cb04"
   integrity sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==
+
+simple-wcswidth@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/simple-wcswidth/-/simple-wcswidth-1.0.1.tgz#8ab18ac0ae342f9d9b629604e54d2aa1ecb018b2"
+  integrity sha512-xMO/8eNREtaROt7tJvWJqHBDTMFN4eiQ5I4JRMuilwfnFcV5W9u7RUkueNkdw0jPqGMX36iCywelS5yilTuOxg==
 
 sisteransi@^1.0.5:
   version "1.0.5"

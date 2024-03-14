@@ -15,7 +15,7 @@ import { BigNumber, Contract } from "ethers";
 import { merge, shuffle } from "lodash";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
 import {
-  IStrategyBaseParams,
+  IStrategyParams,
   IStrategyDeployment,
   IStrategyDeploymentEnv,
   SafeContract,
@@ -29,6 +29,7 @@ import {
   getInitSignature,
   getOverrides,
   getTxLogData,
+  isAddress,
   isLive,
   isOracleLib,
   isStablePair,
@@ -55,7 +56,7 @@ export const deployStrat = async (
   env: Partial<IStrategyDeploymentEnv>,
   name: string,
   contract: string,
-  initParams: [IStrategyBaseParams, ...any],
+  initParams: [IStrategyParams, ...any],
   libNames = ["AsAccounting"],
   forceVerify = false, // check that the contract is verified on etherscan/tenderly
 ): Promise<IStrategyDeploymentEnv> => {
@@ -94,7 +95,6 @@ export const deployStrat = async (
   // exclude implementation specific libraries from agentLibs (eg. oracle libs)
   // as these are specific to the strategy implementation
   const stratLibs = Object.assign({}, libraries);
-
   const agentLibs = Object.assign({}, stratLibs);
   delete agentLibs.AsMaths; // not used statically by Agent/Strat
 
@@ -105,29 +105,6 @@ export const deployStrat = async (
   // delete stratLibs.AsAccounting; // not used statically by Strat
 
   const units: { [name: string]: IDeploymentUnit } = {
-    AccessController: {
-      contract: "AccessController",
-      name: "AccessController",
-      verify: true,
-      deployed: env.addresses!.astrolab?.AccessController ? true : false,
-      address: env.addresses!.astrolab?.AccessController ?? "",
-    },
-    Swapper: {
-      contract: "Swapper",
-      name: "Swapper",
-      verify: true,
-      deployed: env.addresses!.astrolab?.Swapper ? true : false,
-      address: env.addresses!.astrolab?.Swapper ?? "",
-    },
-    StrategyV5Agent: {
-      contract: "StrategyV5Agent",
-      name: "StrategyV5Agent",
-      libraries: agentLibs,
-      verify: true,
-      deployed: env.addresses!.astrolab?.Agent ? true : false,
-      address: env.addresses!.astrolab?.Agent,
-      overrides: getOverrides(env),
-    },
     [contract]: {
       contract,
       name: contract,
@@ -157,8 +134,23 @@ export const deployStrat = async (
     };
   }
 
+  const preDeploymentsContracts: string[] = ["AccessController", "ChainlinkProvider", "Swapper", "StrategyV5Agent"];
   const preDeployments: { [name: string]: Contract } = {};
-  for (const c of ["AccessController", "Swapper", "StrategyV5Agent"]) {
+  for (const c of preDeploymentsContracts) {
+    units[c] = {
+      contract: c,
+      name: c,
+      verify: true,
+      deployed: env.addresses!.astrolab?.[c] ? true : false,
+      address: env.addresses!.astrolab?.[c] ?? "",
+      overrides: getOverrides(env),
+    };
+    if (c == "StrategyV5Agent") {
+      units[c].args = [preDeployments.AccessController.address];
+      units[c].libraries = agentLibs;
+    } else if (c == "ChainlinkProvider") {
+      units[c].args = [preDeployments.AccessController.address];
+    }
     if (!env.addresses!.astrolab?.[c]) {
       console.log(`Deploying missing ${c}`);
       preDeployments[c] = (await deploy(units[c]));
@@ -191,6 +183,7 @@ export const deployStrat = async (
       feeCollector: env.deployer!.address, // feeCollector
       swapper: preDeployments.Swapper.address, // Swapper
       agent: preDeployments.StrategyV5Agent.address, // StrategyV5Agent
+      oracle: preDeployments.ChainlinkProvider.address, // ChainlinkProvider
     },
     initParams[0].coreAddresses,
   );
@@ -214,16 +207,14 @@ export const deployStrat = async (
 
   // add the access controller as sole constructor parameter to the strategy and its agent
   units[contract].args = [preDeployments.AccessController.address];
-  units.StrategyV5Agent.args = [preDeployments.AccessController.address];
 
   merge(env.deployment, {
+    ...preDeployments,
     name: `${name} Stack`,
     contract: "",
     initParams,
     verify: true,
     libraries,
-    swapper: preDeployments.Swapper,
-    agent: preDeployments.StrategyV5Agent,
     // deployer/provider
     deployer: env.deployer,
     provider: env.provider,
@@ -247,6 +238,14 @@ export const deployStrat = async (
   if (!env.deployment!.units![contract].address)
     throw new Error(`Could not deploy ${contract}`);
 
+  for (const c of preDeploymentsContracts) {
+    if (!env.deployment!.units![c].address)
+      throw new Error(`Could not deploy ${c}`);
+    (env.deployment as any)[c] = await SafeContract.build(
+      env.deployment!.units![c].address!,
+      loadAbi(c) as any[],
+    );
+  }
   env.deployment!.strat = await SafeContract.build(
     env.deployment!.units![contract].address!,
     loadAbi(contract) as any[],
@@ -270,7 +269,7 @@ export async function setupStrat(
   contract: string,
   name: string,
   // below we use hop strategy signature as placeholder
-  initParams: [IStrategyBaseParams, ...any],
+  initParams: [IStrategyParams, ...any],
   minLiquidityUsd = 10,
   libNames = ["AsAccounting"],
   env: Partial<IStrategyDeploymentEnv> = {},
@@ -333,6 +332,12 @@ export async function setupStrat(
     loadAbi(contract) as any[], // use "StrategyV5" for strat generic abi
   );
 
+  if (!isAddress(env.deployment!.strat.address)) {
+    throw new Error(
+      `Strategy ${name} not deployed at ${env.deployment!.strat.address}`,
+    );
+  }
+
   const actualInputs: string[] = //inputs.map((input) => input.address);
     await env.multicallProvider!.all(
       inputs.map((input, index) => strat.multi.inputs(index)),
@@ -361,7 +366,7 @@ export async function setupStrat(
       );
   }
 
-  await logState(env, "After init", 2_000);
+  await logState(env, "After init", 1_000);
 
   const fullEnv = env as IStrategyDeploymentEnv;
 
@@ -395,7 +400,7 @@ export async function preInvest(
     amount = stratLiquidity;
   }
 
-  const amounts = await strat.previewInvest(amount); // parsed as uint256[8]
+  const amounts = await strat.callStatic.previewInvest(amount); // parsed as uint256[8]
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
 
@@ -450,7 +455,7 @@ export async function invest(
     .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
     // .invest(...params, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Invest", 2_000);
+  await logState(env, "After Invest", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
@@ -487,7 +492,7 @@ export async function liquidate(
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
-  const amounts = Object.assign([], await strat.previewLiquidate(amount));
+  const amounts = Object.assign([], await strat.callStatic.previewLiquidate(amount));
   const swapAmounts = new Array<BigNumber>(amounts.length).fill(
     BigNumber.from(0),
   );
@@ -566,7 +571,7 @@ export async function liquidate(
     // .liquidate(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
-  await logState(env, "After Liquidate", 2_000);
+  await logState(env, "After Liquidate", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256", "uint256"], 2); // liquidityAvailable
 }
 
@@ -642,7 +647,7 @@ export async function harvest(
   const receipt = await strat
     .safe("harvest", [harvestSwapData], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Harvest", 2_000);
+  await logState(env, "After Harvest", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
@@ -680,7 +685,7 @@ export async function compound(
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After Compound", 2_000);
+  await logState(env, "After Compound", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 
@@ -733,7 +738,7 @@ export async function emptyStrategy(
     )
     .then((tx: TransactionResponse) => tx.wait());
 
-  await logState(env, "After EmptyStrategy", 2_000);
+  await logState(env, "After EmptyStrategy", 1_000);
   return await asset.balanceOf(deployerAddress).sub(assetBalanceBefore);
 }
 
@@ -813,7 +818,7 @@ export async function updateAsset(
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, "After UpdateAsset", 2_000);
+  await logState(env, "After UpdateAsset", 1_000);
   // no event is emitted for optimization purposes, manual check
   const updated = await strat.asset();
   console.log("Updated asset: ", updated);
@@ -841,48 +846,39 @@ export async function updateInputs(
   const strat = await env.deployment!.strat;
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   const emptyAddress = "0x0000000000000000000000000000000000000000";
-  const inputIndexes = [...Array(8)];
-  const inputData = await env.multicallProvider!.all(
-    indexes.map((i) => strat.multi.inputs(i)),
-  );
-  const weightData = await env.multicallProvider!.all(
-    indexes.map((i) => strat.multi.inputWeights(i)),
-  );
-  const lpData = await env.multicallProvider!.all(
-    indexes.map((i) => strat.multi.cTokens(i)),
-  );
-  // const [inputData, weightData, lpData] = (await env.multicallProvider!.all([
-  //   strat.multi.inputs(),
-  //   strat.multi.inputWeights(),
-  //   strat.multi.lpTokens(),
-  // ])) as [string[], BigNumber[], string[]];
+  const indexes = [...Array(8).keys()];
 
-  let lastInputIndex = inputData.findIndex((input) => input == emptyAddress);
+  const stratParams = await env.multicallProvider!.all([
+    ...indexes.map((i) => strat.multi.inputs(i)),
+    ...indexes.map((i) => strat.multi.inputWeights(i)),
+    ...indexes.map((i) => strat.multi.lpTokens(i)),
+  ]);
 
-  if (lastInputIndex < 0) lastInputIndex = inputIndexes.length; // max 8 inputs (if no empty address found)
+  let lastInputIndex = stratParams.findIndex((input) => input == emptyAddress);
+
+  if (lastInputIndex < 0) lastInputIndex = indexes.length; // max 8 inputs (if no empty address found)
 
   const [currentInputs, currentWeights, currentLpTokens] = [
-    inputData.slice(0, lastInputIndex),
-    weightData.slice(0, lastInputIndex),
-    lpData.slice(0, lastInputIndex),
+    stratParams.slice(0, lastInputIndex),
+    stratParams.slice(8, lastInputIndex),
+    stratParams.slice(16, lastInputIndex),
   ] as [string[], number[], string[]];
 
   // step 2: Initialize final inputs and weights arrays
   let orderedInputs: string[] = new Array<string>(inputs.length).fill("");
-  let orderedWeights: number[] = new Array<number>(inputs.length);
+  let orderedWeights: number[] = new Array<number>(inputs.length).fill(0);
   let orederedLpTokens: string[] = new Array<string>(inputs.length).fill("");
 
   const leftovers: string[] = [];
 
   if (reorder) {
-    // step 3: Keep existing inputs in their original order if they are still present
+    // step 3: Keep existing inputs in their original position if still present
     for (let i = 0; i < inputs.length; i++) {
       const prevIndex = currentInputs.indexOf(inputs[i]);
       if (prevIndex >= inputs.length || prevIndex < 0) {
         leftovers.push(inputs[i]);
         continue;
       }
-
       if (inputs.length > prevIndex) {
         orderedInputs[prevIndex] = currentInputs[prevIndex];
         orderedWeights[prevIndex] = weights[i];
@@ -922,13 +918,15 @@ export async function updateInputs(
     )}], reorder flag at: [${reorder}]
     prev feeds: [${currentFeeds.join(", ")}]
     ordered feeds: [${newFeeds.join(", ")}]
-    `);
+  `);
 
   // step 5: Set new input weights with current inputs to liquidate it all
-  // NB: different signature for StratV5Pyth
   console.log(currentInputs, "currentInputs");
   console.log(currentLpTokens, "currentLpTokens");
   console.log(currentWeights, "currentWeights");
+
+  // TODO: make sure that the oracle has all new feeds already set up
+
   let receipt = await strat
     .safe(
       "setInputs(address[],address[],uint16[],address[],uint256[])",
@@ -942,7 +940,6 @@ export async function updateInputs(
         //   // update weights for existing inputs (start rebalancing)
         //   return index > -1 ? orderedWeights[index] : 0;
         // }),
-        currentFeeds,
         [86400, 86400],
       ],
       getOverrides(env),
@@ -984,7 +981,7 @@ export async function shuffleInputs(
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
   const emptyAddress = "0x0000000000000000000000000000000000000000";
-  const inputIndexes = [...Array(8)];
+  const inputIndexes = [...Array(8).keys()];
 
   const inputData = await env.multicallProvider!.all(
     indexes.map((i) => strat.multi.inputs(i)),
@@ -1021,11 +1018,12 @@ export async function shuffleInputs(
   while (arraysEqual(randomInputs, currentInputs)) {
     randomInputs = shuffle(currentInputs);
   }
-  while (arraysEqual(randomWeights, currentWeights)) {
-    // if there are two inputs and the weights are the same, break
-    if (randomWeights.length == 2 && randomWeights[0] == randomWeights[1])
-      break;
-    randomWeights = shuffle(currentWeights);
+
+  // if there are two inputs and the weights are the same, break
+  if (!currentWeights.every((v) => v === currentWeights[0])) {
+    while (arraysEqual(randomWeights, currentWeights)) {
+      randomWeights = shuffle(currentWeights);
+    }
   }
   console.log(randomInputs, randomWeights);
 

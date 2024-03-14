@@ -12,10 +12,10 @@ remappings = [
   "forge-std/=./libs/forge-std/src/",
 ] # Add this line if you use remappings for your libraries
 via_ir = false
-optimizer = false
-# optimizer_runs = 0
+optimizer = true
+optimizer_runs = 200
 # optimizer_steps = 0
-optimizer_details = { yul = false, peephole = true, jumpdest_removal = true, order_literals = true, deduplicate = true, cse = true, constant_optimizer = true, yul_details = { stack_allocation = false, optimizer_steps = "dhfoDgvulfnTUtnIf" } }
+optimizer_details = { yul = true, peephole = true, jumpdest_removal = true, order_literals = true, deduplicate = true, cse = true, constant_optimizer = true, yul_details = { stack_allocation = false, optimizer_steps = "dhfoDgvulfnTUtnIf" } }
 solc = "0.8.22"
 evm_version = "shanghai"
 allow_paths = ["."]

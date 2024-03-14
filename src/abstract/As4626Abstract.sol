@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./ERC20Abstract.sol";
 import "./AsManageable.sol";
-import "./AsRescuableAbstract.sol";
 import "./AsTypes.sol";
 import "../libs/AsAccounting.sol";
 
@@ -21,7 +20,7 @@ import "../libs/AsAccounting.sol";
  * @notice This contract lays out the common storage for all strategies
  * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
-abstract contract As4626Abstract is ERC20Abstract, AsRescuableAbstract, AsManageable {
+abstract contract As4626Abstract is ERC20Abstract, AsManageable {
   using SafeERC20 for IERC20Metadata;
   using AsMaths for uint256;
 
@@ -74,13 +73,13 @@ abstract contract As4626Abstract is ERC20Abstract, AsRescuableAbstract, AsManage
   ║                           CONSTANTS                            ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  uint256 internal constant _MAX_UINT256 = type(uint256).max;
   uint256 internal constant _WEI_PER_SHARE = 1e12; // weis in a share (base unit)
   uint256 internal constant _WEI_PER_SHARE_SQUARED = _WEI_PER_SHARE ** 2;
 
   // Upgrade dedicated storage to prevent collisions (EIP-7201)
-  // keccak256(abi.encode(uint256(keccak256("as4626.main")) - 1)) & ~bytes32(uint256(0xff));
-  bytes32 internal constant _AS4626_STORAGE_EXT_SLOT = 0xafe45af2a41a6a85da8347675245d4fb4960b308fc41e3b57cdf7ce45ec4b900;
+  // keccak256(abi.encode(uint256(keccak256("As4626.ext")) - 1)) & ~bytes32(uint256(0xff));
+  bytes32 private constant _STORAGE_EXT_SLOT =
+    0x158e00504b6e2b9f9abe924926be99e72fb1fd7c6bcaafc95ce02d9dabf05300;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║
@@ -107,29 +106,29 @@ abstract contract As4626Abstract is ERC20Abstract, AsRescuableAbstract, AsManage
   Requests internal _req; // (5 slots)
   uint256 internal _requestId; // redeem request id
 
-  // NB: DO NOT EXTEND THIS STORAGE, TO PREVENT COLLISION USE `_4626Storage()`
+  // NB: DO NOT EXTEND THIS STORAGE, TO PREVENT COLLISION USE `_4626StorageExt()`
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor(address accessController) AsManageable(accessController) {}
+  constructor(address _accessController) AsManageable(_accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                              VIEWS                             ║
+  ║                             VIEWS                              ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @return $ Upgradable As4626 storage extension slot
+   * @return $ Upgradable EIP-7201 As4626 storage extension slot
    */
   function _4626StorageExt() internal pure returns (As4626StorageExt storage $) {
-    assembly { $.slot := _AS4626_STORAGE_EXT_SLOT }
+    assembly {
+      $.slot := _STORAGE_EXT_SLOT
+    }
   }
 
   /**
    * @return Total amount of invested inputs denominated in underlying assets
    */
   function _invested() internal view virtual returns (uint256);
-
-  // NB: `_available()` and `_sharePrice()` is payable in StrategyV5 as result of a delegatecall to StrategyV5Agent
 }

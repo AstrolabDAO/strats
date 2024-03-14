@@ -41,6 +41,7 @@ import {
 export const addressZero = constants.AddressZero;
 export const addressOne = "0x0000000000000000000000000000000000000001";
 export const MaxUint256 = ethers.constants.MaxUint256;
+export const keccak256 = (s: string) => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(s));
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
 
 export const indexes = Array.from({ length: 8 }, (_, index) => index);
@@ -137,7 +138,7 @@ const networkOverrides: { [chainId: number]: Overrides } = {
     gasLimit: 1e7,
   },
   42161: {
-    gasLimit: 1e9,
+    gasLimit: 30e6,
   },
 };
 
@@ -327,7 +328,7 @@ export async function logState(
       strat.multi.balanceOf(env.deployer!.address),
       // await assetTokenContract.balanceOf(strategy.address),
     ]);
-    const inputIndexes = [...Array(8)];
+    const inputIndexes = [...Array(8).keys()];
     const inputData = await env.multicallProvider!.all(
       indexes.map((i) => strat.multi.inputs(i)),
     );
@@ -353,7 +354,7 @@ export async function logState(
       strat.callStatic.previewInvest(0),
       strat.callStatic.previewLiquidate(0),
     ]);
-    const investedAmounts: BigNumber[] = await env.multicallProvider!.all(
+    const totalInvesteds: BigNumber[] = await env.multicallProvider!.all(
       inputs.map((input, index) => strat.multi.invested(index)),
     );
 
@@ -381,8 +382,8 @@ export async function logState(
       .map(
         (input, index) =>
           `      -${input.sym}: ${<any>(
-            asset.toAmount(investedAmounts[index])
-          )} (${investedAmounts[index]}wei)`,
+            asset.toAmount(totalInvesteds[index])
+          )} (${totalInvesteds[index]}wei)`,
       )
       .join("\n")}
     available(): ${available / asset.weiPerUnit} (${available}wei) (${
@@ -539,20 +540,20 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
   const output = new Contract(o.output, erc20Abi, env.deployer);
   const outputBalanceBeforeSwap = await output.balanceOf(o.payer);
 
-  await input.approve(env.deployment!.swapper.address, MaxUint256.toString());
+  await input.approve(env.deployment!.Swapper.address, MaxUint256.toString());
   const trs: TransactionRequest[] | undefined =
     (await getAllTransactionRequests(o)) as TransactionRequest[];
   assert(trs?.length);
   let received = BigNumber.from(0);
   for (const tr of trs) {
     assert(!!tr?.data);
-    console.log(`using request: ${JSON.stringify(tr, null, 2)}`);
+    // console.log(`using request: ${JSON.stringify(tr, null, 2)}`);
     await ensureWhitelisted(
-      env.deployment!.swapper,
+      env.deployment!.Swapper,
       [tr.from as string, tr.to!, o.input, o.output],
       env as IStrategyDeploymentEnv,
     );
-    const ok = await env.deployment!.swapper.swap(
+    const ok = await env.deployment!.Swapper.swap(
       input.target ?? input.address,
       output.target ?? output.address,
       o.amountWei.toString(),
@@ -566,7 +567,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
         ),
       },
     );
-    console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
+    // console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
     received = (await output.balanceOf(o.payer)).sub(outputBalanceBeforeSwap);
     console.log(`received ${received} ${o.output}`);
     if (received.gt(0)) break;
@@ -757,9 +758,40 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
 }
 
 /**
+ * Encodes the given values into their ABI-encoded form using the provided types
+ * @param types Array of strings representing the types of the values to encode
+ * @param values Array of values to encode
+ * @param isTuple Indicates whether the values represent a tuple (default: false)
+ * @returns ABI-encoded string representation of the values
+ */
+export function abiEncode(
+  types: string[],
+  values: any[],
+  isTuple = false,
+): string {
+  return ethers.utils.defaultAbiCoder.encode(types, values);
+}
+
+/**
+ * Decodes the given ABI-encoded data into its corresponding values using the provided types
+ * @param types Array of strings representing the types of the values to decode
+ * @param data ABI-encoded string representation of the values to decode
+ * @param isTuple Indicates whether the values represent a tuple (default: false)
+ * @returns Array of decoded values
+ */
+export function abiDecode(
+  types: string[],
+  data: string,
+  isTuple = false,
+): any {
+  return ethers.utils.defaultAbiCoder.decode(types, data);
+}
+
+
+/**
  * Retrieves the data from a transaction log (used as flows return value)
  * @param tx - Transaction receipt
- * @param types - An array of types to decode the log data
+ * @param types - Array of types to decode the log data
  * @param outputIndex - Index of the decoded data to return
  * @param logIndex - Index or event name of the log to retrieve
  * @returns The decoded data from the log, or undefined if not found/parsing failure

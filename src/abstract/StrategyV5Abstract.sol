@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity 0.8.22;
 
 import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IWETH9.sol";
 import "../interfaces/IStrategyV5.sol";
+import "../interfaces/IPriceProvider.sol";
 import "./As4626Abstract.sol";
 import "./AsManageable.sol";
+import "./AsPriceAware.sol";
 
 /**
  *             _             _       _
@@ -21,16 +23,17 @@ import "./AsManageable.sol";
  * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
 abstract contract StrategyV5Abstract is As4626Abstract {
-
   /*═══════════════════════════════════════════════════════════════╗
   ║                              TYPES                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   // Upgradable strategy agent's storage struct
-  struct AgentStorageExt {
+  struct AgentStorage {
     IStrategyV5 delegator;
-    uint256 maxLoan;
-    uint256 totalLent;
+  }
+
+  struct BaseStorageExt {
+    address agent;
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -40,16 +43,29 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   event Invest(uint256 amount, uint256 timestamp);
   event Harvest(uint256 amount, uint256 timestamp);
   event Liquidate(uint256 amount, uint256 liquidityAvailable, uint256 timestamp);
-  event FlashLoan(address indexed borrower, uint256 amount, uint256 fee);
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                           CONSTANTS                            ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  // Upgrade dedicated storage to prevent collisions (EIP-7201)
-  // keccak256(abi.encode(uint256(keccak256("strategy.agent")) - 1)) & ~bytes32(uint256(0xff));
-  bytes32 internal constant _AGENT_STORAGE_EXT_SLOT = 0x821ff15c18486d780e69cedd37d14f117c16526e6b0b6969fd23bc9dd7ffc900;
-  bytes32 internal constant _FLASH_LOAN_SIG = keccak256("ERC3156FlashBorrower.onFlashLoan");
+  // EIP-7201 keccak256(abi.encode(uint256(keccak256("StrategyV5.agent")) - 1)) & ~bytes32(uint256(0xff));
+  bytes32 private constant _AGENT_STORAGE_SLOT =
+    0xffe86e2b60bc69a3832641185d195b8ed6fe0e65c6cc390c67dbb9d7cc304300;
+  // EIP-7201 keccak256(abi.encode(uint256(keccak256("StrategyV5.ext")) - 1)) & ~bytes32(uint256(0xff));
+  bytes32 private constant _EXT_STORAGE_SLOT =
+    0x25da31c40a795936c86465edf13c4b2aa77f4e3670b8bdd5625b556504dc9d00;
+
+  // bytes4(keccak256("((string,string,uint8),(address,address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],adress[],address[],bytes)"));
+  bytes4 internal constant _INIT_SELECTOR = 0x09580895;
+
+  // keccak256("updateAsset(address,bytes,uint256)")
+  bytes4 internal constant _UPDATE_ASSET_SELECTOR = 0x7a1ed234;
+
+  // keccak256("setInputs(address[],uint16[],address[])")
+  bytes4 internal constant _SET_INPUT_SELECTOR = 0x5e0482c1;
+
+  // keccak256("setRewardTokens(address[])")
+  bytes4 internal constant _SET_REWARD_SELECTOR = 0x201e81a8;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║
@@ -58,30 +74,44 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   // State variables (As4626 extension)
   IWETH9 internal _wgas; // gas/native wrapper contract (immutable set in `init()`)
   ISwapper public swapper; // interface for swapping assets
-  IStrategyV5 public agent; // strategy agent contract
 
   IERC20Metadata[8] public inputs; // array of ERC20 tokens used as inputs (8 slots)
   uint8[8] internal _inputDecimals; // strategy inputs decimals (1 slot)
   uint16[8] public inputWeights; // array of input weights weights in basis points (100% = 100_00) (1slot)
+  IERC20Metadata[8] public lpTokens; // array of LP tokens used by inputs (8 slots)
+  uint8[8] internal _lpTokenDecimals; // strategy inputs decimals (1 slot)
   address[8] public rewardTokens; // array of reward tokens harvested at compound and liquidate times (8 slots)
   mapping(address => uint256) internal _rewardTokenIndexes; // reward token index by address
   uint8 internal _inputLength; // used length of inputs[] (index of last non-zero element)
   uint8 internal _rewardLength; // used length of rewardTokens[] (index of last non-zero element)
 
+  // NB: DO NOT EXTEND THIS STORAGE, TO PREVENT COLLISION USE `_baseStorage()`
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor(address accessController) As4626Abstract(accessController) {}
+  constructor(address _accessController) As4626Abstract(_accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                              VIEWS                             ║
+  ║                             VIEWS                              ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @return $ Upgradable agent storage extension slot
+   * @return $ Upgradable EIP-7201 agent storage extension slot
    */
-  function _agentStorageExt() internal pure returns (AgentStorageExt storage $) {
-    assembly { $.slot := _AGENT_STORAGE_EXT_SLOT }
+  function _agentStorage() internal pure returns (AgentStorage storage $) {
+    assembly {
+      $.slot := _AGENT_STORAGE_SLOT
+    }
+  }
+
+  /**
+   * @return $ Upgradable EIP-7201 base storage extension slot
+   */
+  function _baseStorageExt() internal pure returns (BaseStorageExt storage $) {
+    assembly {
+      $.slot := _EXT_STORAGE_SLOT
+    }
   }
 }

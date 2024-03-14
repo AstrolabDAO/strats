@@ -2,20 +2,15 @@ import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Venus/addresses";
-import {
-  Fees,
-  IStrategyChainlinkParams,
-  IStrategyDeploymentEnv,
-  IStrategyDesc,
-} from "../../src/types";
-import { getEnv } from "../utils";
+import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
+import { abiEncode, getEnv } from "../utils";
 import { IFlow, testFlow } from "../flows";
 import { setupStrat } from "../flows/StrategyV5";
 import { suite } from "../StrategyV5.test";
 
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab Venus MetaStable`,
-  symbol: `as.VMS`,
+  name: `Astrolab Primitive Venus USD`,
+  symbol: `apXVS.USD`,
   asset: "USDC",
   version: 1,
   contract: "VenusMultiStake",
@@ -58,11 +53,12 @@ describe(`test.${desc.name}`, () => {
       [
         {
           // base params
-          erc20Metadata: { name: desc.name, symbol: desc.symbol, decimals: 8 }, // erc20Metadata
+          erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata
           coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
           fees: {} as Fees, // fees (use default)
           inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
           inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
+          lpTokens: desc.inputs.map((input) => addr.Venus[`v${input}`]), // LP tokens
           rewardTokens: protocolAddr.rewardTokens, // VXS
         },
         {
@@ -70,20 +66,12 @@ describe(`test.${desc.name}`, () => {
           assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
           inputPriceFeeds: desc.inputs.map((i) => oracles[`Crypto.${i}/USD`]),
         },
-        {
-          // strategy specific params
-          vTokens: desc.inputs.map((inputs) => addr.Venus[`v${inputs}`]),
-          unitroller: protocolAddr.Comptroller,
-        },
-      ] as IStrategyChainlinkParams,
+        abiEncode(["address"], [protocolAddr.Comptroller]),
+      ],
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
+      ["AsAccounting"], // libraries to link and verify with the strategy
       env, // deployment environment
       false, // force verification (after deployment)
-    );
-    assert(
-      ethers.utils.isAddress(env.deployment.strat.address),
-      "Strat not deployed",
     );
   });
   describe("Test flow", async () => {

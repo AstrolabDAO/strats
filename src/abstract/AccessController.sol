@@ -78,7 +78,7 @@ contract AccessController {
   }
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                              VIEWS                             ║
+  ║                             VIEWS                              ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
@@ -138,7 +138,7 @@ contract AccessController {
   }
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                              VIEWS                             ║
+  ║                             VIEWS                              ║
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
@@ -156,7 +156,10 @@ contract AccessController {
     }
     // grant the keeper role instantly (no attack surface here)
     if (_acceptance.role == Roles.KEEPER) return;
-    if (block.timestamp > (_acceptance.timestamp + ROLE_ACCEPTANCE_TIMELOCK + ROLE_ACCEPTANCE_VALIDITY)) {
+    if (
+      block.timestamp
+        > (_acceptance.timestamp + ROLE_ACCEPTANCE_TIMELOCK + ROLE_ACCEPTANCE_VALIDITY)
+    ) {
       revert Errors.AcceptanceExpired();
     }
     if (block.timestamp < (_acceptance.timestamp + ROLE_ACCEPTANCE_TIMELOCK)) {

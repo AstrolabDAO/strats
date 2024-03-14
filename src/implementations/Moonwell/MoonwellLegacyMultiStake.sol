@@ -21,7 +21,7 @@ contract MoonwellLegacyMultiStake is MoonwellMultiStake {
   using AsMaths for uint256;
   using AsArrays for uint256;
 
-  constructor(address accessController) MoonwellMultiStake(accessController) {}
+  constructor(address _accessController) MoonwellMultiStake(_accessController) {}
 
   /**
    * @notice Claim rewards from the third party contracts
@@ -45,6 +45,6 @@ contract MoonwellLegacyMultiStake is MoonwellMultiStake {
    */
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {
     return _unitroller.rewardAccrued(uint8(0), address(this)) // WELL
-      .toArray256(_unitroller.rewardAccrued(uint8(1), address(this))); // WGLMR/WMOVR
+      .toArray(_unitroller.rewardAccrued(uint8(1), address(this))); // WGLMR/WMOVR
   }
 }

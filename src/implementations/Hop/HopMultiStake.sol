@@ -3,7 +3,7 @@ pragma solidity 0.8.22;
 
 import "../../libs/AsMaths.sol";
 import "../../libs/AsArrays.sol";
-import "../../abstract/StrategyV5Chainlink.sol";
+import "../../abstract/StrategyV5.sol";
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
 
@@ -19,23 +19,21 @@ import "./interfaces/IStakingRewards.sol";
  * @notice Basic liquidity providing strategy for Hop protocol (https://hop.exchange/)
  * @dev Asset->input[0]->LP->rewardPools->LP->input[0]->asset
  */
-contract HopMultiStake is StrategyV5Chainlink {
+contract HopMultiStake is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;
 
   // Third party contracts
-  IERC20Metadata[5] internal _lpTokens; // LP token of the pool
-  IStableRouter[5] internal _stableRouters; // SaddleSwap
-  IStakingRewards[5][4] internal _rewardPools; // Reward pool
+  IStableRouter[8] internal _stableRouters; // SaddleSwap
+  IStakingRewards[8][4] internal _rewardPools; // Reward pool
   mapping(address => address) internal _tokenByRewardPool;
-  uint8[5] internal _tokenIndexes;
+  uint8[8] internal _tokenIndexes;
 
-  constructor(address accessController) StrategyV5Chainlink(accessController) {}
+  constructor(address _accessController) StrategyV5(_accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {
-    address[] lpTokens;
     address[][] rewardPools;
     address[] stableRouters;
     uint8[] tokenIndexes;
@@ -45,21 +43,24 @@ contract HopMultiStake is StrategyV5Chainlink {
    * @notice Sets the strategy parameters
    * @param _params Strategy parameters
    */
-  function setParams(Params calldata _params) public onlyAdmin {
-    for (uint8 i = 0; i < _params.lpTokens.length; i++) {
-      _lpTokens[i] = IERC20Metadata(_params.lpTokens[i]);
-      _tokenIndexes[i] = _params.tokenIndexes[i];
-      _stableRouters[i] = IStableRouter(_params.stableRouters[i]);
-      setRewardPools(_params.rewardPools[i], i);
+  function _setParams(bytes memory _params) internal override {
+    Params memory params = abi.decode(_params, (Params));
+    for (uint8 i = 0; i < _inputLength;) {
+      _tokenIndexes[i] = params.tokenIndexes[i];
+      _stableRouters[i] = IStableRouter(params.stableRouters[i]);
+      setRewardPools(params.rewardPools[i], i);
+      unchecked {
+        i++;
+      }
     }
-    _setAllowances(_MAX_UINT256);
+    _setAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
    * @notice Sets the reward pools
    * @param rewardPools Array of reward pools
    */
-  function setRewardPools(address[] calldata rewardPools, uint8 _index) public onlyAdmin {
+  function setRewardPools(address[] memory rewardPools, uint8 _index) public onlyAdmin {
     // for (uint8 j = 0; j < _rewardPools[_index].length; j++) {
     IStakingRewards pool = IStakingRewards(rewardPools[0]);
     // if (addr == address(0)) break;
@@ -70,42 +71,25 @@ contract HopMultiStake is StrategyV5Chainlink {
   }
 
   /**
-   * @dev Initializes the strategy with the specified parameters
-   * @param _baseParams StrategyBaseParams struct containing strategy parameters
-   * @param _chainlinkParams Chainlink specific parameters
-   * @param _hopParams Hop specific parameters
-   */
-  function init(
-    StrategyBaseParams calldata _baseParams,
-    ChainlinkParams calldata _chainlinkParams,
-    Params calldata _hopParams
-  ) external onlyAdmin {
-    for (uint8 i = 0; i < _hopParams.lpTokens.length; i++) {
-      // these can be set externally by setInputs()
-      inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
-      inputWeights[i] = _baseParams.inputWeights[i];
-      _inputDecimals[i] = inputs[i].decimals();
-    }
-    _rewardLength = uint8(_baseParams.rewardTokens.length);
-    _inputLength = uint8(_baseParams.inputs.length);
-    setParams(_hopParams);
-    StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
-  }
-
-  /**
    * @notice Claim rewards from the third party contracts
    * @return amounts Array of rewards claimed for each reward token
    */
   function claimRewards() public override returns (uint256[] memory amounts) {
     amounts = new uint256[](_rewardLength);
-    for (uint8 i = 0; i < _inputLength; i++) {
+    for (uint8 i = 0; i < _inputLength;) {
       // for (uint8 j = 0; j < _rewardPools[i].length; j++) {
       if (address(_rewardPools[i][0]) == address(0)) break;
       _rewardPools[i][0].getReward();
       // }
+      unchecked {
+        i++;
+      }
     }
-    for (uint8 i = 0; i < _rewardLength; i++) {
+    for (uint8 i = 0; i < _rewardLength;) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -120,107 +104,34 @@ contract HopMultiStake is StrategyV5Chainlink {
     uint8 _index
   ) internal returns (uint256 deposited) {
     deposited = _stableRouters[_index].addLiquidity({
-      amounts: _tokenIndexes[_index] == 0 ? _amount.toArray256(0) : uint256(0).toArray256(_amount), // determine the side from the token index
+      amounts: _tokenIndexes[_index] == 0 ? _amount.toArray(0) : uint256(0).toArray(_amount), // determine the side from the token index
       minToMint: 1, // minToMint
       deadline: block.timestamp // blocktime only
     });
   }
 
   /**
-   * @notice Invests the asset asset into the pool
-   * @param _amounts Amounts of asset to invest in each input
-   * @param _params Swaps calldata
-   * @return investedAmount Amount invested
-   * @return iouReceived Amount of LP tokens received
+   * @notice Stakes or provides `_amount` from `input[_index]` to `lpTokens[_index]`
+   * @param _index Index of the input to stake
+   * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  // NB: better return ious[]
-  function _invest(
-    uint256[8] calldata _amounts, // from previewInvest()
-    bytes[] calldata _params
-  ) internal override nonReentrant returns (uint256 investedAmount, uint256 iouReceived) {
-    uint256 toDeposit;
-    uint256 spent;
-
-    for (uint8 i = 0; i < _inputLength; i++) {
-      if (_amounts[i] < 10) continue;
-
-      // We deposit the whole asset balance
-      if (asset != inputs[i] && _amounts[i] > 10) {
-        (toDeposit, spent) = swapper.decodeAndSwap({
-          _input: address(asset),
-          _output: address(inputs[i]),
-          _amount: _amounts[i],
-          _params: _params[i]
-        });
-        investedAmount += spent;
-        // pick up any input dust (eg. from previous liquidate()), not just the swap output
-        toDeposit = inputs[i].balanceOf(address(this));
-      } else {
-        investedAmount += _amounts[i];
-        toDeposit = _amounts[i];
-      }
-
-      // Adding liquidity to the pool with the inputs[0] balance
-      uint256 toStake = _addLiquiditySingleSide(toDeposit, i);
-
-      // unified slippage check (swap+add liquidity)
-      if (toStake < _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert Errors.AmountTooLow(toStake);
-      }
-
-      // we only support single rewardPool staking (index 0)
-      _rewardPools[i][0].stake(toStake);
-
-      // would make more sense to return an array of ious
-      // rather than mixing them like this
-      iouReceived += toStake;
-    }
+  function _stake(uint8 _index, uint256 _amount) internal override {
+    _rewardPools[_index][0].stake(_addLiquiditySingleSide(_amount, _index));
   }
 
   /**
-   * @notice Withdraw asset function, can remove all funds in case of emergency
-   * @param _amounts Amounts of asset to withdraw
-   * @param _params Swaps calldata
-   * @return assetsRecovered Amount of asset withdrawn
+   * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
+   * @param _index Index of the input to liquidate
+   * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _liquidate(
-    uint256[8] calldata _amounts, // from previewLiquidate()
-    bytes[] calldata _params
-  ) internal override returns (uint256 assetsRecovered) {
-    uint256 toLiquidate;
-    uint256 recovered;
-
-    for (uint8 i = 0; i < _inputLength; i++) {
-      if (_amounts[i] < 10) continue;
-
-      toLiquidate = _inputToStake(_amounts[i], i);
-      // we only support single rewardPool staking (index 0)
-      _rewardPools[i][0].withdraw(toLiquidate);
-
-      recovered = _stableRouters[i].removeLiquidityOneToken({
-        tokenAmount: _lpTokens[i].balanceOf(address(this)),
-        tokenIndex: _tokenIndexes[i],
-        minAmount: 1, // slippage is checked after swap
-        deadline: block.timestamp
-      });
-
-      // swap the unstaked tokens (inputs[0]) for the asset asset if different
-      if (inputs[i] != asset) {
-        (recovered,) = swapper.decodeAndSwap({
-          _input: address(inputs[i]),
-          _output: address(asset),
-          _amount: recovered,
-          _params: _params[i]
-        });
-      }
-
-      // unified slippage check (unstake+remove liquidity+swap out)
-      if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert Errors.AmountTooLow(recovered);
-      }
-
-      assetsRecovered += recovered;
-    }
+  function _unstake(uint8 _index, uint256 _amount) internal override {
+    _rewardPools[_index][0].withdraw(_amount);
+    _stableRouters[_index].removeLiquidityOneToken({
+      tokenAmount: lpTokens[_index].balanceOf(address(this)),
+      tokenIndex: _tokenIndexes[_index],
+      minAmount: 1, // slippage is checked after swap
+      deadline: block.timestamp
+    });
   }
 
   /**
@@ -228,22 +139,17 @@ contract HopMultiStake is StrategyV5Chainlink {
    * @param _amount Allowance amount
    */
   function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength; i++) {
+    for (uint8 i = 0; i < _inputLength;) {
       inputs[i].forceApprove(address(_stableRouters[i]), _amount);
-      _lpTokens[i].forceApprove(address(_stableRouters[i]), _amount);
+      lpTokens[i].forceApprove(address(_stableRouters[i]), _amount);
       // for (uint8 j = 0; j < _rewardPools[i].length; j++) {
       if (address(_rewardPools[i][0]) == address(0)) break; // no overflow (static array)
-      _lpTokens[i].forceApprove(address(_rewardPools[i][0]), _amount);
+      lpTokens[i].forceApprove(address(_rewardPools[i][0]), _amount);
       // }
+      unchecked {
+        i++;
+      }
     }
-  }
-
-  /**
-   * @notice Returns the investment in asset asset for the specified input
-   * @return total Amount invested
-   */
-  function invested(uint256 _index) public view override returns (uint256) {
-    return _stakeToAsset(_rewardPools[_index][0].balanceOf(address(this)), _index);
   }
 
   /**
@@ -285,8 +191,8 @@ contract HopMultiStake is StrategyV5Chainlink {
    * @return amounts Array of rewards available for each reward token
    */
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {
-    amounts = uint256(_rewardLength).toArray256();
-    for (uint8 i = 0; i < _inputLength; i++) {
+    amounts = uint256(_rewardLength).toArray();
+    for (uint8 i = 0; i < _inputLength;) {
       // uint8 length = uint8(rewardPools[i].length);
       // for (uint8 j = 0; j < length; j++) {
       IStakingRewards pool = _rewardPools[i][0];
@@ -296,6 +202,9 @@ contract HopMultiStake is StrategyV5Chainlink {
       if (index == 0) continue;
       amounts[index - 1] += pool.earned(address(this));
       // }
+      unchecked {
+        i++;
+      }
     }
   }
 }

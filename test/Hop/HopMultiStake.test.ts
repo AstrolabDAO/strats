@@ -4,18 +4,17 @@ import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Hop/addresses";
 import {
   Fees,
-  IStrategyChainlinkParams,
   IStrategyDeploymentEnv,
   IStrategyDesc,
 } from "../../src/types";
-import { getEnv } from "../utils";
+import { abiEncode, getEnv } from "../utils";
 import { IFlow, testFlow } from "../flows";
 import { setupStrat } from "../flows/StrategyV5";
 import { suite } from "../StrategyV5.test";
 
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab Hop MetaStable`,
-  symbol: `as.HOMS`,
+  name: `Astrolab Hop USD`,
+  symbol: `apHOMS`,
   asset: "USDC",
   version: 1,
   contract: "HopMultiStake",
@@ -51,31 +50,33 @@ describe(`test.${desc.name}`, () => {
     env = await setupStrat(
       desc.contract,
       desc.name,
-      [{
-        // base params
-        erc20Metadata: { name: desc.name, symbol: desc.symbol, decimals: 8 }, // erc20Metadata
-        coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
-        fees: {} as Fees, // fees (use default)
-        inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
-        inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // keep unique reward token: HOP
-      }, {
-        // chainlink oracle params
-        assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
-        inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
-      }, {
+      [
+        {
+          // base params
+          erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata
+          coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
+          fees: {} as Fees, // fees (use default)
+          inputs: desc.inputs.map(i => addr.tokens[i]), // inputs
+          inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
+          lpTokens: protocolAddr.map(i => i.lp), // hop lp token
+          rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // keep unique reward token: HOP
+        }, {
+          // chainlink oracle params
+          assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
+          inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
+        },
         // strategy specific params
-        lpTokens: protocolAddr.map(i => i.lp), // hop lp token
-        rewardPools: protocolAddr.map(i => i.rewardPools), // hop reward pool
-        stableRouters: protocolAddr.map(i => i.swap), // stable swap
-        tokenIndexes: desc.inputs.map(i => 0), // h{INPUT} tokenIndex in pool
-      }] as IStrategyChainlinkParams,
+        abiEncode(["address[][]", "address[]", "uint8[]"], [
+          protocolAddr.map(i => i.rewardPools), // hop reward pool
+          protocolAddr.map(i => i.swap), // stable swap
+          desc.inputs.map(i => 0), // hXXX tokenIndex in pool
+        ])
+      ],
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
+      ["AsAccounting"], // libraries to link and verify with the strategy
       env, // deployment environment
       false, // force verification (after deployment)
     );
-    assert(ethers.utils.isAddress(env.deployment.strat.address), "Strat not deployed");
   });
   describe("Test flow", async () => {
     (suite as IFlow[]).map(f => {

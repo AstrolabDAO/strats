@@ -4,18 +4,17 @@ import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Benqi/addresses";
 import {
   Fees,
-  IStrategyChainlinkParams,
   IStrategyDeploymentEnv,
   IStrategyDesc,
 } from "../../src/types";
-import { getEnv } from "../utils";
+import { abiEncode, getEnv } from "../utils";
 import { IFlow, testFlow } from "../flows";
 import { setupStrat } from "../flows/StrategyV5";
 import { suite } from "../StrategyV5.test";
 
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab Benqi MetaStable`,
-  symbol: `as.BEMS`,
+  name: `Astrolab Benqi USD`,
+  symbol: `apBEMS`,
   version: 1,
   contract: "BenqiMultiStake",
   asset: "USDC",
@@ -54,11 +53,12 @@ describe(`test.${desc.name}`, () => {
       [
         {
           // base params
-          erc20Metadata: { name: desc.name, symbol: desc.symbol, decimals: 8 }, // erc20Metadata
+          erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata
           coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
           fees: {} as Fees, // fees (use default)
           inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
           inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
+          lpTokens: desc.inputs.map((input) => addr.Benqi[`qi${input}`]), // LP tokens
           rewardTokens: protocolAddr.rewardTokens, // QI/WAVAX
         },
         {
@@ -66,20 +66,13 @@ describe(`test.${desc.name}`, () => {
           assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
           inputPriceFeeds: desc.inputs.map((i) => oracles[`Crypto.${i}/USD`]),
         },
-        {
-          // strategy specific params
-          qiTokens: desc.inputs.map((inputs) => addr.Benqi[`qi${inputs}`]),
-          unitroller: protocolAddr.Comptroller,
-        },
-      ] as IStrategyChainlinkParams,
+        // strategy specific params
+        abiEncode(["address"], [protocolAddr.Comptroller]),
+      ],
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsMaths", "AsAccounting", "ChainlinkUtils"], // libraries to link and verify with the strategy
+      ["AsAccounting"], // libraries to link and verify with the strategy
       env, // deployment environment
       false, // force verification (after deployment)
-    );
-    assert(
-      ethers.utils.isAddress(env.deployment.strat.address),
-      "Strat not deployed",
     );
   });
   describe("Test flow", async () => {
