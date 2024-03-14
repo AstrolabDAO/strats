@@ -170,22 +170,31 @@ library AsArrays {
    */
   function fill(uint8 a, uint64 n) internal pure returns (uint8[] memory arr) {
     arr = new uint8[](n);
-    for (uint256 i = 0; i < n; i++) {
+    for (uint256 i = 0; i < n;) {
       arr[i] = a;
+      unchecked {
+        i++;
+      }
     }
   }
 
   function fill(bytes32 a, uint64 n) internal pure returns (bytes32[] memory arr) {
     arr = new bytes32[](n);
-    for (uint256 i = 0; i < n; i++) {
+    for (uint256 i = 0; i < n;) {
       arr[i] = a;
+      unchecked {
+        i++;
+      }
     }
   }
 
   function fill(uint256 a, uint64 n) internal pure returns (uint256[] memory arr) {
     arr = new uint256[](n);
-    for (uint256 i = 0; i < n; i++) {
+    for (uint256 i = 0; i < n;) {
       arr[i] = a;
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -194,33 +203,73 @@ library AsArrays {
    * @param a Value to convert to an array
    * @return arr Resulting array
    */
-  function toArray(uint8 a) internal pure returns (uint8[] memory arr) {
+  function toArray8(uint8 a) internal pure returns (uint8[] memory arr) {
     arr = new uint8[](1);
     arr[0] = a;
   }
 
-  function toArray(uint8 a, uint8 b) internal pure returns (uint8[] memory arr) {
+  function toArray8(uint8 a, uint8 b) internal pure returns (uint8[] memory arr) {
     arr = new uint8[](2);
     (arr[0], arr[1]) = (a, b);
   }
 
-  function toArray(uint256 a) internal pure returns (uint256[] memory arr) {
+  function toArray16(uint16 a) internal pure returns (uint16[] memory arr) {
+    arr = new uint16[](1);
+    arr[0] = a;
+  }
+
+  function toArray16(uint16 a, uint16 b) internal pure returns (uint16[] memory arr) {
+    arr = new uint16[](2);
+    (arr[0], arr[1]) = (a, b);
+  }
+
+  function toArray256(uint256 a) internal pure returns (uint256[] memory arr) {
     arr = new uint256[](1);
     arr[0] = a;
   }
 
-  function toArray(uint256 a, uint256 b) internal pure returns (uint256[] memory arr) {
+  function toArray256(uint256 a, uint256 b) internal pure returns (uint256[] memory arr) {
     arr = new uint256[](2);
     (arr[0], arr[1]) = (a, b);
   }
 
-  function toArray(address a) internal pure returns (address[] memory arr) {
+  function toArray256(address a) internal pure returns (address[] memory arr) {
     arr = new address[](1);
     arr[0] = a;
   }
 
-  function toArray(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
+  function toArray256(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
     arr = new bytes32[](2);
     (arr[0], arr[1]) = (a, b);
+  }
+
+  function dynamic(uint256[8] memory fixedArray) internal pure returns (uint256[] memory arr) {
+      arr = new uint256[](fixedArray.length);
+      for (uint256 i = 0; i < fixedArray.length;) {
+          arr[i] = fixedArray[i];
+          unchecked {
+            i++;
+          }
+      }
+  }
+
+  function dynamic(uint16[8] memory fixedArray) internal pure returns (uint16[] memory arr) {
+      arr = new uint16[](fixedArray.length);
+      for (uint256 i = 0; i < fixedArray.length;) {
+          arr[i] = fixedArray[i];
+          unchecked {
+            i++;
+          }
+      }
+  }
+
+  function dynamic(uint8[8] memory fixedArray) internal pure returns (uint8[] memory arr) {
+      arr = new uint8[](fixedArray.length);
+      for (uint256 i = 0; i < fixedArray.length;) {
+          arr[i] = fixedArray[i];
+          unchecked {
+            i++;
+          }
+      }
   }
 }

@@ -31,7 +31,7 @@ contract HopMultiStake is StrategyV5Chainlink {
   mapping(address => address) internal _tokenByRewardPool;
   uint8[5] internal _tokenIndexes;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {
@@ -120,7 +120,7 @@ contract HopMultiStake is StrategyV5Chainlink {
     uint8 _index
   ) internal returns (uint256 deposited) {
     deposited = _stableRouters[_index].addLiquidity({
-      amounts: _tokenIndexes[_index] == 0 ? _amount.toArray(0) : uint256(0).toArray(_amount), // determine the side from the token index
+      amounts: _tokenIndexes[_index] == 0 ? _amount.toArray256(0) : uint256(0).toArray256(_amount), // determine the side from the token index
       minToMint: 1, // minToMint
       deadline: block.timestamp // blocktime only
     });
@@ -285,7 +285,7 @@ contract HopMultiStake is StrategyV5Chainlink {
    * @return amounts Array of rewards available for each reward token
    */
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {
-    amounts = uint256(_rewardLength).toArray();
+    amounts = uint256(_rewardLength).toArray256();
     for (uint8 i = 0; i < _inputLength; i++) {
       // uint8 length = uint8(rewardPools[i].length);
       // for (uint8 j = 0; j < length; j++) {

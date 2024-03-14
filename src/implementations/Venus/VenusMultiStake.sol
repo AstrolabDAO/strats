@@ -27,7 +27,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
   uint8[8] internal _vTokenDecimals; // Decimals of the LP tokens
   IUnitroller internal _unitroller;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {
@@ -237,7 +237,7 @@ contract VenusMultiStake is StrategyV5Chainlink {
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {
     uint256 mainReward = _unitroller.venusAccrued(address(this));
     return _rewardLength == 1
-      ? mainReward.toArray()
-      : mainReward.toArray(_balance(rewardTokens[1]));
+      ? mainReward.toArray256()
+      : mainReward.toArray256(_balance(rewardTokens[1]));
   }
 }

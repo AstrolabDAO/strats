@@ -30,7 +30,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
   uint16[5] internal stakingIds; // pool ids for the staking
   uint256[5] internal lpWeiPerShare;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {
@@ -270,7 +270,7 @@ contract StargateMultiStake is StrategyV5Chainlink {
    * @return amounts Array of rewards available for each reward token
    */
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {
-    amounts = uint256(_rewardLength).toArray();
+    amounts = uint256(_rewardLength).toArray256();
     for (uint8 i = 0; i < _inputLength; i++) {
       if (address(inputs[i]) == address(0)) break;
       amounts[0] += lpStaker.userInfo(poolIds[i], address(this)).amount;

@@ -27,7 +27,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
   ICometRewards internal _cometRewards;
   ICometRewards.RewardConfig[8] internal _rewardConfigs;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {
@@ -57,7 +57,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
    * @param _compoundParams Sonne specific parameters
    */
   function init(
-    StrategyBaseParams calldata _baseParams,
+    StrategyBaseParams memory _baseParams,
     ChainlinkParams calldata _chainlinkParams,
     Params calldata _compoundParams
   ) external onlyAdmin {
@@ -84,7 +84,7 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
       _rewardConfigs[i] = _cometRewards.rewardConfig(_cTokens[i]);
     }
     _setAllowances(_MAX_UINT256);
-    setInputs(_newInputs, _weights, _priceFeeds, _validities);
+    StrategyV5Chainlink.setInputs(_newInputs, _weights, _priceFeeds, _validities);
   }
 
   /**
@@ -142,7 +142,9 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
       uint256 supplied = cToken.balanceOf(address(this)) - iouBefore;
 
       // unified slippage check (swap+add liquidity)
-      if (supplied < _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
+      if (
+        supplied < _inputToStake(toDeposit, i).subBp(_4626StorageExt().maxSlippageBps * 2)
+      ) {
         revert Errors.AmountTooLow(supplied);
       }
 
@@ -189,7 +191,10 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
       }
 
       // unified slippage check (unstake+remove liquidity+swap out)
-      if (recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)) {
+      if (
+        recovered
+          < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)
+      ) {
         revert Errors.AmountTooLow(recovered);
       }
 
@@ -214,8 +219,6 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
   function invested(uint256 _index) public view override returns (uint256) {
     return _inputToAsset(_investedInput(_index), _index);
   }
-
-  
 
   /**
    * @notice Converts LP/staked LP to input

@@ -20,7 +20,7 @@ import "./As4626.sol";
  * @notice Common strategy back-end, implementing shared vault/strategy accounting logic
  * @notice All state variables must be in StrategyV5Abstract to match the proxy base storage layout (StrategyV5)
  */
-contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
+contract StrategyV5Agent is StrategyV5Abstract, As4626 {
   using AsMaths for uint256;
   using AsMaths for int256;
   using SafeERC20 for IERC20Metadata;
@@ -29,20 +29,21 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() StrategyV5Abstract() {}
+  constructor(address accessController) StrategyV5Abstract(accessController) {}
 
   /**
    * @notice Initializes the strategy with base `_params`
-   * @param _params StrategyBaseParams struct containing strategy parameters (Erc20Metadata, CoreAddresses, Fees, inputs, inputWeights, rewardTokens)
+   * @param _data Encoded StrategyBaseParams struct containing strategy parameters (Erc20Metadata, CoreAddresses, Fees, inputs, inputWeights, rewardTokens)
    */
-  function init(StrategyBaseParams calldata _params) public onlyAdmin {
-    As4626._init(_params.erc20Metadata, _params.coreAddresses, _params.fees); // super().init()
-    _wgas = IWETH9(_params.coreAddresses.wgas);
-    swapper = ISwapper(_params.coreAddresses.swapper);
+  function init(bytes memory _data) public onlyAdmin {
+    StrategyBaseParams memory params = abi.decode(_data, (StrategyBaseParams));
+    As4626._init(params.erc20Metadata, params.coreAddresses, params.fees); // super().init()
+    _wgas = IWETH9(params.coreAddresses.wgas);
+    swapper = ISwapper(params.coreAddresses.swapper);
     // set inputs, rewardTokens and grant swapper allowances
     IERC20Metadata(asset).forceApprove(address(swapper), _MAX_UINT256);
-    setInputs(_params.inputs, _params.inputWeights);
-    setRewardTokens(_params.rewardTokens);
+    setInputs(params.inputs, params.inputWeights);
+    setRewardTokens(params.rewardTokens);
     _agentStorageExt().maxLoan = 1e12;
   }
 
@@ -184,10 +185,10 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
    * @notice Sets the input weight of each input
    * @param _weights Array of input weights
    */
-  function setInputWeights(uint16[] calldata _weights) public onlyAdmin {
+  function setInputWeights(uint16[] memory _weights) public onlyAdmin {
     if (_weights.length != _inputLength) revert Errors.InvalidData();
     uint16 totalWeight = 0;
-    for (uint8 i = 0; i < _inputLength; i++) {
+    for (uint8 i = 0; i < _inputLength;) {
       inputWeights[i] = _weights[i];
 
       // check for overflow before adding the weight
@@ -196,6 +197,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
       }
 
       totalWeight += _weights[i];
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -205,10 +209,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
    * @param _inputs Array of input addresses
    * @param _weights Array of input weights
    */
-  function setInputs(
-    address[] calldata _inputs,
-    uint16[] calldata _weights
-  ) public onlyAdmin {
+  function setInputs(address[] memory _inputs, uint16[] memory _weights) public onlyAdmin {
     if (_inputs.length > 8) revert Errors.Unauthorized();
     setSwapperAllowance(0, true, false, false);
     for (uint256 i = 0; i < _inputs.length;) {
@@ -224,10 +225,20 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
   }
 
   /**
+   * @notice Sets the strategy inputs and weights
+   * @notice In case of pre-existing inputs, a call to `liquidate()` should precede this in order to not lose track of the strategy's liquidity
+   * @param _data Encoded inputs[] and weights[]
+   */
+  function setInputs(bytes memory _data) public onlyAdmin {
+    (address[] memory _inputs, uint16[] memory _weights) = abi.decode(_data, (address[], uint16[]));
+    setInputs(_inputs, _weights);
+  }
+
+  /**
    * @notice Sets the strategy reward tokens
    * @param _rewardTokens Array of reward tokens
    */
-  function setRewardTokens(address[] calldata _rewardTokens) public onlyManager {
+  function setRewardTokens(address[] memory _rewardTokens) public onlyManager {
     if (_rewardTokens.length > 8) revert Errors.Unauthorized();
     setSwapperAllowance(0, false, true, false);
     for (uint256 i = 0; i < _rewardTokens.length;) {

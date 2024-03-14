@@ -299,8 +299,8 @@ export async function logState(
       totalClaimableRedemption,
       // totalAsset, // only available on strat.req() struct
       // totalClaimableAsset, // only available on strat.req() struct
-      previewInvest,
-      previewLiquidate,
+      // previewInvest,
+      // previewLiquidate,
       stratAssetBalance,
       deployerAssetBalance,
       deployerSharesBalance,
@@ -320,8 +320,8 @@ export async function logState(
 
       // strat.multicallContract.totalAsset(), // only available on strat.req() struct
       // strat.multicallContract.totalClaimableAsset(), // only available on strat.req() struct
-      strat.multi.previewInvest(0),
-      strat.multi.previewLiquidate(0),
+      // strat.multi.previewInvest(0),
+      // strat.multi.previewLiquidate(0),
       asset.multi.balanceOf(strat.address),
       asset.multi.balanceOf(env.deployer!.address),
       strat.multi.balanceOf(env.deployer!.address),
@@ -347,9 +347,11 @@ export async function logState(
 
     const rewardsAddresses = rewardTokens.map((reward) => reward.address);
     // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
-    const [invested, rewardsAvailable] = await Promise.all([
+    const [invested, rewardsAvailable, previewInvest, previewLiquidate] = await Promise.all([
       strat["invested()"](),
       strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.(),
+      strat.callStatic.previewInvest(0),
+      strat.callStatic.previewLiquidate(0),
     ]);
     const investedAmounts: BigNumber[] = await env.multicallProvider!.all(
       inputs.map((input, index) => strat.multi.invested(index)),
@@ -734,7 +736,7 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
       console.log(`Whitelisting oracle access for ${lib}`);
       switch (lib) {
         case "ChainlinkUtils": {
-          const oracles = new Set([params.assetFeed, ...params.inputFeeds]);
+          const oracles = new Set([params.feeds]);
           for (const oracle of oracles) {
             const storageSlot =
               "0x0000000000000000000000000000000000000000000000000000000000000031";

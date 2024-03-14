@@ -59,7 +59,6 @@ export const deployStrat = async (
   libNames = ["AsAccounting"],
   forceVerify = false, // check that the contract is verified on etherscan/tenderly
 ): Promise<IStrategyDeploymentEnv> => {
-  let [swapper, agent] = [{}, {}] as Contract[];
 
   // strategy dependencies
   const libraries: { [name: string]: string } = {};
@@ -76,7 +75,7 @@ export const deployStrat = async (
         verify: true,
         deployed: address ? true : false,
         address,
-        libraries: isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
+        libraries: {} // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
       } as IDeploymentUnit;
       if (libParams.deployed) {
         console.log(`Using existing ${n} at ${libParams.address}`);
@@ -106,6 +105,13 @@ export const deployStrat = async (
   // delete stratLibs.AsAccounting; // not used statically by Strat
 
   const units: { [name: string]: IDeploymentUnit } = {
+    AccessController: {
+      contract: "AccessController",
+      name: "AccessController",
+      verify: true,
+      deployed: env.addresses!.astrolab?.AccessController ? true : false,
+      address: env.addresses!.astrolab?.AccessController ?? "",
+    },
     Swapper: {
       contract: "Swapper",
       name: "Swapper",
@@ -118,8 +124,8 @@ export const deployStrat = async (
       name: "StrategyV5Agent",
       libraries: agentLibs,
       verify: true,
-      deployed: env.addresses!.astrolab?.StrategyV5Agent ? true : false,
-      address: env.addresses!.astrolab?.StrategyV5Agent,
+      deployed: env.addresses!.astrolab?.Agent ? true : false,
+      address: env.addresses!.astrolab?.Agent,
       overrides: getOverrides(env),
     },
     [contract]: {
@@ -151,41 +157,29 @@ export const deployStrat = async (
     };
   }
 
-  if (!env.addresses!.astrolab?.Swapper) {
-    console.log(`Deploying missing Swapper`);
-    swapper = await deploy(units.Swapper);
-  } else {
-    console.log(
-      `Using existing Swapper at ${env.addresses!.astrolab?.Swapper}`,
-    );
-    swapper = await SafeContract.build(
-      env.addresses!.astrolab?.Swapper!,
-      loadAbi("Swapper")! as any[],
-      env.deployer!,
-    );
-  }
-
-  if (!env.addresses!.astrolab?.StrategyV5Agent) {
-    console.log(`Deploying missing StrategyV5Agent`);
-    agent = await deploy(units.StrategyV5Agent);
-    units.StrategyV5Agent.verify = false; // already verified
-  } else {
-    console.log(
-      `Using existing StrategyV5Agent at ${env.addresses!.astrolab
-        ?.StrategyV5Agent}`,
-    );
-    agent = await SafeContract.build(
-      env.addresses!.astrolab?.StrategyV5Agent,
-      loadAbi("StrategyV5Agent") as any[],
-      env.deployer!,
-    );
+  const preDeployments: { [name: string]: Contract } = {};
+  for (const c of ["AccessController", "Swapper", "StrategyV5Agent"]) {
+    if (!env.addresses!.astrolab?.[c]) {
+      console.log(`Deploying missing ${c}`);
+      preDeployments[c] = (await deploy(units[c]));
+      units[c].verify = false; // we just verified it
+    } else {
+      console.log(
+        `Using existing ${c} at ${env.addresses!.astrolab?.[c]}`,
+      );
+      preDeployments[c] = (await SafeContract.build(
+        env.addresses!.astrolab?.[c]!,
+        loadAbi(c)! as any[],
+        env.deployer!,
+      ));
+    }
   }
 
   // default erc20Metadata
   initParams[0].erc20Metadata = merge(
     {
       name,
-      decimals: 8,
+      decimals: 12,
     },
     initParams[0].erc20Metadata,
   );
@@ -195,8 +189,8 @@ export const deployStrat = async (
     {
       wgas: env.addresses!.tokens.WGAS,
       feeCollector: env.deployer!.address, // feeCollector
-      swapper: swapper.address, // Swapper
-      agent: agent.address, // StrategyV5Agent
+      swapper: preDeployments.Swapper.address, // Swapper
+      agent: preDeployments.StrategyV5Agent.address, // StrategyV5Agent
     },
     initParams[0].coreAddresses,
   );
@@ -218,14 +212,18 @@ export const deployStrat = async (
     // default input weight == 100%
     initParams[0].inputWeights = [100_00];
 
+  // add the access controller as sole constructor parameter to the strategy and its agent
+  units[contract].args = [preDeployments.AccessController.address];
+  units.StrategyV5Agent.args = [preDeployments.AccessController.address];
+
   merge(env.deployment, {
     name: `${name} Stack`,
     contract: "",
     initParams,
     verify: true,
     libraries,
-    swapper,
-    agent,
+    swapper: preDeployments.Swapper,
+    agent: preDeployments.StrategyV5Agent,
     // deployer/provider
     deployer: env.deployer,
     provider: env.provider,
@@ -369,7 +367,7 @@ export async function setupStrat(
 
   if (!isLive(env)) {
     await ensureFunding(fullEnv);
-    await ensureOracleAccess(fullEnv);
+    // await ensureOracleAccess(fullEnv);
   }
 
   return fullEnv;

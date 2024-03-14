@@ -113,7 +113,7 @@ library AsAccounting {
    * @param _fees Struct containing fee parameters (performance, management, entry, exit, flash fees)
    * @return Whether the provided fees are within the allowed maximum fees
    */
-  function checkFees(Fees calldata _fees) public pure returns (bool) {
+  function checkFees(Fees memory _fees) internal pure returns (bool) {
     return _fees.perf <= MAX_PERF_FEE && _fees.mgmt <= MAX_MGMT_FEE
       && _fees.entry <= MAX_ENTRY_FEE && _fees.exit <= MAX_EXIT_FEE
       && _fees.flash <= MAX_FLASH_LOAN_FEE;

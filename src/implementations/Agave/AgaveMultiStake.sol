@@ -29,7 +29,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
   IBalancerVault internal _balancerVault;
   bytes32 internal _rewardPoolId;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {
@@ -105,7 +105,7 @@ contract AgaveMultiStake is StrategyV5Chainlink {
 
     ExitPoolRequest memory request = ExitPoolRequest({
       assets: tokens,
-      minAmountsOut: uint256(0).toArray(0),
+      minAmountsOut: uint256(0).toArray256(0),
       userData: abi.encode(
         WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
         IERC20Metadata(lp).balanceOf(address(this)),
@@ -282,6 +282,6 @@ contract AgaveMultiStake is StrategyV5Chainlink {
     uint256 rewardInPool = balances[rewardIndex]; // 1e18
     uint256[] memory weights = IBalancerManagedPool(lp).getNormalizedWeights();
     uint256 rewardValueOfPool = rewardInPool * (100 / weights[rewardIndex]); // total value of the pool in reward token 1e18
-    return ((rewardValueOfPool * shareOfSupply).subBp(200) / 1e18).toArray(); // 1e18+1e18-1e18 = 1e18
+    return ((rewardValueOfPool * shareOfSupply).subBp(200) / 1e18).toArray256(); // 1e18+1e18-1e18 = 1e18
   }
 }

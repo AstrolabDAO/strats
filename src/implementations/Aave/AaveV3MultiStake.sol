@@ -27,7 +27,7 @@ contract AaveMultiStake is StrategyV5Chainlink {
   IERC20Metadata[8] internal _aTokens; // LP token of the pool
   IPoolAddressesProvider internal _poolProvider;
 
-  constructor() StrategyV5Chainlink() {}
+  constructor(address accessController) StrategyV5Chainlink(accessController) {}
 
   // Struct containing the strategy init parameters
   struct Params {

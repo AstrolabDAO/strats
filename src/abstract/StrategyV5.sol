@@ -23,7 +23,7 @@ import "./StrategyV5Abstract.sol";
  * @notice Common strategy back-end extended by implementations, delegating vault logic to StrategyV5Agent
  * @dev All state variables must be in StrategyV5abstract to match the proxy base storage layout (StrategyV5)
  */
-contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProxy, AsManageable, AsRescuable {
+contract StrategyV5 is AsProxy, StrategyV5Abstract, AsRescuable {
   using AsMaths for uint256;
   using AsMaths for int256;
   using AsArrays for bytes[];
@@ -32,7 +32,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() StrategyV5Abstract() {
+  constructor(address accessController) StrategyV5Abstract(accessController) AsRescuable() {
     _pause();
   }
 
@@ -40,17 +40,20 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
    * @notice Initializes the strategy using `_params`
    * @param _params StrategyBaseParams struct containing strategy parameters
    */
-  function _init(StrategyBaseParams calldata _params) internal onlyAdmin {
+  function _init(StrategyBaseParams memory _params) internal {
     if (_params.coreAddresses.agent == address(0))
       revert Errors.AddressZero();
     // setExemption(msg.sender, true);
     agent = IStrategyV5(_params.coreAddresses.agent);
     _agentStorageExt().delegator = IStrategyV5(address(this));
-    _delegateToSelector(
-      _params.coreAddresses.agent, // erc20Metadata.........coreAddresses.............................fees.................................inputs.inputWeights.rewardTokens
-      0x83904ca7, // keccak256("init(((string,string,uint8),(address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))") == StrategyV5Agent.init(_params)
-      msg.data[4:]
+    (bool success,) = _delegateToSelectorMemory(
+      _params.coreAddresses.agent,
+      0x4ddf47d4, // keccak256("init(bytes)")
+      abi.encode(_params)
     );
+    if (!success) {
+      revert Errors.FailedDelegateCall();
+    }
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -397,7 +400,7 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
    * @param _inputs Array of input addresses
    * @param _weights Array of input weights
    */
-  function _setInputs(address[] calldata _inputs, uint16[] calldata _weights) internal {
+  function _setInputs(address[] memory _inputs, uint16[] memory _weights) internal {
     _delegateToSelectorMemory(
       address(agent),
       0xd0d37333, // keccak256("setInputs(address[],uint16[])") == StrategyV5Agent.setInputs(_inputs, _weights)

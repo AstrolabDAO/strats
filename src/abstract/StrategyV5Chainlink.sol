@@ -25,10 +25,9 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
   ╚═══════════════════════════════════════════════════════════════*/
 
   struct ChainlinkParams {
-    address assetFeed;
-    uint256 assetFeedValidity;
-    address[] inputFeeds;
-    uint256[] inputFeedValidities;
+    address[] assets;
+    address[] feeds;
+    uint256[] validities;
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -44,7 +43,7 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() StrategyV5() {}
+  constructor(address accessController) StrategyV5(accessController) {}
 
   /**
    * @dev Initializes the strategy with the specified parameters
@@ -52,9 +51,9 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
    * @param _chainlinkParams Chainlink specific parameters
    */
   function _init(
-    StrategyBaseParams calldata _params,
+    StrategyBaseParams memory _params,
     ChainlinkParams calldata _chainlinkParams
-  ) internal onlyAdmin {
+  ) internal {
     StrategyV5._init(_params); // super().init()
     updateChainlink(_chainlinkParams);
   }
@@ -156,23 +155,19 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
 
   /**
    * @notice Updates the Chainlink oracle and the input Chainlink ids
-   * @param _chainlinkParams Chainlink specific parameters
+   * @param _params Chainlink specific parameters
    */
-  function updateChainlink(ChainlinkParams calldata _chainlinkParams) public onlyAdmin {
-    if (address(asset) == address(0))
-      revert Errors.InvalidData();
-    setPriceFeed(
-      address(asset),
-      IChainlinkAggregatorV3(_chainlinkParams.assetFeed),
-      _chainlinkParams.assetFeedValidity
-    );
-    for (uint256 i = 0; i < _chainlinkParams.inputFeeds.length;) {
-      if (address(inputs[i]) == address(0)) break;
-      setPriceFeed(
-        address(inputs[i]),
-        IChainlinkAggregatorV3(_chainlinkParams.inputFeeds[i]),
-        _chainlinkParams.inputFeedValidities[i]
-      );
+  function updateChainlink(ChainlinkParams calldata _params) public onlyAdmin {
+    for (uint256 i = 0; i < _params.assets.length;) {
+      setPriceFeed(_params.assets[i], IChainlinkAggregatorV3(_params.feeds[i]), _params.validities[i]);
+      unchecked {
+        i++;
+      }
+    }
+    for (uint256 i = 0; i < _inputLength;) {
+      if (address(feedByAsset[address(inputs[i])]) == address(0)) {
+        revert Errors.InvalidData();
+      }
       unchecked {
         i++;
       }
@@ -220,9 +215,12 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     address[] calldata _feeds,
     uint256[] calldata _validities
   ) internal onlyAdmin {
-    for (uint256 i = 0; i < _inputs.length; i++) {
+    for (uint256 i = 0; i < _inputs.length;) {
       if (_feeds[i] == address(0)) revert Errors.AddressZero();
       setPriceFeed(_inputs[i], IChainlinkAggregatorV3(_feeds[i]), _validities[i]);
+      unchecked {
+        i++;
+      }
     }
     _setInputs(_inputs, _weights);
   }

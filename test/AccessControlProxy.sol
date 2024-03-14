@@ -11,7 +11,14 @@ contract Impl {
     _;
   }
 
+  function overriden() public {
+    console.log("Wrong overriden called");
+    revert();
+  }
+
   function dummy() public onlyOwner returns (bool) {
+    overriden();
+    console.log("Dummy called");
     return true;
   }
 }
@@ -21,11 +28,16 @@ contract AccessControlProxyTest is Test{
   address admin;
 
   modifier onlyOwner() {
+    console.log("Good modifier called");
     require(msg.sender == admin, "Not owner");
     _;
   }
 
-  function delegate(address to, bytes memory data) public onlyOwner {
+  function overriden() public {
+    console.log("Good overriden called");
+  }
+
+  function delegate(address to, bytes memory data) public {
     (bool success, bytes memory result) = to.delegatecall(data);
   }
 
@@ -33,7 +45,8 @@ contract AccessControlProxyTest is Test{
 
     implementation = address(implementation);
     // Set the owner of the implementation contract to a different address
-    admin = msg.sender;
+    admin = address(0);
+    console.log("Admin: ", admin, "msg.sender: ", msg.sender);
 
     // Deploy the implementation contract
     Impl _impl = new Impl();
