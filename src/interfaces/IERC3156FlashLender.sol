@@ -2,7 +2,6 @@
 pragma solidity 0.8.22;
 
 import "./IERC3156FlashBorrower.sol";
-import "../abstract/AsTypes.sol";
 
 interface IERC3156FlashLender {
 

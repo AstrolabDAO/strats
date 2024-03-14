@@ -61,15 +61,8 @@ contract CompoundV3MultiStake is StrategyV5Chainlink {
     ChainlinkParams calldata _chainlinkParams,
     Params calldata _compoundParams
   ) external onlyAdmin {
-    for (uint8 i = 0; i < _compoundParams.cTokens.length; i++) {
-      inputs[i] = IERC20Metadata(_baseParams.inputs[i]);
-      inputWeights[i] = _baseParams.inputWeights[i];
-      _inputDecimals[i] = inputs[i].decimals();
-    }
-    _rewardLength = uint8(_baseParams.rewardTokens.length);
-    _inputLength = uint8(_baseParams.inputs.length);
-    setParams(_compoundParams);
     StrategyV5Chainlink._init(_baseParams, _chainlinkParams);
+    setParams(_compoundParams);
   }
 
   /**

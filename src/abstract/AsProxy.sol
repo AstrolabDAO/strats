@@ -32,31 +32,9 @@ abstract contract AsProxy is Proxy {
     bytes4 _selector,
     bytes calldata _data
   ) internal returns (bool success, bytes memory result) {
-    /// @solidity memory-safe-assembly
-    assembly {
-      _selector := and(_selector, 0xffffffff) // clear selector bytes after 4
-      let ptr := mload(0x40) // get free ptr
-      mstore(ptr, _selector) // store selector first
-      calldatacopy(add(ptr, 0x4), _data.offset, _data.length) // copy _data after the selector
-      mstore(0x40, add(ptr, _data.length)) // update free ptr
-      success :=
-        delegatecall(
-          gas(),
-          _implementation, // implementation address
-          ptr, // inputs
-          _data.length, // input size
-          0, // output location
-          0 // output size
-        )
-      let size := returndatasize() // return data size
-      ptr := mload(0x40) // free ptr
-      mstore(ptr, size) // store the size of the return data
-      returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
-      mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
-      switch success
-      case 0 { revert(ptr, size) }
-      default { result := ptr }
-    }
+    return _implementation.delegatecall(
+      abi.encodeWithSelector(_selector, _data)
+    );
   }
 
   /**
@@ -70,38 +48,9 @@ abstract contract AsProxy is Proxy {
     bytes4 _selector,
     bytes memory _data
   ) internal returns (bool success, bytes memory result) {
-    /// @solidity memory-safe-assembly
-    assembly {
-      _selector := and(_selector, 0xffffffff) // clear selector bytes after 4
-      let ptr := mload(0x40) // get free ptr
-      mstore(ptr, _selector) // store selector first
-      // mstore(add(ptr, 0x4), add(_data, 0x20)) // store the actual data location
-      // let size := mload(_data) // load the _data size
-      for { let i := 0x20 } lt(i, mload(_data)) { i := add(i, 0x20) } {
-          // Copy the input data after the selector
-          mstore(add(ptr, i), mload(add(_data, i)))
-      }
-
-      let size := add(mload(_data), 0x4) // Calculate the total input size (selector + data size)
-
-      success :=
-        delegatecall(
-          gas(),
-          _implementation, // implementation address
-          ptr, // inputs stored at callData + 0x4 (data pointer slot)
-          size, // input size (data pointer + data size)
-          0, // output location
-          0 // output size
-        )
-      size := returndatasize() // return data size
-      ptr := mload(0x40) // free ptr
-      mstore(ptr, size) // store the size of the return data
-      returndatacopy(add(ptr, 0x20), 0, size) // copy the return data after the size
-      mstore(0x40, add(ptr, add(size, 0x20))) // update the free memory pointer
-      switch success
-      case 0 { revert(ptr, size) }
-      default { result := ptr }
-    }
+    return _implementation.delegatecall(
+      abi.encodeWithSelector(_selector, _data)
+    );
   }
   // to match with the payable fallback (not necessary but pleases compiler)
 

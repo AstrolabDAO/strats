@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
+import "../interfaces/IWETH9.sol";
 import "../interfaces/IStrategyV5.sol";
 import "../interfaces/IERC3156FlashBorrower.sol";
 import "./StrategyV5Abstract.sol";
@@ -35,15 +36,14 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
    * @param _params StrategyBaseParams struct containing strategy parameters (Erc20Metadata, CoreAddresses, Fees, inputs, inputWeights, rewardTokens)
    */
   function init(StrategyBaseParams calldata _params) public onlyAdmin {
+    As4626._init(_params.erc20Metadata, _params.coreAddresses, _params.fees); // super().init()
+    _wgas = IWETH9(_params.coreAddresses.wgas);
     swapper = ISwapper(_params.coreAddresses.swapper);
-    // setInputs(_params.inputs, _params.inputWeights); // done in parent strategy init()
+    // set inputs, rewardTokens and grant swapper allowances
+    IERC20Metadata(asset).forceApprove(address(swapper), _MAX_UINT256);
+    setInputs(_params.inputs, _params.inputWeights);
     setRewardTokens(_params.rewardTokens);
-    asset = IERC20Metadata(_params.coreAddresses.asset);
-    _assetDecimals = asset.decimals();
-    _weiPerAsset = 10 ** _assetDecimals;
     _agentStorageExt().maxLoan = 1e12;
-    As4626.init(_params.erc20Metadata, _params.coreAddresses, _params.fees);
-    setSwapperAllowance(_MAX_UINT256, true, false, true); // reward allowances already set
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -214,7 +214,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsRescuableAbstract {
     for (uint256 i = 0; i < _inputs.length;) {
       inputs[i] = IERC20Metadata(_inputs[i]);
       _inputDecimals[i] = inputs[i].decimals();
-      inputWeights[i] = _weights[i];
       unchecked {
         i++;
       }

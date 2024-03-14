@@ -3,6 +3,7 @@ pragma solidity 0.8.22;
 
 import "../libs/ChainlinkUtils.sol";
 import "../interfaces/IChainlink.sol";
+import "./AsTypes.sol";
 import "./StrategyV5.sol";
 
 /**
@@ -54,8 +55,8 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
     StrategyBaseParams calldata _params,
     ChainlinkParams calldata _chainlinkParams
   ) internal onlyAdmin {
+    StrategyV5._init(_params); // super().init()
     updateChainlink(_chainlinkParams);
-    StrategyV5._init(_params);
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -158,6 +159,8 @@ abstract contract StrategyV5Chainlink is StrategyV5 {
    * @param _chainlinkParams Chainlink specific parameters
    */
   function updateChainlink(ChainlinkParams calldata _chainlinkParams) public onlyAdmin {
+    if (address(asset) == address(0))
+      revert Errors.InvalidData();
     setPriceFeed(
       address(asset),
       IChainlinkAggregatorV3(_chainlinkParams.assetFeed),

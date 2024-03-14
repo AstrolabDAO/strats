@@ -120,7 +120,7 @@ export const arraysEqual = (a: any[], b: any[]) =>
  */
 const networkOverrides: { [chainId: number]: Overrides } = {
   1: {
-    gasLimit: 1e8,
+    gasLimit: 1e7,
   },
   100: {
     // gasLimit: 1e7,
@@ -135,6 +135,9 @@ const networkOverrides: { [chainId: number]: Overrides } = {
   },
   8453: {
     gasLimit: 1e7,
+  },
+  42161: {
+    gasLimit: 1e9,
   },
 };
 
@@ -648,7 +651,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   const assetSymbol = env.deployment!.asset.sym;
   const assetAddress = env.deployment!.asset.address;
-  const minLiquidity = assetSymbol.includes("USD") ? 1e8 : 5e16; // 100 USDC or 0.05 ETH
+  const minLiquidity = assetSymbol.includes("USD") ? 1e7 : 5e16; // 100 USDC or 0.05 ETH
   const assetBalance = await env.deployment!.asset.balanceOf(
     env.deployer.address,
   );

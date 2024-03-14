@@ -55,11 +55,17 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
    * @param _coreAddresses Vault ops addreses [wgas,asset,feeCollector,swapper,agent]
    * @param _fees Fees structure [perf,mgmt,entry,exit,flash]
    */
-  function init(
+  function _init(
     Erc20Metadata calldata _erc20Metadata,
     CoreAddresses calldata _coreAddresses,
     Fees calldata _fees
-  ) public virtual onlyAdmin {
+  ) internal virtual onlyAdmin {
+
+    ERC20._init(_erc20Metadata.name, _erc20Metadata.symbol, _erc20Metadata.decimals); // super().init()
+    asset = IERC20Metadata(_coreAddresses.asset);
+    _assetDecimals = asset.decimals();
+    _weiPerAsset = 10 ** _assetDecimals;
+
     // check that the fees are not too high
     setFees(_fees);
     _4626StorageExt().maxSlippageBps = 100; // 1% max internal swap slippage
@@ -71,7 +77,6 @@ abstract contract As4626 is As4626Abstract, ERC20, AsManageableAbstract {
     last.liquidate = uint64(block.timestamp);
     last.harvest = uint64(block.timestamp);
     last.invest = uint64(block.timestamp);
-    ERC20._init(_erc20Metadata.name, _erc20Metadata.symbol, _erc20Metadata.decimals);
   }
 
   /**

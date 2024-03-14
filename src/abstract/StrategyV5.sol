@@ -41,14 +41,13 @@ contract StrategyV5 is StrategyV5Abstract, As4626Abstract, ERC20Abstract, AsProx
    * @param _params StrategyBaseParams struct containing strategy parameters
    */
   function _init(StrategyBaseParams calldata _params) internal onlyAdmin {
-    if (_params.coreAddresses.agent == address(0)) revert Errors.AddressZero();
+    if (_params.coreAddresses.agent == address(0))
+      revert Errors.AddressZero();
     // setExemption(msg.sender, true);
-    // done in As4626 but required for swapper
-    _wgas = IWETH9(_params.coreAddresses.wgas);
     agent = IStrategyV5(_params.coreAddresses.agent);
     _agentStorageExt().delegator = IStrategyV5(address(this));
     _delegateToSelector(
-      _params.coreAddresses.agent, // erc20Metadata.................coreAddresses................................fees...................inputs.inputWeights.rewardTokens
+      _params.coreAddresses.agent, // erc20Metadata.........coreAddresses.............................fees.................................inputs.inputWeights.rewardTokens
       0x83904ca7, // keccak256("init(((string,string,uint8),(address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],address[]))") == StrategyV5Agent.init(_params)
       msg.data[4:]
     );
