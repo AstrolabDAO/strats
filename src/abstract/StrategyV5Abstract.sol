@@ -5,6 +5,7 @@ import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IWETH9.sol";
 import "../interfaces/IStrategyV5.sol";
+import "../interfaces/IStrategyV5Agent.sol";
 import "../interfaces/IPriceProvider.sol";
 import "./As4626Abstract.sol";
 import "./AsManageable.sol";
@@ -54,18 +55,6 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   // EIP-7201 keccak256(abi.encode(uint256(keccak256("StrategyV5.ext")) - 1)) & ~bytes32(uint256(0xff));
   bytes32 private constant _EXT_STORAGE_SLOT =
     0x25da31c40a795936c86465edf13c4b2aa77f4e3670b8bdd5625b556504dc9d00;
-
-  // bytes4(keccak256("((string,string,uint8),(address,address,address,address,address,address),(uint64,uint64,uint64,uint64,uint64),address[],uint16[],adress[],address[],bytes)"));
-  bytes4 internal constant _INIT_SELECTOR = 0x09580895;
-
-  // keccak256("updateAsset(address,bytes,uint256)")
-  bytes4 internal constant _UPDATE_ASSET_SELECTOR = 0x7a1ed234;
-
-  // keccak256("setInputs(address[],uint16[],address[])")
-  bytes4 internal constant _SET_INPUT_SELECTOR = 0x5e0482c1;
-
-  // keccak256("setRewardTokens(address[])")
-  bytes4 internal constant _SET_REWARD_SELECTOR = 0x201e81a8;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║

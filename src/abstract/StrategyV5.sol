@@ -2,6 +2,8 @@
 pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
+import "../interfaces/IAs4626.sol";
+import "../interfaces/IStrategyV5Agent.sol";
 import "../interfaces/IStrategyV5.sol";
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
@@ -67,8 +69,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     }
     _agentStorage().delegator = IStrategyV5(address(this));
     (bool success,) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(_INIT_SELECTOR, _params)
-    ); // keccak256("init(...StrategyParams)")
+      abi.encodeWithSelector(IStrategyV5Agent.init.selector, _params)
+    );
     if (!success) {
       revert Errors.FailedDelegateCall();
     }
@@ -102,6 +104,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    */
   function implementation() external view returns (address) {
     return _implementation();
+  }
+
+  /**
+   * @return This agent implementation address
+   */
+  function agent() external view returns (address) {
+    return _implementation(); // address(this)
   }
 
   /**
@@ -361,8 +370,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
     for (uint256 i = 0; i < _inputLength;) {
       if (_amount < 10) break; // no leftover
-      if (excessInput[i] > 0) {
-        unchecked {
+      unchecked {
+        if (excessInput[i] > 0) {
           uint256 need = _inputToAsset(excessInput[i].abs(), i);
           if (need > _amount) {
             need = _amount;
@@ -370,8 +379,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
           amounts[i] = need;
           _amount -= need;
         }
-      }
-      unchecked {
         i++;
       }
     }
@@ -391,8 +398,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     int256[8] memory excessInput = _excessInputLiquidity(_invested() + _amount);
     for (uint256 i = 0; i < _inputLength;) {
       if (_amount < 10) break; // no leftover
-      if (excessInput[i] < 0) {
-        unchecked {
+      unchecked {
+        if (excessInput[i] < 0) {
           uint256 need = _inputToAsset(excessInput[i].abs(), i);
           if (need > _amount) {
             need = _amount;
@@ -400,8 +407,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
           amounts[i] = need;
           _amount -= need;
         }
-      }
-      unchecked {
         i++;
       }
     }
@@ -443,23 +448,54 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @notice If the new asset has a different price (USD denominated), a sudden `sharePrice()` change is expected
    * @param _asset Address of the new underlying asset
    * @param _swapData Swap calldata used to exchange the old `asset` for the new `_asset`
-   * @param _priceFactor Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
+   * @param _exchangeRateBp Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
    */
   function _updateAsset(
     address _asset,
     bytes calldata _swapData,
-    uint256 _priceFactor
+    uint256 _exchangeRateBp
   ) internal {
     PriceAwareStorage storage $ = _priceAwareStorage();
-    if (address($.oracle) != address(0)) {
-      _priceFactor = $.oracle.exchangeRate(address(asset), _assetDecimals, _asset);
+    if (_exchangeRateBp == 0) {
+      if (address($.oracle) != address(0)) {
+        _exchangeRateBp = $.oracle.exchangeRateBp(address(asset), _asset);
+      } else {
+        revert Errors.MissingOracle();
+      }
     }
     (bool success,) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(_UPDATE_ASSET_SELECTOR, _asset, _swapData, _priceFactor)
+      abi.encodeWithSelector(
+        IStrategyV5Agent.updateAsset.selector, _asset, _swapData, _exchangeRateBp
+      )
     );
     if (!success) {
       revert Errors.FailedDelegateCall();
     }
+  }
+
+  /**
+   * @notice Updates the strategy underlying asset (critical, automatically pauses the strategy)
+   * @notice If the new asset has a different price (USD denominated), a sudden `sharePrice()` change is expected
+   * @param _asset Address of the new underlying asset
+   * @param _swapData Swap calldata used to exchange the old `asset` for the new `_asset`
+   * @param _exchangeRateBp Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
+   */
+  function updateAsset(
+    address _asset,
+    bytes calldata _swapData,
+    uint256 _exchangeRateBp
+  ) external {
+    _updateAsset(_asset, _swapData, _exchangeRateBp);
+  }
+
+  /**
+   * @notice Updates the strategy underlying asset (critical, automatically pauses the strategy)
+   * @notice If the new asset has a different price (USD denominated), a sudden `sharePrice()` change is expected
+   * @param _asset Address of the new underlying asset
+   * @param _swapData Swap calldata used to exchange the old `asset` for the new `_asset`
+   */
+  function updateAsset(address _asset, bytes calldata _swapData) external {
+    _updateAsset(_asset, _swapData, 0);
   }
 
   /**
@@ -475,7 +511,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     address[] calldata _lpTokens
   ) internal {
     (bool success,) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(_SET_INPUT_SELECTOR, _inputs, _weights, _lpTokens)
+      abi.encodeWithSelector(
+        IStrategyV5Agent.setInputs.selector, _inputs, _weights, _lpTokens
+      )
     );
     if (!success) {
       revert Errors.FailedDelegateCall();
@@ -489,7 +527,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    */
   function _setRewardTokens(address[] calldata _rewardTokens) internal {
     (bool success,) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(_SET_REWARD_SELECTOR, _rewardTokens)
+      abi.encodeWithSelector(IStrategyV5Agent.setRewardTokens.selector, _rewardTokens)
     );
     if (!success) {
       revert Errors.FailedDelegateCall();
@@ -502,9 +540,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Underlying assets equivalent of the total pending redemption requests
    */
   function _pendingAssetsRequest() internal returns (uint256) {
-    (bool success,) =
-      _baseStorageExt().agent.delegatecall(abi.encodeWithSelector(0x4d5b6164)); // keccak256("totalPendingAssetRequest()")
-    return success ? abi.decode(msg.data, (uint256)) : 0;
+    (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
+      abi.encodeWithSelector(IAs4626.totalPendingAssetRequest.selector)
+    );
+    return success ? abi.decode(res, (uint256)) : 0;
   }
 
   /**
@@ -513,17 +552,19 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return The total amount of pending redemption requests
    */
   function _pendingRedemptionRequest() internal returns (uint256) {
-    (bool success,) =
-      _baseStorageExt().agent.delegatecall(abi.encodeWithSelector(0x7ed76e63)); // keccak256("totalPendingRedemptionRequest()")
-    return success ? abi.decode(msg.data, (uint256)) : 0;
+    (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
+      abi.encodeWithSelector(IAs4626.totalPendingRedemptionRequest.selector)
+    );
+    return success ? abi.decode(res, (uint256)) : 0;
   }
 
   /**
    * @return Total amount of underlying assets available to withdraw
    */
   function _availableClaimable() internal returns (uint256) {
-    (bool success, bytes memory res) =
-      _baseStorageExt().agent.delegatecall(abi.encodeWithSelector(0x8f1c290a)); // keccak256("availableClaimable()")
+    (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
+      abi.encodeWithSelector(IAs4626.totalClaimableRedemption.selector)
+    );
     return success ? abi.decode(res, (uint256)) : 0;
   }
 
@@ -531,8 +572,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Amount of underlying assets available to non-requested withdrawals, excluding `minLiquidity`
    */
   function _available() internal virtual returns (uint256) {
-    (bool success, bytes memory res) =
-      _baseStorageExt().agent.delegatecall(abi.encodeWithSelector(0x48a0d754)); // keccak256("available()")
+    (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
+      abi.encodeWithSelector(IStrategyV5Agent.available.selector)
+    );
     return success ? abi.decode(res, (uint256)) : 0;
   }
 
@@ -540,8 +582,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Share price - Amount of underlying assets redeemable for one share
    */
   function _sharePrice() internal virtual returns (uint256) {
-    (bool success, bytes memory res) =
-      _baseStorageExt().agent.delegatecall(abi.encodeWithSelector(0x87269729)); // keccak256("sharePrice()")
+    (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
+      abi.encodeWithSelector(IAs4626.sharePrice.selector)
+    );
     return success ? abi.decode(res, (uint256)) : 0;
   }
 
@@ -552,9 +595,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   function _updateAgent(address _agent) internal {
     if (_agent == address(0)) revert Errors.AddressZero();
     (bool success,) =
-      _agent.staticcall(abi.encodeWithSelector(IStrategyV5.claimRewards.selector));
+      _agent.staticcall(abi.encodeWithSelector(IStrategyV5Agent.proxyType.selector));
     if (!success) {
-      revert Errors.MissingOracle();
+      revert Errors.ContractNonCompliant();
     }
     _baseStorageExt().agent = _agent;
   }
@@ -598,37 +641,40 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _params Swaps calldata
    * @return totalInvested Sum of underlying assets invested
    */
-  function invest(
+  function _invest(
     uint256[8] calldata _amounts, // from previewInvest()
     bytes[] calldata _params
-  ) public onlyKeeper returns (uint256 totalInvested) {
+  ) internal virtual returns (uint256 totalInvested) {
     uint256 spent;
     uint256 toStake;
 
     for (uint8 i = 0; i < _inputLength;) {
-      if (_amounts[i] < 10) continue;
+      if (_amounts[i] < 10) {
+        unchecked {
+          i++;
+        }
+        continue;
+      }
 
-      // deposit the whole asset balance
       if (asset != inputs[i]) {
-        (spent, toStake) = swapper.decodeAndSwap({
+        (toStake, spent) = swapper.decodeAndSwap({
           _input: address(asset),
           _output: address(inputs[i]),
           _amount: _amounts[i],
           _params: _params[i]
         });
+        // pick up any input dust (eg. from previous liquidate()), not just the swap output
+        toStake = inputs[i].balanceOf(address(this));
       } else {
         toStake = _amounts[i];
         spent = _amounts[i];
       }
 
-      // pick up any input dust (eg. from previous liquidate()), not just the swap output
-      toStake = inputs[i].balanceOf(address(this));
+      uint256 staked = inputs[i].balanceOf(address(this));
       _stake(i, toStake);
-      uint256 staked = toStake - inputs[i].balanceOf(address(this));
+      staked -= inputs[i].balanceOf(address(this));
 
-      // slippage check
-      if (staked < _inputToStake(toStake, i).subBp(_4626StorageExt().maxSlippageBps * 2))
-      {
+      if (staked < _inputToStake(toStake, i).subBp(_4626StorageExt().maxSlippageBps)) {
         revert Errors.AmountTooLow(staked);
       }
 
@@ -643,6 +689,19 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
+   * @notice Invests `_amounts` of underlying assets in the strategy inputs
+   * @param _amounts Amounts of asset to invest in each input
+   * @param _params Swaps calldata
+   * @return totalInvested Sum of underlying assets invested
+   */
+  function invest(
+    uint256[8] calldata _amounts, // from previewInvest()
+    bytes[] calldata _params
+  ) external nonReentrant onlyKeeper returns (uint256 totalInvested) {
+    return _invest(_amounts, _params);
+  }
+
+  /**
    * @notice Liquidates inputs according to `_amounts` using `_params` for swaps, expecting to recover at least `_minLiquidity` of underlying assets
    * @param _amounts Amount of each inputs to liquidate (in asset)
    * @param _minLiquidity Minimum amount of assets to receive
@@ -650,12 +709,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _params Generic calldata (e.g., SwapperParams)
    * @return liquidityAvailable Updated vault available liquidity
    */
-  function liquidate(
+  function _liquidate(
     uint256[8] calldata _amounts,
     uint256 _minLiquidity,
     bool _panic,
     bytes[] calldata _params
-  ) external nonReentrant onlyKeeper returns (uint256 liquidityAvailable) {
+  ) internal virtual returns (uint256 liquidityAvailable) {
     // pre-liquidation sharePrice
     last.sharePrice = _sharePrice();
 
@@ -668,10 +727,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 totalLiquidated;
 
     for (uint8 i = 0; i < _inputLength;) {
-      if (_amounts[i] < 10) continue;
-
-      toUnstake =
-        AsMaths.min(_inputToStake(_amounts[i], i), lpTokens[i].balanceOf(address(this)));
+      if (_amounts[i] < 10) {
+        unchecked {
+          i++;
+        }
+        continue;
+      }
+      toUnstake = _inputToStake(_amounts[i], i);
+      // AsMaths.min(_inputToStake(_amounts[i], i), lpTokens[i].balanceOf(address(this)));
       uint256 balanceBefore = inputs[i].balanceOf(address(this));
       _unstake(i, toUnstake);
       recovered = inputs[i].balanceOf(address(this)) - balanceBefore; // `inputs[i]` recovered
@@ -698,8 +761,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
       // unified slippage check (unstake+remove liquidity+swap out)
       if (
-        recovered
-          < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps * 2)
+        recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps)
       ) {
         revert Errors.AmountTooLow(recovered);
       }
@@ -727,6 +789,23 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     last.liquidate = uint64(block.timestamp);
     emit Liquidate(totalLiquidated, liquidityAvailable, block.timestamp);
     return liquidityAvailable;
+  }
+
+  /**
+   * @notice Liquidates inputs according to `_amounts` using `_params` for swaps, expecting to recover at least `_minLiquidity` of underlying assets
+   * @param _amounts Amount of each inputs to liquidate (in asset)
+   * @param _minLiquidity Minimum amount of assets to receive
+   * @param _panic Sets to true to ignore slippage when liquidating
+   * @param _params Generic calldata (e.g., SwapperParams)
+   * @return liquidityAvailable Updated vault available liquidity
+   */
+  function liquidate(
+    uint256[8] calldata _amounts,
+    uint256 _minLiquidity,
+    bool _panic,
+    bytes[] calldata _params
+  ) external nonReentrant onlyKeeper returns (uint256 liquidityAvailable) {
+    return _liquidate(_amounts, _minLiquidity, _panic, _params);
   }
 
   /**
@@ -791,14 +870,19 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @notice Harvests the strategy underlying protocols' rewards (claim+swap)
    * @param _params Swaps calldata
    * @return assetsReceived Amount of underlying assets received (after swap)
-   * @dev This should be overriden by strategy implementations
    */
   function _harvest(bytes[] calldata _params)
     internal
     virtual
     returns (uint256 assetsReceived)
   {
-    return _swapRewards(claimRewards(), _params);
+    assetsReceived = _swapRewards(claimRewards(), _params);
+    // reset expected profits to updated value + amount
+    _expectedProfits = AsAccounting.unrealizedProfits(
+      last.harvest, _expectedProfits, _profitCooldown
+    ) + assetsReceived;
+    last.harvest = uint64(block.timestamp);
+    emit Harvest(assetsReceived, block.timestamp);
   }
 
   /**
@@ -807,18 +891,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return assetsReceived Amount of underlying assets received (after swap)
    */
   function harvest(bytes[] calldata _params)
-    public
+    external
     onlyKeeper
     nonReentrant
-    returns (uint256 assetsReceived)
+    returns (uint256)
   {
-    assetsReceived = _harvest(_params);
-    // reset expected profits to updated value + amount
-    _expectedProfits = AsAccounting.unrealizedProfits(
-      last.harvest, _expectedProfits, _profitCooldown
-    ) + assetsReceived;
-    last.harvest = uint64(block.timestamp);
-    emit Harvest(assetsReceived, block.timestamp);
+    return _harvest(_params);
   }
 
   /**
@@ -842,8 +920,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     }
 
     // harvest using the first calldata bytes (swap rewards->asset)
-    totalHarvested = harvest(_harvestParams);
-    totalInvested = invest(_amounts, _investParams);
+    totalHarvested = _harvest(_harvestParams);
+    totalInvested = _invest(_amounts, _investParams);
   }
 
   /**
@@ -860,7 +938,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256[8] calldata _amounts,
     bytes[] calldata _harvestParams,
     bytes[] calldata _investParams
-  ) external returns (uint256 totalHarvested, uint256 totalInvested) {
+  )
+    external
+    nonReentrant
+    onlyKeeper
+    returns (uint256 totalHarvested, uint256 totalInvested)
+  {
     (totalHarvested, totalInvested) = _compound(_amounts, _harvestParams, _investParams);
   }
 

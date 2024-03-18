@@ -179,14 +179,14 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    * @notice If the new asset has a different price (USD denominated), a sudden `sharePrice()` change is expected
    * @param _asset Address of the new underlying asset
    * @param _swapData Swap calldata used to exchange the old `asset` for the new `_asset`
-   * @param _priceFactor Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
+   * @param _exchangeRateBp Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
    */
   function updateAsset(
     address _asset,
     bytes calldata _swapData,
-    uint256 _priceFactor
-  ) external onlyAdmin {
-    _updateAsset(_asset, _swapData, _priceFactor);
+    uint256 _exchangeRateBp
+  ) external nonReentrant onlyAdmin {
+    _updateAsset(_asset, _swapData, _exchangeRateBp);
   }
 
   /**
@@ -194,17 +194,17 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    * @notice If the new asset has a different price (USD denominated), a sudden `sharePrice()` change is expected
    * @param _asset Address of the new underlying asset
    * @param _swapData Swap calldata used to exchange the old `asset` for the new `_asset`
-   * @param _priceFactor Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
+   * @param _exchangeRateBp Price factor to convert the old `asset` to the new `_asset` (old asset price * 1e18) / (new asset price)
    */
   function _updateAsset(
     address _asset,
     bytes calldata _swapData,
-    uint256 _priceFactor
+    uint256 _exchangeRateBp
   ) internal {
     if (_asset == address(0)) revert Errors.AddressZero();
     if (_asset == address(asset)) return;
 
-    if (_priceFactor == 0) {
+    if (_exchangeRateBp == 0) {
       revert Errors.InvalidData();
     }
 
@@ -227,12 +227,15 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
       IERC20Metadata(asset).forceApprove(swapperAddress, 0); // revoke swapper allowance on previous asset
       IERC20Metadata(_asset).forceApprove(swapperAddress, AsMaths.MAX_UINT256);
     }
+    uint256 retiredWeiPerAsset = _weiPerAsset;
     asset = IERC20Metadata(_asset);
     _assetDecimals = asset.decimals();
     _weiPerAsset = 10 ** _assetDecimals;
     last.accountedAssets = totalAssets();
     last.accountedSupply = totalSupply();
-    last.sharePrice = last.sharePrice.mulDiv(_priceFactor, 1e18); // multiply then debase
+    last.sharePrice =
+      last.sharePrice.mulDiv(_exchangeRateBp, AsMaths.BP_BASIS * _weiPerAsset); // multiply then debase
+      // eg. 1e12*(1e8*1e4)/(1e4*1e8) if switching to WBTC
   }
 
   /**

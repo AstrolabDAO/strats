@@ -156,35 +156,35 @@ $> yarn hardhat check
 
 | contract         | state_variable    | storage_slot | offset | type                                           | idx | artifact               | numberOfBytes |
 |------------------|-------------------|--------------|--------|------------------------------------------------|-----|------------------------|---------------|
-| AaveMultiStake   | name              | 0            | 0      | t_string_storage                               | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | symbol            | 1            | 0      | t_string_storage                               | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | decimals          | 2            | 0      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
-| AaveMultiStake   | _initialized      | 2            | 1      | t_bool                                         | 0   | /build-info/xxx.json   | 1             |
-| AaveMultiStake   | _paused           | 2            | 2      | t_bool                                         | 0   | /build-info/xxx.json   | 1             |
-| AaveMultiStake   | _status           | 3            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | maxTotalAssets    | 4            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | minLiquidity      | 5            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | asset             | 6            | 0      | t_contract(IERC20Metadata)495                  | 0   | /build-info/xxx.json   | 20            |
-| AaveMultiStake   | _assetDecimals    | 6            | 20     | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
-| AaveMultiStake   | _weiPerAsset      | 7            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | last              | 8            | 0      | t_struct(Epoch)5391_storage                    | 0   | /build-info/xxx.json   | 192           |
-| AaveMultiStake   | _profitCooldown   | 14           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | _expectedProfits  | 15           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | fees              | 16           | 0      | t_struct(Fees)5303_storage                     | 0   | /build-info/xxx.json   | 64            |
-| AaveMultiStake   | feeCollector      | 18           | 0      | t_address                                      | 0   | /build-info/xxx.json   | 20            |
-| AaveMultiStake   | claimableAssetFees| 19           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | exemptionList     | 20           | 0      | t_mapping(t_address,t_bool)                    | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | _req              | 21           | 0      | t_struct(Requests)5372_storage                 | 0   | /build-info/xxx.json   | 160           |
-| AaveMultiStake   | _requestId        | 26           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | _wgas             | 27           | 0      | t_contract(IWETH9)29126                        | 0   | /build-info/xxx.json   | 20            |
-| AaveMultiStake   | swapper           | 28           | 0      | t_contract(ISwapper)273                        | 0   | /build-info/xxx.json   | 20            |
-| AaveMultiStake   | inputs            | 29           | 0      | t_array(t_contract(IERC20Metadata)495)8_storage| 0   | /build-info/xxx.json   | 256           |
-| AaveMultiStake   | _inputDecimals    | 37           | 0      | t_array(t_uint8)8_storage                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | inputWeights      | 38           | 0      | t_array(t_uint16)8_storage                     | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | lpTokens          | 39           | 0      | t_array(t_contract(IERC20Metadata)495)8_storage| 0   | /build-info/xxx.json   | 256           |
-| AaveMultiStake   | _lpTokenDecimals  | 47           | 0      | t_array(t_uint8)8_storage                      | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | rewardTokens      | 48           | 0      | t_array(t_address)8_storage                    | 0   | /build-info/xxx.json   | 256           |
-| AaveMultiStake   | _rewardTokenIndexes | 56        | 0      | t_mapping(t_address,t_uint256)                 | 0   | /build-info/xxx.json   | 32            |
-| AaveMultiStake   | _inputLength      | 57           | 0      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
-| AaveMultiStake   | _rewardLength     | 57           | 1      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
-| AaveMultiStake   | _poolProvider     | 57           | 2      | t_contract(IPoolAddressesProvider)11015       | 0   | /build-info/xxx.json   | 20            |
+| AaveV3MultiStake   | name              | 0            | 0      | t_string_storage                               | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | symbol            | 1            | 0      | t_string_storage                               | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | decimals          | 2            | 0      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveV3MultiStake   | _initialized      | 2            | 1      | t_bool                                         | 0   | /build-info/xxx.json   | 1             |
+| AaveV3MultiStake   | _paused           | 2            | 2      | t_bool                                         | 0   | /build-info/xxx.json   | 1             |
+| AaveV3MultiStake   | _status           | 3            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | maxTotalAssets    | 4            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | minLiquidity      | 5            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | asset             | 6            | 0      | t_contract(IERC20Metadata)495                  | 0   | /build-info/xxx.json   | 20            |
+| AaveV3MultiStake   | _assetDecimals    | 6            | 20     | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveV3MultiStake   | _weiPerAsset      | 7            | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | last              | 8            | 0      | t_struct(Epoch)5391_storage                    | 0   | /build-info/xxx.json   | 192           |
+| AaveV3MultiStake   | _profitCooldown   | 14           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | _expectedProfits  | 15           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | fees              | 16           | 0      | t_struct(Fees)5303_storage                     | 0   | /build-info/xxx.json   | 64            |
+| AaveV3MultiStake   | feeCollector      | 18           | 0      | t_address                                      | 0   | /build-info/xxx.json   | 20            |
+| AaveV3MultiStake   | claimableAssetFees| 19           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | exemptionList     | 20           | 0      | t_mapping(t_address,t_bool)                    | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | _req              | 21           | 0      | t_struct(Requests)5372_storage                 | 0   | /build-info/xxx.json   | 160           |
+| AaveV3MultiStake   | _requestId        | 26           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | _wgas             | 27           | 0      | t_contract(IWETH9)29126                        | 0   | /build-info/xxx.json   | 20            |
+| AaveV3MultiStake   | swapper           | 28           | 0      | t_contract(ISwapper)273                        | 0   | /build-info/xxx.json   | 20            |
+| AaveV3MultiStake   | inputs            | 29           | 0      | t_array(t_contract(IERC20Metadata)495)8_storage| 0   | /build-info/xxx.json   | 256           |
+| AaveV3MultiStake   | _inputDecimals    | 37           | 0      | t_array(t_uint8)8_storage                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | inputWeights      | 38           | 0      | t_array(t_uint16)8_storage                     | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | lpTokens          | 39           | 0      | t_array(t_contract(IERC20Metadata)495)8_storage| 0   | /build-info/xxx.json   | 256           |
+| AaveV3MultiStake   | _lpTokenDecimals  | 47           | 0      | t_array(t_uint8)8_storage                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | rewardTokens      | 48           | 0      | t_array(t_address)8_storage                    | 0   | /build-info/xxx.json   | 256           |
+| AaveV3MultiStake   | _rewardTokenIndexes | 56        | 0      | t_mapping(t_address,t_uint256)                 | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | _inputLength      | 57           | 0      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveV3MultiStake   | _rewardLength     | 57           | 1      | t_uint8                                        | 0   | /build-info/xxx.json   | 1             |
+| AaveV3MultiStake   | _poolProvider     | 57           | 2      | t_contract(IPoolAddressesProvider)11015       | 0   | /build-info/xxx.json   | 20            |

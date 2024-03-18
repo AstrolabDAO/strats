@@ -316,7 +316,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
       _req.totalClaimableRedemption.mulDiv(
         last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED
       )
-    ); // eg. (1e12+1e12+1e6)-(1e12+1e12) = 1e6
+    ); // eg. (1e12*1e12*1e6)/(1e12*1e12) = 1e6
   }
 
   /**
@@ -329,14 +329,14 @@ abstract contract As4626 is ERC20, As4626Abstract {
   /**
    * @return Share price - Amount of underlying assets redeemable for one share
    */
-  function sharePrice() public view virtual returns (uint256) {
+  function sharePrice() public view returns (uint256) {
     uint256 supply = totalAccountedSupply();
     return supply == 0
       ? _WEI_PER_SHARE
       : totalAccountedAssets().mulDiv( // eg. e6
         _WEI_PER_SHARE_SQUARED, // 1e12*2
         supply * _weiPerAsset
-      ); // eg. (1e6+1e12+1e12)-(1e12+1e6)
+      ); // eg. (1e6*1e12*1e12)/(1e12*1e6)
   }
 
   /**
@@ -361,7 +361,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
       _WEI_PER_SHARE_SQUARED,
       sharePrice() * _weiPerAsset,
       _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
-    ); // eg. 1e6+(1e12+1e12)-(1e12+1e6) = 1e12
+    ); // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
   }
 
   /**
@@ -387,7 +387,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
       sharePrice() * _weiPerAsset,
       _WEI_PER_SHARE_SQUARED,
       _roundUp ? AsMaths.Rounding.Ceil : AsMaths.Rounding.Floor
-    ); // eg. 1e12+(1e12+1e6)-(1e12+1e12) = 1e6
+    ); // eg. 1e12*(1e12*1e6)/(1e12*1e12) = 1e6
   }
 
   /**
@@ -685,7 +685,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     // check if burning the shares will bring the totalSupply below the minLiquidity
     if (
       totalSupply()
-        < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6+(1e12+1e12)-(1e12+1e6) = 1e12
+        < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
     ) {
       revert Errors.Unauthorized();
     }
@@ -938,7 +938,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
       // burn the excess shares from the loss incurred while not farming
       // with the idle funds (opportunity cost)
       opportunityCost =
-        shares.mulDiv(last.sharePrice - request.sharePrice, _WEI_PER_SHARE); // eg. 1e12+1e12-1e12 = 1e12
+        shares.mulDiv(last.sharePrice - request.sharePrice, _WEI_PER_SHARE); // eg. 1e12*1e12/1e12 = 1e12
       _burn(_owner, opportunityCost);
     }
 

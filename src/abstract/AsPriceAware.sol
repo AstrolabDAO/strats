@@ -63,6 +63,13 @@ abstract contract AsPriceAware is AsPermissioned {
     }
   }
 
+  /**
+   * @return Oracle implementation address
+   */
+  function orcale() external view returns (address) {
+    return address(_priceAwareStorage().oracle);
+  }
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                            SETTERS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -73,8 +80,9 @@ abstract contract AsPriceAware is AsPermissioned {
    */
   function _updateOracle(address _oracle) internal {
     if (_oracle == address(0)) revert Errors.AddressZero();
-    (bool success,) =
-      _oracle.staticcall(abi.encodeWithSelector(IPriceProvider.exchangeRate.selector));
+    (bool success,) = _oracle.staticcall(
+      abi.encodeWithSelector(IPriceProvider.hasFeed.selector, address(0))
+    );
     if (!success) {
       revert Errors.ContractNonCompliant();
     }

@@ -1,16 +1,11 @@
-import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
+import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Compound/addresses";
-import {
-  Fees,
-  IStrategyDeploymentEnv,
-  IStrategyDesc,
-} from "../../src/types";
-import { abiEncode, getEnv } from "../utils";
+import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
+import { suite } from "../StrategyV5.test";
 import { IFlow, testFlow } from "../flows";
 import { setupStrat } from "../flows/StrategyV5";
-import { suite } from "../StrategyV5.test";
+import { abiEncode, getEnv } from "../utils";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive CompoundV3 USD`,
@@ -36,9 +31,7 @@ describe(`test.${desc.name}`, () => {
   const protocolAddr: { [name: string]: string }[] = <any>(
     desc.inputs.map((i) => addr.Compound[i])
   );
-  const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
-
   beforeEach(async () => {});
   after(async () => {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
@@ -51,32 +44,22 @@ describe(`test.${desc.name}`, () => {
       addresses,
     )) as IStrategyDeploymentEnv;
     // load environment+deploy+verify the strategy stack
-    const oracleAssets = desc.inputs.includes(desc.asset) ? desc.inputs : [desc.asset, ...desc.inputs];
     env = await setupStrat(
       desc.contract,
       desc.name,
-      [
-        {
-          // base params
-          erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata default to 12 decimals
-          coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
-          fees: {} as Fees, // fees (use default)
-          inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
-          inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-          lpTokens: desc.inputs.map((input) => addr.Compound[input].comet), // lpTokens
-          rewardTokens: Array.from(
-            new Set(protocolAddr.map((i) => i.rewardTokens).flat()),
-          ), // keep unique reward token: COMP
-        },
-        {
-          // chainlink oracle params
-          assets: oracleAssets.map((i) => addr.tokens[i]),
-          feeds: oracleAssets.map((i) => oracles[`Crypto.${i}/USD`]),
-          validities: oracleAssets.map((i) => 86400),
-        },
-        // strategy specific params
-        abiEncode(["address"], [addr.Compound.cometRewards]),
-      ],
+      {
+        // base params
+        erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata default to 12 decimals
+        coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
+        fees: {} as Fees, // fees (use default)
+        inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
+        inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
+        lpTokens: desc.inputs.map((input) => addr.Compound[input].comet), // lpTokens
+        rewardTokens: Array.from(
+          new Set(protocolAddr.map((i) => i.rewardTokens).flat()),
+        ), // keep unique reward token: COMP
+        extension: abiEncode(["address"], [addr.Compound.cometRewards]), // strategy specific params
+      },
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsAccounting"], // "ChainlinkUtils"], // libraries to link and verify with the strategy
       env, // deployment environment

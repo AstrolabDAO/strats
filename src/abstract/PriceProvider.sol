@@ -109,10 +109,10 @@ abstract contract PriceProvider is AsPermissioned {
     address _quote
   ) public view returns (uint256) {
     if (_quote == _base) {
-      return 10 ** uint256(_decimalsByAsset[_base]) * _amount;
+      return _amount;
     }
     return
-      fromUsd(_quote, toUsdBp(_base, _amount)) / (10 ** USD_DECIMALS * AsMaths.BP_BASIS);
+      fromUsd(_quote, toUsdBp(_base, _amount)) / (10 ** (USD_DECIMALS + _decimalsByAsset[_quote]) * AsMaths.BP_BASIS);
   }
 
   /**
@@ -132,7 +132,7 @@ abstract contract PriceProvider is AsPermissioned {
    * @return Exchange rate in `_quote` wei
    */
   function exchangeRate(address _base, address _quote) public view returns (uint256) {
-    return convert(_base, 1, _quote);
+    return convert(_base, 10 ** _decimalsByAsset[_quote], _quote);
   }
 
   /*═══════════════════════════════════════════════════════════════╗

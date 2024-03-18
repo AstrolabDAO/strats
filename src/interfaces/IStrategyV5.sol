@@ -9,11 +9,13 @@ interface IStrategyV5 is IStrategyV5Agent, IAsProxy {
   // Events
   event Harvest(uint256 assetsReceived, uint64 timestamp);
 
+  function agent() external view returns (address);
   function setParams(bytes memory _params) external;
   function init(StrategyParams memory _params) external;
   function rewardsAvailable() external view returns (uint256[] memory);
   function invested(uint256 _index) external view returns (uint256);
   function invested() external view returns (uint256);
+  function available() external view returns (uint256);
   function updateAgent(address _agent) external;
   function previewLiquidate(uint256 _amount) external returns (uint256[8] memory amounts);
   function previewInvest(uint256 _amount) external returns (uint256[8] memory amounts);
@@ -36,4 +38,10 @@ interface IStrategyV5 is IStrategyV5Agent, IAsProxy {
     bytes[] calldata _harvestParams,
     bytes[] calldata _investParams
   ) external returns (uint256 totalHarvested, uint256 totalInvested);
+  function updateAsset(
+    address _asset,
+    bytes memory _swapData,
+    uint256 _exchangeRateBp
+  ) external;
+  function updateAsset(address _asset, bytes memory _swapData) external;
 }

@@ -100,7 +100,7 @@ contract TorosMultiStake is StrategyV5 {
     return _inputToUsd(_amount, _index).mulDiv(
       1e12 * 10 ** _lpTokenDecimals[_index],
       IDHedgePool(address(lpTokens[_index])).tokenPrice()
-    ); // eg. 1e6+1e12+1e18-1e18 = 1e18
+    ); // eg. 1e6*1e12*1e18/1e18 = 1e18
   }
 
   /**

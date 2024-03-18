@@ -1,6 +1,6 @@
 import "@nomiclabs/hardhat-ethers";
-import "hardhat-contract-sizer";
-import "hardhat-storage-layout";
+// import "hardhat-contract-sizer";
+// import "hardhat-storage-layout";
 import { config } from "@astrolabs/hardhat/dist/hardhat.config";
 
 config.solidity!.compilers = [

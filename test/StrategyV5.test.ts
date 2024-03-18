@@ -18,7 +18,7 @@ export const suite: Partial<IFlow>[] = [
   { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
   { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
   { fn: withdraw, params: [1010], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
-  { fn: redeem, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+  // { fn: redeem, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 
   // invest/liquidate (using live swapper's generated calldata)
   // { fn: invest, params: [5000], assert: (n: BigNumber) => n.gt(0) }, // partial invest

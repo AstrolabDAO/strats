@@ -90,7 +90,7 @@ async function main() {
 ```
 
 ## Strategies 🚧
-- [AaveMultiStake](./src/implementations/Aave/AaveMultiStake.sol)
+- [AaveV3MultiStake](./src/implementations/Aave/AaveV3MultiStake.sol)
 - [HopMultiStake](./src/implementations/Hop/HopMultiStake.sol)
 - [LodestarMultiStake](./src/implementations/Lodestar/LodestarMultiStake.sol)
 - [VenusMultiStake](./src/implementations/Venus/VenusMultiStake.sol)
