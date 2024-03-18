@@ -22,7 +22,6 @@ interface IStrategyV5Agent is IAs4626, IAsFlashLender, IAsPriceAware {
   // State variables (As4626 extension)
   function _wgas() external view returns (IWETH9);
   function swapper() external view returns (ISwapper);
-  function agent() external view returns (address);
 
   function inputs(uint256 index) external view returns (IERC20Metadata);
   function inputWeights(uint256 index) external view returns (uint16);
@@ -42,7 +41,7 @@ interface IStrategyV5Agent is IAs4626, IAsFlashLender, IAsPriceAware {
   function updateAsset(
     address _asset,
     bytes memory _swapData,
-    uint256 _priceFactor
+    uint256 _exchangeRateBp
   ) external;
   function setInputWeights(uint16[] memory _weights) external;
   function setInputs(

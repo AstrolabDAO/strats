@@ -56,11 +56,8 @@ contract CompoundV3MultiStakeTest is Test {
 
   constructor() Test() {
     // create arbitrum fork and deal test tokens
-    vm.createSelectFork(vm.rpcUrl(vm.envString("arbitrum-private-rpc")));
+    vm.createSelectFork(vm.rpcUrl(vm.envString("arbitrum_private_rpc")));
     vm.startPrank(rich);
-    // deal(USDC, admin, 100e6);
-    // deal(USDC, manager, 100e6);
-    // deal(USDC, user, 100e6);
     usdc.transfer(admin, 100e6);
     usdc.transfer(manager, 100e6);
     usdc.transfer(user, 10000e6);
@@ -104,7 +101,7 @@ contract CompoundV3MultiStakeTest is Test {
         ChainlinkProvider.Params({
           assets: USDC.toArray(), // [USDC]
           feeds: USDC_FEED.toBytes32Array(), // Chainlink USDC
-          validities: uint256(3600).toArray() // Chainlink default validity
+          validities: uint256(3600 * 24).toArray() // Chainlink quote validity
         })
       )
     );
@@ -119,7 +116,7 @@ contract CompoundV3MultiStakeTest is Test {
     // initialize the strategy
     // ERC20 metadata
     Erc20Metadata memory erc20Meta = Erc20Metadata({
-      name: "Astrolab Primitive Compound USD",
+      name: "Astrolab Primitive CompoundV3 USD",
       symbol: "apCOMP-USD",
       decimals: 12
     });
@@ -132,6 +129,7 @@ contract CompoundV3MultiStakeTest is Test {
       agent: agent,
       oracle: address(oracle)
     });
+
     // fees
     Fees memory mockFees = Fees({perf: 10_00, mgmt: 0, entry: 2, exit: 2, flash: 2}); // 10% perf, 0% mgmt, .02% entry, .02% exit, .02% flash
     // aggregated strategy base parameters

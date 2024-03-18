@@ -1,18 +1,16 @@
-import { ethers, network, revertNetwork } from "@astrolabs/hardhat";
+import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import { BigNumber } from "ethers";
-import chainlinkOracles from "../../src/chainlink-oracles.json";
 import addresses from "../../src/implementations/Agave/addresses";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
-import { abiEncode, getEnv } from "../utils";
+import { suite } from "../StrategyV5.test";
 import { IFlow, testFlow } from "../flows";
 import { setupStrat } from "../flows/StrategyV5";
-import { suite } from "../StrategyV5.test";
+import { abiEncode, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab Agave USD`,
-  symbol: `apAGMS`,
+  name: `Astrolab Primitive Agave USD`,
+  symbol: `apAGVE.USD`,
   version: 1,
   contract: "AgaveMultiStake",
   asset: "USDC",
@@ -30,9 +28,6 @@ describe(`test.${desc.name}`, () => {
 
   const addr = addresses[network.config.chainId!];
   const protocolAddr = addr.Agave;
-  // const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Agave[i]);
-
-  const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   let env: IStrategyDeploymentEnv;
 
   beforeEach(async () => {});
@@ -47,8 +42,7 @@ describe(`test.${desc.name}`, () => {
     env = await setupStrat(
       desc.contract,
       desc.name,
-      [
-        {
+      {
           // base params
           erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata
           coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
@@ -57,18 +51,12 @@ describe(`test.${desc.name}`, () => {
           inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
           lpTokens: desc.inputs.map(input => addr.Agave[`ag${input}`]), // LP tokens
           rewardTokens: protocolAddr.rewardTokens, // GNO/AGVE
-        }, {
-          // chainlink oracle params
-          assetPriceFeed: oracles[`Crypto.${desc.asset}/USD`],
-          inputPriceFeeds: desc.inputs.map(i => oracles[`Crypto.${i}/USD`]),
+          extension: abiEncode(["address", "address", "address"], [
+            protocolAddr.LendingPoolAddressesProvider,
+            protocolAddr.BalancerVault,
+            protocolAddr.RewardPoolId,
+          ]) // strategy specific params
         },
-        // strategy specific params
-        abiEncode(["address", "address", "address"], [
-          protocolAddr.LendingPoolAddressesProvider,
-          protocolAddr.BalancerVault,
-          protocolAddr.RewardPoolId,
-        ])
-      ],
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsAccounting"], // libraries to link and verify with the strategy
       env, // deployment environment

@@ -67,16 +67,15 @@ contract PriceProviderTest is Test {
   }
 
   function getPrices() public {
-    console.log("USDC/USD (bps) %e", oracle.toUsd(USDC));
-    console.log("WETH/USD (bps) %e", oracle.toUsd(WETH));
-    console.log("WBTC/USD (bps) %e", oracle.toUsd(WBTC));
+    console.log("USDC/USD (bps) %e", oracle.toUsd(USDC)); // usd 1e18 wei per usdc
+    console.log("WETH/USD (bps) %e", oracle.toUsd(WETH)); // usd 1e18 wei per weth
+    console.log("WBTC/USD (bps) %e", oracle.toUsd(WBTC)); // usd 1e18 wei per wbtc
 
-    console.log("USD/USDC (bps) %e", oracle.fromUsd(USDC, 1));
-    console.log("USD/WETH (bps) %e", oracle.fromUsd(WETH, 3800));
-    console.log("USD/WBTC (bps) %e", oracle.fromUsd(WBTC, 68000));
+    console.log("USD/WETH (bps) %e", oracle.fromUsd(WETH, 3800e18)); // weth wei per usd
+    console.log("USD/WBTC (bps) %e", oracle.fromUsd(WBTC, 68000e18)); // wbtc wei per usd
 
-    console.log("WBTC/WETH (bps) %e", oracle.exchangeRate(WBTC, WETH));
-    console.log("WETH/WBTC (bps) %e", oracle.exchangeRate(WETH, WBTC));
+    console.log("WBTC/WETH (bps) %e", oracle.exchangeRate(WBTC, WETH)); // weth wei per wbtc
+    console.log("WETH/WBTC (bps) %e", oracle.exchangeRate(WETH, WBTC)); // wbtc wei per weth
   }
 
   function testAll() public {

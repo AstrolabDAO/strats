@@ -149,7 +149,7 @@ export interface IChainlinkParams {
 
 export interface IStrategyDeployment extends IDeployment {
   // constructor/init params
-  initParams: [IStrategyParams, ...any];
+  initParams: IStrategyParams;
   // compilation/verification dependencies
   Swapper: Contract;
   StrategyV5Agent: Contract;
@@ -171,6 +171,7 @@ export interface ITestEnv {
   revertState: boolean; // should we revert state after test
   wgas: SafeContract; // wrapped gas == native token
   addresses: NetworkAddresses;
+  oracles: { [feed: string]: string };
   // deployer
   deployer: SignerWithAddress; // provided by hardhat
   provider: providers.JsonRpcProvider;

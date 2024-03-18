@@ -600,14 +600,15 @@ export const addresses = {
     libs: {
       AsMaths: "",
       AsArrays: "",
-      AsAccounting: "",
+      AsAccounting: "0x5B1A46cbdd0cE52Ee9D03B2b653014C5B48258Cc",
     },
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
-      AccessController: "",
-      StrategyV5Agent: "",
-      "Astrolab Lodestar USD": "",
-      "Astrolab CompoundV3 USD": "",
+      AccessController: "0x453043535DaB7d03d9F231Ff06ED08E8c27aF75d",
+      ChainlinkProvider: "0xed640de00540d8503e453bb8bf1d8657132d3a46",
+      StrategyV5Agent: "0xff5608dC9dcE13AB58D4A55f0EFB57bC44e0788A",
+      "Astrolab Lodestar USD": "0x22a16Dbf44294A4B546cb3b654c3fB1A3E401e7E",
+      "Astrolab Primitive CompoundV3 USD": "0x9d1f28cf11728d333488815982538270b3b7bf37",
     },
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -621,6 +622,7 @@ export const addresses = {
       TUSD: "0x4D15a3A2286D883AF0AA1B3f21367843FAc63E07",
       // sUSD: "0xA970AF1a584579B618be4d69aD6F73459D112F95", // no liqudity
       FRAX: "0x17FC002b466eEc40DaE837Fc4bE5c67993ddBd6F",
+      LUSD: "0x93b346b6bc2548da6a1e7d98e9a421b42541425b",
       MIM: "0xFEa7a6a0B346362BF88A9e4A88416B77a57D6c2A",
       USDD: "0x680447595e8b7b3Aa1B43beB9f6098C79ac2Ab3f",
       AGEUR: "0xFA5Ed56A203466CbBC2430a43c66b9D8723528E7",

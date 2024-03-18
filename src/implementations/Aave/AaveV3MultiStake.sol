@@ -13,12 +13,12 @@ import "./interfaces/v3/IOracle.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AaveMultiStake Strategy - Liquidity providing on Aave
+ * @title AaveV3MultiStake Strategy - Liquidity providing on Aave
  * @author Astrolab DAO
  * @notice Liquidity providing strategy for Aave V3 (https://aave.com/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract AaveMultiStake is StrategyV5 {
+contract AaveV3MultiStake is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;

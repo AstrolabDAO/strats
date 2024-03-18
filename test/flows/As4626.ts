@@ -110,7 +110,7 @@ export async function deposit(
     .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
     // .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
-  await logState(env, `After Deposit ${_amount}`, 2_000);
+  await logState(env, `After Deposit ${_amount}`, 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
 }
 

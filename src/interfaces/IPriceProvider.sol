@@ -2,16 +2,16 @@
 pragma solidity 0.8.22;
 
 interface IPriceProvider {
+  function oracle() external view returns (address);
   function hasFeed(address _asset) external view returns (bool);
   function toUsdBp(address _asset) external view returns (uint256);
   function toUsdBp(address _asset, uint256 _amount) external view returns (uint256);
+  function toUsd(address _asset, uint256 _amount) external view returns (uint256);
   function fromUsdBp(address _asset) external view returns (uint256);
   function fromUsdBp(address _asset, uint256 _amount) external view returns (uint256);
-  function exchangeRate(
-    address _base,
-    uint8 _baseDecimals,
-    address _quote
-  ) external view returns (uint256);
+  function fromUsd(address _asset, uint256 _amount) external view returns (uint256);
+  function exchangeRate(address _base, address _quote) external view returns (uint256);
+  function exchangeRateBp(address _base, address _quote) external view returns (uint256);
   function convert(
     address _base,
     uint256 _amount,

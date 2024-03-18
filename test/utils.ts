@@ -17,6 +17,7 @@ import {
   swapperParamsToString,
 } from "@astrolabs/swapper";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import chainlinkOracles from "../src/chainlink-oracles.json";
 import { erc20Abi, wethAbi } from "abitype/abis";
 import { assert } from "chai";
 import crypto from "crypto";
@@ -53,6 +54,10 @@ export function isLive(env: any) {
 
 export function isAddress(s: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(s);
+}
+
+export function addressToBytes32(address: string) {
+  return ethers.utils.hexZeroPad(address, 32);
 }
 
 export function isAwaitable(o: any): boolean {
@@ -332,8 +337,7 @@ export async function logState(
     const inputData = await env.multicallProvider!.all(
       indexes.map((i) => strat.multi.inputs(i)),
     );
-    const emptyAddress = "0x0000000000000000000000000000000000000000";
-    let lastInputIndex = inputData.findIndex((input) => input == emptyAddress);
+    let lastInputIndex = inputData.findIndex((input) => input == addressZero);
     if (lastInputIndex < 0) lastInputIndex = inputIndexes.length; // max 8 inputs (if no empty address found)
     const weightData = await env.multicallProvider!.all(
       indexes.map((i) => strat.multi.inputWeights(i)),
@@ -450,12 +454,13 @@ export const getEnv = async (
   addressesOverride?: Addresses,
 ): Promise<ITestEnv> => {
   const addr = (addressesOverride ?? addresses)[network.config.chainId!];
+  const oracles = (<any>chainlinkOracles)[network.config.chainId!];
   const deployer = await getDeployer();
   const multicallProvider = new MulticallProvider();
   await multicallProvider.init(provider);
   const live = isLive(env);
   if (live) env.revertState = false;
-  return merge(
+  env = merge(
     {
       network,
       blockNumber: await provider.getBlockNumber(),
@@ -463,6 +468,7 @@ export const getEnv = async (
       revertState: false,
       wgas: await SafeContract.build(addr.tokens.WGAS, wethAbi, env.deployer!),
       addresses: addr,
+      oracles,
       deployer: deployer as SignerWithAddress,
       provider: provider,
       multicallProvider,
@@ -471,6 +477,9 @@ export const getEnv = async (
     },
     env,
   );
+  const rpc = (network.config as any)?.forking?.url ?? (network.config as any)?.url ?? "???";
+  console.log(`Live: ${live}\nRpc: ${rpc}`);
+  return env as ITestEnv;
 };
 
 /**
@@ -567,7 +576,6 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
         ),
       },
     );
-    // console.log(`received response: ${JSON.stringify(ok, null, 2)}`);
     received = (await output.balanceOf(o.payer)).sub(outputBalanceBeforeSwap);
     console.log(`received ${received} ${o.output}`);
     if (received.gt(0)) break;

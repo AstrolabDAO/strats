@@ -90,7 +90,7 @@ contract VenusMultiStake is StrategyV5 {
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return _amount.mulDiv(IVToken(address(lpTokens[_index])).exchangeRateStored(), 1e18); // eg. 1e12+1e(36-8)-1e18 = 1e18
+    return _amount.mulDiv(IVToken(address(lpTokens[_index])).exchangeRateStored(), 1e18); // eg. 1e12*1e(36-8)/1e18 = 1e18
   }
 
   /**
@@ -101,7 +101,7 @@ contract VenusMultiStake is StrategyV5 {
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return _amount.mulDiv(1e18, IVToken(address(lpTokens[_index])).exchangeRateStored()); // eg. 1e18+1e18-1e(36-8) = 1e12
+    return _amount.mulDiv(1e18, IVToken(address(lpTokens[_index])).exchangeRateStored()); // eg. 1e18*1e18/1e(36-8) = 1e12
   }
 
   /**
