@@ -662,7 +662,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   const assetSymbol = env.deployment!.asset.sym;
   const assetAddress = env.deployment!.asset.address;
-  const minLiquidity = assetSymbol.includes("USD") ? 1e7 : 5e16; // 100 USDC or 0.05 ETH
+  const minLiquidity = assetSymbol.includes("USDC") ? 1e8 : 2e18; // 10_000 USDC or 2 ETH
   const assetBalance = await env.deployment!.asset.balanceOf(
     env.deployer.address,
   );
@@ -684,7 +684,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
       (await getSwapperOutputEstimate(
         "USDC",
         env.wgas.sym,
-        10_0010 * 1e6,
+        50_010e6,
         network.config.chainId!,
         network.config.chainId!,
       )) ||

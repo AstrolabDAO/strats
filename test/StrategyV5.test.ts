@@ -15,14 +15,14 @@ const day = 60*60*24;
 
 export const suite: Partial<IFlow>[] = [
   // sync ERC4626 deposit/withdraw/redeem
-  { fn: seedLiquidity, params: [10], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
+  { fn: seedLiquidity, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
   { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
   { fn: withdraw, params: [1010], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
   // { fn: redeem, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 
   // invest/liquidate (using live swapper's generated calldata)
-  // { fn: invest, params: [5000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
-  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
+  { fn: invest, params: [5000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
+  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
   { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
 
   // async ERC7540 withdrawal
@@ -37,13 +37,16 @@ export const suite: Partial<IFlow>[] = [
 
   // claimRewards/harvest(claim+swap)/compound(harvest+invest)
   { elapsedSec: day*30, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest all pending rewards
-  { elapsedSec: day*60, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest + invest all pending rewards
+  { elapsedSec: day*30, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest + invest all pending rewards
 
   // collect fees
   { elapsedSec: day*30, revertState: true, fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) }, // collect all pending fees with signer 1 (manager only)
 
   // change underlying assets/inputs (using live swapper's generated calldata)
-  { fn: updateAsset, revertState: true, params: [tokenAddress.USDCe], assert: (n: BigNumber) => n.gt(0) },
+  { fn: updateAsset, params: [tokenAddress.WBTC], assert: (n: BigNumber) => n.gt(0) },
+  { fn: updateAsset, params: [tokenAddress.DAI], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: updateAsset, params: [tokenAddress.LINK], assert: (n: BigNumber) => n.gt(0) },
+  { fn: updateAsset, params: [tokenAddress.USDC], assert: (n: BigNumber) => n.gt(0) },
   { fn: shuffleInputs, revertState: true, params: [[4500,0], false], assert: (n: BigNumber) => n.gt(0) },
   { fn: shuffleInputs, params: [], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 

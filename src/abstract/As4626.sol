@@ -68,7 +68,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
 
     // check that the fees are not too high
     setFees(_fees);
-    _4626StorageExt().maxSlippageBps = 100; // 1% max internal swap slippage
+    _4626StorageExt().maxSlippageBps = 200; // 2% max internal swap slippage
     feeCollector = _coreAddresses.feeCollector;
     _req.redemptionLocktime = 6 hours;
     last.accountedSharePrice = _WEI_PER_SHARE;
@@ -967,7 +967,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @notice Triggers a fee collection - Claims all fees by minting the equivalent `toMint` shares to `feeCollector`
    * @return toMint Amount of shares minted to the feeCollector
    */
-  function _collectFees() internal nonReentrant onlyManager returns (uint256 toMint) {
+  function _collectFees() internal returns (uint256 toMint) {
     if (feeCollector == address(0)) {
       revert Errors.AddressZero();
     }
@@ -1006,7 +1006,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @notice Triggers a fee collection - Claims all fees by minting the equivalent `toMint` shares to `feeCollector`
    * @return Amount of shares minted to the `feeCollector`
    */
-  function collectFees() external returns (uint256) {
+  function collectFees() external nonReentrant onlyManager returns (uint256) {
     return _collectFees();
   }
 }

@@ -570,7 +570,6 @@ export const addresses = {
 
       cbETH: "0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22",
       rETH: "0xB6fe221Fe9EeF5aBa221c348bA20A1Bf5e73624c",
-
       sgETH: "0x224D8Fd7aB6AD4c6eb4611Ce56EF35Dec2277F03",
       STG: "0xE3B53AF74a4BF62Ae5511055290838050bf764Df",
       KNC: "0x28fe69Ff6864C1C218878BDCA01482D36B9D57b1",
@@ -600,15 +599,15 @@ export const addresses = {
     libs: {
       AsMaths: "",
       AsArrays: "",
-      AsAccounting: "0x5B1A46cbdd0cE52Ee9D03B2b653014C5B48258Cc",
+      AsAccounting: "",
     },
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
-      AccessController: "0x453043535DaB7d03d9F231Ff06ED08E8c27aF75d",
-      ChainlinkProvider: "0xed640de00540d8503e453bb8bf1d8657132d3a46",
-      StrategyV5Agent: "0xff5608dC9dcE13AB58D4A55f0EFB57bC44e0788A",
-      "Astrolab Lodestar USD": "0x22a16Dbf44294A4B546cb3b654c3fB1A3E401e7E",
-      "Astrolab Primitive CompoundV3 USD": "0x9d1f28cf11728d333488815982538270b3b7bf37",
+      AccessController: "",
+      ChainlinkProvider: "",
+      StrategyV5Agent: "",
+      "Astrolab Lodestar USD": "",
+      "Astrolab Primitive CompoundV3 USD": "",
     },
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",

@@ -363,7 +363,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    */
   function previewLiquidate(uint256 _amount) public returns (uint256[8] memory amounts) {
     uint256 allocated = _invested();
-    uint256 pending = _pendingAssetsRequest();
+    uint256 pending = _totalPendingAssetsRequest();
     _amount += pending + allocated.bp(150);
     _amount = AsMaths.min(_amount, allocated);
     // excessInput accounts for the weights and the cash available in the strategy
@@ -535,11 +535,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
-   * @notice Calculates the total pending redemption requests in underlying assets
-   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
-   * @return Underlying assets equivalent of the total pending redemption requests
+   * @notice Calculates the total pending redemption requests in shares
+   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption in underlying assets
+   * @return The total amount of pending redemption requests
    */
-  function _pendingAssetsRequest() internal returns (uint256) {
+  function _totalPendingAssetsRequest() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
       abi.encodeWithSelector(IAs4626.totalPendingAssetRequest.selector)
     );
@@ -548,10 +548,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
   /**
    * @notice Calculates the total pending redemption requests in shares
-   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
+   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption in shares
    * @return The total amount of pending redemption requests
    */
-  function _pendingRedemptionRequest() internal returns (uint256) {
+  function _totalPendingRedemptionRequest() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
       abi.encodeWithSelector(IAs4626.totalPendingRedemptionRequest.selector)
     );
@@ -563,7 +563,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    */
   function _availableClaimable() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(IAs4626.totalClaimableRedemption.selector)
+      abi.encodeWithSelector(IAs4626.availableClaimable.selector)
     );
     return success ? abi.decode(res, (uint256)) : 0;
   }
@@ -719,7 +719,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     last.sharePrice = _sharePrice();
 
     // in share
-    uint256 pendingRedemption = _pendingRedemptionRequest();
+    uint256 pendingRedemption = _totalPendingRedemptionRequest();
 
     // liquidate protocol positions
     uint256 toUnstake;
