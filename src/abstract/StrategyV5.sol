@@ -26,6 +26,8 @@ import "./AsPriceAware.sol";
 abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
   using AsMaths for uint256;
   using AsMaths for int256;
+  using AsMaths for int256[8];
+  using AsArrays for int256[8];
   using AsArrays for bytes[];
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -324,17 +326,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _total Sum of all invested inputs (`0 == 100% == invested()`)
    * @return Excess input liquidity
    */
-  function _excessInputLiquidity(
+  function _excessLiquidity(
     uint256 _index,
     uint256 _total
   ) internal view returns (int256) {
     if (_total == 0) _total = _invested();
-    return int256(_investedInput(_index))
-      - int256(
-        _assetToInput(
-          _total.mulDiv(uint256(inputWeights[_index]), AsMaths.BP_BASIS), _index
-        )
-      );
+    return int256(_invested(_index))
+      - int256(_total.mulDiv(uint256(inputWeights[_index]), totalWeight));
   }
 
   /**
@@ -342,14 +340,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _total Sum of all invested inputs (`0 == 100% == invested()`)
    * @return excessLiquidity Array[8] of excess input liquidities
    */
-  function _excessInputLiquidity(uint256 _total)
+  function _excessLiquidity(uint256 _total)
     internal
     view
     returns (int256[8] memory excessLiquidity)
   {
     if (_total == 0) _total = _invested();
     for (uint256 i = 0; i < _inputLength;) {
-      excessLiquidity[i] = _excessInputLiquidity(i, _total);
+      excessLiquidity[i] = _excessLiquidity(i, _total);
       unchecked {
         i++;
       }
@@ -362,17 +360,27 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return amounts Array[8] of previewed liquidated amounts
    */
   function previewLiquidate(uint256 _amount) public returns (uint256[8] memory amounts) {
-    uint256 allocated = _invested();
-    uint256 pending = _pendingAssetsRequest();
-    _amount += pending + allocated.bp(150);
-    _amount = AsMaths.min(_amount, allocated);
-    // excessInput accounts for the weights and the cash available in the strategy
-    int256[8] memory excessInput = _excessInputLiquidity(allocated - _amount);
+
+    (uint256 allocated, uint256 cash) = (_invested(), _available());
+    uint256 total = allocated + cash;
+    uint256 targetAlloc = total.mulDiv(totalWeight, AsMaths.BP_BASIS);
+    uint256 pending = _totalPendingAssetsRequest();
+    _amount += pending + targetAlloc.bp(150);
+    _amount = AsMaths.min(_amount, targetAlloc);
+
+    // excesses accounts for the weights and the cash available in the strategy
+    int256[8] memory targetExcesses = _excessLiquidity(targetAlloc - _amount);
+    int256 totalExcess = targetExcesses.sum();
+
+    if (totalExcess > 0 && uint256(totalExcess) > _amount) {
+      _amount = uint256(totalExcess);
+    }
+
     for (uint256 i = 0; i < _inputLength;) {
       if (_amount < 10) break; // no leftover
       unchecked {
-        if (excessInput[i] > 0) {
-          uint256 need = _inputToAsset(excessInput[i].abs(), i);
+        if (targetExcesses[i] > 0) {
+          uint256 need = targetExcesses[i].abs();
           if (need > _amount) {
             need = _amount;
           }
@@ -390,17 +398,22 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return amounts Array[8] of previewed invested amounts
    */
   function previewInvest(uint256 _amount) public returns (uint256[8] memory amounts) {
+    (uint256 allocated, uint256 cash) = (_invested(), _available());
+    uint256 total = allocated + cash;
+
     if (_amount == 0) {
-      _amount = _available();
+      uint256 targetCash = total.mulDiv(AsMaths.BP_BASIS - totalWeight, AsMaths.BP_BASIS);
+      _amount = cash.subMax0(targetCash);
     }
+
     // compute the excess liquidity
-    // NB: max allocated would be 90% for buffering flows if inputWeights are [30_00,30_00,30_00]
-    int256[8] memory excessInput = _excessInputLiquidity(_invested() + _amount);
+    int256[8] memory targetExcesses = _excessLiquidity(allocated + _amount);
+
     for (uint256 i = 0; i < _inputLength;) {
       if (_amount < 10) break; // no leftover
       unchecked {
-        if (excessInput[i] < 0) {
-          uint256 need = _inputToAsset(excessInput[i].abs(), i);
+        if (targetExcesses[i] < 0) {
+          uint256 need = targetExcesses[i].abs();
           if (need > _amount) {
             need = _amount;
           }
@@ -535,11 +548,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
-   * @notice Calculates the total pending redemption requests in underlying assets
-   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
-   * @return Underlying assets equivalent of the total pending redemption requests
+   * @notice Calculates the total pending redemption requests in shares
+   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption in underlying assets
+   * @return The total amount of pending redemption requests
    */
-  function _pendingAssetsRequest() internal returns (uint256) {
+  function _totalPendingAssetsRequest() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
       abi.encodeWithSelector(IAs4626.totalPendingAssetRequest.selector)
     );
@@ -548,10 +561,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
   /**
    * @notice Calculates the total pending redemption requests in shares
-   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption
+   * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption in shares
    * @return The total amount of pending redemption requests
    */
-  function _pendingRedemptionRequest() internal returns (uint256) {
+  function _totalPendingRedemptionRequest() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
       abi.encodeWithSelector(IAs4626.totalPendingRedemptionRequest.selector)
     );
@@ -563,7 +576,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    */
   function _availableClaimable() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(IAs4626.totalClaimableRedemption.selector)
+      abi.encodeWithSelector(IAs4626.availableClaimable.selector)
     );
     return success ? abi.decode(res, (uint256)) : 0;
   }
@@ -719,7 +732,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     last.sharePrice = _sharePrice();
 
     // in share
-    uint256 pendingRedemption = _pendingRedemptionRequest();
+    uint256 pendingRedemption = _totalPendingRedemptionRequest();
 
     // liquidate protocol positions
     uint256 toUnstake;

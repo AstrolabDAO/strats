@@ -810,4 +810,42 @@ library AsMaths {
     require(_quote > 0 && _base > 0);
     return (_quote * (10 ** uint256(_baseDecimals))) / _base;
   }
+
+  /**
+   * @dev Calculates the sum of an array of uint256 values
+   * @param data The array of uint256 values
+   * @return total sum of the array elements
+   */
+  function sum(uint256[] memory data) internal pure returns (uint256 total) {
+    unchecked {
+      for (uint256 i = 0; i < data.length; i++) {
+        total += data[i];
+      }
+    }
+  }
+
+  function sum(uint256[8] memory data) internal pure returns (uint256 total) {
+    unchecked {
+      for (uint256 i = 0; i < data.length; i++) {
+        total += data[i];
+      }
+    }
+  }
+
+  function sum(int256[] memory data) internal pure returns (int256 total) {
+    unchecked {
+      for (uint256 i = 0; i < data.length; i++) {
+        total += data[i];
+      }
+    }
+  }
+
+
+  function sum(int256[8] memory data) internal pure returns (int256 total) {
+    unchecked {
+      for (uint256 i = 0; i < data.length; i++) {
+        total += data[i];
+      }
+    }
+  }
 }

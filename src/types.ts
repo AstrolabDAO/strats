@@ -39,8 +39,14 @@ export class SafeContract extends Contract {
       c.multi = new MulticallContract(address, abi as any[]);
       if ("symbol" in c) {
         // c is a token
-        c.sym = findSymbolByAddress(c.address, network.config.chainId!) || await c.symbol?.();
-        c.scale = await c.decimals?.() || 12;
+        try {
+          c.sym = findSymbolByAddress(c.address, network.config.chainId!) || await c.symbol?.();
+          c.scale = await c.decimals?.() || 12;
+        } catch {
+          // shallow agent/strat implementation
+          c.sym = "???";
+          c.scale = 12;
+        }
         c.weiPerUnit = 10 ** c.scale;
       }
       return c;

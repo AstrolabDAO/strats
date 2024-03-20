@@ -121,6 +121,14 @@ export const arraysEqual = (a: any[], b: any[]) =>
   (a && b && a.length === b.length && a.every((val, idx) => val === b[idx]));
 
 /**
+ * Checks if all elements in an array are duplicates of each other
+ * @param a - The array to check
+ * @returns `true` if all elements in the array are duplicates, `false` otherwise
+ */
+export const duplicatesOnly = (a: any[]) =>
+  a.every((v) => v === a[0]);
+
+/**
  * Overrides for different network chain IDs
  * @type {Object.<number, Overrides>}
  */
@@ -662,7 +670,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   const assetSymbol = env.deployment!.asset.sym;
   const assetAddress = env.deployment!.asset.address;
-  const minLiquidity = assetSymbol.includes("USD") ? 1e7 : 5e16; // 100 USDC or 0.05 ETH
+  const minLiquidity = assetSymbol.includes("USDC") ? 1e8 : 2e18; // 10_000 USDC or 2 ETH
   const assetBalance = await env.deployment!.asset.balanceOf(
     env.deployer.address,
   );
@@ -684,7 +692,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
       (await getSwapperOutputEstimate(
         "USDC",
         env.wgas.sym,
-        10_0010 * 1e6,
+        50_010e6,
         network.config.chainId!,
         network.config.chainId!,
       )) ||
@@ -958,4 +966,61 @@ export function toNonce(text: string): number {
   // NB: we use a hash substring to as js big numeric management is inacurate
   const nonce = parseInt(hexHash.substring(0, 15), 16);
   return nonce;
+}
+
+/**
+ * Adjusts the values of an array by randomly decreasing them based on their sign
+ * Positive values are decreased by a random percentage, while negative values are increased by a random percentage
+ * The adjustment is distributed among the positive and negative values in the array
+ * The function returns the adjusted array
+ *
+ * @param arr - The array of numbers to adjust
+ * @returns The adjusted array
+ */
+export function randomRedistribute(arr: number[]): number[] {
+  let positiveSum = 0, negativeSum = 0;
+
+  let [totalPositive, totalNegative] = [0, 0];
+  let [positiveCount, negativeCount] = [0, 0];
+  arr.map((val, index) => {
+    let adjustment = Math.random() * val * 0.9;
+    if (Number.isInteger(val))
+      adjustment = Math.round(adjustment);
+    if (val > 0) {
+      totalPositive += adjustment;
+      positiveCount++;
+    } else {
+      totalNegative += adjustment;
+      negativeCount++;
+    }
+    arr[index] -= adjustment;
+    return adjustment;
+  });
+
+  let [leftoverPositive, leftoverNegative] = [totalPositive, totalNegative];
+
+  while ((leftoverPositive-leftoverNegative) > 0) {
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i] > 0 && totalPositive > 0) {
+        let adjustment = Math.random() * (totalPositive / positiveCount);
+        if (Number.isInteger(arr[i]))
+          adjustment = Math.round(adjustment);
+        if (adjustment > leftoverPositive) {
+          adjustment = leftoverPositive;
+        }
+        arr[i] += adjustment;
+        leftoverPositive -= adjustment;
+      } else if (arr[i] < 0 && totalNegative > 0) {
+        let adjustment = Math.random() * (totalNegative / negativeCount);
+        if (Number.isInteger(arr[i]))
+          adjustment = Math.round(adjustment);
+        if (adjustment > leftoverNegative) {
+          adjustment = leftoverNegative;
+        }
+        arr[i] += adjustment;
+        leftoverNegative -= adjustment;
+      }
+    }
+  }
+  return arr;
 }

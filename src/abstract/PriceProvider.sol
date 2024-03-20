@@ -122,7 +122,7 @@ abstract contract PriceProvider is AsPermissioned {
    * @return Exchange rate in `_quote` bps
    */
   function exchangeRateBp(address _base, address _quote) public view returns (uint256) {
-    return convert(_base, AsMaths.BP_BASIS, _quote);
+    return convert(_base, 10 ** _decimalsByAsset[_quote] * AsMaths.BP_BASIS, _quote);
   }
 
   /**

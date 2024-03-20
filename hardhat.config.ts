@@ -12,7 +12,7 @@ config.solidity!.compilers = [
         runs: 200
       },
       viaIR: false,
-      evmVersion: `shanghai`
+      evmVersion: `paris`
     }
   },
 ];

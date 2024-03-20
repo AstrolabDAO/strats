@@ -25,6 +25,8 @@ import {
   addressToBytes32,
   addressZero,
   arraysEqual,
+  duplicatesOnly,
+  randomRedistribute,
   ensureFunding,
   ensureOracleAccess,
   getEnv,
@@ -174,19 +176,22 @@ export const deployStrat = async (
     }
   }
 
+  // TODO: only at PriceProvider deployment to avoid overhead
+  const baseAssets = Array.from(new Set([...initParams.inputs!, ...["WETH", "WBTC", "USDC", "USDCe", "USDT", "FRAX", "DAI", "LUSD"].map(sym => env.addresses!.tokens[sym]).filter(t => !!t)]));
   const checkFeeds = async () => env.multicallProvider!.all(
-    initParams.inputs!.map((input) =>
+    baseAssets!.map((input) =>
       preDeployments.ChainlinkProvider.multi.hasFeed(input),
     ),
   );
 
   // NB: the signer has to be the admin of `ChainlinkProvider.accessController`, otherwise this will fail
   if ((await checkFeeds()).some(has => !has)) {
+    const feeds = baseAssets.map((feed) => addressToBytes32(env.oracles![`Crypto.${findSymbolByAddress(feed, network.config.chainId!)}/USD`]));
     await preDeployments.ChainlinkProvider.update(
       abiEncode(["(address[],bytes32[],uint256[])"], [[
-        initParams.inputs!,
-        env.deployment!.inputs.map(input => addressToBytes32(env.oracles![`Crypto.${input.sym}/USD`])),
-        initParams.inputs!.map(input => 3600*24), // chainlink default validity (1 day)
+        baseAssets,
+        feeds,
+        baseAssets.map(feed => 3600*48), // chainlink default validity (1 day) * 2
       ]])).then((tx: TransactionResponse) => tx.wait());
   }
 
@@ -569,7 +574,7 @@ export async function liquidate(
     );
   }
   console.log(
-    `Liquidating ${asset.toAmount(amount)}${asset.sym}\n` +
+    `Liquidating ${asset.toAmount(amount)}${asset.sym} (default: 0 will liquidate all required liquidity)\n` +
       inputs
         .map(
           (input, i) =>
@@ -775,12 +780,34 @@ export async function updateAsset(
   env: Partial<IStrategyDeploymentEnv>,
   to: string,
 ): Promise<BigNumber> {
-  const { strat, asset } = env.deployment!;
+
+  let { strat, asset, ChainlinkProvider } = env.deployment!;
   const newAsset = await SafeContract.build(to);
+  const actualAsset = await strat.asset();
+
+  if (actualAsset != asset.address) {
+    const prevAsset = asset;
+    asset = await SafeContract.build(actualAsset);
+    console.warn(`Strategy asset was changed since deployment: ${prevAsset.sym} (${prevAsset.address}) -> ${asset.sym} (${asset.address})`);
+    env.deployment!.asset = asset;
+  }
+
   const assetBalance = await asset.balanceOf(strat.address);
   if (to == asset.address) {
     console.warn(`Strategy underlying asset is already ${to}`);
     return assetBalance;
+  }
+
+  if (!await ChainlinkProvider.hasFeed(to)) {
+    console.log(`Adding ${newAsset.sym} (${to}) price feed to PriceProvider`);
+    await ChainlinkProvider.setFeed(
+      to,
+      addressToBytes32(env.oracles![`Crypto.${newAsset.sym}/USD`]),
+      3600 * 48, // 2 days
+    ).then((tx: TransactionResponse) => tx.wait());
+    if (!await ChainlinkProvider.hasFeed(to)) {
+      throw new Error(`Price feed could not be set for ${newAsset.sym}`);
+    }
   }
 
   const minSwapOut = 1; // TODO: use callstatic to define accurate minAmountOut
@@ -820,10 +847,17 @@ export async function updateAsset(
 
   await logState(env, `After UpdateAsset ${asset.sym}->${newAsset.sym}`, 1_000);
 
+  if (!(await strat.asset() == to)) {
+    throw new Error(`Strategy asset not updated to ${to}`);
+  }
+
+  env.deployment!.asset = newAsset;
+
+  // unpause the strategy that was paused preemptively during the update
+  await strat.unpause();
+
   // no event is emitted for optimization purposes, manual check
-  return ((await strat.asset()) == to)
-    ? await newAsset.balanceOf(strat.address)
-    : BigNumber.from(0);
+  return await newAsset.balanceOf(strat.address);
 }
 
 export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[string[], number[], string[]]> {
@@ -842,8 +876,8 @@ export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[
 
   const [currentInputs, currentWeights, currentLpTokens] = [
     stratParams.slice(0, lastInputIndex),
-    stratParams.slice(8, lastInputIndex),
-    stratParams.slice(16, lastInputIndex),
+    stratParams.slice(8, 8+lastInputIndex),
+    stratParams.slice(16, 16+lastInputIndex),
   ] as [string[], number[], string[]];
   return [currentInputs, currentWeights, currentLpTokens];
 }
@@ -930,7 +964,7 @@ export async function updateInputs(
           const index = orderedInputs.indexOf(currentInputs[i]);
           // reduce exposure to 0 for removed inputs (liquidate)
           // update weights for existing inputs (start rebalancing)
-          return index > -1 ? orderedWeights[index] : 0;
+          return (index > -1 ? orderedWeights[index] : 0) ?? 0;
         }),
         currentLpTokens,
       ],
@@ -974,7 +1008,6 @@ export async function shuffleInputs(
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
   const [inputs, weights, lpTokens] = await getInputs(env);
-
   const symbols = inputs.map((i) => findSymbolByAddress(i, network.config.chainId!));
   console.log(`Before shuffling:\n  inputs [${symbols.join(", ")}]\n  weights [${weights.join(", ")}]\n  lpTokens [${lpTokens.join(", ")}]`);
 
@@ -991,10 +1024,12 @@ export async function shuffleInputs(
   }
 
   // if there are two inputs and the weights are the same, break
-  if (!weights.every((v) => v === weights[0])) {
+  if (!duplicatesOnly(randomWeights)) {
     while (arraysEqual(randomWeights, weights)) {
       randomWeights = shuffle(weights);
     }
+  } else {
+    randomWeights = randomRedistribute(randomWeights);
   }
 
   console.log(randomInputs, randomWeights);

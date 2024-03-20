@@ -212,22 +212,21 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     // liquidate() should be called first to ensure rebasing
     if (_req.totalRedemption > 0) revert Errors.Unauthorized();
 
-    // pre-emptively pause the strategy for manual checks
-    pause();
-
-    // slippage is checked within Swapper >> no need to use (received, spent)
-    swapper.decodeAndSwapBalance(address(asset), _asset, _swapData);
-
     // reset all cached accounted values as a denomination change might change the accounting basis
     _expectedProfits = 0; // reset trailing profits
     _lenderStorage().totalLent = 0; // reset totalLent (broken analytics)
     _collectFees(); // claim all pending fees to reset claimableAssetFees
+
     address swapperAddress = address(swapper);
-    if (swapperAddress != address(0)) {
-      IERC20Metadata(asset).forceApprove(swapperAddress, 0); // revoke swapper allowance on previous asset
-      IERC20Metadata(_asset).forceApprove(swapperAddress, AsMaths.MAX_UINT256);
+    if (swapperAddress == address(0)) {
+      // a swapper is required to swap from the old asset to the new one
+      revert Errors.Unauthorized();
     }
-    uint256 retiredWeiPerAsset = _weiPerAsset;
+
+    // slippage is checked within Swapper >> no need to use (received, spent)
+    swapper.decodeAndSwapBalance(address(asset), _asset, _swapData);
+    IERC20Metadata(asset).forceApprove(swapperAddress, 0); // revoke swapper allowance on previous asset
+    IERC20Metadata(_asset).forceApprove(swapperAddress, AsMaths.MAX_UINT256);
     asset = IERC20Metadata(_asset);
     _assetDecimals = asset.decimals();
     _weiPerAsset = 10 ** _assetDecimals;
@@ -235,7 +234,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     last.accountedSupply = totalSupply();
     last.sharePrice =
       last.sharePrice.mulDiv(_exchangeRateBp, AsMaths.BP_BASIS * _weiPerAsset); // multiply then debase
-      // eg. 1e12*(1e8*1e4)/(1e4*1e8) if switching to WBTC
+    // pre-emptively pause the strategy for manual checks
+    _pause();
   }
 
   /**
@@ -244,7 +244,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    */
   function _setInputWeights(uint16[] calldata _weights) internal {
     if (_weights.length != _inputLength) revert Errors.InvalidData();
-    uint16 totalWeight = 0;
+    totalWeight = 0;
+
     for (uint8 i = 0; i < _inputLength;) {
       inputWeights[i] = _weights[i];
 
