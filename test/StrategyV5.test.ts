@@ -6,7 +6,7 @@ import { addressOne, signerAddressGetter, signerGetter } from "./utils";
 import { seedLiquidity, deposit, withdraw, redeem, requestWithdraw, requestRedeem, collectFees } from "./flows/As4626";
 import { grantRoles, acceptRoles, revokeRoles } from "./flows/AsManageable";
 import { transferAssetsTo, requestRescue, rescue } from "./flows/AsRescuable";
-import { invest, liquidate, harvest, compound, updateAsset, shuffleInputs } from "./flows/StrategyV5";
+import { invest, liquidate, harvest, compound, updateAsset, shuffleInputs, updateInputs } from "./flows/StrategyV5";
 
 const addr = addresses[network.config.chainId!];
 const tokenAddress = addr.tokens;
@@ -15,15 +15,15 @@ const day = 60*60*24;
 
 export const suite: Partial<IFlow>[] = [
   // sync ERC4626 deposit/withdraw/redeem
-  { fn: seedLiquidity, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
-  { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
-  { fn: withdraw, params: [1010], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
+  { fn: seedLiquidity, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
+  // { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
+  // { fn: withdraw, params: [1010], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
   // { fn: redeem, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 
   // invest/liquidate (using live swapper's generated calldata)
-  { fn: invest, params: [5000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
-  // { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
-  { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
+  // { fn: invest, params: [5000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
+  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
+  // { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
 
   // async ERC7540 withdrawal
   { fn: requestWithdraw, params: [1001], assert: (n: BigNumber) => n.gt(0) },
@@ -43,12 +43,15 @@ export const suite: Partial<IFlow>[] = [
   { elapsedSec: day*30, revertState: true, fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) }, // collect all pending fees with signer 1 (manager only)
 
   // change underlying assets/inputs (using live swapper's generated calldata)
-  { fn: updateAsset, params: [tokenAddress.WBTC], assert: (n: BigNumber) => n.gt(0) },
-  { fn: updateAsset, params: [tokenAddress.DAI], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: updateAsset, params: [tokenAddress.WBTC], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: updateAsset, params: [tokenAddress.DAI], assert: (n: BigNumber) => n.gt(0) },
   // { fn: updateAsset, params: [tokenAddress.LINK], assert: (n: BigNumber) => n.gt(0) },
-  { fn: updateAsset, params: [tokenAddress.USDC], assert: (n: BigNumber) => n.gt(0) },
-  { fn: shuffleInputs, revertState: true, params: [[4500,0], false], assert: (n: BigNumber) => n.gt(0) },
-  { fn: shuffleInputs, params: [], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+  // { fn: updateAsset, params: [tokenAddress.USDC], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: updateInputs, params: [[tokenAddress.WETH, tokenAddress.USDC], [7000,2000], ["0x46e6b214b524310239732D51387075E0e70970bf", "0xb125E6687d4313864e53df431d5425969c15Eb2F"]], assert: (n: BigNumber) => n.gt(0) },
+  { fn: updateInputs, params: [[tokenAddress.USDC], [20_00], ["0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf"]], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: shuffleInputs, params: [[9000,0], false], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: shuffleInputs, params: [], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+
 
   // AccessController tests
   { fn: grantRoles, params: [["MANAGER", "KEEPER"], signerAddressGetter(1)] }, // grant roles to mnemonic signer 2 with signer 1

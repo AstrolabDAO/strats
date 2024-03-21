@@ -82,7 +82,7 @@
   },
   "peerDependencies": {},
   "dependencies": {
-    "@astrolabs/hardhat": "^1.0.94",
+    "@astrolabs/hardhat": "^1.0.95",
     "@astrolabs/registry": "^1.0.46",
     "@astrolabs/swapper": "^1.0.17",
     "@axelar-network/axelar-gmp-sdk-solidity": "^5.6.4",

@@ -545,16 +545,18 @@ export const addresses = {
       AsArrays: "",
       // AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718", // PROD
       AsAccounting: "",
+      AccessController: "",
+      ChainlinkProvider: "",
     },
     astrolab: {
       Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
       // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
       StrategyV5Agent: "",
-      "Astrolab Moonwell USD": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
-      "Astrolab Stargate USD": "",
-      "Astrolab Aave USD": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
-      "Astrolab CompoundV3 USD": "",
-      "Astrolab Sonne USD": "",
+      // "Astrolab Moonwell USD": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
+      "Astrolab Primitive Stargate USD": "",
+      // "Astrolab Aave USD": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
+      "Astrolab Primitive CompoundV3 USD": "",
+      "Astrolab Primitive Sonne USD": "",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",

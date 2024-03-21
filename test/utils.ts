@@ -366,7 +366,7 @@ export async function logState(
       strat.callStatic.previewInvest(0),
       strat.callStatic.previewLiquidate(0),
     ]);
-    const totalInvesteds: BigNumber[] = await env.multicallProvider!.all(
+    const totalInvested: BigNumber[] = await env.multicallProvider!.all(
       inputs.map((input, index) => strat.multi.invested(index)),
     );
 
@@ -394,8 +394,8 @@ export async function logState(
       .map(
         (input, index) =>
           `      -${input.sym}: ${<any>(
-            asset.toAmount(totalInvesteds[index])
-          )} (${totalInvesteds[index]}wei)`,
+            asset.toAmount(totalInvested[index])
+          )} (${totalInvested[index]}wei)`,
       )
       .join("\n")}
     available(): ${available / asset.weiPerUnit} (${available}wei) (${
@@ -432,7 +432,7 @@ export async function logState(
     previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
       .map(
         (input, i) =>
-          `      -${input.sym}: ${input.toAmount(
+          `      -${input.sym}: ${asset.toAmount(
             previewLiquidate[i],
           )} (${previewLiquidate[i].toString()}wei)`,
       )
@@ -468,11 +468,17 @@ export const getEnv = async (
   await multicallProvider.init(provider);
   const live = isLive(env);
   if (live) env.revertState = false;
+  let snapshotId = 0;
+  try {
+    snapshotId = live ? 0 : await provider.send("evm_snapshot", []);
+  } catch (e) {
+    console.error(`Failed to snapshot: ${e}`);
+  }
   env = merge(
     {
       network,
       blockNumber: await provider.getBlockNumber(),
-      snapshotId: live ? 0 : await provider.send("evm_snapshot", []),
+      snapshotId,
       revertState: false,
       wgas: await SafeContract.build(addr.tokens.WGAS, wethAbi, env.deployer!),
       addresses: addr,
