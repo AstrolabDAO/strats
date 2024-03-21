@@ -595,8 +595,8 @@ export async function liquidate(
   await logState(env, "Before Liquidate");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
-    // .liquidate(amounts, 1, false, swapData, getOverrides(env))
+    // .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
+    .liquidate(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 1_000);
