@@ -244,7 +244,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    */
   function _setInputWeights(uint16[] calldata _weights) internal {
     if (_weights.length != _inputLength) revert Errors.InvalidData();
-    uint16 totalWeight = 0;
+    totalWeight = 0;
+
     for (uint8 i = 0; i < _inputLength;) {
       inputWeights[i] = _weights[i];
 

@@ -25,6 +25,8 @@ import {
   addressToBytes32,
   addressZero,
   arraysEqual,
+  duplicatesOnly,
+  randomRedistribute,
   ensureFunding,
   ensureOracleAccess,
   getEnv,
@@ -189,7 +191,7 @@ export const deployStrat = async (
       abiEncode(["(address[],bytes32[],uint256[])"], [[
         baseAssets,
         feeds,
-        baseAssets.map(feed => 3600*24), // chainlink default validity (1 day)
+        baseAssets.map(feed => 3600*48), // chainlink default validity (1 day) * 2
       ]])).then((tx: TransactionResponse) => tx.wait());
   }
 
@@ -572,7 +574,7 @@ export async function liquidate(
     );
   }
   console.log(
-    `Liquidating ${asset.toAmount(amount)}${asset.sym}\n` +
+    `Liquidating ${asset.toAmount(amount)}${asset.sym} (default: 0 will liquidate all required liquidity)\n` +
       inputs
         .map(
           (input, i) =>
@@ -801,7 +803,7 @@ export async function updateAsset(
     await ChainlinkProvider.setFeed(
       to,
       addressToBytes32(env.oracles![`Crypto.${newAsset.sym}/USD`]),
-      3600 * 24, // 1 day
+      3600 * 48, // 2 days
     ).then((tx: TransactionResponse) => tx.wait());
     if (!await ChainlinkProvider.hasFeed(to)) {
       throw new Error(`Price feed could not be set for ${newAsset.sym}`);
@@ -874,8 +876,8 @@ export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[
 
   const [currentInputs, currentWeights, currentLpTokens] = [
     stratParams.slice(0, lastInputIndex),
-    stratParams.slice(8, lastInputIndex),
-    stratParams.slice(16, lastInputIndex),
+    stratParams.slice(8, 8+lastInputIndex),
+    stratParams.slice(16, 16+lastInputIndex),
   ] as [string[], number[], string[]];
   return [currentInputs, currentWeights, currentLpTokens];
 }
@@ -962,7 +964,7 @@ export async function updateInputs(
           const index = orderedInputs.indexOf(currentInputs[i]);
           // reduce exposure to 0 for removed inputs (liquidate)
           // update weights for existing inputs (start rebalancing)
-          return index > -1 ? orderedWeights[index] : 0;
+          return (index > -1 ? orderedWeights[index] : 0) ?? 0;
         }),
         currentLpTokens,
       ],
@@ -1006,7 +1008,6 @@ export async function shuffleInputs(
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
   const [inputs, weights, lpTokens] = await getInputs(env);
-
   const symbols = inputs.map((i) => findSymbolByAddress(i, network.config.chainId!));
   console.log(`Before shuffling:\n  inputs [${symbols.join(", ")}]\n  weights [${weights.join(", ")}]\n  lpTokens [${lpTokens.join(", ")}]`);
 
@@ -1023,10 +1024,12 @@ export async function shuffleInputs(
   }
 
   // if there are two inputs and the weights are the same, break
-  if (!weights.every((v) => v === weights[0])) {
+  if (!duplicatesOnly(randomWeights)) {
     while (arraysEqual(randomWeights, weights)) {
       randomWeights = shuffle(weights);
     }
+  } else {
+    randomWeights = randomRedistribute(randomWeights);
   }
 
   console.log(randomInputs, randomWeights);

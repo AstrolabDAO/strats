@@ -64,12 +64,13 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   IWETH9 internal _wgas; // gas/native wrapper contract (immutable set in `init()`)
   ISwapper public swapper; // interface for swapping assets
 
-  IERC20Metadata[8] public inputs; // array of ERC20 tokens used as inputs (8 slots)
-  uint8[8] internal _inputDecimals; // strategy inputs decimals (1 slot)
-  uint16[8] public inputWeights; // array of input weights weights in basis points (100% = 100_00) (1slot)
-  IERC20Metadata[8] public lpTokens; // array of LP tokens used by inputs (8 slots)
-  uint8[8] internal _lpTokenDecimals; // strategy inputs decimals (1 slot)
-  address[8] public rewardTokens; // array of reward tokens harvested at compound and liquidate times (8 slots)
+  IERC20Metadata[8] public inputs; // array of ERC20 tokens used as inputs
+  uint8[8] internal _inputDecimals; // strategy inputs decimals
+  uint16[8] public inputWeights; // array of input weights weights in basis points (100% = 100_00)
+  uint16 public totalWeight; // total input weight (max 100%, 100_00bps)
+  IERC20Metadata[8] public lpTokens; // array of LP tokens used by inputs
+  uint8[8] internal _lpTokenDecimals; // strategy inputs decimals
+  address[8] public rewardTokens; // array of reward tokens harvested at compound and liquidate times
   mapping(address => uint256) internal _rewardTokenIndexes; // reward token index by address
   uint8 internal _inputLength; // used length of inputs[] (index of last non-zero element)
   uint8 internal _rewardLength; // used length of rewardTokens[] (index of last non-zero element)
