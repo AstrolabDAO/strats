@@ -243,18 +243,21 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    * @param _weights Array of input weights
    */
   function _setInputWeights(uint16[] calldata _weights) internal {
-    if (_weights.length != _inputLength) revert Errors.InvalidData();
-    totalWeight = 0;
+
+    if (_weights.length != _inputLength) {
+      revert Errors.InvalidData();
+    }
+    _totalWeight = 0;
+    delete inputWeights;
 
     for (uint8 i = 0; i < _inputLength;) {
       inputWeights[i] = _weights[i];
 
       // check for overflow before adding the weight
-      if (totalWeight > AsMaths.BP_BASIS - _weights[i]) {
+      if (_totalWeight > AsMaths.BP_BASIS - _weights[i]) {
         revert Errors.InvalidData();
       }
-
-      totalWeight += _weights[i];
+      _totalWeight += _weights[i];
       unchecked {
         i++;
       }
@@ -281,20 +284,21 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     uint16[] calldata _weights,
     address[] calldata _lpTokens
   ) internal {
-    if (_inputs.length > 8 || _weights.length > 8 || _lpTokens.length > 8) {
+
+    if (_inputs.length > _MAX_INPUTS || _inputs.length != _weights.length || _lpTokens.length != _inputs.length) {
       revert Errors.Unauthorized();
     }
     _setSwapperAllowance(0, true, false, false);
-    _inputLength = uint8(_inputs.length);
+    _inputLength = uint8(_inputs.length); // new used length
+
+    delete inputs;
+    delete _inputDecimals;
+    delete lpTokens;
+    delete _lpTokenDecimals;
 
     for (uint256 i = 0; i < _inputLength;) {
       inputs[i] = IERC20Metadata(_inputs[i]);
       _inputDecimals[i] = inputs[i].decimals();
-      unchecked {
-        i++;
-      }
-    }
-    for (uint256 i = 0; i < _lpTokens.length;) {
       lpTokens[i] = IERC20Metadata(_lpTokens[i]);
       _lpTokenDecimals[i] = lpTokens[i].decimals();
       unchecked {
@@ -325,8 +329,11 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    * @param _rewardTokens Array of reward tokens
    */
   function _setRewardTokens(address[] calldata _rewardTokens) internal {
-    if (_rewardTokens.length > 8) revert Errors.Unauthorized();
+    if (_rewardTokens.length > _MAX_INPUTS) {
+      revert Errors.Unauthorized();
+    }
     _setSwapperAllowance(0, false, true, false);
+    delete rewardTokens;
     for (uint256 i = 0; i < _rewardTokens.length;) {
       rewardTokens[i] = _rewardTokens[i];
       _rewardTokenIndexes[_rewardTokens[i]] = i + 1;

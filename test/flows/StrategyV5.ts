@@ -38,6 +38,7 @@ import {
   isOracleLib,
   isStablePair,
   logState,
+  getInputs,
 } from "../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
@@ -542,11 +543,11 @@ export async function liquidate(
       // using more pessimistic amounts (eg. more slippage) in the swapData generation
       const stablePair = isStablePair(asset.sym, inputs[i].sym);
       // oracle derivation tolerance (can be found at https://data.chain.link/ for chainlink)
-      const derivation = stablePair ? 100 : 1_000; // .1% or 1%
-      const slippage = stablePair ? 25 : 250; // .025% or .25%
+      // const derivation = stablePair ? 100 : 1_000; // .1% or 1%
+      // const slippage = stablePair ? 25 : 250; // .025% or .25%
 
-      amounts[i] = amounts[i].mul(100_00 + derivation).div(100_00);
-      swapAmounts[i] = amounts[i].mul(100_00).div(100_00); // slippage
+      // amounts[i] = amounts[i].mul(100_00 + derivation).div(100_00);
+      swapAmounts[i] = amounts[i];
 
       if (swapAmounts[i].gt(10)) {
         // only generate swapData if the input is not the asset
@@ -860,28 +861,6 @@ export async function updateAsset(
   return await newAsset.balanceOf(strat.address);
 }
 
-export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[string[], number[], string[]]> {
-  const strat = await env.deployment!.strat;
-  const indexes = [...Array(8).keys()];
-
-  const stratParams = await env.multicallProvider!.all([
-    ...indexes.map((i) => strat.multi.inputs(i)),
-    ...indexes.map((i) => strat.multi.inputWeights(i)),
-    ...indexes.map((i) => strat.multi.lpTokens(i)),
-  ]);
-
-  let lastInputIndex = stratParams.findIndex((input) => input == addressZero);
-
-  if (lastInputIndex < 0) lastInputIndex = indexes.length; // max 8 inputs (if no empty address found)
-
-  const [currentInputs, currentWeights, currentLpTokens] = [
-    stratParams.slice(0, lastInputIndex),
-    stratParams.slice(8, 8+lastInputIndex),
-    stratParams.slice(16, 16+lastInputIndex),
-  ] as [string[], number[], string[]];
-  return [currentInputs, currentWeights, currentLpTokens];
-}
-
 /**
  * Updates the inputs and weights of a strategy (critical)
  * @param env - Strategy deployment environment
@@ -907,7 +886,7 @@ export async function updateInputs(
   // step 2: Initialize final inputs and weights arrays
   let orderedInputs: string[] = new Array<string>(inputs.length).fill("");
   let orderedWeights: number[] = new Array<number>(inputs.length).fill(0);
-  let orederedLpTokens: string[] = new Array<string>(inputs.length).fill("");
+  let orderedLpTokens: string[] = new Array<string>(inputs.length).fill("");
 
   const leftovers: string[] = [];
 
@@ -923,13 +902,13 @@ export async function updateInputs(
       if (inputs.length > prevIndex) {
         orderedInputs[prevIndex] = currentInputs[prevIndex];
         orderedWeights[prevIndex] = weights[i];
-        orederedLpTokens[prevIndex] = lpTokens[i];
+        orderedLpTokens[prevIndex] = lpTokens[i];
       }
     }
   } else {
     orderedInputs = inputs;
     orderedWeights = weights;
-    orederedLpTokens = lpTokens;
+    orderedLpTokens = lpTokens;
   }
 
   // NB: make sure that env.deployment.ChainlinkProvider has all the new feeds already set up
@@ -938,10 +917,10 @@ export async function updateInputs(
     const fillIndex = orderedInputs.indexOf("");
     orderedInputs[fillIndex] = leftovers[i];
     orderedWeights[fillIndex] = weights[currentInputs.indexOf(leftovers[i])];
-    orederedLpTokens[fillIndex] = lpTokens[currentInputs.indexOf(leftovers[i])];
+    orderedLpTokens[fillIndex] = lpTokens[currentInputs.indexOf(leftovers[i])];
   }
 
-  console.log(`After reordering (reordered: ${reorder}):\n  inputs [${orderedInputs.join(", ")}]\n  weights [${orderedWeights.join(", ")}]\n  lpTokens [${orederedLpTokens.join(", ")}]`);
+  console.log(`After reordering (reordered: ${reorder}):\n  inputs [${orderedInputs.join(", ")}]\n  weights [${orderedWeights.join(", ")}]\n  lpTokens [${orderedLpTokens.join(", ")}]`);
 
   console.log(`After reordering (reordered: ${reorder}):\n
     prev inputs: [${currentInputs.join(",")}] weights: [${currentWeights.join(
@@ -950,7 +929,7 @@ export async function updateInputs(
     raw inputs: [${inputs.join(",")}] weights: [${weights.join(",")}] lpTokens: [${lpTokens.join(", ")}]
     ord inputs: [${orderedInputs.join(",")}] weights: [${orderedWeights.join(
       ",",
-    )}] lpTokens: [${orederedLpTokens.join(",")}]
+    )}] lpTokens: [${orderedLpTokens.join(",")}]
   `);
 
   // step 5: Set new input weights with current inputs to liquidate it all
@@ -977,11 +956,11 @@ export async function updateInputs(
   await liquidate(env, 0);
 
   // step 7: Set new inputs and input weight
-  console.log(`Setting new inputs...`);
+  console.log(`Setting new inputs... `, orderedInputs);
   receipt = await strat
     .safe(
       "setInputs(address[],uint16[],address[])",
-      [orderedInputs, orderedWeights, lpTokens],
+      [orderedInputs, orderedWeights, orderedLpTokens],
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());

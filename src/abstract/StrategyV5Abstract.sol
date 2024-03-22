@@ -48,7 +48,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   /*═══════════════════════════════════════════════════════════════╗
   ║                           CONSTANTS                            ║
   ╚═══════════════════════════════════════════════════════════════*/
-
+  uint256 internal constant _MAX_INPUTS = 8; // 100% in basis points
   // EIP-7201 keccak256(abi.encode(uint256(keccak256("StrategyV5.agent")) - 1)) & ~bytes32(uint256(0xff));
   bytes32 private constant _AGENT_STORAGE_SLOT =
     0xffe86e2b60bc69a3832641185d195b8ed6fe0e65c6cc390c67dbb9d7cc304300;
@@ -67,7 +67,7 @@ abstract contract StrategyV5Abstract is As4626Abstract {
   IERC20Metadata[8] public inputs; // array of ERC20 tokens used as inputs
   uint8[8] internal _inputDecimals; // strategy inputs decimals
   uint16[8] public inputWeights; // array of input weights weights in basis points (100% = 100_00)
-  uint16 public totalWeight; // total input weight (max 100%, 100_00bps)
+  uint16 internal _totalWeight; // total input weight (max 100%, 100_00bps)
   IERC20Metadata[8] public lpTokens; // array of LP tokens used by inputs
   uint8[8] internal _lpTokenDecimals; // strategy inputs decimals
   address[8] public rewardTokens; // array of reward tokens harvested at compound and liquidate times

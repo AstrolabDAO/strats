@@ -330,9 +330,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _index,
     uint256 _total
   ) internal view returns (int256) {
-    if (_total == 0) _total = _invested();
-    return int256(_invested(_index))
-      - int256(_total.mulDiv(uint256(inputWeights[_index]), totalWeight));
+    if (_total == 0) {
+      _total = _invested();
+    }
+    int256 allocated = int256(_invested(_index));
+    return _totalWeight == 0 ? allocated
+      : (allocated - int256(_total.mulDiv(uint256(inputWeights[_index]), _totalWeight)));
   }
 
   /**
@@ -363,10 +366,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
     (uint256 allocated, uint256 cash) = (_invested(), _available());
     uint256 total = allocated + cash;
-    uint256 targetAlloc = total.mulDiv(totalWeight, AsMaths.BP_BASIS);
+    uint256 targetAlloc = total.mulDiv(_totalWeight, AsMaths.BP_BASIS);
     uint256 pending = _totalPendingAssetsRequest();
-    _amount += pending + targetAlloc.bp(150);
-    _amount = AsMaths.min(_amount, targetAlloc);
+    _amount += pending + targetAlloc.bp(50); // overliquidate (0.5% of allocated) to buffer withdraw-ready liquidity
+    _amount = AsMaths.min(_amount, allocated);
 
     // excesses accounts for the weights and the cash available in the strategy
     int256[8] memory targetExcesses = _excessLiquidity(targetAlloc - _amount);
@@ -402,7 +405,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 total = allocated + cash;
 
     if (_amount == 0) {
-      uint256 targetCash = total.mulDiv(AsMaths.BP_BASIS - totalWeight, AsMaths.BP_BASIS);
+      uint256 targetCash = total.mulDiv(AsMaths.BP_BASIS - _totalWeight, AsMaths.BP_BASIS);
       _amount = cash.subMax0(targetCash);
     }
 

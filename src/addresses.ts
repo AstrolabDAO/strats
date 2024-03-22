@@ -60,12 +60,13 @@ export const addresses = {
       AsMaths: "",
       AsArrays: "",
       AsAccounting: "",
+      AccessController: "",
+      ChainlinkProvider: "",
     },
     astrolab: {
-      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      // Swapper: "0xac64a35e398699dd3f22d4ba2252e5153c40fe9c",
+      Swapper: "0x281cc759925fc757c9bade12b2b001d6d646417f",
       StrategyV5Agent: "",
-      "Astrolab CompoundV3 USD" : "",
+      "Astrolab Primitive CompoundV3 USD": "",
     },
     tokens: {
       WETH: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
