@@ -160,7 +160,7 @@ export interface IStrategyDeployment extends IDeployment {
   Swapper: Contract;
   StrategyV5Agent: Contract;
   AccessController: Contract;
-  ChainlinkProvider: Contract;
+  PriceProvider: Contract;
   libraries: { [name: string]: string };
   // product of deployment
   strat: SafeContract;

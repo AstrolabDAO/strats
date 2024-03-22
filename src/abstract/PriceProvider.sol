@@ -112,7 +112,7 @@ abstract contract PriceProvider is AsPermissioned {
       return _amount;
     }
     return
-      fromUsd(_quote, toUsdBp(_base, _amount)) / (10 ** (USD_DECIMALS + _decimalsByAsset[_quote]) * AsMaths.BP_BASIS);
+      fromUsd(_quote, toUsdBp(_base, _amount)) / (10 ** (USD_DECIMALS + _decimalsByAsset[_base]) * AsMaths.BP_BASIS);
   }
 
   /**

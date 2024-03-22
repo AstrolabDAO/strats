@@ -38,6 +38,7 @@ import {
   isOracleLib,
   isStablePair,
   logState,
+  getInputs,
 } from "../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
@@ -64,7 +65,6 @@ export const deployStrat = async (
   libNames = ["AsAccounting"],
   forceVerify = false, // check that the contract is verified on etherscan/tenderly
 ): Promise<IStrategyDeploymentEnv> => {
-
   // strategy dependencies
   const libraries: { [name: string]: string } = {};
   const contractUniqueName = name; // `${contract}.${env.deployment?.inputs?.map(i => i.symbol).join("-")}`;
@@ -80,7 +80,7 @@ export const deployStrat = async (
         verify: true,
         deployed: address ? true : false,
         address,
-        libraries: {} // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
+        libraries: {}, // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
       } as IDeploymentUnit;
       if (libParams.deployed) {
         console.log(`Using existing ${n} at ${libParams.address}`);
@@ -138,64 +138,91 @@ export const deployStrat = async (
     };
   }
 
-  const preDeploymentsContracts: string[] = ["AccessController", "ChainlinkProvider", "Swapper", "StrategyV5Agent"];
+  const preDeploymentsContracts: string[] = [
+    "AccessController",
+    "PriceProvider",
+    "Swapper",
+    "StrategyV5Agent",
+  ];
   const preDeployments: { [name: string]: Contract } = {};
   for (const c of preDeploymentsContracts) {
-    units[c] = {
+    const dep = {
       contract: c,
       name: c,
       verify: true,
       deployed: env.addresses!.astrolab?.[c] ? true : false,
       address: env.addresses!.astrolab?.[c] ?? "",
       overrides: getOverrides(env),
-    };
+    } as any;
     if (c == "StrategyV5Agent") {
-      units[c].args = [preDeployments.AccessController.address];
-      units[c].libraries = agentLibs;
-    } else if (c == "ChainlinkProvider") {
-      units[c].args = [preDeployments.AccessController.address];
+      dep.args = [preDeployments.AccessController.address];
+      dep.libraries = agentLibs;
+    } else if (c == "PriceProvider") {
+      dep.args = [preDeployments.AccessController.address];
+      // NB: Chainlink only, not Pyth
+      dep.contract = "ChainlinkProvider";
     }
+    units[c] = dep;
     if (!env.addresses!.astrolab?.[c]) {
       console.log(`Deploying missing ${c}`);
-      const d = (await deploy(units[c]));
+      const d = await deploy(units[c]);
       preDeployments[c] = await SafeContract.build(
         d.address!,
-        loadAbi(c)! as any[],
+        loadAbi(dep.contract)! as any[],
         env.deployer!,
       );
-      units[c].verify = false; // we just verified it
+      dep.verify = false; // we just verified it
     } else {
-      console.log(
-        `Using existing ${c} at ${env.addresses!.astrolab?.[c]}`,
-      );
-      preDeployments[c] = (await SafeContract.build(
+      console.log(`Using existing ${c} at ${env.addresses!.astrolab?.[c]}`);
+      preDeployments[c] = await SafeContract.build(
         env.addresses!.astrolab?.[c]!,
-        loadAbi(c)! as any[],
+        loadAbi(dep.contract)! as any[],
         env.deployer!,
-      ));
+      );
     }
   }
 
   // TODO: only at PriceProvider deployment to avoid overhead
-  const baseAssets = Array.from(new Set([...initParams.inputs!, ...["WETH", "WBTC", "USDC", "USDCe", "USDT", "FRAX", "DAI", "LUSD"].map(sym => env.addresses!.tokens[sym]).filter(t => !!t)]));
-  const checkFeeds = async () => env.multicallProvider!.all(
-    baseAssets!.map((input) =>
-      preDeployments.ChainlinkProvider.multi.hasFeed(input),
-    ),
+  const baseAssets = Array.from(
+    new Set([
+      ...initParams.inputs!,
+      ...["WETH", "WBTC", "USDC", "USDCe", "USDT", "FRAX", "DAI", "LUSD"]
+        .map((sym) => env.addresses!.tokens[sym])
+        .filter((t) => !!t),
+    ]),
   );
+  const checkFeeds = async () =>
+    env.multicallProvider!.all(
+      baseAssets!.map((input) =>
+        preDeployments.PriceProvider.multi.hasFeed(input),
+      ),
+    );
 
-  // NB: the signer has to be the admin of `ChainlinkProvider.accessController`, otherwise this will fail
-  if ((await checkFeeds()).some(has => !has)) {
-    const feeds = baseAssets.map((feed) => addressToBytes32(env.oracles![`Crypto.${findSymbolByAddress(feed, network.config.chainId!)}/USD`]));
-    await preDeployments.ChainlinkProvider.update(
-      abiEncode(["(address[],bytes32[],uint256[])"], [[
-        baseAssets,
-        feeds,
-        baseAssets.map(feed => 3600*48), // chainlink default validity (1 day) * 2
-      ]])).then((tx: TransactionResponse) => tx.wait());
+  // NB: the signer has to be the admin of `PriceProvider.accessController`, otherwise this will fail
+  if ((await checkFeeds()).some((has) => !has)) {
+    const feeds = baseAssets.map((feed) =>
+      addressToBytes32(
+        env.oracles![
+          `Crypto.${findSymbolByAddress(feed, network.config.chainId!)}/USD`
+        ],
+      ),
+    );
+    // NB: this is Chainlink's initializer, not Pyth
+    await preDeployments.PriceProvider.update(
+      abiEncode(
+        ["(address[],bytes32[],uint256[])"],
+        [
+          [
+            baseAssets,
+            feeds,
+            baseAssets.map((feed) => 3600 * 48), // chainlink default validity (1 day) * 2
+          ],
+        ],
+      ),
+    ).then((tx: TransactionResponse) => tx.wait());
   }
 
-  if ((await checkFeeds()).some(has => !has)) {
+  if ((await checkFeeds()).some((has) => !has)) {
     throw new Error(`Some price feeds are still missing`);
   }
 
@@ -215,7 +242,7 @@ export const deployStrat = async (
       feeCollector: env.deployer!.address, // feeCollector
       swapper: preDeployments.Swapper.address, // Swapper
       agent: preDeployments.StrategyV5Agent.address, // StrategyV5Agent
-      oracle: preDeployments.ChainlinkProvider.address, // ChainlinkProvider
+      oracle: preDeployments.PriceProvider.address, // PriceProvider
     },
     initParams.coreAddresses,
   );
@@ -273,10 +300,13 @@ export const deployStrat = async (
   for (const c of preDeploymentsContracts) {
     if (!env.deployment!.units![c].address)
       throw new Error(`Could not deploy ${c}`);
-    (env.deployment as any)[c] = await SafeContract.build(
-      env.deployment!.units![c].address!,
-      loadAbi(c) as any[],
-    );
+    const dep = (env.deployment as any);
+    if (dep[c]?.symbol) {
+      dep[c] = await SafeContract.build(
+        env.deployment!.units![c].address!, // dep[c].address
+        loadAbi(c) as any[],
+      );
+    }
   }
   env.deployment!.strat = await SafeContract.build(
     env.deployment!.units![contract].address!,
@@ -497,7 +527,7 @@ export async function liquidate(
   env: Partial<IStrategyDeploymentEnv>,
   _amount = 0,
 ): Promise<BigNumber> {
-  const { asset, inputs, strat } = env.deployment!;
+  const { asset, inputs, strat, PriceProvider } = env.deployment!;
 
   let amount = asset.toWei(_amount);
 
@@ -520,44 +550,56 @@ export async function liquidate(
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
-  const amounts = Object.assign([], await strat.callStatic.previewLiquidate(amount));
-  const swapAmounts = new Array<BigNumber>(amounts.length).fill(
-    BigNumber.from(0),
-  );
+  const amounts = (await strat.callStatic.previewLiquidate(amount) as BigNumber[]);
 
-  for (const i in inputs) {
+  // NB: no need to convert to input amounts anymore as amounts are already in input units
+  // const inputSwapAmounts = await env.multicallProvider?.all(
+  //   inputs.map((input, i) => PriceProvider.multi.convert(asset.address, amounts[i], inputs[i].address))) as BigNumber[];
+
+  const investedInputs = await env.multicallProvider?.all(
+    inputs.map((input, i) => strat.multi.investedInput(i)),
+  ) as BigNumber[];
+
+  for (const i in amounts) {
+
     // by default input == asset, no swapData is required
     let tr = {
       to: addressZero,
       data: "0x00",
       estimatedExchangeRate: 1, // no swap 1:1
       estimatedOutputWei: amounts[i],
-      estimatedOutput: inputs[i].toAmount(amounts[i]),
     } as ITransactionRequestWithEstimate;
 
-    if (asset.address != inputs[i].address) {
+    if (investedInputs[i] && amounts[i].gt(investedInputs[i])) {
+      console.log(
+        `Swap amount ${inputs[i].toAmount(amount)} > invested ${inputs[i].toAmount(
+          investedInputs[i],
+        )} reducing...`,
+      );
+      amounts[i] = investedInputs[i];
+    }
+
+    if (inputs[i] && asset.address != inputs[i].address) {
       // add 1% slippage to the input amount, .1% if stable (2x as switching from ask estimate->bid)
       // NB: in case of a volatility event (eg. news/depeg), the liquidity would be one sided
       // and these estimates would be off. Liquidation would require manual parametrization
       // using more pessimistic amounts (eg. more slippage) in the swapData generation
-      const stablePair = isStablePair(asset.sym, inputs[i].sym);
+      // const stablePair = isStablePair(asset.sym, inputs[i].sym);
       // oracle derivation tolerance (can be found at https://data.chain.link/ for chainlink)
-      const derivation = stablePair ? 100 : 1_000; // .1% or 1%
-      const slippage = stablePair ? 25 : 250; // .025% or .25%
+      // const derivation = stablePair ? 100 : 1_000; // .1% or 1%
+      // const slippage = stablePair ? 25 : 250; // .025% or .25%
+      // amounts[i] = amounts[i].mul(100_00 + derivation).div(100_00);
 
-      amounts[i] = amounts[i].mul(100_00 + derivation).div(100_00);
-      swapAmounts[i] = amounts[i].mul(100_00).div(100_00); // slippage
-
-      if (swapAmounts[i].gt(10)) {
+      if (amounts[i].gt(10)) {
         // only generate swapData if the input is not the asset
         tr = (await getTransactionRequest({
           input: inputs[i].address,
           output: asset.address,
-          amountWei: swapAmounts[i], // take slippage off so that liquidated LP value > swap input
+          amountWei: amounts[i], // take slippage off so that liquidated LP value > swap input
           inputChainId: network.config.chainId!,
           payer: strat.address, // env.deployer.address
           testPayer: env.addresses!.accounts!.impersonate,
-          maxSlippage: 5000, // TODO: increase for low liquidity chains (moonbeam/celo/metis/linea...)
+          maxSlippage: 5000, // TODO: use a smarter slippage
         })) as ITransactionRequestWithEstimate;
         if (!tr.to)
           throw new Error(
@@ -574,15 +616,17 @@ export async function liquidate(
     );
   }
   console.log(
-    `Liquidating ${asset.toAmount(amount)}${asset.sym} (default: 0 will liquidate all required liquidity)\n` +
+    `Liquidating ${asset.toAmount(amount)}${
+      asset.sym
+    } (default: 0 will liquidate all required liquidity)\n` +
       inputs
         .map(
           (input, i) =>
             `  - ${input.sym}: ${input.toAmount(amounts[i])} (${amounts[
               i
             ].toString()}wei), swap amount: ${input.toAmount(
-              swapAmounts[i],
-            )} (${swapAmounts[i].toString()}wei), est. output: ${trs[i]
+              amounts[i],
+            )} (${amounts[i].toString()}wei), est. output: ${trs[i]
               .estimatedOutput!} ${asset.sym} (${trs[
               i
             ].estimatedOutputWei?.toString()}wei - exchange rate: ${
@@ -780,15 +824,16 @@ export async function updateAsset(
   env: Partial<IStrategyDeploymentEnv>,
   to: string,
 ): Promise<BigNumber> {
-
-  let { strat, asset, ChainlinkProvider } = env.deployment!;
+  let { strat, asset, PriceProvider } = env.deployment!;
   const newAsset = await SafeContract.build(to);
   const actualAsset = await strat.asset();
 
   if (actualAsset != asset.address) {
     const prevAsset = asset;
     asset = await SafeContract.build(actualAsset);
-    console.warn(`Strategy asset was changed since deployment: ${prevAsset.sym} (${prevAsset.address}) -> ${asset.sym} (${asset.address})`);
+    console.warn(
+      `Strategy asset was changed since deployment: ${prevAsset.sym} (${prevAsset.address}) -> ${asset.sym} (${asset.address})`,
+    );
     env.deployment!.asset = asset;
   }
 
@@ -798,14 +843,14 @@ export async function updateAsset(
     return assetBalance;
   }
 
-  if (!await ChainlinkProvider.hasFeed(to)) {
+  if (!(await PriceProvider.hasFeed(to))) {
     console.log(`Adding ${newAsset.sym} (${to}) price feed to PriceProvider`);
-    await ChainlinkProvider.setFeed(
+    await PriceProvider.setFeed(
       to,
       addressToBytes32(env.oracles![`Crypto.${newAsset.sym}/USD`]),
       3600 * 48, // 2 days
     ).then((tx: TransactionResponse) => tx.wait());
-    if (!await ChainlinkProvider.hasFeed(to)) {
+    if (!(await PriceProvider.hasFeed(to))) {
       throw new Error(`Price feed could not be set for ${newAsset.sym}`);
     }
   }
@@ -839,47 +884,23 @@ export async function updateAsset(
   );
   await logState(env, `Before UpdateAsset ${asset.sym}->${newAsset.sym}`);
   const receipt = await strat
-    .safe(
-      "updateAsset(address,bytes)",
-      [to, swapData],
-      getOverrides(env),
-    ).then((tx: TransactionResponse) => tx.wait());
+    .safe("updateAsset(address,bytes)", [to, swapData], getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, `After UpdateAsset ${asset.sym}->${newAsset.sym}`, 1_000);
 
-  if (!(await strat.asset() == to)) {
+  if (!((await strat.asset()) == to)) {
     throw new Error(`Strategy asset not updated to ${to}`);
   }
 
   env.deployment!.asset = newAsset;
+  env.deployment!.initParams.coreAddresses!.asset = to;
 
   // unpause the strategy that was paused preemptively during the update
   await strat.unpause();
 
   // no event is emitted for optimization purposes, manual check
   return await newAsset.balanceOf(strat.address);
-}
-
-export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[string[], number[], string[]]> {
-  const strat = await env.deployment!.strat;
-  const indexes = [...Array(8).keys()];
-
-  const stratParams = await env.multicallProvider!.all([
-    ...indexes.map((i) => strat.multi.inputs(i)),
-    ...indexes.map((i) => strat.multi.inputWeights(i)),
-    ...indexes.map((i) => strat.multi.lpTokens(i)),
-  ]);
-
-  let lastInputIndex = stratParams.findIndex((input) => input == addressZero);
-
-  if (lastInputIndex < 0) lastInputIndex = indexes.length; // max 8 inputs (if no empty address found)
-
-  const [currentInputs, currentWeights, currentLpTokens] = [
-    stratParams.slice(0, lastInputIndex),
-    stratParams.slice(8, 8+lastInputIndex),
-    stratParams.slice(16, 16+lastInputIndex),
-  ] as [string[], number[], string[]];
-  return [currentInputs, currentWeights, currentLpTokens];
 }
 
 /**
@@ -897,60 +918,91 @@ export async function updateInputs(
   weights: number[],
   lpTokens: string[],
   reorder: boolean = true,
-  prev?: [string[], number[], string[]]
+  prev?: [string[], number[], string[]],
 ): Promise<BigNumber> {
-
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
-  const [currentInputs, currentWeights, currentLpTokens] = prev ?? await getInputs(env);
+  const [currentInputs, currentWeights, currentLpTokens] =
+    prev ?? (await getInputs(env));
 
   // step 2: Initialize final inputs and weights arrays
   let orderedInputs: string[] = new Array<string>(inputs.length).fill("");
   let orderedWeights: number[] = new Array<number>(inputs.length).fill(0);
-  let orederedLpTokens: string[] = new Array<string>(inputs.length).fill("");
+  let orderedLpTokens: string[] = new Array<string>(inputs.length).fill("");
 
   const leftovers: string[] = [];
 
+  // if (reorder) {
+  //   console.log("Reordering inputs...");
+  //   // step 3: Keep existing inputs in their original position if still present
+  //   for (let i = 0; i < inputs.length; i++) {
+  //     const prevIndex = currentInputs.indexOf(inputs[i]);
+  //     if (prevIndex >= inputs.length || prevIndex < 0) {
+  //       leftovers.push(inputs[i]);
+  //       continue;
+  //     }
+  //     if (inputs.length > prevIndex) {
+  //       orderedInputs[prevIndex] = currentInputs[prevIndex];
+  //       orderedWeights[prevIndex] = weights[i];
+  //       orderedLpTokens[prevIndex] = lpTokens[i];
+  //     }
+  //   }
+  // } else {
+  //   orderedInputs = inputs;
+  //   orderedWeights = weights;
+  //   orderedLpTokens = lpTokens;
+  // }
+
+  // Correction in the reordering logic and handling of leftovers
   if (reorder) {
     console.log("Reordering inputs...");
-    // step 3: Keep existing inputs in their original position if still present
-    for (let i = 0; i < inputs.length; i++) {
-      const prevIndex = currentInputs.indexOf(inputs[i]);
-      if (prevIndex >= inputs.length || prevIndex < 0) {
-        leftovers.push(inputs[i]);
-        continue;
+    // Correctly identify and manage existing inputs and leftovers
+    currentInputs.forEach((input, index) => {
+      const newIndex = inputs.indexOf(input);
+      if (newIndex !== -1) {
+        // Input exists in the new inputs, so we place it correctly
+        orderedInputs[newIndex] = input;
+        orderedWeights[newIndex] = weights[newIndex]; // Assign corresponding weight
+        orderedLpTokens[newIndex] = lpTokens[newIndex]; // Assign corresponding LP token
       }
-      if (inputs.length > prevIndex) {
-        orderedInputs[prevIndex] = currentInputs[prevIndex];
-        orderedWeights[prevIndex] = weights[i];
-        orederedLpTokens[prevIndex] = lpTokens[i];
+    });
+
+    // Handle leftovers: new inputs that weren't in currentInputs
+    inputs.forEach((input, index) => {
+      if (!orderedInputs.includes(input)) {
+        // Find the first empty slot in ordered arrays
+        const emptyIndex = orderedInputs.indexOf("");
+        orderedInputs[emptyIndex] = input;
+        orderedWeights[emptyIndex] = weights[index];
+        orderedLpTokens[emptyIndex] = lpTokens[index];
       }
-    }
+    });
   } else {
+    // If not reordering, directly assign inputs, weights, and LP tokens
     orderedInputs = inputs;
     orderedWeights = weights;
-    orederedLpTokens = lpTokens;
+    orderedLpTokens = lpTokens;
   }
 
-  // NB: make sure that env.deployment.ChainlinkProvider has all the new feeds already set up
+  // NB: make sure that env.deployment.PriceProvider has all the new feeds already set up
   // step 4: Infill + backfill with leftovers
   for (let i = 0; i < leftovers.length; i++) {
     const fillIndex = orderedInputs.indexOf("");
     orderedInputs[fillIndex] = leftovers[i];
     orderedWeights[fillIndex] = weights[currentInputs.indexOf(leftovers[i])];
-    orederedLpTokens[fillIndex] = lpTokens[currentInputs.indexOf(leftovers[i])];
+    orderedLpTokens[fillIndex] = lpTokens[currentInputs.indexOf(leftovers[i])];
   }
 
-  console.log(`After reordering (reordered: ${reorder}):\n  inputs [${orderedInputs.join(", ")}]\n  weights [${orderedWeights.join(", ")}]\n  lpTokens [${orederedLpTokens.join(", ")}]`);
-
-  console.log(`After reordering (reordered: ${reorder}):\n
+  console.log(`Reordering (reordered: ${reorder}):\n
     prev inputs: [${currentInputs.join(",")}] weights: [${currentWeights.join(
       ",",
     )}] lpTokens: [${currentLpTokens.join(",")}]
-    raw inputs: [${inputs.join(",")}] weights: [${weights.join(",")}] lpTokens: [${lpTokens.join(", ")}]
+    raw inputs: [${inputs.join(",")}] weights: [${weights.join(
+      ",",
+    )}] lpTokens: [${lpTokens.join(", ")}]
     ord inputs: [${orderedInputs.join(",")}] weights: [${orderedWeights.join(
       ",",
-    )}] lpTokens: [${orederedLpTokens.join(",")}]
+    )}] lpTokens: [${orderedLpTokens.join(",")}]
   `);
 
   // step 5: Set new input weights with current inputs to liquidate it all
@@ -964,7 +1016,7 @@ export async function updateInputs(
           const index = orderedInputs.indexOf(currentInputs[i]);
           // reduce exposure to 0 for removed inputs (liquidate)
           // update weights for existing inputs (start rebalancing)
-          return (index > -1 ? orderedWeights[index] : 0) ?? 0;
+          return (index > -1 ? currentWeights[index] : 0) ?? 0;
         }),
         currentLpTokens,
       ],
@@ -977,16 +1029,23 @@ export async function updateInputs(
   await liquidate(env, 0);
 
   // step 7: Set new inputs and input weight
-  console.log(`Setting new inputs...`);
+  console.log(`Setting new inputs... `, orderedInputs);
   receipt = await strat
     .safe(
       "setInputs(address[],uint16[],address[])",
-      [orderedInputs, orderedWeights, lpTokens],
+      [orderedInputs, orderedWeights, orderedLpTokens],
       getOverrides(env),
     )
     .then((tx: TransactionResponse) => tx.wait());
 
-  // step 8: Invest all assets (effective rebalancing with available cash from step 6 liquidation)
+  // step 8: Update the test environment to reflect the new inputs
+  env.deployment!.inputs = await Promise.all(orderedInputs.map((input) =>
+    SafeContract.build(input),
+  ));
+  env.deployment!.initParams.inputs = orderedInputs;
+  env.deployment!.initParams.inputWeights = orderedWeights;
+
+  // step 9: Invest all assets (effective rebalancing with available cash from step 6 liquidation)
   console.log(`Investing all inputs...`);
   return await invest(env, 0);
 }
@@ -1001,23 +1060,27 @@ export async function updateInputs(
  */
 export async function shuffleInputs(
   env: Partial<IStrategyDeploymentEnv>,
-  newWeights?: number[]|BigNumber[],
+  newWeights?: number[] | BigNumber[],
   reorder = true,
 ): Promise<BigNumber> {
-
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
   const [inputs, weights, lpTokens] = await getInputs(env);
-  const symbols = inputs.map((i) => findSymbolByAddress(i, network.config.chainId!));
-  console.log(`Before shuffling:\n  inputs [${symbols.join(", ")}]\n  weights [${weights.join(", ")}]\n  lpTokens [${lpTokens.join(", ")}]`);
+  const symbols = inputs.map((i) =>
+    findSymbolByAddress(i, network.config.chainId!),
+  );
+  console.log(
+    `Before shuffling:\n  inputs [${symbols.join(
+      ", ",
+    )}]\n  weights [${weights.join(", ")}]\n  lpTokens [${lpTokens.join(
+      ", ",
+    )}]`,
+  );
 
   if (!newWeights) newWeights = weights;
 
   // step 2: randomly reorder inputs and set random weights adding up to the same cumsum
-  let [randomInputs, randomWeights] = [
-    shuffle(inputs),
-    shuffle(weights),
-  ];
+  let [randomInputs, randomWeights] = [shuffle(inputs), shuffle(weights)];
   // shuffle again if the result is the same for one of the arrays
   while (arraysEqual(randomInputs, inputs)) {
     randomInputs = shuffle(inputs);
@@ -1040,10 +1103,23 @@ export async function shuffleInputs(
   const newLpTokens = newInputSymbols.map(
     (i) => compoundAddresses[network.config.chainId!].Compound[i!].comet,
   );
-  console.log(`Shuffled:\n  inputs [${newInputSymbols.join(", ")}]\n  weights [${randomWeights.join(", ")}]\n  lpTokens [${newLpTokens.join(", ")}]`);
+  console.log(
+    `Shuffled:\n  inputs [${newInputSymbols.join(
+      ", ",
+    )}]\n  weights [${randomWeights.join(
+      ", ",
+    )}]\n  lpTokens [${newLpTokens.join(", ")}]`,
+  );
 
   // step 3: return updateInputs with the above
-  return await updateInputs(env, randomInputs, randomWeights, lpTokens, reorder, [inputs, weights, lpTokens]);
+  return await updateInputs(
+    env,
+    randomInputs,
+    randomWeights,
+    lpTokens,
+    reorder,
+    [inputs, weights, lpTokens],
+  );
 }
 
 /**
@@ -1120,4 +1196,3 @@ export async function shuffleWeightsRebalance(
 // function findSymbolByAddress(to: string, arg1: number) {
 //   throw new Error("Function not implemented.");
 // }
-

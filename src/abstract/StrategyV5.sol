@@ -250,6 +250,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    */
   function _investedInput(uint256 _index) internal view virtual returns (uint256);
 
+  function investedInput(uint256 _index) external view virtual returns (uint256) {
+    return _investedInput(_index);
+  }
+
   /**
    * @notice Converts a full input balance (`inputs[_index]`) to underlying assets
    * @param _index Index of the input
@@ -259,11 +263,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     return _inputToAsset(_investedInput(_index), _index);
   }
 
-  /**
-   * @notice Converts a full input balance (`inputs[_index]`) to underlying assets
-   * @param _index Index of the input
-   * @return Amount of underlying assets equivalent to the full input balance
-   */
   function invested(uint256 _index) external view virtual returns (uint256) {
     return _invested(_index);
   }
@@ -330,9 +329,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _index,
     uint256 _total
   ) internal view returns (int256) {
-    if (_total == 0) _total = _invested();
-    return int256(_invested(_index))
-      - int256(_total.mulDiv(uint256(inputWeights[_index]), totalWeight));
+    if (_total == 0) {
+      _total = _invested();
+    }
+    int256 allocated = int256(_invested(_index));
+    return _totalWeight == 0 ? allocated
+      : (allocated - int256(_total.mulDiv(uint256(inputWeights[_index]), _totalWeight)));
   }
 
   /**
@@ -357,16 +359,16 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   /**
    * @dev Previews the amounts that would be liquidated to recover `_amount + totalPendingAssetRequest() + allocated.bp(150)` of liquidity
    * @param _amount Amount of underlying assets to recover
-   * @return amounts Array[8] of previewed liquidated amounts
+   * @return amounts Array[8] of previewed liquidated amounts in input tokens
    */
   function previewLiquidate(uint256 _amount) public returns (uint256[8] memory amounts) {
 
     (uint256 allocated, uint256 cash) = (_invested(), _available());
     uint256 total = allocated + cash;
-    uint256 targetAlloc = total.mulDiv(totalWeight, AsMaths.BP_BASIS);
+    uint256 targetAlloc = total.mulDiv(_totalWeight, AsMaths.BP_BASIS);
     uint256 pending = _totalPendingAssetsRequest();
-    _amount += pending + targetAlloc.bp(150);
-    _amount = AsMaths.min(_amount, targetAlloc);
+    _amount += pending + targetAlloc.bp(50); // overliquidate (0.5% of allocated) to buffer withdraw-ready liquidity
+    _amount = AsMaths.min(_amount, allocated);
 
     // excesses accounts for the weights and the cash available in the strategy
     int256[8] memory targetExcesses = _excessLiquidity(targetAlloc - _amount);
@@ -384,7 +386,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
           if (need > _amount) {
             need = _amount;
           }
-          amounts[i] = need;
+          amounts[i] = _assetToInput(need, i);
           _amount -= need;
         }
         i++;
@@ -402,7 +404,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 total = allocated + cash;
 
     if (_amount == 0) {
-      uint256 targetCash = total.mulDiv(AsMaths.BP_BASIS - totalWeight, AsMaths.BP_BASIS);
+      uint256 targetCash = total.mulDiv(AsMaths.BP_BASIS - _totalWeight, AsMaths.BP_BASIS);
       _amount = cash.subMax0(targetCash);
     }
 
@@ -716,8 +718,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
   /**
    * @notice Liquidates inputs according to `_amounts` using `_params` for swaps, expecting to recover at least `_minLiquidity` of underlying assets
-   * @param _amounts Amount of each inputs to liquidate (in asset)
-   * @param _minLiquidity Minimum amount of assets to receive
+   * @param _amounts Amount of each inputs to liquidate in input tokens
+   * @param _minLiquidity Minimum amount of assets to retrieve
    * @param _panic Sets to true to ignore slippage when liquidating
    * @param _params Generic calldata (e.g., SwapperParams)
    * @return liquidityAvailable Updated vault available liquidity
@@ -806,8 +808,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
   /**
    * @notice Liquidates inputs according to `_amounts` using `_params` for swaps, expecting to recover at least `_minLiquidity` of underlying assets
-   * @param _amounts Amount of each inputs to liquidate (in asset)
-   * @param _minLiquidity Minimum amount of assets to receive
+   * @param _amounts Amount of each inputs to liquidate in input tokens
+   * @param _minLiquidity Minimum amount of assets to retrieve
    * @param _panic Sets to true to ignore slippage when liquidating
    * @param _params Generic calldata (e.g., SwapperParams)
    * @return liquidityAvailable Updated vault available liquidity

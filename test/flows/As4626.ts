@@ -357,7 +357,7 @@ export async function requestRedeem(
  * @returns Total fees collected as a BigNumber
  */
 export async function collectFees(
-  env: Partial<IStrategyDeploymentEnv>,
+  env: IStrategyDeploymentEnv,
 ): Promise<BigNumber> {
   const { strat, asset, initParams } = env.deployment!;
   const feeCollector = await strat.feeCollector(); // initParams[0].coreAddresses.feeCollector;

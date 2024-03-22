@@ -280,6 +280,33 @@ export async function logBalances(
 export const logRescue = logBalances;
 
 /**
+ * Retrieves the inputs, weights, and LP tokens from the given strategy deployment environment
+ * @param env - The strategy deployment environment
+ * @returns Array containing the current inputs, weights, and LP tokens
+ */
+export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[string[], number[], string[]]> {
+  const strat = await env.deployment!.strat;
+  const indexes = [...Array(8).keys()];
+
+  const stratParams = await env.multicallProvider!.all([
+    ...indexes.map((i) => strat.multi.inputs(i)),
+    ...indexes.map((i) => strat.multi.inputWeights(i)),
+    ...indexes.map((i) => strat.multi.lpTokens(i)),
+  ]);
+
+  let lastInputIndex = stratParams.findIndex((input) => input == addressZero);
+
+  if (lastInputIndex < 0) lastInputIndex = indexes.length; // max 8 inputs (if no empty address found)
+
+  const [currentInputs, currentWeights, currentLpTokens] = [
+    stratParams.slice(0, lastInputIndex),
+    stratParams.slice(8, 8+lastInputIndex),
+    stratParams.slice(16, 16+lastInputIndex),
+  ] as [string[], number[], string[]];
+  return [currentInputs, currentWeights, currentLpTokens];
+}
+
+/**
  * Logs the state of the given strategy deployment environment
  * @param env - Strategy deployment environment
  * @param step - Step of the test
@@ -341,23 +368,9 @@ export async function logState(
       strat.multi.balanceOf(env.deployer!.address),
       // await assetTokenContract.balanceOf(strategy.address),
     ]);
-    const inputIndexes = [...Array(8).keys()];
-    const inputData = await env.multicallProvider!.all(
-      indexes.map((i) => strat.multi.inputs(i)),
-    );
-    let lastInputIndex = inputData.findIndex((input) => input == addressZero);
-    if (lastInputIndex < 0) lastInputIndex = inputIndexes.length; // max 8 inputs (if no empty address found)
-    const weightData = await env.multicallProvider!.all(
-      indexes.map((i) => strat.multi.inputWeights(i)),
-    );
-    const [inputAddresses, inputWeights] = [
-      inputData.slice(0, lastInputIndex),
-      weightData.slice(0, lastInputIndex),
-    ];
-    const inputs = await Promise.all(
-      inputAddresses.map((input: any) => SafeContract.build(input)),
-    );
-
+    const [inputAddresses, inputWeights, lpTokenAddresses] = await getInputs(env);
+    const inputs = await Promise.all(inputAddresses.map((input) => SafeContract.build(input)));
+    const lpTokens = await Promise.all(lpTokenAddresses.map((lpToken) => SafeContract.build(lpToken)));
     const rewardsAddresses = rewardTokens.map((reward) => reward.address);
     // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
     const [invested, rewardsAvailable, previewInvest, previewLiquidate] = await Promise.all([
@@ -377,6 +390,9 @@ export async function logState(
       .map((input) => input.sym + " (" + input.address)
       .join("), ")})]
     inputWeights: [${inputWeights.join(", ")}]
+    lpTokens: [${lpTokens
+      .map((lpToken) => lpToken.sym + " (" + lpToken.address)
+      .join("), ")})]
     rewardTokens: [${rewardsAddresses.join(", ")}]
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${strat.toAmount(totalSupply)} (${totalSupply}wei)
@@ -432,7 +448,7 @@ export async function logState(
     previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
       .map(
         (input, i) =>
-          `      -${input.sym}: ${asset.toAmount(
+          `      -${input.sym}: ${inputs[i].toAmount(
             previewLiquidate[i],
           )} (${previewLiquidate[i].toString()}wei)`,
       )

@@ -60,12 +60,12 @@ export const addresses = {
       AsMaths: "",
       AsArrays: "",
       AsAccounting: "",
+      AccessController: "",
     },
     astrolab: {
-      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      // Swapper: "0xac64a35e398699dd3f22d4ba2252e5153c40fe9c",
+      Swapper: "0x281cc759925fc757c9bade12b2b001d6d646417f",
       StrategyV5Agent: "",
-      "Astrolab CompoundV3 USD" : "",
+      "Astrolab Primitive CompoundV3 USD": "",
     },
     tokens: {
       WETH: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
@@ -545,10 +545,10 @@ export const addresses = {
       AsArrays: "",
       // AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718", // PROD
       AsAccounting: "",
-      AccessController: "",
-      ChainlinkProvider: "",
     },
     astrolab: {
+      AccessController: "",
+      PriceProvider: "",
       Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
       // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
       StrategyV5Agent: "",
@@ -606,7 +606,7 @@ export const addresses = {
     astrolab: {
       Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
       AccessController: "",
-      ChainlinkProvider: "",
+      PriceProvider: "",
       StrategyV5Agent: "",
       "Astrolab Lodestar USD": "",
       "Astrolab Primitive CompoundV3 USD": "",

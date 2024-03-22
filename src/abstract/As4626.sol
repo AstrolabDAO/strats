@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
+import "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./As4626Abstract.sol";
@@ -680,12 +681,23 @@ abstract contract As4626 is ERC20, As4626Abstract {
         revert Errors.AmountTooHigh(_shares);
       }
     }
+
+    console.log(_shares, "burning users shares");
+
     _burn(_owner, _shares);
 
     // check if burning the shares will bring the totalSupply below the minLiquidity
+
+    uint256 minLiquidityInShares = minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset);
+    uint256 newSupply = totalSupply();
+
+    console.log(newSupply, "newSupply");
+    console.log(minLiquidityInShares, "minLiquidityInShares");
+
     if (
-      totalSupply()
-        < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
+      newSupply < minLiquidityInShares
+      // totalSupply()
+      //   < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
     ) {
       revert Errors.Unauthorized();
     }
@@ -695,7 +707,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     asset.safeTransfer(_receiver, _amount);
 
     // re-calculate the sharePrice dynamically to avoid sharePrice() distortion
-    uint256 newSupply = totalAccountedSupply();
+    newSupply = totalAccountedSupply();
     if (newSupply > 1) {
       uint256 totalValueBefore = last.sharePrice * (newSupply + _shares);
       uint256 totalValueAfter = totalValueBefore - (_shares * worstPrice);

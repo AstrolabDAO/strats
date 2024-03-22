@@ -26,7 +26,7 @@ library AsAccounting {
   ╚═══════════════════════════════════════════════════════════════*/
 
   uint256 public constant MAX_PERF_FEE = 5_000; // 50%
-  uint256 public constant MAX_MGMT_FEE = 500; // 5%
+  uint256 public constant MAX_MGMT_FEE = 10_00; // 10%
   uint256 public constant MAX_ENTRY_FEE = 200; // 2%
   uint256 public constant MAX_EXIT_FEE = 200; // 2%
   uint256 public constant MAX_FLASH_LOAN_FEE = 200; // 2%
