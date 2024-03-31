@@ -92,7 +92,7 @@ contract CompoundV3MultiStakeTest is Test {
     vm.startPrank(admin);
 
     // deploy strategy and agent back-end
-    accessController = new AccessController();
+    accessController = new AccessController(admin);
     console.log("is admin: ", accessController.hasRole(Roles.ADMIN, admin));
 
     oracle = new ChainlinkProvider(address(accessController));

@@ -130,9 +130,9 @@ contract AccessController {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor() {
-    _grantRole(Roles.ADMIN, msg.sender);
-    _grantRole(Roles.MANAGER, msg.sender);
+  constructor(address _admin) {
+    _grantRole(Roles.ADMIN, _admin);
+    _grantRole(Roles.MANAGER, _admin);
     _setRoleAdmin(Roles.KEEPER, Roles.ADMIN);
     _setRoleAdmin(Roles.MANAGER, Roles.ADMIN);
   }

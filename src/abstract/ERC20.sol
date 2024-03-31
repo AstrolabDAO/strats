@@ -108,11 +108,7 @@ abstract contract ERC20 is ERC20Abstract {
   /*                      STORAGE INITIALIZER                   */
   /*.•°:°.´+˚.*°.˚:*.´•*.+°.•°:´*.´•*.•°.•°:°.´:•˚°.*°.˚:*.´+°.•*/
 
-  function _init(
-    string memory _name,
-    string memory _symbol,
-    uint8 _decimals
-  ) internal {
+  function _init(string memory _name, string memory _symbol, uint8 _decimals) internal {
     require(!_initialized);
     name = _name;
     symbol = _symbol;

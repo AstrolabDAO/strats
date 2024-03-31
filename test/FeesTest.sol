@@ -14,11 +14,10 @@ import {AsArrays} from "../src/libs/AsArrays.sol";
 import {AsMaths} from "../src/libs/AsMaths.sol";
 import {AccessController} from "../src/abstract/AccessController.sol";
 import {ChainlinkProvider} from "../src/abstract/ChainlinkProvider.sol";
-import {CompoundV3MultiStake} from
-  "../src/implementations/Compound/CompoundV3MultiStake.sol";
 import {StrategyV5} from "../src/abstract/StrategyV5.sol";
-import {IStrategyV5} from "../src/interfaces/IStrategyV5.sol";
 import {StrategyV5Agent} from "../src/abstract/StrategyV5Agent.sol";
+import {IAs4626} from "../src/interfaces/IAs4626.sol";
+import {IStrategyV5} from "../src/interfaces/IStrategyV5.sol";
 import {ERC20} from "../src/abstract/ERC20.sol";
 
 contract FeesTest is Test {
@@ -32,15 +31,12 @@ contract FeesTest is Test {
 
   address USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831; // asset/input[0]
   address USDCe = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8; // input[1]
-  address COMP = 0x354A6dA3fcde098F8389cad84b0182725c6C91dE; // reward[0]
   address WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1; // wgas
 
   address ETH_FEED = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
   address USDC_FEED = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
   address USDCe_FEED = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
-  address cUSDC = 0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf;
-  address cometRewards = 0x88730d254A2f7e6AC8388c3198aFd694bA9f7fae;
   address swapper = 0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255;
   address rich = 0x489ee077994B6658eAfA855C308275EAd8097C4A;
 
@@ -67,14 +63,29 @@ contract FeesTest is Test {
     vm.stopPrank();
   }
 
-  function deploy() public {
-    vm.startPrank(admin);
+  function logState(string memory _msg) public {
+    string memory s = "state";
+    vm.serializeUint(s, "sharePrice", strat.sharePrice());
+    vm.serializeUint(s, "totalSupply", strat.totalSupply());
+    vm.serializeUint(s, "totalAccountedSupply", strat.totalAccountedSupply());
+    vm.serializeUint(s, "totalAccountedAssets", strat.totalAccountedAssets());
+    vm.serializeUint(s, "invested", strat.invested());
+    vm.serializeUint(s, "available", strat.available());
+    vm.serializeUint(s, "userBalance", strat.balanceOf(user));
+    vm.serializeUint(s, "strategyAssetBalance", usdc.balanceOf(address(strat)));
+    vm.serializeUint(s, "claimableAssetFees", strat.claimableAssetFees());
+    uint256[] memory previewLiquidate = strat.previewLiquidate(0).dynamic();
+    vm.serializeUint(s, "previewLiquidate", previewLiquidate);
+    uint256[] memory previewInvest = strat.previewInvest(0).dynamic();
+    s = vm.serializeUint(s, "previewInvest", previewInvest);
+    console.log(_msg, s);
+  }
 
-    // deploy strategy and agent back-end
-    accessController = new AccessController();
-    console.log("is admin: ", accessController.hasRole(Roles.ADMIN, admin));
-
+  function deployDependencies() public {
+    accessController = new AccessController(admin);
+    grantRoles();
     oracle = new ChainlinkProvider(address(accessController));
+    vm.prank(admin);
     oracle.update(
       abi.encode(
         ChainlinkProvider.Params({
@@ -85,19 +96,23 @@ contract FeesTest is Test {
       )
     );
     agent = address(new StrategyV5Agent(address(accessController)));
-    strat = IStrategyV5(address(new CompoundV3MultiStake(address(accessController))));
-    strat.setExemption(admin, true); // self exempt to avoid paying fees on deposit etc
-    vm.stopPrank();
   }
 
-  function init(Fees memory _mockFees) public {
-    vm.startPrank(admin);
+  function deployStrat(Fees memory _fees) public {
+    strat = IStrategyV5(address(new StrategyV5(address(accessController))));
+    vm.prank(admin);
+    strat.setExemption(admin, true); // self exempt to avoid paying fees on deposit etc
+    init(_fees);
+    seedLiquidity(1000e6);
+    logState("deployed new dummy strat");
+  }
 
+  function init(Fees memory _fees) public {
     // initialize the strategy
     // ERC20 metadata
     Erc20Metadata memory erc20Meta = Erc20Metadata({
-      name: "Astrolab Primitive CompoundV3 USD",
-      symbol: "apCOMP-USD",
+      name: "Astrolab Primitive Dummy USD",
+      symbol: "apDUMMY-USD",
       decimals: 12
     });
     // startegy core addresses
@@ -110,130 +125,70 @@ contract FeesTest is Test {
       oracle: address(oracle)
     });
 
-    // fees
-    Fees memory mockFees = _mockFees;
-
     // aggregated strategy base parameters
     StrategyParams memory params = StrategyParams({
       erc20Metadata: erc20Meta,
       coreAddresses: coreAddresses,
-      fees: mockFees,
+      fees: _fees,
       inputs: USDC.toArray(), // [USDC]
       inputWeights: uint16(100_00).toArray16(), // 100% weight on USDC
-      lpTokens: cUSDC.toArray(),
-      rewardTokens: COMP.toArray(), // [COMP]
-      extension: abi.encode(cometRewards) // compound specific init params
+      lpTokens: USDCe.toArray(),
+      rewardTokens: USDCe.toArray(),
+      extension: new bytes(0)
     });
 
     // initialize (admin only)
+    vm.prank(admin);
     strat.init(params);
-    vm.stopPrank();
   }
 
   function grantRoles() public {
-    vm.startPrank(admin);
-
     // grant roles
+    vm.startPrank(admin);
     accessController.grantRole(Roles.KEEPER, keeper);
     accessController.grantRole(Roles.MANAGER, manager);
     vm.stopPrank();
-    vm.startPrank(manager);
     // advance time
     vm.warp(block.timestamp + accessController.ROLE_ACCEPTANCE_TIMELOCK());
+    vm.prank(manager);
     accessController.acceptRole(Roles.MANAGER);
-    vm.stopPrank();
   }
 
-  function seedLiquidity() public {
+  function seedLiquidity(uint256 _minLiquidity) public {
     vm.startPrank(admin);
     // set vault minimum liquidity
-    strat.setMinLiquidity(1000e6);
-    console.log("max deposit before unpause", strat.maxDeposit(address(0)));
-    strat.unpause();
+    strat.setMinLiquidity(_minLiquidity);
     // seed liquidity/unpause
     usdc.approve(address(strat), type(uint256).max);
-    strat.seedLiquidity(strat.minLiquidity(), type(uint256).max); // deposit 10 USDC (minLiquidity), set maxTVL to 1m USDC
+    strat.seedLiquidity(_minLiquidity, type(uint256).max); // deposit 10 USDC (minLiquidity), set maxTVL to 1m USDC
     vm.stopPrank();
   }
 
   function entryFees(Fees memory _fees) public {
     console.log("--- entryFees test ---");
     // new strat on every fees test
-    deploy();
-    init(_fees);
-    grantRoles();
-    seedLiquidity();
-    // resetStrat();
-    vm.startPrank(user);
+    deployStrat(_fees);
     // deposit
     uint256 feesBefore = strat.claimableAssetFees();
+    vm.startPrank(user);
     usdc.approve(address(strat), type(uint256).max);
     strat.deposit(1000e6, user); // same as safeDeposit
     uint256 entryFeeFromDeposit = strat.claimableAssetFees() - feesBefore;
     console.log(entryFeeFromDeposit, "entry fee from deposit");
     // mint
-    strat.mint(strat.convertToShares(1000e6), user); // same as safeMint
+    strat.mint(strat.convertToShares(1000e6, true), user); // same as safeMint
+    vm.stopPrank();
     uint256 entryFeeFromMint = strat.claimableAssetFees() - entryFeeFromDeposit - feesBefore;
     console.log(entryFeeFromMint, "entry fee from mint ");
     // assert
     if (entryFeeFromDeposit != entryFeeFromMint) {
       revert("Deposit and mint fees do not match");
     }
-    vm.stopPrank();
   }
-
-  // function resetStrat() public {
-  //   vm.startPrank(user);
-  //   console.log("--- reset ---");
-  //   uint256 minLiquidity = strat.minLiquidity();
-
-  //   console.log(usdc.balanceOf(address(strat)), "strat balance before reset");
-  //   console.log(strat.totalSupply(), "total supply before reset");
-  //   console.log(strat.totalAssets(), "total assets before reset");
-  //   console.log(strat.sharePrice(), "sharePrice before reset");
-  //   console.log(minLiquidity, "min liquidity before reset");
-
-  //   // burn the user's shares
-  //   uint256 userBalance = strat.balanceOf(user);
-  //   if (userBalance > 0) {
-  //     console.log(userBalance, "user shares before reset");
-  //     strat.redeem(userBalance - 1, user, user); // burn all shares
-  //   }
-  //   console.log(strat.balanceOf(user), "user shares after reset");
-  //   vm.stopPrank();
-
-  //   vm.startPrank(address(strat));
-  //   usdc.transfer(address(admin), usdc.balanceOf(address(strat)) - minLiquidity); // burn all assets but the minLiquidity
-  //   // reset total supply
-  //   assembly { sstore(_TOTAL_SUPPLY_SLOT, minLiquidity) } // reinitialize total supply
-  //   // strat.last.totalAssets = minLiquidity; // reinitialize cached total assets
-  //   // strat.last.sharePrice = 10 ** strat.decimals(); // reinitialize cached share price
-  //   console.log(usdc.balanceOf(address(strat)), "strat balance after reset");
-  //   console.log(strat.totalSupply(), "total supply after reset");
-  //   console.log(strat.totalAssets(), "total assets after reset");
-  //   console.log(strat.sharePrice(), "sharePrice after reset");
-  //   vm.stopPrank();
-  // }
-
-  // function resetStratTo(address receiver, uint256 shares) public {
-  //   resetStrat();
-  //   vm.startPrank(admin);
-  //   strat.mint(shares, admin); // mint shares without entry fee (depositing 1:1)
-  //   strat.transfer(receiver, shares); // transfer shares to user
-  //   console.log(usdc.balanceOf(address(strat)), "strat balance after reset+to");
-  //   console.log(strat.totalSupply(), "total supply after reset+to");
-  //   console.log(strat.totalAssets(), "total assets after reset+to");
-  //   console.log(strat.sharePrice(), "sharePrice after reset+to");
-  //   vm.stopPrank();
-  // }
 
   function exitFees(Fees memory _fees) public returns (uint256) {
     console.log("--- exitFees test ---");
-    // new strat on every fees test
-    deploy();
-    init(_fees);
-    grantRoles();
-    seedLiquidity();
+    deployStrat(_fees);
 
     // resetStratTo(user, 2000e6);
     vm.startPrank(user);
@@ -243,39 +198,44 @@ contract FeesTest is Test {
     strat.deposit(3000e6, user); // same as safeDeposit
     // withdraw
     uint256 feesBefore = strat.claimableAssetFees();
-    strat.withdraw(999e6, user, user); // same as safeWithdraw
+    strat.withdraw(1000e6, user, user); // same as safeWithdraw
     uint256 exitFeeFromWithdraw = strat.claimableAssetFees() - feesBefore;
-    console.log(exitFeeFromWithdraw, "EXIT FEE from withdraw");
+    console.log(exitFeeFromWithdraw, "exit fee from withdraw");
     // redeem
-    strat.redeem(strat.convertToShares(999e6), user, user); // same as safeRedeem
+    strat.redeem(strat.convertToShares(1000e6), user, user); // same as safeRedeem
+    vm.stopPrank();
     uint256 exitFeeFromRedeem = strat.claimableAssetFees() - exitFeeFromWithdraw - feesBefore;
-    console.log(exitFeeFromRedeem, "EXIT FEE from redeem");
+    console.log(exitFeeFromRedeem, "exit fee from redeem");
     // assert
     if (exitFeeFromWithdraw != exitFeeFromRedeem) {
       revert("Withdraw and redeem fees do not match");
     }
-    vm.stopPrank();
     return exitFeeFromWithdraw;
+  }
+
+  function previewCollectFees() public returns (uint256) {
+    vm.prank(manager);
+    (bool success, bytes memory data) = address(strat).staticcall(abi.encodeWithSelector(IAs4626.collectFees.selector));
+    if (!success) {
+      revert("collectFees static call failed");
+    }
+    return abi.decode(data, (uint256));
   }
 
   // Test management fee after fast-forwarding time
   function managementFees(Fees memory _fees) public {
     console.log("--- mgmtFees test ---");
-    // new strat on every fees test
-    deploy();
-    init(_fees);
-    grantRoles();
-    seedLiquidity();
-
+    deployStrat(_fees);
     vm.startPrank(user);
     // deposit
     usdc.approve(address(strat), type(uint256).max);
     strat.deposit(1000e6, user);
-    uint256 feeBefore = strat.claimableAssetFees(); // existing + entry fee
+    vm.stopPrank();
+    uint256 feeBefore = previewCollectFees(); // existing + entry fee
     // fast-forward time 1 year without changing the share price (no performance fees)
     vm.warp(block.timestamp + 365 days);
     // check management fee
-    uint256 mgmtFees = strat.claimableAssetFees() - feeBefore; // only management fees, no perf as sharePrice is constant
+    uint256 mgmtFees = previewCollectFees() - feeBefore; // only management fees, no perf as sharePrice is constant
     console.log(mgmtFees, ": 1 year MGMT FEE");
 
     uint256 theoreticalMgmtFees = strat.totalAssets().mulDiv(strat.fees().mgmt, AsMaths.BP_BASIS);
@@ -283,28 +243,22 @@ contract FeesTest is Test {
     if (mgmtFees != theoreticalMgmtFees) {
       revert("Management fee does not match");
     }
-    vm.stopPrank();
   }
 
   // Test performance fee by simulating strategy performance
   function performanceFees(Fees memory _fees) public {
     console.log("--- perfFees test ---");
-    // new strat on every fees test
-    deploy();
-    init(_fees);
-    grantRoles();
-    seedLiquidity();
+    deployStrat(_fees);
 
     // set profit cooldown to 1 second
-    vm.startPrank(admin);
+    vm.prank(admin);
     strat.setProfitCooldown(1 seconds); // no share price linearization
-    vm.stopPrank();
-
     vm.startPrank(user);
     // deposit
     usdc.approve(address(strat), type(uint256).max);
     strat.deposit(1000e6, user);
-    uint256 feeBefore = strat.claimableAssetFees(); // pre-existing fee
+
+    uint256 feeBefore = previewCollectFees(); // pre-existing fee
     uint256 sharePriceBefore = strat.sharePrice();
 
     // pump share price through total assets
@@ -316,7 +270,7 @@ contract FeesTest is Test {
     uint256 sharePriceDiffBps = (sharePriceAfter - sharePriceBefore).mulDiv(AsMaths.BP_BASIS, sharePriceAfter); // eg. 50% of current share price
 
     // check perf fee
-    uint256 perfFees = strat.claimableAssetFees() - feeBefore; // only management fees, no perf as sharePrice is constant
+    uint256 perfFees = previewCollectFees() - feeBefore; // only management fees, no perf as sharePrice is constant
     console.log(perfFees, "perf fees from share price 2x");
 
     uint256 theoreticalPerfFees = (sharePriceDiffBps * strat.totalAssets()).mulDiv(strat.fees().perf, AsMaths.BP_BASIS ** 2);
@@ -324,19 +278,17 @@ contract FeesTest is Test {
     if (perfFees != theoreticalPerfFees) {
       revert("Performance fee does not match");
     }
-    vm.stopPrank();
   }
 
   // Collect fees and check against theoretical amounts
   function collectFees(Fees memory _fees) public {
     console.log("--- collectFees test ---");
-    // new strat on every fees test
-    deploy();
-    init(_fees);
-    grantRoles();
-    seedLiquidity();
-
+    deployStrat(_fees);
     vm.startPrank(manager);
+     // inflate performance
+    usdc.transfer(address(strat), 1000e6);
+    // fast-forward time
+    vm.warp(block.timestamp + 365 days);
     // collect fees
     uint256 feeBefore = strat.claimableAssetFees();
     console.log(feeBefore, "claimableAssetFees before collect fees");
@@ -348,25 +300,16 @@ contract FeesTest is Test {
   }
 
   function flow(Fees memory _fees) public {
-    entryFees(_fees);
-    exitFees(_fees);
-    // managementFees(_fees);
-    // performanceFees(_fees); // NB: must be called last, as sharePrice is not reinitialized by resetStrat
+    deployDependencies();
+    entryFees(Fees({perf: 0, mgmt: 0, entry: _fees.entry, exit: 0, flash: 0}));
+    exitFees(Fees({perf: 0, mgmt: 0, entry: 0, exit: _fees.exit, flash: 0}));
+    managementFees(Fees({perf: 0, mgmt: _fees.mgmt, entry: 0, exit: 0, flash: 0}));
+    performanceFees(Fees({perf: _fees.perf, mgmt: 0, entry: 0, exit: 0, flash: 0}));
+    // flashFees(Fees({perf: 0, mgmt: 0, entry: 0, exit: 0, flash: _fees.flash}));
     collectFees(_fees);
   }
-  function testLowFeeConfiguration() public {
-    Fees memory lowFees = Fees({perf: 10, mgmt: 10, entry: 1, exit: 1, flash: 1});
-    flow(lowFees);
-  }
 
-  function testMidFeeConfiguration() public {
-    Fees memory midFees = Fees({perf: 100, mgmt: 100, entry: 10, exit: 10, flash: 1});
-    flow(midFees);
-  }
-
-  function testHighFeeConfiguration() public {
-    Fees memory highFees =
-      Fees({perf: 10_00, mgmt: 10_00, entry: 10_0, exit: 10_0, flash: 1});
-    flow(highFees);
+  function testAll() public {
+    flow(Fees({perf: 10_00, mgmt: 10_00, entry: 1_00, exit: 1_00, flash: 1_00}));
   }
 }

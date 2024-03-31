@@ -840,7 +840,6 @@ library AsMaths {
     }
   }
 
-
   function sum(int256[8] memory data) internal pure returns (int256 total) {
     unchecked {
       for (uint256 i = 0; i < data.length; i++) {

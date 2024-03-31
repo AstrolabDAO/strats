@@ -154,7 +154,9 @@ export const deployStrat = async (
       address: env.addresses!.astrolab?.[c] ?? "",
       overrides: getOverrides(env),
     } as any;
-    if (c == "StrategyV5Agent") {
+    if (c == "AccessController") {
+      dep.args = [env.deployer!.address];
+    } else if (c == "StrategyV5Agent") {
       dep.args = [preDeployments.AccessController.address];
       dep.libraries = agentLibs;
     } else if (c == "PriceProvider") {

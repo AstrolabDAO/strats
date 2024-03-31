@@ -49,11 +49,11 @@ contract PriceProviderTest is Test {
   function setUp() public {}
 
   function deploy() public {
-    vm.startPrank(admin);
     uint256 validity = 1 days;
     // deploy strategy and agent back-end
-    accessController = new AccessController();
+    accessController = new AccessController(admin);
     oracle = new ChainlinkProvider(address(accessController));
+    vm.prank(admin);
     oracle.update(
       abi.encode(
         ChainlinkProvider.Params({
@@ -63,7 +63,6 @@ contract PriceProviderTest is Test {
         })
       )
     );
-    vm.stopPrank();
   }
 
   function getPrices() public {

@@ -243,7 +243,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    * @param _weights Array of input weights
    */
   function _setInputWeights(uint16[] calldata _weights) internal {
-
     if (_weights.length != _inputLength) {
       revert Errors.InvalidData();
     }
@@ -284,8 +283,10 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     uint16[] calldata _weights,
     address[] calldata _lpTokens
   ) internal {
-
-    if (_inputs.length > _MAX_INPUTS || _inputs.length != _weights.length || _lpTokens.length != _inputs.length) {
+    if (
+      _inputs.length > _MAX_INPUTS || _inputs.length != _weights.length
+        || _lpTokens.length != _inputs.length
+    ) {
       revert Errors.Unauthorized();
     }
     _setSwapperAllowance(0, true, false, false);

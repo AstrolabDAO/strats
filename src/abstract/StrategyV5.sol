@@ -22,8 +22,9 @@ import "./AsPriceAware.sol";
  * @author Astrolab DAO
  * @notice Common strategy back-end extended by implementations, delegating vault logic to StrategyV5Agent
  * @dev All state variables must be in StrategyV5abstract to match the proxy base storage layout (StrategyV5)
+ * @dev Can be deplpoyed standalone for dummy strategy testing
  */
-abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
+contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
   using AsMaths for uint256;
   using AsMaths for int256;
   using AsMaths for int256[8];
@@ -47,7 +48,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @notice Strategy specific initializer
    * @param _params StrategyParams struct containing strategy parameters
    */
-  function _setParams(bytes memory _params) internal virtual;
+  function _setParams(bytes memory _params) internal virtual {}
 
   /**
    * @notice Strategy specific initializer
@@ -248,7 +249,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Input equivalent to the full LP/staked LP balance
    * @dev This should be overriden by strategy implementations
    */
-  function _investedInput(uint256 _index) internal view virtual returns (uint256);
+  function _investedInput(uint256 _index) internal view virtual returns (uint256) {
+    return 0;
+  }
 
   function investedInput(uint256 _index) external view virtual returns (uint256) {
     return _investedInput(_index);
@@ -333,7 +336,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       _total = _invested();
     }
     int256 allocated = int256(_invested(_index));
-    return _totalWeight == 0 ? allocated
+    return _totalWeight == 0
+      ? allocated
       : (allocated - int256(_total.mulDiv(uint256(inputWeights[_index]), _totalWeight)));
   }
 
@@ -362,7 +366,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return amounts Array[8] of previewed liquidated amounts in input tokens
    */
   function previewLiquidate(uint256 _amount) public returns (uint256[8] memory amounts) {
-
     (uint256 allocated, uint256 cash) = (_invested(), _available());
     uint256 total = allocated + cash;
     uint256 targetAlloc = total.mulDiv(_totalWeight, AsMaths.BP_BASIS);
@@ -641,14 +644,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  function _stake(uint8 _index, uint256 _amount) internal virtual;
+  function _stake(uint8 _index, uint256 _amount) internal virtual {}
 
   /**
    * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
    * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _unstake(uint8 _index, uint256 _amount) internal virtual;
+  function _unstake(uint8 _index, uint256 _amount) internal virtual {}
 
   /**
    * @notice Invests `_amounts` of underlying assets in the strategy inputs

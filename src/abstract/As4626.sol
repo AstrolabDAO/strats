@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
+
 import "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -374,6 +375,13 @@ abstract contract As4626 is ERC20, As4626Abstract {
     return _convertToShares(_amount, false);
   }
 
+  function convertToShares(
+    uint256 _amount,
+    bool _roundUp
+  ) external view returns (uint256) {
+    return _convertToShares(_amount, _roundUp);
+  }
+
   /**
    * @notice Converts `_shares` to underlying assets at the current share price
    * @param _shares Amount of shares to convert
@@ -398,6 +406,13 @@ abstract contract As4626 is ERC20, As4626Abstract {
    */
   function convertToAssets(uint256 _shares) external view returns (uint256) {
     return _convertToAssets(_shares, false);
+  }
+
+  function convertToAssets(
+    uint256 _shares,
+    bool _roundUp
+  ) external view returns (uint256) {
+    return _convertToAssets(_shares, _roundUp);
   }
 
   /**
@@ -688,16 +703,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
 
     // check if burning the shares will bring the totalSupply below the minLiquidity
 
-    uint256 minLiquidityInShares = minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset);
-    uint256 newSupply = totalSupply();
-
-    console.log(newSupply, "newSupply");
-    console.log(minLiquidityInShares, "minLiquidityInShares");
-
     if (
-      newSupply < minLiquidityInShares
-      // totalSupply()
-      //   < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
+      totalSupply()
+        <= minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
     ) {
       revert Errors.Unauthorized();
     }
@@ -707,7 +715,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     asset.safeTransfer(_receiver, _amount);
 
     // re-calculate the sharePrice dynamically to avoid sharePrice() distortion
-    newSupply = totalAccountedSupply();
+    uint256 newSupply = totalAccountedSupply();
     if (newSupply > 1) {
       uint256 totalValueBefore = last.sharePrice * (newSupply + _shares);
       uint256 totalValueAfter = totalValueBefore - (_shares * worstPrice);
