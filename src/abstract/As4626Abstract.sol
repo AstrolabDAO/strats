@@ -100,7 +100,7 @@ abstract contract As4626Abstract is ERC20Abstract, AsManageable {
 
   Fees public fees; // current fee structure (2 slots)
   address public feeCollector; // address to collect fees
-  uint256 public claimableAssetFees; // amount of asset fees (entry+exit) that can be claimed
+  uint256 public claimableTransactionFees; // amount of asset fees (entry+exit) that can be claimed
   mapping(address => bool) public exemptionList; // list of addresses exempted from fees
 
   Requests internal _req; // (5 slots)

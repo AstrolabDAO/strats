@@ -38,7 +38,7 @@ interface IAs4626 is IERC20Metadata, IAsRescuable, IAsManageable {
     uint256 totalAssets,
     uint256 sharePrice,
     uint256 profit,
-    uint256 feesAmount,
+    uint256 totalFees,
     uint256 sharesMinted
   );
 
@@ -117,7 +117,7 @@ interface IAs4626 is IERC20Metadata, IAsRescuable, IAsManageable {
   function last() external view returns (Epoch memory);
   function fees() external view returns (Fees memory);
   function feeCollector() external view returns (address);
-  function claimableAssetFees() external view returns (uint256);
+  function claimableTransactionFees() external view returns (uint256);
 
   // ERC-7540
   function requestDeposit(

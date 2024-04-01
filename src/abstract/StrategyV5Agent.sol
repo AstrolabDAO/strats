@@ -215,7 +215,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     // reset all cached accounted values as a denomination change might change the accounting basis
     _expectedProfits = 0; // reset trailing profits
     _lenderStorage().totalLent = 0; // reset totalLent (broken analytics)
-    _collectFees(); // claim all pending fees to reset claimableAssetFees
+    _collectFees(); // claim all pending fees to reset claimableTransactionFees
 
     address swapperAddress = address(swapper);
     if (swapperAddress == address(0)) {
@@ -367,7 +367,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    */
   function availableClaimable() public view override returns (uint256) {
     return asset.balanceOf(address(this)).subMax0(
-      claimableAssetFees
+      claimableTransactionFees // entry + exit fees
+        + _lenderStorage().claimableFlashFees // flash loan fees
         + AsAccounting.unrealizedProfits(last.harvest, _expectedProfits, _profitCooldown)
     );
   }
@@ -390,5 +391,50 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
         balanceOf(msg.sender),
         AsMaths.max(claimableRedeemRequest(_owner), _convertToShares(available(), false))
       );
+  }
+
+  /**
+   * @notice Triggers a fee collection - Claims all fees by minting the equivalent `toMint` shares to `feeCollector`
+   * @return toMint Amount of shares minted to the feeCollector
+   */
+  function _collectFees() internal override returns (uint256 toMint) {
+    if (feeCollector == address(0)) {
+      revert Errors.AddressZero();
+    }
+
+    (uint256 assets, uint256 price, uint256 profit, uint256 dynamicFees) =
+      AsAccounting.claimableDynamicFees(IStrategyV5(address(this)));
+
+    // sum up all fees: dynamicFees (perf+mgmt) + claimableTransactionFees (entry+exit) + flash loan fees
+    uint256 totalFees =
+      dynamicFees + claimableTransactionFees + _lenderStorage().claimableFlashFees;
+    uint256 inflationBps = dynamicFees.mulDiv(AsMaths.BP_BASIS, assets); // claimable entry+exit+flash fees are not inflationary as subtracted from available()
+    toMint = totalFees.mulDiv(_WEI_PER_SHARE_SQUARED, price * _weiPerAsset);
+
+    // do not mint nor emit event if there are no fees to collect
+    if (toMint == 0) {
+      return 0;
+    }
+
+    _mint(feeCollector, toMint);
+
+    // re-calculate the sharePrice dynamically to avoid sharePrice() distortion
+    last.sharePrice = price.mulDiv(AsMaths.BP_BASIS, AsMaths.BP_BASIS + inflationBps);
+    last.feeCollection = uint64(block.timestamp);
+    last.accountedAssets = assets;
+    last.accountedSharePrice = last.sharePrice;
+    last.accountedProfit = profit;
+    last.accountedSupply = totalSupply();
+    claimableTransactionFees = 0; // reset entry + exit fees
+    _lenderStorage().claimableFlashFees = 0; // reset flash loan fees
+
+    emit FeeCollection(
+      feeCollector,
+      assets,
+      last.sharePrice,
+      profit, // basis AsMaths.BP_BASIS**2
+      totalFees,
+      toMint
+    );
   }
 }

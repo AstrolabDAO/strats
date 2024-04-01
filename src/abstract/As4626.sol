@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
-import "forge-std/Test.sol";
-
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./As4626Abstract.sol";
 import "./AsTypes.sol";
-import "../interfaces/IAs4626.sol";
+import "../interfaces/IStrategyV5.sol";
 import "../interfaces/IERC7540RedeemReceiver.sol";
 import "../interfaces/IERC7540DepositReceiver.sol";
 import "../libs/AsMaths.sol";
@@ -39,7 +37,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     uint256 totalAssets,
     uint256 sharePrice,
     uint256 profit,
-    uint256 feesAmount,
+    uint256 totalFees,
     uint256 sharesMinted
   );
 
@@ -297,9 +295,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @param _owner Owner of the shares to be redeemed
    * @return Maximum amount of shares that can currently be redeemed by `_owner`
    */
-  function maxRedeem(address _owner) public view virtual returns (uint256) {
-    return 0;
-  }
+  function maxRedeem(address _owner) public view virtual returns (uint256);
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                     ERC4626 DERIVED VIEWS                      ║
@@ -569,7 +565,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     // reuse the vaulAssets variable to save gas
     uint256 received = asset.balanceOf(address(this)) - vaultAssets;
     uint256 assetFees = received.bp(exemptionList[_receiver] ? 0 : fees.entry);
-    claimableAssetFees += assetFees;
+    claimableTransactionFees += assetFees;
 
     // compute the final shares (after fees and ERC20 tax)
     _shares = (received - assetFees).mulDiv(
@@ -697,20 +693,17 @@ abstract contract As4626 is ERC20, As4626Abstract {
       }
     }
 
-    console.log(_shares, "burning users shares");
-
     _burn(_owner, _shares);
 
     // check if burning the shares will bring the totalSupply below the minLiquidity
-
     if (
       totalSupply()
-        <= minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
+        < minLiquidity.mulDiv(_WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset) // eg. 1e6*(1e12*1e12)/(1e12*1e6) = 1e12
     ) {
       revert Errors.Unauthorized();
     }
 
-    claimableAssetFees += assetFees;
+    claimableTransactionFees += assetFees;
     _amount -= assetFees;
     asset.safeTransfer(_receiver, _amount);
 
@@ -987,40 +980,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @notice Triggers a fee collection - Claims all fees by minting the equivalent `toMint` shares to `feeCollector`
    * @return toMint Amount of shares minted to the feeCollector
    */
-  function _collectFees() internal returns (uint256 toMint) {
-    if (feeCollector == address(0)) {
-      revert Errors.AddressZero();
-    }
-
-    (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount) =
-      AsAccounting.computeFees(IAs4626(address(this)));
-
-    // sum up all fees: feesAmount (perf+mgmt) + claimableAssetFees (entry+exit)
-    toMint = (feesAmount + claimableAssetFees).mulDiv(
-      _WEI_PER_SHARE_SQUARED, price * _weiPerAsset
-    );
-
-    // do not mint nor emit event if there are no fees to collect
-    if (toMint == 0) {
-      return 0;
-    }
-
-    emit FeeCollection(
-      feeCollector,
-      assets,
-      price,
-      profit, // basis AsMaths.BP_BASIS**2
-      feesAmount,
-      toMint
-    );
-    _mint(feeCollector, toMint);
-    last.feeCollection = uint64(block.timestamp);
-    last.accountedAssets = assets;
-    last.accountedSharePrice = price;
-    last.accountedProfit = profit;
-    last.accountedSupply = totalSupply();
-    claimableAssetFees = 0;
-  }
+  function _collectFees() internal virtual returns (uint256 toMint);
 
   /**
    * @notice Triggers a fee collection - Claims all fees by minting the equivalent `toMint` shares to `feeCollector`

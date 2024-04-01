@@ -90,7 +90,7 @@ Here is a table view of the above described sequential storage layout
 | _expectedProfits    | uint256                     | 15   | 0      | 32    |
 | fees                | struct Fees                 | 16   | 0      | 64    |
 | feeCollector        | address                     | 18   | 0      | 20    |
-| claimableAssetFees  | uint256                     | 19   | 0      | 32    |
+| claimableTransactionFees  | uint256                     | 19   | 0      | 32    |
 | exemptionList       | mapping(address => bool)    | 20   | 0      | 32    |
 | _req                | struct Requests             | 21   | 0      | 160   |
 | _requestId          | uint256                     | 26   | 0      | 32    |
@@ -130,7 +130,7 @@ $> forge inspect --pretty CompoundV3MultiStake storage-layout`
 | _expectedProfits    | uint256                              | 15   | 0      | 32    | ./CompoundV3MultiStake.sol |
 | fees                | struct Fees                          | 16   | 0      | 64    | ./CompoundV3MultiStake.sol |
 | feeCollector        | address                              | 18   | 0      | 20    | ./CompoundV3MultiStake.sol |
-| claimableAssetFees  | uint256                              | 19   | 0      | 32    | ./CompoundV3MultiStake.sol |
+| claimableTransactionFees  | uint256                              | 19   | 0      | 32    | ./CompoundV3MultiStake.sol |
 | exemptionList       | mapping(address => bool)             | 20   | 0      | 32    | ./CompoundV3MultiStake.sol |
 | _req                | struct Requests                      | 21   | 0      | 160   | ./CompoundV3MultiStake.sol |
 | _requestId          | uint256                              | 26   | 0      | 32    | ./CompoundV3MultiStake.sol |
@@ -172,7 +172,7 @@ $> yarn hardhat check
 | AaveV3MultiStake   | _expectedProfits  | 15           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
 | AaveV3MultiStake   | fees              | 16           | 0      | t_struct(Fees)5303_storage                     | 0   | /build-info/xxx.json   | 64            |
 | AaveV3MultiStake   | feeCollector      | 18           | 0      | t_address                                      | 0   | /build-info/xxx.json   | 20            |
-| AaveV3MultiStake   | claimableAssetFees| 19           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
+| AaveV3MultiStake   | claimableTransactionFees| 19           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |
 | AaveV3MultiStake   | exemptionList     | 20           | 0      | t_mapping(t_address,t_bool)                    | 0   | /build-info/xxx.json   | 32            |
 | AaveV3MultiStake   | _req              | 21           | 0      | t_struct(Requests)5372_storage                 | 0   | /build-info/xxx.json   | 160           |
 | AaveV3MultiStake   | _requestId        | 26           | 0      | t_uint256                                      | 0   | /build-info/xxx.json   | 32            |

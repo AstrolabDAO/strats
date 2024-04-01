@@ -9,6 +9,7 @@ interface IStrategyV5 is IStrategyV5Agent, IAsProxy {
   // Events
   event Harvest(uint256 assetsReceived, uint64 timestamp);
 
+  function simulate(bytes calldata _data) external returns (bytes memory response);
   function agent() external view returns (address);
   function setParams(bytes memory _params) external;
   function init(StrategyParams memory _params) external;

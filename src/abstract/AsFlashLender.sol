@@ -31,6 +31,7 @@ abstract contract AsFlashLender is AsPermissioned, Pausable, ReentrancyGuard {
   struct FlashLenderStorage {
     uint256 maxLoan;
     uint256 totalLent;
+    uint256 claimableFlashFees;
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -125,6 +126,14 @@ abstract contract AsFlashLender is AsPermissioned, Pausable, ReentrancyGuard {
     return isLendable(_token) ? AsMaths.min(borrowable(), _lenderStorage().maxLoan) : 0;
   }
 
+  /**
+   * @notice Returns the amount of flash fees that can be claimed by the lender
+   * @return Amount of flash fees that can be claimed
+   */
+  function claimableFlashFees() public view returns (uint256) {
+    return _lenderStorage().claimableFlashFees;
+  }
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                          INITIALIZERS                          ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -167,8 +176,6 @@ abstract contract AsFlashLender is AsPermissioned, Pausable, ReentrancyGuard {
     uint256 fee = _flashFee(_receiver, _amount);
     uint256 balanceBefore = asset.balanceOf(address(this));
 
-    _lenderStorage().totalLent += _amount;
-
     // Transfer the tokens to the receiver
     asset.safeTransfer(_receiver, _amount);
 
@@ -187,6 +194,8 @@ abstract contract AsFlashLender is AsPermissioned, Pausable, ReentrancyGuard {
       revert Errors.FlashLoanDefault(_receiver, _amount);
     }
 
+    _lenderStorage().totalLent += _amount;
+    _lenderStorage().claimableFlashFees += fee;
     emit FlashLoan(msg.sender, _amount, fee);
   }
 

@@ -2,7 +2,7 @@
 pragma solidity 0.8.22;
 
 import "../abstract/AsTypes.sol";
-import "../interfaces/IAs4626.sol";
+import "../interfaces/IStrategyV5.sol";
 import "./AsCast.sol";
 import "./AsMaths.sol";
 
@@ -36,73 +36,56 @@ library AsAccounting {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @dev Computes the fees for an As4626 instance
-   * @param self As4626 contract instance
+   * @dev Computes the management and performance fees for an As4626 instance
+   * @param strat As4626 contract instance
    * @return assets Total assets of the contract
    * @return price Current share price of the contract
-   * @return profit Calculated profit since the last fee collection
-   * @return feesAmount Amount of fees to be collected
+   * @return profit Calculated profit since the last fee collection in precision bps
+   * @return totalFees Fees to be collected in assets, including management, and performance fees
    */
-  function computeFees(IAs4626 self)
+  function claimableDynamicFees(IStrategyV5 strat)
     public
     view
-    returns (uint256 assets, uint256 price, uint256 profit, uint256 feesAmount)
+    returns (uint256 assets, uint256 price, uint256 profit, uint256 totalFees)
   {
-    Epoch memory last = self.last();
-    Fees memory fees = self.fees();
-    price = self.sharePrice();
+    Epoch memory last = strat.last();
+    Fees memory fees = strat.fees();
+    assets = strat.totalAssets();
+    price = strat.sharePrice();
 
-    // calculate the duration since the last fee collection
-    uint64 duration = uint64(block.timestamp) - last.feeCollection;
-
-    // calculate the profit since the last fee collection
-    int256 change = int256(price) - int256(last.accountedSharePrice); // 1e? - 1e? = 1e?
-
-    // if called within the same block or the share price decreased, no fees are collected
-    if (duration == 0 || change < 0) return (0, price, 0, 0);
-
-    // relative profit = (change / last price) on a _PRECISION_BP_BASIS scale
-    profit = uint256(change).mulDiv(AsMaths.PRECISION_BP_BASIS, last.accountedSharePrice); // 1e? * 1e12 / 1e? = 1e12
-
-    // calculate management fees as proportion of profits on a _PRECISION_BP_BASIS scale
-    // NOTE: this is a linear approximation of the accrued profits (_SEC_PER_YEAR ~3e11)
-    uint256 mgmtFeesRel = profit.mulDiv(fees.mgmt * duration, AsMaths.SEC_PER_YEAR); // 1e12 * 1e4 * 1e? / 1e? = 1e12
-
-    // calculate performance fees as proportion of profits on a _PRECISION_BP_BASIS scale
-    uint256 perfFeesRel = profit * fees.perf; // 1e12 * 1e4 = 1e12
-
-    // adjust fees if it exceeds profits
-    uint256 feesRel = AsMaths.min(
-      (mgmtFeesRel + perfFeesRel) / AsMaths.BP_BASIS, // 1e12 / 1e4 = 1e12
-      profit
-    );
-
-    assets = self.totalAssets();
-    // convert fees to assets
-    feesAmount = feesRel.mulDiv(assets, AsMaths.PRECISION_BP_BASIS); // 1e12 * 1e? / 1e12 = 1e? (asset decimals)
-    return (assets, price, profit, feesAmount);
+    uint256 elapsed = block.timestamp - uint256(last.feeCollection); // time since last collection
+    int256 change = int256(price) - int256(last.accountedSharePrice); // raw price change
+    if (elapsed == 0 || (change < 0 && fees.mgmt == 0)) {
+      return (assets, price, 0, 0); // no fees to collect
+    }
+    uint256 durationBps = elapsed.mulDiv(AsMaths.PRECISION_BP_BASIS, AsMaths.SEC_PER_YEAR); // relative duration (yearly) in bps
+    uint256 profitBps = uint256(change).mulDiv(AsMaths.PRECISION_BP_BASIS, price); // relative profit in bps
+    totalFees = assets.mulDiv(
+      (profitBps * fees.perf) + (durationBps * fees.mgmt),
+      AsMaths.PRECISION_BP_BASIS * AsMaths.BP_BASIS // debase in assets
+    ); // perf + mgmt fees
+    return (assets, price, profitBps, totalFees);
   }
 
   /**
-   * @notice Computes the unrealized profits by accruing `_expectedProfits` linearly over `_profitCooldown`
-   * @param lastHarvest Timestamp of the last harvest
+   * @notice Computes the unrealized profits by accruing harvested `_expectedProfits` linearly over `_profitCooldown`
+   * @param _lastHarvest Timestamp of the last harvest
    * @param _expectedProfits Expected profits since the last harvest, unrealized
    * @param _profitCooldown Cooldown period for realizing gains
    * @return Amount of profits that are not yet realized
    */
   function unrealizedProfits(
-    uint256 lastHarvest,
+    uint256 _lastHarvest,
     uint256 _expectedProfits,
     uint256 _profitCooldown
   ) public view returns (uint256) {
-    // if the cooldown period is over, gains are realized
-    if (lastHarvest + _profitCooldown < block.timestamp) {
-      return 0;
+    if (_lastHarvest + _profitCooldown < block.timestamp) {
+      return 0; // no profits to realize
     }
 
     // calculate unrealized profits during cooldown using mulDiv for precision
-    uint256 elapsedTime = block.timestamp - lastHarvest;
-    uint256 realizedProfits = _expectedProfits.mulDiv(elapsedTime, _profitCooldown);
+    uint256 elapsed = block.timestamp - _lastHarvest;
+    uint256 realizedProfits = _expectedProfits.mulDiv(elapsed, _profitCooldown);
 
     // return the amount of profits that are not yet realized
     return _expectedProfits - realizedProfits;
