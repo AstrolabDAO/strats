@@ -10,6 +10,8 @@ import {
   Errors,
   Roles
 } from "../../src/abstract/AsTypes.sol";
+
+import { AsRescuable } from "../../src/abstract/AsRescuable.sol";
 import {StrategyV5Simulator} from "../../src/implementations/StrategyV5Simulator.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
@@ -37,6 +39,7 @@ abstract contract TestEnv is Test {
 
   AccessController accessController;
   IStrategyV5 strat;
+  AsRescuable asRescuable;
   ChainlinkProvider oracle;
   address agent;
 
@@ -135,6 +138,10 @@ abstract contract TestEnv is Test {
   }
 
   function init(Fees memory _fees) public virtual;
+
+  function deployAsRescuable() public {
+    asRescuable = AsRescuable(address(new StrategyV5Simulator(address(accessController))));
+  }
 
   function deployStrat(Fees memory _fees, uint256 _minLiquidity) public {
     strat = IStrategyV5(address(new StrategyV5Simulator(address(accessController))));
