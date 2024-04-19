@@ -27,13 +27,17 @@ library AsArrays {
    */
   function sum(uint256[] storage self) public view returns (uint256 value) {
     assembly {
-      let ptr := mload(0x40) // safe memory pointer
+      let ptr := mload(0x40) // free memory pointer
       mstore(ptr, self.slot) // store the array's slot
+      mstore(0x40, add(ptr, 0x20)) // update the free memory pointer
+      let len := sload(self.slot) // array length
 
-      for { let i := 0 } lt(i, sload(self.slot)) { i := add(i, 1) } {
+      for { let i := 0 } lt(i, len) { i := add(i, 1) } {
         let el := sload(add(keccak256(ptr, 0x20), i)) // load each element
         value := add(value, el) // accumulate the sum
       }
+
+      mstore(0x40, add(ptr, 0x20)) // update the free memory pointer
     }
   }
 
@@ -44,22 +48,17 @@ library AsArrays {
    */
   function max(uint256[] storage self) public view returns (uint256 value) {
     assembly {
-      let ptr := mload(0x40) // load the current free memory pointer
-      mstore(ptr, self.slot) // store the array's slot at the safe memory location
-      value := sload(keccak256(ptr, 0x20)) // load the first element of the array
-
-      // get the array's length
-      let len := sload(self.slot)
+      let ptr := mload(0x40) // free memory pointer
+      mstore(ptr, self.slot) // store the array's slot
+      mstore(0x40, add(ptr, 0x20)) // update the free memory pointer
+      value := sload(keccak256(ptr, 0x20)) // init max value with the first element
+      let len := sload(self.slot) // array length
 
       // iterate over the array
       for { let i := 0 } lt(i, len) { i := add(i, 1) } {
-        // compute the keccak256 hash of the slot and index to access the array element
-        let el := sload(add(keccak256(ptr, 0x20), i))
-        // check if the current element is greater than the current max value
+        let el := sload(add(keccak256(ptr, 0x20), i)) // load element
         if gt(el, value) { value := el } // update max value
       }
-
-      // no need to update the free memory pointer since we didn't allocate more memory
     }
   }
 
@@ -69,18 +68,17 @@ library AsArrays {
    * @return value Minimum value in the array
    */
   function min(uint256[] storage self) public view returns (uint256 value) {
-    bool initialized;
     assembly {
-      let ptr := mload(0x40) // safe memory pointer
+      let ptr := mload(0x40) // free memory pointer
       mstore(ptr, self.slot) // store the array's slot
+      mstore(0x40, add(ptr, 0x20)) // update the free memory pointer
+      value := sload(keccak256(ptr, 0x20)) // init min value with the first element
+      let len := sload(self.slot) // array length
 
-      for { let i := 0 } lt(i, sload(self.slot)) { i := add(i, 1) } {
-        let el := sload(add(keccak256(ptr, 0x20), i)) // load each element
-        // initialize value with the first element or update it if a new minimum is found
-        if or(iszero(initialized), lt(el, value)) {
-          value := el
-          initialized := 1
-        }
+      // iterate over the array
+      for { let i := 0 } lt(i, len) { i := add(i, 1) } {
+        let el := sload(add(keccak256(ptr, 0x20), i)) // load element
+        if lt(el, value) { value := el } // update min value
       }
     }
   }
@@ -94,75 +92,6 @@ library AsArrays {
     assembly {
       ptr := data
     }
-  }
-
-  /**
-   * @dev Slices a portion of a uint256 array
-   * @param data Uint256 array to slice
-   * @param begin Starting index of the slice
-   * @param length Length of the slice
-   * @return Sliced uint256 array
-   */
-  function slice(
-    uint256[] memory data,
-    uint256 begin,
-    uint256 length
-  ) internal pure returns (uint256[] memory) {
-    require(data.length >= begin + length); // out of bounds
-
-    uint256[] memory tempArray = new uint256[](length);
-
-    if (length > 0) {
-      assembly {
-        let src := add(add(data, 0x20), mul(begin, 0x20)) // src start
-        let dst := add(tempArray, 0x20) // dst start
-        // let copyLength := mul(length, 0x20) // bytes length
-        // mcopy(dst, src, copyLength) // <-- cancun
-        let end := add(src, length) // end pos
-        for {} lt(src, end) {} {
-          // loop until src+length
-          mstore(dst, mload(src)) // copy 32 bytes
-          src := add(src, 0x20) // move src pointer 32 bytes fwd
-          dst := add(dst, 0x20) // move dst pointer 32 bytes fwd
-        }
-      }
-    }
-
-    return tempArray;
-  }
-
-  /**
-   * @dev Slices a portion of a bytes array
-   * @param data Bytes array to slice
-   * @param begin Starting index of the slice
-   * @param length Length of the slice
-   * @return Sliced portion of the bytes array
-   */
-  function slice(
-    bytes memory data,
-    uint256 begin,
-    uint256 length
-  ) internal pure returns (bytes memory) {
-    require(data.length >= begin + length); // out of bounds
-
-    bytes memory tempBytes = new bytes(length);
-
-    if (length > 0) {
-      assembly {
-        let src := add(add(data, 0x20), begin) // src start
-        let dst := add(tempBytes, 0x20) // dst start
-        // mcopy(dst, src, length) // use mcopy to copy the data
-        let end := add(src, length) // end position of copying based on length
-        for {} lt(src, end) {} {
-          // loop until src+length
-          mstore(dst, mload(src)) // copy 32 bytes
-          src := add(src, 0x20) // move src pointer 32 bytes fwd
-          dst := add(dst, 0x20) // move dst pointer 32 bytes fwd
-        }
-      }
-    }
-
-    return tempBytes;
   }
 
   /**

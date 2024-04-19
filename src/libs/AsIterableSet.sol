@@ -209,6 +209,7 @@ library AsIterableSet {
    * @param o The element to be added
    */
   function unshift(Set storage s, bytes32 o) internal {
+    require(s.index[o] == 0); // prevent duplicates
     if (s.data.length == 0) {
       s.data.push(o);
     } else {
@@ -216,8 +217,8 @@ library AsIterableSet {
       s.data.push(firstElement); // push it back
       s.index[firstElement] = uint32(s.data.length); // update its index to last
       s.data[0] = o; // use the freed first slot to insert o
-      s.index[o] = 1; // freed index
     }
+    s.index[o] = 1; // update its index to first
   }
 
   /**
