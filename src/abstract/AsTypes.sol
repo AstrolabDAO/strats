@@ -90,6 +90,7 @@ library Errors {
   ║                             ERRORS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
+  error InvalidInitStatus();
   error Unauthorized();
   error FailedDelegateCall();
   error AmountTooHigh(uint256 amount);

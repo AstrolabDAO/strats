@@ -61,6 +61,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
     CoreAddresses memory _coreAddresses,
     Fees memory _fees
   ) internal {
+    if (_initialized) revert Errors.InvalidInitStatus();
     ERC20._init(_erc20Metadata.name, _erc20Metadata.symbol, _erc20Metadata.decimals); // super().init()
     asset = IERC20Metadata(_coreAddresses.asset);
     _assetDecimals = asset.decimals();
