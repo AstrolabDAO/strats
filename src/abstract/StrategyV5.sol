@@ -644,14 +644,14 @@ contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
    * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  function _stake(uint8 _index, uint256 _amount) internal virtual {}
+  function _stake(uint256 _index, uint256 _amount) internal virtual {}
 
   /**
    * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
    * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _unstake(uint8 _index, uint256 _amount) internal virtual {}
+  function _unstake(uint256 _index, uint256 _amount) internal virtual {}
 
   /**
    * @notice Invests `_amounts` of underlying assets in the strategy inputs
@@ -666,7 +666,7 @@ contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
     uint256 spent;
     uint256 toStake;
 
-    for (uint8 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength;) {
       if (_amounts[i] < 10) {
         unchecked {
           i++;
@@ -744,7 +744,7 @@ contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
     uint256 recovered;
     uint256 totalLiquidated;
 
-    for (uint8 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength;) {
       if (_amounts[i] < 10) {
         unchecked {
           i++;
@@ -754,7 +754,7 @@ contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
       toUnstake = _inputToStake(_amounts[i], i);
       // AsMaths.min(_inputToStake(_amounts[i], i), lpTokens[i].balanceOf(address(this)));
       uint256 balanceBefore = inputs[i].balanceOf(address(this));
-      _unstake(i, toUnstake);
+      _unstake(uint8(i), toUnstake);
       recovered = inputs[i].balanceOf(address(this)) - balanceBefore; // `inputs[i]` recovered
 
       // swap the unstaked `input[i]` tokens for underlying assets if necessary

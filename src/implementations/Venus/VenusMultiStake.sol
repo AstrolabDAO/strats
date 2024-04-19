@@ -59,7 +59,7 @@ contract VenusMultiStake is StrategyV5 {
    * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  function _stake(uint8 _index, uint256 _amount) internal override {
+  function _stake(uint256 _index, uint256 _amount) internal override {
     IVToken(address(lpTokens[_index])).mint(_amount);
   }
 
@@ -68,7 +68,7 @@ contract VenusMultiStake is StrategyV5 {
    * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _unstake(uint8 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _index, uint256 _amount) internal override {
     IVToken(address(lpTokens[_index])).redeem(_amount);
   }
 

@@ -72,7 +72,7 @@ contract CompoundV3MultiStake is StrategyV5 {
    * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  function _stake(uint8 _index, uint256 _amount) internal override {
+  function _stake(uint256 _index, uint256 _amount) internal override {
     IComet(address(lpTokens[_index])).supply(address(inputs[_index]), _amount);
   }
 
@@ -81,7 +81,7 @@ contract CompoundV3MultiStake is StrategyV5 {
    * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _unstake(uint8 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _index, uint256 _amount) internal override {
     IComet(address(lpTokens[_index])).withdraw(address(inputs[_index]), _amount);
   }
 
@@ -133,7 +133,7 @@ contract CompoundV3MultiStake is StrategyV5 {
    */
   function _rebaseAccruedReward(
     uint256 _amount,
-    uint8 _index
+    uint256 _index
   ) internal view returns (uint256) {
     ICometRewards.RewardConfig memory config = _rewardConfigs[_index];
     return config.shouldUpscale

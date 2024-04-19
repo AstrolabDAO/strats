@@ -249,7 +249,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     _totalWeight = 0;
     delete inputWeights;
 
-    for (uint8 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength;) {
       inputWeights[i] = _weights[i];
 
       // check for overflow before adding the weight

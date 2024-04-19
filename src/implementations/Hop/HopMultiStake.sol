@@ -60,7 +60,7 @@ contract HopMultiStake is StrategyV5 {
    * @notice Sets the reward pools
    * @param rewardPools Array of reward pools
    */
-  function setRewardPools(address[] memory rewardPools, uint8 _index) public onlyAdmin {
+  function setRewardPools(address[] memory rewardPools, uint256 _index) public onlyAdmin {
     // for (uint8 j = 0; j < _rewardPools[_index].length; j++) {
     IStakingRewards pool = IStakingRewards(rewardPools[0]);
     // if (addr == address(0)) break;
@@ -101,7 +101,7 @@ contract HopMultiStake is StrategyV5 {
    */
   function _addLiquiditySingleSide(
     uint256 _amount,
-    uint8 _index
+    uint256 _index
   ) internal returns (uint256 deposited) {
     deposited = _stableRouters[_index].addLiquidity({
       amounts: _tokenIndexes[_index] == 0 ? _amount.toArray(0) : uint256(0).toArray(_amount), // determine the side from the token index
@@ -115,7 +115,7 @@ contract HopMultiStake is StrategyV5 {
    * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  function _stake(uint8 _index, uint256 _amount) internal override {
+  function _stake(uint256 _index, uint256 _amount) internal override {
     _rewardPools[_index][0].stake(_addLiquiditySingleSide(_amount, _index));
   }
 
@@ -124,7 +124,7 @@ contract HopMultiStake is StrategyV5 {
    * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _unstake(uint8 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _index, uint256 _amount) internal override {
     _rewardPools[_index][0].withdraw(_amount);
     _stableRouters[_index].removeLiquidityOneToken({
       tokenAmount: lpTokens[_index].balanceOf(address(this)),
