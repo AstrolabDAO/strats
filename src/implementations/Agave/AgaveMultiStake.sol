@@ -171,4 +171,14 @@ contract AgaveMultiStake is StrategyV5 {
     uint256 rewardValueOfPool = rewardInPool * (100 / weights[rewardIndex]); // total value of the pool in reward token 1e18
     return ((rewardValueOfPool * shareOfSupply).subBp(200) / 1e18).toArray(); // 1e18+1e18-1e18 = 1e18
   }
+
+  /**
+   * @notice Sets allowances for third party contracts (except rewardTokens)
+   * @param _amount Allowance amount
+   */
+  function _setAllowances(uint256 _amount) internal override {
+    for (uint8 i = 0; i < _inputLength; i++) {
+      inputs[i].forceApprove(address(lpTokens[i]), _amount);
+    }
+  }
 }

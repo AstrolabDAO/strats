@@ -24,7 +24,7 @@ import "./AsPriceAware.sol";
  * @dev All state variables must be in StrategyV5abstract to match the proxy base storage layout (StrategyV5)
  * @dev Can be deplpoyed standalone for dummy strategy testing
  */
-contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
+abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
   using AsMaths for uint256;
   using AsMaths for int256;
   using AsMaths for int256[8];
@@ -48,7 +48,7 @@ contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
    * @notice Strategy specific initializer
    * @param _params StrategyParams struct containing strategy parameters
    */
-  function _setParams(bytes memory _params) internal virtual {}
+  function _setParams(bytes memory _params) internal virtual;
 
   /**
    * @notice Strategy specific initializer
@@ -633,7 +633,7 @@ contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
    * @notice This should be overriden by strategy implementations
    * @param _amount Amount for which to set the allowances
    */
-  function _setAllowances(uint256 _amount) internal virtual {}
+  function _setAllowances(uint256 _amount) internal virtual;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║
@@ -644,14 +644,14 @@ contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
    * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
-  function _stake(uint256 _index, uint256 _amount) internal virtual {}
+  function _stake(uint256 _index, uint256 _amount) internal virtual;
 
   /**
    * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
    * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
-  function _unstake(uint256 _index, uint256 _amount) internal virtual {}
+  function _unstake(uint256 _index, uint256 _amount) internal virtual;
 
   /**
    * @notice Invests `_amounts` of underlying assets in the strategy inputs
