@@ -389,7 +389,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
       ? 0
       : AsMaths.min(
         balanceOf(msg.sender),
-        AsMaths.max(claimableRedeemRequest(_owner), _convertToShares(available(), false))
+        AsMaths.max(claimableRedeemRequest(_owner, _owner), _convertToShares(available(), false))
       );
   }
 

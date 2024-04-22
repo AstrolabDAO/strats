@@ -66,8 +66,19 @@ abstract contract As4626Abstract is ERC20Abstract, AsManageable {
     uint256 shares
   );
 
-  // event DepositRequestCanceled(address indexed owner, uint256 assets);
-  event RedeemRequestCanceled(address indexed owner, uint256 assets);
+  event RedeemRequestCanceled(
+    address indexed receiver,
+    address indexed owner,
+    uint256 requestId,
+    uint256 shares
+  );
+
+  event DepositRequestCanceled(
+    address indexed receiver,
+    address indexed owner,
+    uint256 requestId,
+    uint256 amount
+  );
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                           CONSTANTS                            ║

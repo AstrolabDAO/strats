@@ -226,7 +226,7 @@ export async function requestWithdraw(
 ): Promise<BigNumber> {
   const { asset, inputs, strat } = env.deployment!;
   const balance = await strat.balanceOf(env.deployer.address);
-  const pendingRequest = await strat.pendingAssetRequest(env.deployer.address);
+  const pendingRequest = await strat.pendingWithdrawRequest(env.deployer.address);
   let amount = asset.toWei(_amount);
 
   if (balance.lt(10)) {
@@ -315,7 +315,7 @@ export async function requestRedeem(
 ): Promise<BigNumber> {
   const { strat } = env.deployment!;
   const balance = await strat.balanceOf(env.deployer.address);
-  const pendingRequest = await strat.pendingAssetRequest(env.deployer.address);
+  const pendingRequest = await strat.pendingWithdrawRequest(env.deployer.address);
   let amount = strat.toWei(_amount);
 
   if (balance.lt(10)) {

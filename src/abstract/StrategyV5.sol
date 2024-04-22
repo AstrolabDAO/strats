@@ -361,7 +361,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
-   * @dev Previews the amounts that would be liquidated to recover `_amount + totalPendingAssetRequest() + allocated.bp(150)` of liquidity
+   * @dev Previews the amounts that would be liquidated to recover `_amount + totalpendingWithdrawRequest() + allocated.bp(150)` of liquidity
    * @param _amount Amount of underlying assets to recover
    * @return amounts Array[8] of previewed liquidated amounts in input tokens
    */
@@ -559,7 +559,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    */
   function _totalPendingAssetsRequest() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(IAs4626.totalPendingAssetRequest.selector)
+      abi.encodeWithSelector(IAs4626.totalpendingWithdrawRequest.selector)
     );
     return success ? abi.decode(res, (uint256)) : 0;
   }

@@ -145,12 +145,12 @@ interface IAs4626 is IERC20Metadata, IAsRescuable, IAsManageable {
   function totalRedemptionRequest() external view returns (uint256);
   function totalClaimableRedemption() external view returns (uint256);
   function pendingRedeemRequest(address) external view returns (uint256);
-  function pendingAssetRequest(address) external view returns (uint256);
+  function pendingWithdrawRequest(address) external view returns (uint256);
   function isRequestClaimable(uint256) external view returns (bool);
   function maxClaimableAsset() external view returns (uint256);
   function claimableRedeemRequest(address) external view returns (uint256);
   function totalPendingRedemptionRequest() external view returns (uint256);
-  function totalPendingAssetRequest() external view returns (uint256);
+  function totalpendingWithdrawRequest() external view returns (uint256);
 
   // Fees logic
   function collectFees() external returns (uint256);

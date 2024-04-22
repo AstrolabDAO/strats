@@ -52,13 +52,20 @@ struct StrategyParams {
   bytes extension;
 }
 
-// ERC-7540 Request
+struct OwnerRequests {
+  uint256 totalDeposit; // total amount requested for deposit
+  uint256 totalRedemption; // total shares requested for redemption (1e12)
+  mapping(address => Erc7540Request) redemptionByReceiver; // mapping of ERC-7540 requests by owner
+  mapping(address => Erc7540Request) depositByReceiver;
+}
+
+// ERC-7540 Requests
 struct Erc7540Request {
+  uint256 id; // request ID
   uint256 timestamp; // timestamp of the request
   uint256 sharePrice; // share price at request time
-  uint256 shares; // amount of shares in the request
-  uint256 requestId; // request ID
-  address operator; // request owner (can claim the owner's request)
+  uint256 amount; // amount of assets to be deposited or shares to be redeemed
+  address operator; // request initiator (can claim the owner's request)
 }
 
 // Request context used to manage a vault's asynchronous deposits and redemptions
@@ -66,8 +73,9 @@ struct Requests {
   uint256 redemptionLocktime; // locktime for redemption requests = 2 days
   uint256 totalDeposit; // total amount requested for deposit
   uint256 totalRedemption; // total shares requested for redemption (1e12)
+  uint256 totalClaimableDeposit; // total asset to be deposited
   uint256 totalClaimableRedemption; // total shares claimable for redemption (1e12)
-  mapping(address => Erc7540Request) byOwner; // mapping of ERC-7540 requests by owner
+  mapping(address => OwnerRequests) byOwner; // mapping of ERC-7540 requests by owner
 }
 
 // Epoch context used to keep track of a vault's latest events
