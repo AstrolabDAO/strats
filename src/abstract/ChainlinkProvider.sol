@@ -76,17 +76,14 @@ contract ChainlinkProvider is PriceProvider {
       revert Errors.InvalidOrStaleValue(updateTime, basePrice);
     }
     uint8 feedDecimals = feed.decimals();
-    unchecked {
-      return _invert
-        ? (
-          (10 ** (_decimalsByAsset[_asset] + feedDecimals) * AsMaths.BP_BASIS)
-            / uint256(basePrice)
-        )
-        : (
-          AsMaths.BP_BASIS * uint256(basePrice)
-            * (10 ** uint32(USD_DECIMALS - feedDecimals))
-        );
-    }
+    return _invert
+      ? (
+        (10 ** (_decimalsByAsset[_asset] + feedDecimals) * AsMaths.BP_BASIS)
+          / uint256(basePrice)
+      )
+      : (
+        AsMaths.BP_BASIS * uint256(basePrice) * (10 ** uint32(USD_DECIMALS - feedDecimals))
+      );
   }
 
   /*═══════════════════════════════════════════════════════════════╗

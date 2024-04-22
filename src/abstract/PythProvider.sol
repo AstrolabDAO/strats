@@ -81,17 +81,15 @@ contract PythProvider is PriceProvider {
       revert Errors.InvalidOrStaleValue(price.publishTime, price.price);
     }
     uint8 feedDecimals = uint8(uint32(-price.expo));
-    unchecked {
-      return _invert
-        ? (
-          (10 ** (_decimalsByAsset[_asset] + feedDecimals) * AsMaths.BP_BASIS)
-            / uint256(uint64(price.price))
-        )
-        : (
-          AsMaths.BP_BASIS * uint256(uint64(price.price))
-            * 10 ** uint256(USD_DECIMALS - feedDecimals)
-        );
-    }
+    return _invert
+      ? (
+        (10 ** (_decimalsByAsset[_asset] + feedDecimals) * AsMaths.BP_BASIS)
+          / uint256(uint64(price.price))
+      )
+      : (
+        AsMaths.BP_BASIS * uint256(uint64(price.price))
+          * 10 ** uint256(USD_DECIMALS - feedDecimals)
+      );
   }
 
   /*═══════════════════════════════════════════════════════════════╗
