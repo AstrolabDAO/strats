@@ -588,7 +588,6 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _receiver,
     address _owner
   ) internal nonReentrant whenNotPaused returns (uint256) {
-
     if (_receiver == address(this)) {
       revert Errors.Unauthorized();
     }

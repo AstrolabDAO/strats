@@ -12,7 +12,6 @@ import {ERC20} from "../../src/abstract/ERC20.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";
 
 contract Borrower is IERC3156FlashBorrower {
-
   AsFlashLender lender;
   address initiator;
 
@@ -29,17 +28,17 @@ contract Borrower is IERC3156FlashBorrower {
     bytes calldata params
   ) external override returns (bytes32) {
     require(msg.sender == address(lender), "Untrusted lender");
-    require(_initiator == address(initiator) || _initiator == address(this), "Untrusted loan initiator");
+    require(
+      _initiator == address(initiator) || _initiator == address(this),
+      "Untrusted loan initiator"
+    );
     uint256 fee = lender.flashFee(_token, _amount);
     uint256 repayment = _amount + fee;
     ERC20(_token).transfer(address(lender), repayment); // pay back the loan after use
     return keccak256("ERC3156FlashBorrower.onFlashLoan");
   }
 
-  function flashBorrow(
-    address _token,
-    uint256 _amount
-  ) public {
+  function flashBorrow(address _token, uint256 _amount) public {
     bytes memory data = abi.encode("dummy data");
     lender.flashLoan(address(this), _token, _amount, data);
   }

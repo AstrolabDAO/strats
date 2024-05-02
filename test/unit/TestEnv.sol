@@ -98,7 +98,8 @@ abstract contract TestEnv is Test {
 
   function previewCollectFees() public returns (uint256 feesCollected) {
     vm.prank(manager);
-    bytes memory result = strat.simulate{gas: 10_000_000}(abi.encodeWithSignature("collectFees()"));
+    bytes memory result =
+      strat.simulate{gas: 10_000_000}(abi.encodeWithSignature("collectFees()"));
     (bool success, bytes memory data) = abi.decode(result, (bool, bytes));
     feesCollected = abi.decode(data, (uint256));
   }
@@ -153,13 +154,17 @@ abstract contract TestEnv is Test {
     // grant roles
     vm.startPrank(admin);
     accessController.grantRole(Roles.KEEPER, keeper); // does not need acceptance
-    require(accessController.hasRole(Roles.KEEPER, keeper), "Keeper should have KEEPER role");
+    require(
+      accessController.hasRole(Roles.KEEPER, keeper), "Keeper should have KEEPER role"
+    );
     accessController.grantRole(Roles.MANAGER, manager); // needs acceptance
     vm.stopPrank();
     vm.warp(block.timestamp + accessController.ROLE_ACCEPTANCE_TIMELOCK()); // fast forward time to acceptance window
     vm.prank(manager);
     accessController.acceptRole(Roles.MANAGER); // accept role
-    require(accessController.hasRole(Roles.MANAGER, manager), "Manager should have MANAGER role");
+    require(
+      accessController.hasRole(Roles.MANAGER, manager), "Manager should have MANAGER role"
+    );
   }
 
   function seedLiquidity(uint256 _minLiquidity) public {
@@ -169,6 +174,9 @@ abstract contract TestEnv is Test {
     strat.seedLiquidity(_minLiquidity, type(uint256).max); // seed liquidity, set maxTvl, unpause
     vm.stopPrank();
     vm.prank(manager);
-    require(strat.collectFees() == 0, "Collected fees should be 0 since the admin seeded and is exempt from fees");
+    require(
+      strat.collectFees() == 0,
+      "Collected fees should be 0 since the admin seeded and is exempt from fees"
+    );
   }
 }

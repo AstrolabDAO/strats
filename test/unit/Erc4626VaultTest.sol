@@ -22,7 +22,10 @@ contract Erc4626VaultTest is TestEnvArb {
     strat.deposit(_toDeposit, bob);
     uint256 deposited = balanceBefore - usdc.balanceOf(bob);
     require(strat.assetsOf(bob) == deposited, "Deposited vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Deposit total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Deposit total assets accounting error"
+    );
   }
 
   function safeDeposit(uint256 _toDeposit) public {
@@ -35,7 +38,10 @@ contract Erc4626VaultTest is TestEnvArb {
     strat.safeDeposit(_toDeposit, minShares, bob);
     uint256 deposited = balanceBefore - usdc.balanceOf(bob);
     require(strat.assetsOf(bob) == deposited, "Deposited vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Deposit total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Deposit total assets accounting error"
+    );
   }
 
   function mint(uint256 _toDeposit) public {
@@ -48,7 +54,10 @@ contract Erc4626VaultTest is TestEnvArb {
     strat.mint(toMint, bob);
     uint256 deposited = balanceBefore - usdc.balanceOf(bob);
     require(strat.assetsOf(bob) == deposited, "Minted vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Mint total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Mint total assets accounting error"
+    );
   }
 
   function safeMint(uint256 _toDeposit) public {
@@ -62,7 +71,10 @@ contract Erc4626VaultTest is TestEnvArb {
     strat.safeMint(toMint, maxAmount, bob);
     uint256 deposited = balanceBefore - usdc.balanceOf(bob);
     require(strat.assetsOf(bob) == deposited, "Minted vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Mint total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Mint total assets accounting error"
+    );
   }
 
   function withdraw(uint256 _toWithdraw) public {
@@ -72,8 +84,14 @@ contract Erc4626VaultTest is TestEnvArb {
     vm.prank(bob);
     strat.withdraw(_toWithdraw, bob, bob);
     uint256 withdrawn = usdc.balanceOf(bob) - balanceBefore;
-    require(withdrawn >= (_toWithdraw - 1) && withdrawn <= (_toWithdraw + 1), "Withdrawn vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Withdraw total assets accounting error");
+    require(
+      withdrawn >= (_toWithdraw - 1) && withdrawn <= (_toWithdraw + 1),
+      "Withdrawn vs received mismatch"
+    );
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Withdraw total assets accounting error"
+    );
   }
 
   function safeWithdraw(uint256 _toWithdraw) public {
@@ -85,7 +103,10 @@ contract Erc4626VaultTest is TestEnvArb {
     strat.safeWithdraw(_toWithdraw, minAmount, bob, bob);
     uint256 withdrawn = usdc.balanceOf(bob) - balanceBefore;
     require(withdrawn == _toWithdraw, "Withdrawn vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Withdraw total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Withdraw total assets accounting error"
+    );
   }
 
   function redeem(uint256 _toWithdraw) public {
@@ -96,7 +117,10 @@ contract Erc4626VaultTest is TestEnvArb {
     strat.redeem(toRedeem, bob, bob);
     uint256 withdrawn = usdc.balanceOf(bob) - balanceBefore;
     require(withdrawn == _toWithdraw, "Redeemed vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Redeem total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Redeem total assets accounting error"
+    );
   }
 
   function safeRedeem(uint256 _toWithdraw) public {
@@ -108,16 +132,24 @@ contract Erc4626VaultTest is TestEnvArb {
     strat.safeRedeem(toRedeem, minAmountOut, bob, bob);
     uint256 withdrawn = usdc.balanceOf(bob) - balanceBefore;
     require(withdrawn == _toWithdraw, "Redeemed vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Redeem total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Redeem total assets accounting error"
+    );
   }
 
   function checkBalancesAfter(uint256 _assetsBefore, uint256 _bobBalanceBefore) public {
     require(strat.balanceOf(bob) == 0, "Bob still owns shares");
     require(strat.totalAssets() == _assetsBefore, "Total assets not reset");
-    require(usdc.balanceOf(bob) == _bobBalanceBefore, "Bob lost or earned assets unexpectedly");
+    require(
+      usdc.balanceOf(bob) == _bobBalanceBefore, "Bob lost or earned assets unexpectedly"
+    );
   }
 
-  function resetStrat(Fees memory _fees, uint256 _minLiquidity) public returns (uint256, uint256) {
+  function resetStrat(
+    Fees memory _fees,
+    uint256 _minLiquidity
+  ) public returns (uint256, uint256) {
     deployStrat(_fees, _minLiquidity);
     return (strat.totalAssets(), usdc.balanceOf(bob));
   }

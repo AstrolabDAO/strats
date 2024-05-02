@@ -18,15 +18,18 @@ contract Erc7540VaultTest is TestEnvArb {
     uint256 balanceBefore = usdc.balanceOf(bob);
     vm.startPrank(bob);
     usdc.approve(address(strat), type(uint256).max);
-    strat.requestDeposit(_toDeposit, bob, bob, ""); // useless but ERC-7540 polyfill
+    // strat.requestDeposit(_toDeposit, bob, bob, ""); // useless but ERC-7540 polyfill
     strat.deposit(_toDeposit, bob);
     vm.stopPrank();
     uint256 deposited = balanceBefore - usdc.balanceOf(bob);
     require(strat.assetsOf(bob) == deposited, "Deposited vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Deposit total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Deposit total assets accounting error"
+    );
   }
 
-  function redeem(uint256 _toWithdraw) public  {
+  function redeem(uint256 _toWithdraw) public {
     console.log("--- redeem test ---");
     uint256 toRedeem = strat.convertToShares(_toWithdraw);
     uint256 balanceBefore = usdc.balanceOf(bob);
@@ -40,7 +43,10 @@ contract Erc7540VaultTest is TestEnvArb {
     strat.redeem(toRedeem, bob, bob);
     uint256 withdrawn = usdc.balanceOf(bob) - balanceBefore;
     require(withdrawn == _toWithdraw, "Redeemed vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Redeem total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Redeem total assets accounting error"
+    );
   }
 
   function withdraw(uint256 _toWithdraw) public {
@@ -56,7 +62,10 @@ contract Erc7540VaultTest is TestEnvArb {
     strat.withdraw(_toWithdraw, bob, bob);
     uint256 withdrawn = usdc.balanceOf(bob) - balanceBefore;
     require(withdrawn == _toWithdraw, "Withdrawn vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Withdraw total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Withdraw total assets accounting error"
+    );
   }
 
   function locktime(uint256 _toWithdraw) public {
@@ -72,7 +81,10 @@ contract Erc7540VaultTest is TestEnvArb {
     strat.redeem(toRedeem, bob, bob);
     uint256 withdrawn = usdc.balanceOf(bob) - balanceBefore;
     require(withdrawn == _toWithdraw, "Redeemed vs received mismatch");
-    require(strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin), "Redeem total assets accounting error");
+    require(
+      strat.totalAssets() == strat.assetsOf(bob) + strat.assetsOf(admin),
+      "Redeem total assets accounting error"
+    );
   }
 
   function requestedSharesReservation(uint256 _toWithdraw) public {
@@ -82,13 +94,13 @@ contract Erc7540VaultTest is TestEnvArb {
     vm.startPrank(bob);
     strat.requestRedeem(toRedeem, bob, bob, "");
     // TODO: replace with try/catch
-    (bool success, ) = address(strat).call(
-        abi.encodeWithSignature("transfer(address,uint256)", alice, toRedeem)
+    (bool success,) = address(strat).call(
+      abi.encodeWithSignature("transfer(address,uint256)", alice, toRedeem)
     );
     if (success) {
-        revert("Shares transfer should fail");
+      revert("Shares transfer should fail");
     } else {
-        // console.log("Transfer failed as expected");
+      // console.log("Transfer failed as expected");
     }
     strat.cancelRedeemRequest(bob, bob);
     strat.transfer(alice, toRedeem);
@@ -97,7 +109,10 @@ contract Erc7540VaultTest is TestEnvArb {
     require(strat.balanceOf(alice) == toRedeem, "Alice does not own shares");
   }
 
-  function resetStrat(Fees memory _fees, uint256 _minLiquidity) public returns (uint256, uint256) {
+  function resetStrat(
+    Fees memory _fees,
+    uint256 _minLiquidity
+  ) public returns (uint256, uint256) {
     deployStrat(_fees, _minLiquidity);
     return (strat.totalAssets(), usdc.balanceOf(bob));
   }

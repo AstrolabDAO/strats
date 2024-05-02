@@ -21,5 +21,4 @@ contract StrategyV5Simulator is StrategyV5, Simulator {
   function _setParams(bytes memory _params) internal override {}
   function _stake(uint256 _index, uint256 _amount) internal override {}
   function _unstake(uint256 _index, uint256 _amount) internal override {}
-
 }
