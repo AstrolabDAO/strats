@@ -611,7 +611,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _agent Address of the new agent
    */
   function _updateAgent(address _agent) internal {
-    if (_agent == address(0)) revert Errors.AddressZero();
+    if (_agent == address(0)) {
+      revert Errors.AddressZero();
+    }
     (bool success,) =
       _agent.staticcall(abi.encodeWithSelector(IStrategyV5Agent.proxyType.selector));
     if (!success) {

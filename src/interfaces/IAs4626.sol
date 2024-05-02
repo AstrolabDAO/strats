@@ -120,12 +120,6 @@ interface IAs4626 is IERC20Metadata, IAsRescuable, IAsManageable {
   function claimableTransactionFees() external view returns (uint256);
 
   // ERC-7540
-  function requestDeposit(
-    uint256 _amount,
-    address _operator,
-    address _receiver,
-    bytes calldata _data
-  ) external returns (uint256);
   function requestRedeem(
     uint256 _shares,
     address _operator,

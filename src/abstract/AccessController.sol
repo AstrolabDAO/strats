@@ -105,7 +105,9 @@ contract AccessController {
    * @param _account Account to check
    */
   function checkRole(bytes32 _role, address _account) public view {
-    if (!hasRole(_role, _account)) revert Errors.Unauthorized();
+    if (!hasRole(_role, _account)) {
+      revert Errors.Unauthorized();
+    }
   }
 
   /**
@@ -256,7 +258,9 @@ contract AccessController {
    * @param _role Role to renounce
    */
   function renounceRole(bytes32 _role) external virtual {
-    if (_role == Roles.ADMIN) revert Errors.Unauthorized();
+    if (_role == Roles.ADMIN) {
+      revert Errors.Unauthorized();
+    }
     _revokeRole(_role, msg.sender);
   }
 

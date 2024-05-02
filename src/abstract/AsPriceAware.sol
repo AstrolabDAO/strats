@@ -79,7 +79,9 @@ abstract contract AsPriceAware is AsPermissioned {
    * @param _oracle Price provider instance address
    */
   function _updateOracle(address _oracle) internal {
-    if (_oracle == address(0)) revert Errors.AddressZero();
+    if (_oracle == address(0)) {
+      revert Errors.AddressZero();
+    }
     (bool success,) = _oracle.staticcall(
       abi.encodeWithSelector(IPriceProvider.hasFeed.selector, address(0))
     );

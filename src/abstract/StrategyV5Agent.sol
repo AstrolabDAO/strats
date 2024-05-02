@@ -119,7 +119,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     bool _asset
   ) internal {
     address swapperAddress = address(swapper);
-    if (swapperAddress == address(0)) revert Errors.AddressZero();
+    if (swapperAddress == address(0)) {
+      revert Errors.AddressZero();
+    }
     // we keep the possibility to set allowance to 0 in case of a change of swapper
     // default is to approve AsMaths.MAX_UINT256
     _amount = _amount > 0 ? _amount : AsMaths.MAX_UINT256;
@@ -168,7 +170,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    * @param _swapper Address of the new swapper
    */
   function updateSwapper(address _swapper) public onlyAdmin {
-    if (_swapper == address(0)) revert Errors.AddressZero();
+    if (_swapper == address(0)) {
+      revert Errors.AddressZero();
+    }
     _setSwapperAllowance(0, true, true, true);
     swapper = ISwapper(_swapper);
     _setSwapperAllowance(AsMaths.MAX_UINT256, true, true, true);
@@ -201,7 +205,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     bytes calldata _swapData,
     uint256 _exchangeRateBp
   ) internal {
-    if (_asset == address(0)) revert Errors.AddressZero();
+    if (_asset == address(0)) {
+      revert Errors.AddressZero();
+    }
     if (_asset == address(asset)) return;
 
     if (_exchangeRateBp == 0) {
@@ -210,7 +216,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
 
     // check if there are pending redemptions
     // liquidate() should be called first to ensure rebasing
-    if (_req.totalRedemption > 0) revert Errors.Unauthorized();
+    if (_req.totalRedemption > 0) {
+      revert Errors.Unauthorized();
+    }
 
     // reset all cached accounted values as a denomination change might change the accounting basis
     _expectedProfits = 0; // reset trailing profits
@@ -256,8 +264,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
       if (_totalWeight > AsMaths.BP_BASIS - _weights[i]) {
         revert Errors.InvalidData();
       }
-      _totalWeight += _weights[i];
       unchecked {
+        _totalWeight += _weights[i]; // made safe by above
         i++;
       }
     }
@@ -337,8 +345,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     delete rewardTokens;
     for (uint256 i = 0; i < _rewardTokens.length;) {
       rewardTokens[i] = _rewardTokens[i];
-      _rewardTokenIndexes[_rewardTokens[i]] = i + 1;
       unchecked {
+        _rewardTokenIndexes[_rewardTokens[i]] = i + 1; // safe since i < _MAX_INPUTS
         i++;
       }
     }

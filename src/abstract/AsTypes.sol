@@ -53,10 +53,10 @@ struct StrategyParams {
 }
 
 struct OwnerRequests {
-  uint256 totalDeposit; // total amount requested for deposit
+  uint256 totalDeposit; // total amount requested for deposit (unused since all deposit are synchronous)
   uint256 totalRedemption; // total shares requested for redemption (1e12)
   mapping(address => Erc7540Request) redemptionByReceiver; // mapping of ERC-7540 requests by owner
-  mapping(address => Erc7540Request) depositByReceiver;
+  mapping(address => Erc7540Request) depositByReceiver; // (unused since all deposit are synchronous)
 }
 
 // ERC-7540 Requests
@@ -71,9 +71,9 @@ struct Erc7540Request {
 // Request context used to manage a vault's asynchronous deposits and redemptions
 struct Requests {
   uint256 redemptionLocktime; // locktime for redemption requests = 2 days
-  uint256 totalDeposit; // total amount requested for deposit
+  uint256 totalDeposit; // total amount requested for deposit (unused since all deposit are synchronous)
   uint256 totalRedemption; // total shares requested for redemption (1e12)
-  uint256 totalClaimableDeposit; // total asset to be deposited
+  uint256 totalClaimableDeposit; // total asset to be deposited (unused since all deposit are synchronous)
   uint256 totalClaimableRedemption; // total shares claimable for redemption (1e12)
   mapping(address => OwnerRequests) byOwner; // mapping of ERC-7540 requests by owner
 }

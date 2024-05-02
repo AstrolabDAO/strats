@@ -167,7 +167,7 @@ abstract contract AsFlashLender is AsPermissioned, Pausable, ReentrancyGuard {
     uint256 _amount,
     bytes calldata _data
   ) internal virtual {
-    IERC20Metadata asset = IERC20Metadata(_token); // Assuming 'asset' is your ERC20 Address of the token
+    IERC20Metadata asset = IERC20Metadata(_token);
 
     if (_amount > borrowable()) {
       revert Errors.AmountTooHigh(_amount);
@@ -176,10 +176,8 @@ abstract contract AsFlashLender is AsPermissioned, Pausable, ReentrancyGuard {
     uint256 fee = _flashFee(_receiver, _amount);
     uint256 balanceBefore = asset.balanceOf(address(this));
 
-    // Transfer the tokens to the receiver
     asset.safeTransfer(_receiver, _amount);
 
-    // Callback to the receiver's onFlashLoan method
     if (
       IERC3156FlashBorrower(_receiver).onFlashLoan(
         msg.sender, _token, _amount, fee, _data
@@ -188,14 +186,15 @@ abstract contract AsFlashLender is AsPermissioned, Pausable, ReentrancyGuard {
       revert Errors.FlashLoanCallbackFailed();
     }
 
-    // Verify the repayment and fee
-    uint256 balanceAfter = asset.balanceOf(address(this));
-    if (balanceAfter < balanceBefore + fee) {
+    // make sure that the borrower returned principal + fee
+    if (asset.balanceOf(address(this)) < balanceBefore + fee) {
       revert Errors.FlashLoanDefault(_receiver, _amount);
     }
 
-    _lenderStorage().totalLent += _amount;
-    _lenderStorage().claimableFlashFees += fee;
+    unchecked {
+      _lenderStorage().totalLent += _amount; // safe due to the check above
+      _lenderStorage().claimableFlashFees += fee;
+    }
     emit FlashLoan(msg.sender, _amount, fee);
   }
 

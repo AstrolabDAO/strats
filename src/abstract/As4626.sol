@@ -6,7 +6,6 @@ import "./As4626Abstract.sol";
 import "./AsTypes.sol";
 import "../interfaces/IStrategyV5.sol";
 import "../interfaces/IERC7540RedeemReceiver.sol";
-import "../interfaces/IERC7540DepositReceiver.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsAccounting.sol";
 import "./ERC20.sol";
@@ -61,7 +60,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
     CoreAddresses memory _coreAddresses,
     Fees memory _fees
   ) internal {
-    if (_initialized) revert Errors.InvalidInitStatus();
+    if (_initialized) {
+      revert Errors.InvalidInitStatus();
+    }
     ERC20._init(_erc20Metadata.name, _erc20Metadata.symbol, _erc20Metadata.decimals); // super().init()
     asset = IERC20Metadata(_coreAddresses.asset);
     _assetDecimals = asset.decimals();
@@ -128,33 +129,10 @@ abstract contract As4626 is ERC20, As4626Abstract {
   }
 
   /**
-   * @return Sums all pending deposit requests
-   */
-  function totalDepositRequest() external view returns (uint256) {
-    return _req.totalDeposit;
-  }
-
-  /**
-   * @return Sums all claimable redemption requests
-   */
-  function totalClaimableDeposit() external view returns (uint256) {
-    return _req.totalClaimableDeposit;
-  }
-
-  /**
    * @return Sums all claimable redemption requests
    */
   function totalClaimableRedemption() external view returns (uint256) {
     return _req.totalClaimableRedemption;
-  }
-
-  /**
-   * @notice Gets the deposit request for a specific `_owner` (ERC-7540)
-   * @param _owner Owner of the assets to be deposited
-   * @return Amount of assets pending deposit
-   */
-  function pendingDepositRequest(address _owner) external view returns (uint256) {
-    return _req.byOwner[_owner].totalDeposit;
   }
 
   /**
@@ -225,19 +203,6 @@ abstract contract As4626 is ERC20, As4626Abstract {
     return isRequestClaimable(request.timestamp)
       ? AsMaths.min(request.amount, _req.totalClaimableRedemption)
       : 0;
-  }
-
-  /**
-   * @param _receiver Receiver of the shares to be minted (ERC-7540 polyfill)
-   * @param _owner Address of the owner
-   * @return Owner's depositable assets amount
-   */
-  function claimableDepositRequest(
-    address _receiver,
-    address _owner
-  ) public view returns (uint256) {
-    Erc7540Request storage request = _req.byOwner[_owner].depositByReceiver[_receiver];
-    return request.amount; // de-facto claimable, no need to check for entry locktime
   }
 
   /**
@@ -473,7 +438,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @return The total amount of pending redemption requests
    */
   function totalPendingRedemptionRequest() public view returns (uint256) {
-    return _req.totalRedemption - _req.totalClaimableRedemption;
+    return _req.totalRedemption.subMax0(_req.totalClaimableRedemption);
   }
 
   /**
@@ -486,18 +451,6 @@ abstract contract As4626 is ERC20, As4626Abstract {
   }
 
   /*═══════════════════════════════════════════════════════════════╗
-  ║                     ERC7575 DERIVED VIEWS                      ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @notice Retrieves the underlying ERC20 asset implementation contract (ERC-7575 polyfill)
-   * @return shareTokenAddress Address of the underlying ERC20 asset contract
-   */
-  function share() external view returns (address shareTokenAddress) {
-    return address(this);
-  }
-
-  /*═══════════════════════════════════════════════════════════════╗
   ║                            SETTERS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
@@ -506,7 +459,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @param _feeCollector Collector of the fees
    */
   function setFeeCollector(address _feeCollector) external onlyAdmin {
-    if (_feeCollector == address(0)) revert Errors.AddressZero();
+    if (_feeCollector == address(0)) {
+      revert Errors.AddressZero();
+    }
     feeCollector = _feeCollector;
   }
 
@@ -541,7 +496,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @param _fees Fees structure [perf,mgmt,entry,exit,flash]
    */
   function setFees(Fees memory _fees) public onlyAdmin {
-    if (!AsAccounting.checkFees(_fees)) revert Errors.Unauthorized();
+    if (!AsAccounting.checkFees(_fees)) {
+      revert Errors.Unauthorized();
+    }
     fees = _fees;
   }
 
@@ -631,8 +588,14 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _receiver,
     address _owner
   ) internal nonReentrant whenNotPaused returns (uint256) {
-    if (_receiver == address(this)) revert Errors.Unauthorized();
-    if (_shares == 0 && _amount == 0) revert Errors.AmountTooLow(0);
+
+    if (_receiver == address(this)) {
+      revert Errors.Unauthorized();
+    }
+
+    if (_shares == 0 && _amount == 0) {
+      revert Errors.AmountTooLow(0);
+    }
 
     // do not allow minting at a price higher than the current share price
     last.sharePrice = sharePrice();
@@ -648,23 +611,17 @@ abstract contract As4626 is ERC20, As4626Abstract {
       revert Errors.AmountTooHigh(_amount);
     }
 
-    OwnerRequests storage request = _req.byOwner[_owner];
-    Erc7540Request storage receiverRequest = request.depositByReceiver[_receiver];
-    if (receiverRequest.amount > 0) {
-      // consume the deposit request, instantly claimable (ERC-7540 polyfill)
-      receiverRequest.amount = receiverRequest.amount.subMax0(_amount);
-      request.totalDeposit = request.totalDeposit.subMax0(_amount); // min 0
-    }
-
     // use balances to support tax-enabled ERC20s
-    uint256 vaultAssets = asset.balanceOf(address(this));
+    uint256 balanceBefore = asset.balanceOf(address(this));
     asset.safeTransferFrom(_owner, address(this), _amount);
 
     // reuse the vaulAssets variable to save gas
-    uint256 received = asset.balanceOf(address(this)) - vaultAssets;
-    uint256 assetFees = received.bp(exemptionList[_receiver] ? 0 : fees.entry);
-    claimableTransactionFees += assetFees;
+    uint256 received = asset.balanceOf(address(this)).subMax0(balanceBefore);
 
+    uint256 assetFees = received.bp(exemptionList[_receiver] ? 0 : fees.entry);
+    unchecked {
+      claimableTransactionFees += assetFees; // safe
+    }
     // compute the final shares (after fees and ERC20 tax)
     _shares = (received - assetFees).mulDiv(
       _WEI_PER_SHARE_SQUARED, last.sharePrice * _weiPerAsset
@@ -704,7 +661,11 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @param _owner Owner of the assets to be deposited (usually `msg.sender`)
    * @return Amount of assets deposited
    */
-  function mint(uint256 _shares, address _receiver, address _owner) public returns (uint256) {
+  function mint(
+    uint256 _shares,
+    address _receiver,
+    address _owner
+  ) public returns (uint256) {
     return _deposit(0, _shares, _receiver, _owner);
   }
 
@@ -716,7 +677,11 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @param _owner Owner of the assets to be deposited (usually `msg.sender`)
    * @return shares Amount of shares minted
    */
-  function deposit(uint256 _amount, address _receiver, address _owner) public returns (uint256 shares) {
+  function deposit(
+    uint256 _amount,
+    address _receiver,
+    address _owner
+  ) public returns (uint256 shares) {
     return _deposit(_amount, 0, _receiver, _owner);
   }
 
@@ -733,7 +698,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _receiver
   ) external returns (uint256 deposited) {
     deposited = _deposit(0, _shares, _receiver, msg.sender);
-    if (deposited > _maxAmount) revert Errors.AmountTooHigh(deposited);
+    if (deposited > _maxAmount) {
+      revert Errors.AmountTooHigh(deposited);
+    }
   }
 
   /**
@@ -749,7 +716,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _receiver
   ) external returns (uint256 shares) {
     shares = _deposit(_amount, 0, _receiver, msg.sender);
-    if (shares < _minShareAmount) revert Errors.AmountTooLow(shares);
+    if (shares < _minShareAmount) {
+      revert Errors.AmountTooLow(shares);
+    }
   }
 
   /**
@@ -767,7 +736,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _receiver,
     address _owner
   ) internal nonReentrant whenNotPaused returns (uint256) {
-    if (_amount == 0 && _shares == 0) revert Errors.AmountTooLow(0);
+    if (_amount == 0 && _shares == 0) {
+      revert Errors.AmountTooLow(0);
+    }
 
     OwnerRequests storage request = _req.byOwner[_owner];
     Erc7540Request storage receiverRequest = request.redemptionByReceiver[_receiver];
@@ -826,8 +797,10 @@ abstract contract As4626 is ERC20, As4626Abstract {
       revert Errors.Unauthorized();
     }
 
-    claimableTransactionFees += assetFees;
-    _amount -= assetFees;
+    unchecked {
+      claimableTransactionFees += assetFees; // never overflows
+      _amount -= assetFees; // assetFees is always less than _amount
+    }
     asset.safeTransfer(_receiver, _amount);
 
     // re-calculate the sharePrice dynamically to avoid sharePrice() distortion
@@ -872,7 +845,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _owner
   ) external returns (uint256 amount) {
     amount = _withdraw(_amount, 0, _receiver, _owner);
-    if (amount < _minAmount) revert Errors.AmountTooLow(amount);
+    if (amount < _minAmount) {
+      revert Errors.AmountTooLow(amount);
+    }
   }
 
   /**
@@ -911,87 +886,14 @@ abstract contract As4626 is ERC20, As4626Abstract {
       _receiver, // _receiver
       _owner // _owner
     );
-    if (amount < _minAmountOut) revert Errors.AmountTooLow(amount);
+    if (amount < _minAmountOut) {
+      revert Errors.AmountTooLow(amount);
+    }
   }
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                      ERC-7540 ASYNC LOGIC                      ║
   ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @notice Initiates a deposit request on behalf on `_owner` for `_amount` of underlying assets (ERC-7540 polyfill)
-   * @param _amount Amount of underlying assets to deposit
-   * @param _receiver Receiver of the shares to be minted
-   * @param _owner Owner of the assets to be deposited
-   * @param _data Callback data to be passed to `IERC7540DepositReceiver(_owner).onERC7540DepositReceived(data)`
-   * @return id Unique ID of the request
-   */
-  function requestDeposit(
-    uint256 _amount,
-    address _receiver,
-    address _owner,
-    bytes memory _data
-  ) external virtual nonReentrant whenNotPaused returns (uint256 id) {
-    if (_receiver != _owner) {
-      // we ensure that the owner receives his deposit proceeds, but keep the `_receiver` parameter for 7540 compliance
-      revert Errors.Unauthorized();
-    }
-
-    if (asset.balanceOf(_owner) < _amount) {
-      revert Errors.AmountTooHigh(_amount);
-    }
-
-    if (_owner != msg.sender) {
-      if (asset.allowance(_owner, msg.sender) < _amount) {
-        revert Errors.Unauthorized();
-      }
-    }
-
-    OwnerRequests storage request = _req.byOwner[_owner];
-    Erc7540Request storage receiverRequest = request.depositByReceiver[_receiver];
-
-    last.sharePrice = sharePrice();
-    if (receiverRequest.amount > 0) {
-      // only accept request updates if the new amount is higher than the previous
-      if (receiverRequest.amount > _amount) {
-        revert Errors.AmountTooLow(_amount);
-      }
-
-      // reinit the request to prevent double-counting
-      _req.totalDeposit -= AsMaths.min(_req.totalDeposit, receiverRequest.amount);
-      _req.totalClaimableDeposit -= AsMaths.min(_req.totalClaimableDeposit, receiverRequest.amount);
-
-      // compute the new request vwap
-      receiverRequest.sharePrice = (
-        (last.sharePrice * (_amount - receiverRequest.amount))
-          + (receiverRequest.sharePrice * receiverRequest.amount)
-      ) / _amount;
-    } else {
-      receiverRequest.sharePrice = last.sharePrice;
-    }
-
-    id = ++_requestId;
-    receiverRequest.id = id;
-    receiverRequest.amount = _amount;
-    receiverRequest.operator = msg.sender;
-    receiverRequest.timestamp = block.timestamp;
-
-    // incrementing the total deposit request
-    _req.totalDeposit += _amount; // de-facto claimable, no need for timelock
-    _req.totalClaimableDeposit += _amount;
-
-    if (_data.length != 0) {
-      // the caller contract must implement onERC7540DepositReceived callback (0xe74d2a41 selector)
-      if (
-        IERC7540DepositReceiver(_receiver).onERC7540DepositReceived(
-          msg.sender, _receiver, id, _amount, _data
-        ) != IERC7540DepositReceiver.onERC7540DepositReceived.selector
-      ) {
-        revert Errors.Unauthorized();
-      }
-    }
-    emit DepositRequest(_receiver, _owner, id, msg.sender, _amount);
-  }
 
   /**
    * @notice Initiates a redeem request on behalf of `_owner` for `_shares` (ERC-7540 compliant)
@@ -1007,11 +909,6 @@ abstract contract As4626 is ERC20, As4626Abstract {
     address _owner,
     bytes memory _data
   ) public nonReentrant whenNotPaused returns (uint256 id) {
-    if (_receiver != _owner) {
-      // we ensure that the owner can redeem his requests, but keep the `_receiver` parameter for 7540 compliance
-      revert Errors.Unauthorized();
-    }
-
     if (_shares == 0 || balanceOf(_owner) < _shares) {
       revert Errors.AmountTooLow(_shares);
     }
@@ -1027,15 +924,15 @@ abstract contract As4626 is ERC20, As4626Abstract {
     Erc7540Request storage receiverRequest = request.redemptionByReceiver[_receiver];
 
     last.sharePrice = sharePrice();
-    if (request.totalRedemption > 0) {
+    if (receiverRequest.amount > 0) {
       // only accept request updates if the new amount is higher than the previous
-      if (request.totalRedemption > _shares) {
+      if (receiverRequest.amount > _shares) {
         revert Errors.AmountTooLow(_shares);
       }
 
       // reinit the request to prevent double-counting
-      _req.totalRedemption -= AsMaths.min(_req.totalRedemption, request.totalRedemption);
-
+      _req.totalRedemption = _req.totalRedemption.subMax0(receiverRequest.amount);
+      request.totalRedemption = request.totalRedemption.subMax0(receiverRequest.amount);
       // compute request vwap
       receiverRequest.sharePrice = (
         (last.sharePrice * (_shares - receiverRequest.amount))
@@ -1045,14 +942,19 @@ abstract contract As4626 is ERC20, As4626Abstract {
       receiverRequest.sharePrice = last.sharePrice;
     }
 
-    id = ++_requestId;
+    unchecked {
+      id = ++_requestId;
+    }
     receiverRequest.id = id;
     receiverRequest.amount = _shares;
     receiverRequest.operator = msg.sender;
     receiverRequest.timestamp = block.timestamp;
 
-    // incrementing the total redemption request
-    _req.totalRedemption += _shares;
+    // incrementing the total redemption request, made safe by previous balanceOf()
+    unchecked {
+      _req.totalRedemption += _shares;
+      request.totalRedemption += _shares;
+    }
 
     if (_data.length != 0) {
       // the caller contract must implement onERC7540RedeemReceived callback (0x0102fde4 selector)
@@ -1085,44 +987,12 @@ abstract contract As4626 is ERC20, As4626Abstract {
   }
 
   /**
-   * @notice Cancels a deposit request on behalf of `_owner` (ERC-7540 extension)
-   * @notice Not affected by `pause()`, as reduce only
-   * @param _receiver Receiver of the shares to be redeemed
-   * @param _owner Owner of the shares to be redeemed
-   */
-  function cancelDepositRequest(
-      address _receiver,
-      address _owner
-  ) external virtual nonReentrant {
-
-    OwnerRequests storage request = _req.byOwner[_owner];
-    Erc7540Request storage receiverRequest = request.depositByReceiver[_receiver];
-
-    uint256 amount = receiverRequest.amount;
-
-    if (receiverRequest.operator != msg.sender && _owner != msg.sender) {
-      revert Errors.Unauthorized();
-    }
-
-    if (amount == 0) revert Errors.AmountTooLow(0);
-
-    last.sharePrice = sharePrice();
-    _req.totalDeposit = _req.totalDeposit.subMax0(amount);
-    _req.totalClaimableDeposit = _req.totalClaimableDeposit.subMax0(amount); // no need to check for liquidations / timelock
-    request.totalDeposit = request.totalDeposit.subMax0(amount);
-    receiverRequest.amount = 0;
-
-    emit DepositRequestCanceled(_receiver, _owner, receiverRequest.id, amount);
-  }
-
-  /**
    * @notice Cancels a redemption request on behalf of `_owner` (ERC-7540 extension)
    * @notice Not affected by `pause()`, as reduces further liquidation volumes
    * @param _receiver Receiver of the shares to be redeemed
    * @param _owner Owner of the shares to be redeemed
    */
   function cancelRedeemRequest(address _receiver, address _owner) external nonReentrant {
-
     OwnerRequests storage request = _req.byOwner[_owner];
     Erc7540Request storage receiverRequest = request.redemptionByReceiver[_receiver];
 
@@ -1132,7 +1002,9 @@ abstract contract As4626 is ERC20, As4626Abstract {
       revert Errors.Unauthorized();
     }
 
-    if (shares == 0) revert Errors.AmountTooLow(0);
+    if (shares == 0) {
+      revert Errors.AmountTooLow(0);
+    }
 
     last.sharePrice = sharePrice();
     uint256 opportunityCost = 0;
