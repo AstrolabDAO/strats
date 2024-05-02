@@ -352,6 +352,50 @@ export async function requestRedeem(
 }
 
 /**
+ * Requests liquidations from the Composite to the primitives
+ * @param env - Strategy deployment environment
+ * @param _amounts - Amounts to withdraw (default: 50)
+ */
+export async function requestLiquidate(
+  env: IStrategyDeploymentEnv,
+  _amounts = [50],
+  caller = env.deployer.address,
+): Promise<BigNumber> {
+  const { asset, inputs, strat } = env.deployment!;
+  const balance = await strat.balanceOf(env.deployer.address);
+
+  if (balance.lt(10)) {
+    console.log(
+      `Skipping requestLiquidate as balance < 10wei (user owns no shares)`,
+    );
+    return BigNumber.from(1);
+  }
+
+  let amounts: BigNumber[] = _amounts.map((amount) =>
+    BigNumber.from(asset.toWei(amount)),
+  );
+
+  let totalAmount = amounts.reduce((acc, amount) => acc.add(amount), BigNumber.from(0));
+
+  if (BigNumber.from(totalAmount).gt(balance)) {
+    console.warn(`Trying to requestLiquidate more than balance ${balance}wei`);
+    return BigNumber.from(0);
+  }
+
+  await logState(env, "Before RequestLiquidate");
+  const result = await strat
+    .requestLiquidate(
+      amounts,
+      caller, // operator
+      caller, // owner
+      getOverrides(env),
+    )
+    .then((tx: TransactionResponse) => tx.wait());
+  await logState(env, "After RequestLiquidate", 2_000);
+  return BigNumber.from(1);
+}
+
+/**
  * Collects fees for a strategy
  * @param env - Strategy deployment environment
  * @returns Total fees collected as a BigNumber

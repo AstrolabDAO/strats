@@ -524,6 +524,113 @@ export async function invest(
  * @param _amount - Amount to liquidate (default: 0 will liquidate all required liquidity)
  * @returns Liquidity available after liquidation
  */
+export async function liquidatePrimitives(
+  env: Partial<IStrategyDeploymentEnv>,
+  _amounts = [[BigNumber.from(0)]],
+  _minLiquidity = [BigNumber.from(0)],
+): Promise<BigNumber> {
+  const { asset, inputs, strat } = env.deployment!;
+
+  let amounts: BigNumber[][] = _amounts.map(innerArray =>
+    innerArray.map(amount =>
+      BigNumber.from(amount)
+    )
+  );
+
+  // if (max.lt(amount)) {
+  //   console.warn(`Using total allocated assets (max) ${max} (< ${amount})`);
+  //   amount = max;
+  // }
+
+  const trs = [] as Partial<ITransactionRequestWithEstimate>[];
+  const swapData = [] as string[];
+  // const amounts = Object.assign([], await strat.previewLiquidate(amount));
+  const swapAmounts = new Array<BigNumber>(amounts.length).fill(
+    BigNumber.from(0),
+  );
+
+  for (const i in inputs) {
+    // by default input == asset, no swapData is required
+    let tr = {
+      to: addressZero,
+      data: "0x00",
+      estimatedExchangeRate: 1, // no swap 1:1
+      estimatedOutputWei: amounts[i],
+      estimatedOutput: inputs[i].toAmount(amounts[i][0]),
+    } as ITransactionRequestWithEstimate;
+
+    if (asset.address != inputs[i].address) {
+      // add 1% slippage to the input amount, .1% if stable (2x as switching from ask estimate->bid)
+      // NB: in case of a volatility event (eg. news/depeg), the liquidity would be one sided
+      // and these estimates would be off. Liquidation would require manual parametrization
+      // using more pessimistic amounts (eg. more slippage) in the swapData generation
+      const stablePair = isStablePair(asset.sym, inputs[i].sym);
+      // oracle derivation tolerance (can be found at https://data.chain.link/ for chainlink)
+      const derivation = stablePair ? 100 : 1_000; // .1% or 1%
+      amounts[i] = [amounts[i][0].mul(10_000 + derivation).div(10_000)];
+      swapAmounts[i] = amounts[i][0].mul(10_000).div(10_000); // slippage
+
+      if (swapAmounts[i].gt(10)) {
+        // only generate swapData if the input is not the asset
+        tr = (await getTransactionRequest({
+          input: inputs[i].address,
+          output: asset.address,
+          amountWei: swapAmounts[i], // take slippage off so that liquidated LP value > swap input
+          inputChainId: network.config.chainId!,
+          payer: strat.address, // env.deployer.address
+          testPayer: env.addresses!.accounts!.impersonate,
+          maxSlippage: 5000, // TODO: increase for low liquidity chains (moonbeam/celo/metis/linea...)
+        })) as ITransactionRequestWithEstimate;
+        if (!tr.to)
+          throw new Error(
+            `No swapData generated for ${inputs[i].address} -> ${asset.address}`,
+          );
+      }
+    }
+    trs.push(tr);
+    swapData.push(
+      ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint256", "bytes"],
+        [tr.to, 1, tr.data],
+      ),
+    );
+  }
+  console.log(
+    `Liquidating ${asset.sym}\n` +
+      inputs
+        .map(
+          (input, i) =>
+            `  - ${input.sym}: ${input.toAmount(amounts[i][0])} (${amounts[
+              i
+            ].toString()}wei), swap amount: ${input.toAmount(
+              swapAmounts[i],
+            )} (${swapAmounts[i].toString()}wei), est. output: ${trs[i]
+              .estimatedOutput!} ${asset.sym} (${trs[
+              i
+            ].estimatedOutputWei?.toString()}wei - exchange rate: ${
+              trs[i].estimatedExchangeRate
+            })\n`,
+        )
+        .join(""),
+  );
+
+  await logState(env, "Before Liquidate primitives");
+  // only exec if static call is successful
+  const receipt = await strat
+    .safe("liquidatePrimitives", [amounts, 1, false, [  ]], getOverrides(env))
+    // .liquidatePrimitives(amounts, 1, false, swapData, getOverrides(env))
+    .then((tx: TransactionResponse) => tx.wait());
+
+  await logState(env, "After Liquidate", 2_000);
+  return getTxLogData(receipt, ["uint256", "uint256", "uint256"], 2); // liquidityAvailable
+}
+
+/**
+ * Executes the on-chain liquidation of a strategy (protocol to cash)
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to liquidate (default: 0 will liquidate all required liquidity)
+ * @returns Liquidity available after liquidation
+ */
 export async function liquidate(
   env: Partial<IStrategyDeploymentEnv>,
   _amount = 0,

@@ -75,6 +75,9 @@ struct Requests {
   uint256 totalRedemption; // total shares requested for redemption (1e12)
   uint256 totalClaimableDeposit; // total asset to be deposited (unused since all deposit are synchronous)
   uint256 totalClaimableRedemption; // total shares claimable for redemption (1e12)
+  uint256[8] liquidateLocktime; // locktime for liquidation requests
+  uint256[8] liquidateTimestamp; // liquidation request timestamp
+  uint256[8] liquidate; // total amount requested for liquidation
   mapping(address => OwnerRequests) byOwner; // mapping of ERC-7540 requests by owner
 }
 
