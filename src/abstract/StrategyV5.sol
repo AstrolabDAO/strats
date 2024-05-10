@@ -657,7 +657,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
   /**
    * @notice Invests `_amounts` of underlying assets in the strategy inputs
-   * @param _amounts Amounts of asset to invest in each input
+   * @param _amounts Amount of underlying assets to invest in each input
    * @param _params Swaps calldata
    * @return totalInvested Sum of underlying assets invested
    */
@@ -727,14 +727,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _minLiquidity Minimum amount of assets to retrieve
    * @param _panic Sets to true to ignore slippage when liquidating
    * @param _params Generic calldata (e.g., SwapperParams)
-   * @return liquidityAvailable Updated vault available liquidity
+   * @return totalRecovered Total amount of asset withdrawn
    */
   function _liquidate(
     uint256[8] calldata _amounts,
     uint256 _minLiquidity,
     bool _panic,
     bytes[] calldata _params
-  ) internal virtual returns (uint256 liquidityAvailable) {
+  ) internal virtual returns (uint256 totalRecovered) {
     // pre-liquidation sharePrice
     last.sharePrice = _sharePrice();
 
@@ -744,7 +744,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     // liquidate protocol positions
     uint256 toUnstake;
     uint256 recovered;
-    uint256 totalLiquidated;
 
     for (uint256 i = 0; i < _inputLength;) {
       if (_amounts[i] < 10) {
@@ -788,7 +787,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
       // sum up the recovered underlying assets
       unchecked {
-        totalLiquidated += recovered;
+        totalRecovered += recovered;
         i++;
       }
     }
@@ -796,19 +795,19 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     _req.totalClaimableRedemption += pendingRedemption;
 
     // use availableClaimable() and not borrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
-    liquidityAvailable = _availableClaimable().subMax0(
+    uint256 liquidityAvailable = _availableClaimable().subMax0(
       _req.totalClaimableRedemption.mulDiv(
         last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED
       )
     );
+
     // check if we have enough cash to repay redemption requests
     if (liquidityAvailable < _minLiquidity && !_panic) {
       revert Errors.AmountTooLow(liquidityAvailable);
     }
 
     last.liquidate = uint64(block.timestamp);
-    emit Liquidate(totalLiquidated, liquidityAvailable, block.timestamp);
-    return liquidityAvailable;
+    emit Liquidate(totalRecovered, liquidityAvailable, block.timestamp);
   }
 
   /**
@@ -817,14 +816,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _minLiquidity Minimum amount of assets to retrieve
    * @param _panic Sets to true to ignore slippage when liquidating
    * @param _params Generic calldata (e.g., SwapperParams)
-   * @return liquidityAvailable Updated vault available liquidity
+   * @return totalRecovered Total amount of asset withdrawn
    */
   function liquidate(
     uint256[8] calldata _amounts,
     uint256 _minLiquidity,
     bool _panic,
     bytes[] calldata _params
-  ) external nonReentrant onlyKeeper returns (uint256 liquidityAvailable) {
+  ) external nonReentrant onlyKeeper returns (uint256 totalRecovered) {
     return _liquidate(_amounts, _minLiquidity, _panic, _params);
   }
 

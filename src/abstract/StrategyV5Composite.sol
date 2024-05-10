@@ -4,19 +4,19 @@ pragma solidity 0.8.22;
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
 import "./StrategyV5.sol";
-
-import "../interfaces/IAs4626.sol";
+import "../interfaces/IStrategyV5.sol";
 
 /**
- * _             _       _
+ *             _             _       _
  *    __ _ ___| |_ _ __ ___ | | __ _| |__
  *   /  ` / __|  _| '__/   \| |/  ` | '  \
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title StrategyV5Composite - Liquidity providing on primitives
+ * @title StrategyV5Composite - Primitives base aggregator strategy
  * @author Astrolab DAO
- * @notice Liquidity providing for network specific AsPrimitives
+ * @notice Aggregating network specific primitive strategies positions (acXXX -> apXXX)
+ * Can be extended by domain-specific aggregator strategies (eg. acLEND, acDEX, acBRIDGE...)
  * @dev Asset->inputs->LPs->inputs->asset
  */
 contract StrategyV5Composite is StrategyV5 {
@@ -27,9 +27,6 @@ contract StrategyV5Composite is StrategyV5 {
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STORAGE                             ║
   ╚═══════════════════════════════════════════════════════════════*/
-
-  // Third party contracts
-  address[8] public _primitives;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                         INITIALIZATION                         ║
@@ -42,9 +39,7 @@ contract StrategyV5Composite is StrategyV5 {
    * @param _params Strategy specific parameters
    */
   function _setParams(bytes memory _params) internal override {
-    (address[8] memory primitives) = abi.decode(_params, (address[8]));
-    _primitives = primitives;
-    _setAllowances(AsMaths.MAX_UINT256);
+    // placeholder
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -64,7 +59,7 @@ contract StrategyV5Composite is StrategyV5 {
    * @return Input value of the LP/staked balance
    */
   function _stakedInput(uint256 _index) internal view returns (uint256) {
-    return IAs4626(_primitives[_index]).balanceOf(address(this));
+    return IStrategyV5(lpTokens[_index]).balanceOf(address(this));
   }
 
   /**
@@ -72,8 +67,8 @@ contract StrategyV5Composite is StrategyV5 {
    * @return total Amount invested
    */
   function invested(uint256 _index) public view override returns (uint256) {
-    return IAs4626(_primitives[_index]).convertToAssets(
-      IAs4626(_primitives[_index]).balanceOf(address(this))
+    return IStrategyV5(lpTokens[_index]).convertToAssets(
+      IStrategyV5(lpTokens[_index]).balanceOf(address(this))
     );
   }
 
@@ -86,7 +81,7 @@ contract StrategyV5Composite is StrategyV5 {
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
-    return IAs4626(_primitives[_index]).convertToAssets(_amount);
+    return IStrategyV5(lpTokens[_index]).convertToAssets(_amount);
   }
 
   /**
@@ -97,7 +92,7 @@ contract StrategyV5Composite is StrategyV5 {
   //     uint256 _amount,
   //     uint8 _index
   //   ) internal view override returns (uint256) {
-  //     return IAs4626(_primitives[_index]).convertToShares(_amount);
+  //     return IStrategyV5(lpTokens[_index]).convertToShares(_amount);
   //   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -118,7 +113,7 @@ contract StrategyV5Composite is StrategyV5 {
     // update inputs and lpTokens
     _setInputs(_inputs, _weights, _newPrimitives);
     for (uint256 i = 0; i < _newPrimitives.length; i++) {
-      _primitives[i] = _newPrimitives[i];
+      lpTokens[i] = _newPrimitives[i];
     }
     _setAllowances(AsMaths.MAX_UINT256);
   }
@@ -169,7 +164,7 @@ contract StrategyV5Composite is StrategyV5 {
         toDeposit = _amounts[i];
       }
 
-      IAs4626 primitive = IAs4626(_primitives[i]);
+      IStrategyV5 primitive = IStrategyV5(lpTokens[i]);
       uint256 iouBefore = primitive.balanceOf(address(this));
       primitive.deposit(toDeposit, address(this));
 
@@ -191,32 +186,46 @@ contract StrategyV5Composite is StrategyV5 {
 
   /**
    * @notice Withdraw asset function, can remove all funds in case of emergency
-   * @param _amounts Amounts of asset to withdraw in primitives, and in primitives pools
-   * @param _params Swaps calldata for primitives and for primitives pools
-   * @return assetsRecovered Amount of asset withdrawn
+   * @param _amounts Amounts of inputs to liquidate in each primitive strategy
+   * @param _params Swaps calldata for each primitive strategy (swapping each inputs to assets)
+   * @return totalRecovered Amount of asset withdrawn
    */
-  function liquidatePrimitives(
+  function _liquidate(
     uint256[8][8] calldata _amounts, // from previewLiquidate()
     uint256[] calldata _minLiquidity,
+    bool _panic,
     bytes[][] memory _params
-  ) external nonReentrant onlyKeeper returns (uint256 assetsRecovered) {
+  ) external returns (uint256 totalRecovered) {
     uint256 recovered;
     uint256 balance;
+    uint256 withdrawable;
 
     for (uint8 i = 0; i < _inputLength; i++) {
-      IAs4626 primitive = IAs4626(_primitives[i]);
+      IStrategyV5 primitive = IStrategyV5(lpTokens[i]);
       balance = primitive.balanceOf(address(this));
 
+      withdrawable = AsMaths.min(
+        primitive.liquidate(_amounts[i], _minLiquidity[i], _panic, _params[i]), // recovered
+        primitive.maxWithdraw(address(this)) // max claimable
+      );
+
       recovered = primitive.withdraw(
-        IStrategyV5(_primitives[i]).liquidate(
-          _amounts[i], _minLiquidity[i], false, _params[i]
-        ),
+        withdrawable,
         address(this),
         address(this)
       );
 
-      assetsRecovered += recovered;
+      totalRecovered += recovered; // no need to check minAmount here, as it's already done in every primitive.liquidate()
     }
+    uint256 liquidityAvailable = _availableClaimable().subMax0(
+      _req.totalClaimableRedemption.mulDiv(
+        last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED
+      ));
+    emit Liquidate(
+      totalRecovered,
+      liquidityAvailable,
+      block.timestamp
+    );
   }
 
   /**
@@ -225,13 +234,14 @@ contract StrategyV5Composite is StrategyV5 {
    * @param _operator Address initiating the requests in primitives
    * @param _owner The owner of the shares to be redeemed in primitives
    */
-  function requestLiquidate(
+  function liquidate(
     uint256[] calldata _amounts,
-    address _operator,
-    address _owner
-  ) external nonReentrant whenNotPaused onlyManager returns (uint256 amountRequested) {
+    uint256 calldata _minLiquidity,
+    bool _panic,
+    bytes[] memory _params
+  ) external override onlyKeeper returns (uint256 amountRequested) {
     for (uint8 i = 0; i < _inputLength; i++) {
-      IAs4626(_primitives[i]).requestWithdraw(_amounts[i], _operator, _owner, "0x");
+      IStrategyV5(lpTokens[i]).requestWithdraw(_amounts[i], _operator, _owner, "0x");
       _req.liquidate[i] += _amounts[i];
       amountRequested += _amounts[i];
     }
@@ -241,36 +251,36 @@ contract StrategyV5Composite is StrategyV5 {
    * @notice Withdraw asset function, can remove all funds in case of emergency
    * @param _amounts Amounts of asset to withdraw
    * @param _params Swaps calldata
-   * @return assetsRecovered Amount of asset withdrawn
+   * @return totalRecovered Amount of asset withdrawn
    */
   function _liquidate(
     uint256[8] calldata _amounts, // from previewLiquidate()
     uint256 _minLiquidity,
     bool _panic,
     bytes[] calldata _params
-  ) internal override returns (uint256 assetsRecovered) {
-    uint256 recovered;
-    IAs4626 primitive;
+  ) internal override returns (uint256 totalRecovered) {
+    uint256 requested;
+    IStrategyV5 primitive;
     // here inputLength is the same as primitives.length
     for (uint8 i = 0; i < _inputLength; i++) {
       if (_amounts[i] < 10) continue;
 
-      primitive = IAs4626(_primitives[i]);
+      primitive = IStrategyV5(lpTokens[i]);
 
-      // Determine the minimum amount to compare with the recovered amount later
+      // Determine the minimum amount to compare with the requested amount later
       uint256 minAmount = _req.liquidate[i] > 0 ? _req.liquidate[i].min(_amounts[i]) : 0;
 
       if (minAmount > 0) {
-        recovered = primitive.withdraw(minAmount, address(this), address(this));
-        _req.liquidate[i] -= recovered;
+        requested = primitive.requestWithdraw(minAmount, address(this), address(this));
+        _req.liquidate[i] -= requested;
         _req.liquidateTimestamp[i] = block.timestamp;
       } else {
         revert Errors.Unauthorized();
       }
 
       // Use minAmount for the slippage check
-      if (recovered < minAmount.subBp(_4626StorageExt().maxSlippageBps * 2)) {
-        revert Errors.AmountTooLow(recovered);
+      if (requested < minAmount.subBp(_4626StorageExt().maxSlippageBps * 2)) {
+        revert Errors.AmountTooLow(requested);
       }
     }
   }

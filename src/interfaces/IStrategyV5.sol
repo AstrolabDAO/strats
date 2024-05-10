@@ -26,7 +26,7 @@ interface IStrategyV5 is IStrategyV5Agent, IAsProxy {
     uint256 _minLiquidity,
     bool _panic,
     bytes[] calldata _params
-  ) external returns (uint256 liquidityAvailable);
+  ) external returns (uint256 totalRecovered);
   function invest(
     uint256[8] calldata _amounts,
     bytes[] calldata _params
