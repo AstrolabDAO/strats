@@ -158,7 +158,9 @@ library AsMaths {
    * @return Absolute difference between the two values
    */
   function diff(uint256 a, uint256 b) internal pure returns (uint256) {
-    return a > b ? a - b : b - a;
+    unchecked {
+      return a > b ? a - b : b - a;
+    }
   }
 
   /**
