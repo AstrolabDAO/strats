@@ -55,7 +55,7 @@ library AsArrays {
       let len := sload(self.slot) // array length
 
       // iterate over the array
-      for { let i := 0 } lt(i, len) { i := add(i, 1) } {
+      for { let i := 1 } lt(i, len) { i := add(i, 1) } {
         let el := sload(add(keccak256(ptr, 0x20), i)) // load element
         if gt(el, value) { value := el } // update max value
       }
@@ -76,7 +76,7 @@ library AsArrays {
       let len := sload(self.slot) // array length
 
       // iterate over the array
-      for { let i := 0 } lt(i, len) { i := add(i, 1) } {
+      for { let i := 1 } lt(i, len) { i := add(i, 1) } {
         let el := sload(add(keccak256(ptr, 0x20), i)) // load element
         if lt(el, value) { value := el } // update min value
       }
