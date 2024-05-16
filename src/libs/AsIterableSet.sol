@@ -125,9 +125,10 @@ library AsIterableSet {
    * @return values An array of addresses containing all elements of the set
    */
   function valuesAsAddress(Set storage s) internal view returns (address[] memory values) {
-    values = new address[](s.data.length);
+    uint256 n = s.data.length;
+    values = new address[](n);
     unchecked {
-      for (uint256 i = 0; i < s.data.length; i++) {
+      for (uint256 i = 0; i < n; i++) {
         values[i] = s.data[i].toAddress();
       }
     }
