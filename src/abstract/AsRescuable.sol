@@ -23,7 +23,7 @@ abstract contract AsRescuable is AsPermissioned {
   ╚═══════════════════════════════════════════════════════════════*/
 
   struct RescueRequest {
-    uint256 timestamp;
+    uint64 timestamp;
     address receiver;
   }
 
@@ -105,7 +105,7 @@ abstract contract AsRescuable is AsPermissioned {
     require(!_isRescueUnlocked(req));
     // set pending rescue request
     req.receiver = msg.sender;
-    req.timestamp = block.timestamp;
+    req.timestamp = uint64(block.timestamp);
   }
 
   /**
