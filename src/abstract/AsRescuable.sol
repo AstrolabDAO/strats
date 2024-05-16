@@ -129,8 +129,8 @@ abstract contract AsRescuable is AsPermissioned {
     // check if rescue is pending
     require(_isRescueUnlocked(req));
 
-    // reset timestamp to prevent reentrancy
-    req.timestamp = 0;
+    // reset pending request (timestamp reset to 0 avoids reentrancy)
+    delete $.rescueRequests[_token];
 
     // send to receiver
     if (_token == address(1)) {
@@ -141,9 +141,6 @@ abstract contract AsRescuable is AsPermissioned {
         req.receiver, IERC20Metadata(_token).balanceOf(address(this))
       );
     }
-
-    // reset pending request
-    delete $.rescueRequests[_token];
   }
 
   /**
