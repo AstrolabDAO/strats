@@ -191,6 +191,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
   }
 
   /**
+   * @notice Gets the total claimable shares for `_owner` redeemable by `_receiver` (ERC-7540 extension)
    * @param _receiver Receiver of the underlying assets
    * @param _owner Owner of the shares to be redeemed
    * @return Owner's claimable shares for redemption
@@ -203,6 +204,15 @@ abstract contract As4626 is ERC20, As4626Abstract {
     return isRequestClaimable(request.timestamp)
       ? AsMaths.min(request.amount, _req.totalClaimableRedemption)
       : 0;
+  }
+
+  /**
+   * @notice Gets the total self redeemable claimable shares for `_owner` (ERC-7540 polyfill)
+   * @param _owner Owner and receiver of the shares to be redeemed (ERC-7540 polyfill)
+   * @return Owner's claimable shares for redemption
+   */
+  function claimableRedeemRequest(address _owner) public view returns (uint256) {
+    return claimableRedeemRequest(_owner, _owner);
   }
 
   /**
