@@ -456,7 +456,7 @@ abstract contract As4626 is ERC20, As4626Abstract {
    * @dev Converts the total pending redemption requests to their asset asset value for precision
    * @return The total amount of asset assets requested pending redemption
    */
-  function totalpendingWithdrawRequest() public view returns (uint256) {
+  function totalPendingWithdrawRequest() public view returns (uint256) {
     return _convertToAssets(totalPendingRedemptionRequest(), false);
   }
 
@@ -934,36 +934,26 @@ abstract contract As4626 is ERC20, As4626Abstract {
 
     last.sharePrice = sharePrice();
     if (receiverRequest.amount > 0) {
-      // only accept request updates if the new amount is higher than the previous
-      if (receiverRequest.amount > _shares) {
-        revert Errors.AmountTooLow(_shares);
-      }
-
-      // reinit the request to prevent double-counting
-      _req.totalRedemption = _req.totalRedemption.subMax0(receiverRequest.amount);
-      request.totalRedemption = request.totalRedemption.subMax0(receiverRequest.amount);
       // compute request vwap
       receiverRequest.sharePrice = (
-        (last.sharePrice * (_shares - receiverRequest.amount))
+        (last.sharePrice * _shares)
           + (receiverRequest.sharePrice * receiverRequest.amount)
-      ) / _shares;
+      ) / (_shares + receiverRequest.amount);
     } else {
       receiverRequest.sharePrice = last.sharePrice;
     }
 
-    unchecked {
-      id = ++_requestId;
-    }
-    receiverRequest.id = id;
-    receiverRequest.amount = _shares;
-    receiverRequest.operator = msg.sender;
-    receiverRequest.timestamp = block.timestamp;
-
     // incrementing the total redemption request, made safe by previous balanceOf()
     unchecked {
+      id = ++_requestId;
       _req.totalRedemption += _shares;
       request.totalRedemption += _shares;
     }
+
+    receiverRequest.id = id;
+    receiverRequest.amount += _shares;
+    receiverRequest.operator = msg.sender;
+    receiverRequest.timestamp = block.timestamp;
 
     if (_data.length != 0) {
       // the caller contract must implement onERC7540RedeemReceived callback (0x0102fde4 selector)

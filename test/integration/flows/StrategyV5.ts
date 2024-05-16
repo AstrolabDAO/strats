@@ -532,7 +532,7 @@ export async function liquidate(
 
   let amount = asset.toWei(_amount);
 
-  const pendingWithdrawalRequest = await strat.totalpendingWithdrawRequest();
+  const pendingWithdrawalRequest = await strat.totalPendingWithdrawRequest();
   const invested = await strat["invested()"]();
   const max = invested.gt(pendingWithdrawalRequest)
     ? invested
