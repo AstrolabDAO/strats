@@ -138,7 +138,7 @@ library AsMaths {
    * @return Boolean indicating if the difference is within the specified range
    */
   function within(uint256 a, uint256 b, uint256 val) internal pure returns (bool) {
-    return (diff(a, b) <= val);
+    return diff(a, b) <= val;
   }
 
   /**
@@ -169,7 +169,7 @@ library AsMaths {
    */
   function subMax0(uint256 a, uint256 b) internal pure returns (uint256) {
     unchecked {
-      return (a >= b ? a - b : 0);
+      return a >= b ? a - b : 0;
     }
   }
 
@@ -266,7 +266,7 @@ library AsMaths {
    * @return Negated value of the input
    */
   function neg(int256 x) internal pure returns (int256) {
-    return x * (-1);
+    return x * -1;
   }
 
   /**
@@ -275,23 +275,23 @@ library AsMaths {
    * @return Negated value of the input as a signed integer
    */
   function neg(uint256 x) internal pure returns (int256) {
-    return x.toInt256() * (-1);
+    return x.toInt256() * -1;
   }
 
   function max(uint256 x, uint256 y) internal pure returns (uint256) {
-    return (x > y ? x : y);
+    return x > y ? x : y;
   }
 
   function max(int256 x, int256 y) internal pure returns (int256) {
-    return (x > y ? x : y);
+    return x > y ? x : y;
   }
 
   function min(uint256 x, uint256 y) internal pure returns (uint256) {
-    return (x < y ? x : y);
+    return x < y ? x : y;
   }
 
   function min(int256 x, int256 y) internal pure returns (int256) {
-    return (x < y ? x : y);
+    return x < y ? x : y;
   }
 
   /**
