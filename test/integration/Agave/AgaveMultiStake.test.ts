@@ -12,7 +12,7 @@ const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive Agave USD`,
   symbol: `apAGVE.USD`,
   version: 1,
-  contract: "AgaveMultiStake",
+  contract: "Agave",
   asset: "USDC",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;

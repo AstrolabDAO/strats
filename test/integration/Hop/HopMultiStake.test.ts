@@ -16,7 +16,7 @@ const baseDesc: IStrategyDesc = {
   symbol: `apHOP.USD`,
   asset: "USDC",
   version: 1,
-  contract: "HopMultiStake",
+  contract: "Hop",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
 

@@ -12,12 +12,12 @@ import "./interfaces/v3/ICompoundV3.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title CompoundV3MultiStake Strategy - Liquidity providing on Compound V3 (Base & co)
+ * @title CompoundV3 Strategy - Liquidity providing on Compound V3 (Base & co)
  * @author Astrolab DAO
  * @notice Liquidity providing strategy for Compound (https://compound.finance/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract CompoundV3MultiStake is StrategyV5 {
+abstract contract CompoundV3Abstract is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;
@@ -25,8 +25,49 @@ contract CompoundV3MultiStake is StrategyV5 {
   // strategy specific variables
   ICometRewards internal _rewardController;
   ICometRewards.RewardConfig[8] internal _rewardConfigs;
+  bool internal _legacy;
 
   constructor(address _accessController) StrategyV5(_accessController) {}
+
+  /**
+   * @notice Checks if the given `ICometRewards` contract is a legacy contract
+   * @notice A legacy contract is determined by whether the `rewardConfig` returned `RewardConfig` struct contains a `multiplier` field
+   * @notice If the call is successful, it means the `multiplier` field exists in the struct, indicating that the contract is not a legacy contract
+   * @param _controller The `ICometRewards` contract to check
+   * @return A boolean value indicating whether the contract is a legacy contract or not
+   */
+  function _isLegacy(ICometRewards _controller) internal view returns (bool) {
+    bool isLegacy;
+    try _controller.rewardConfig(_lpTokens[0]) returns (ICometRewards.RewardConfig memory config) {
+      isLegacy = false; // `multiplier` field exists in the struct
+    } catch {
+      isLegacy = true;
+    }
+    return isLegacy;
+  }
+
+  /**
+   * @notice Internal function to load reward configurations for each LP token
+   * @dev If the reward controller is a legacy contract, a polyfill is used to set the multiplier to 1
+   */
+  function _loadConfigs() internal {
+    for (uint256 i = 0; i < _inputLength;) {
+      if (_legacy) {
+        ICometRewardsLegacy.RewardConfig memory tmp = _rewardController.rewardConfig(address(lpTokens[i]));
+        _rewardConfigs[i] = ICometRewards.RewardConfig({
+          token: tmp.token,
+          rescaleFactor: tmp.rescaleFactor,
+          shouldUpscale: tmp.shouldUpscale,
+          multiplier: 1 // polyfill for legacy deployments
+        });
+      } else {
+        _rewardConfigs[i] = _rewardController.rewardConfig(address(lpTokens[i]));
+      }
+      unchecked {
+        i++;
+      }
+    }
+  }
 
   /**
    * @notice Sets the strategy specific parameters
@@ -35,12 +76,8 @@ contract CompoundV3MultiStake is StrategyV5 {
   function _setParams(bytes memory _params) internal override {
     (address rewardController) = abi.decode(_params, (address));
     _rewardController = ICometRewards(rewardController);
-    for (uint8 i = 0; i < _inputLength;) {
-      _rewardConfigs[i] = _rewardController.rewardConfig(address(lpTokens[i]));
-      unchecked {
-        i++;
-      }
-    }
+    _legacy = _isLegacy(_rewardController);
+    _loadConfigs();
     _setAllowances(AsMaths.MAX_UINT256);
   }
 
@@ -57,13 +94,7 @@ contract CompoundV3MultiStake is StrategyV5 {
   ) external onlyAdmin {
     // update inputs and lpTokens
     _setInputs(_inputs, _weights, _lpTokens);
-    // update reward configs based on new lpTokens
-    for (uint256 i = 0; i < _inputLength;) {
-      _rewardConfigs[i] = _rewardController.rewardConfig(address(lpTokens[i]));
-      unchecked {
-        i++;
-      }
-    }
+    _loadConfigs();
     _setAllowances(AsMaths.MAX_UINT256);
   }
 
@@ -83,46 +114,6 @@ contract CompoundV3MultiStake is StrategyV5 {
    */
   function _unstake(uint256 _index, uint256 _amount) internal override {
     IComet(address(lpTokens[_index])).withdraw(address(inputs[_index]), _amount);
-  }
-
-  /**
-   * @notice Sets allowances for third party contracts (except rewardTokens)
-   * @param _amount Allowance amount
-   */
-  function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength; i++) {
-      inputs[i].forceApprove(address(lpTokens[i]), _amount);
-    }
-  }
-
-  /**
-   * @notice Converts LP/staked LP to input
-   * @return Input value of the LP amount
-   */
-  function _stakeToInput(
-    uint256 _amount,
-    uint256 _index
-  ) internal pure override returns (uint256) {
-    return _amount; // 1:1 (rebasing, oracle value based)
-  }
-
-  /**
-   * @notice Converts input to LP/staked LP
-   * @return LP value of the input amount
-   */
-  function _inputToStake(
-    uint256 _amount,
-    uint256 _index
-  ) internal pure override returns (uint256) {
-    return _amount; // 1:1 (rebasing, oracle value based)
-  }
-
-  /**
-   * @notice Returns the invested input converted from the staked LP token
-   * @return Input value of the LP/staked balance
-   */
-  function _investedInput(uint256 _index) internal view override returns (uint256) {
-    return IComet(address(lpTokens[_index])).balanceOf(address(this));
   }
 
   /**

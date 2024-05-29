@@ -3,8 +3,7 @@ pragma solidity 0.8.22;
 
 import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5.sol";
-import "./interfaces/v3/IAave.sol";
-import "./interfaces/v3/IOracle.sol";
+import "./interfaces/IDHedge.sol";
 
 /**
  *             _             _       _
@@ -13,18 +12,18 @@ import "./interfaces/v3/IOracle.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AaveV3MultiStake Strategy - Liquidity providing on Aave
+ * @title Toros Strategy - Liquidity providing on Toros
  * @author Astrolab DAO
- * @notice Liquidity providing strategy for Aave V3 (https://aave.com/)
+ * @notice Liquidity providing strategy for Toros (https://toros.finance/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract AaveV3MultiStake is StrategyV5 {
+contract Toros is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;
 
-  // strategy specific variables
-  IPoolAddressesProvider internal _poolProvider;
+  // strategy specific params
+  IDhedgeEasySwapper internal _dHedgeSwapper;
 
   constructor(address _accessController) StrategyV5(_accessController) {}
 
@@ -33,8 +32,8 @@ contract AaveV3MultiStake is StrategyV5 {
    * @param _params Strategy specific parameters
    */
   function _setParams(bytes memory _params) internal override {
-    (address poolProvider) = abi.decode(_params, (address));
-    _poolProvider = IPoolAddressesProvider(poolProvider);
+    address dHedgeSwapper = abi.decode(_params, (address));
+    _dHedgeSwapper = IDhedgeEasySwapper(dHedgeSwapper);
     _setAllowances(AsMaths.MAX_UINT256);
   }
 
@@ -44,12 +43,12 @@ contract AaveV3MultiStake is StrategyV5 {
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
    */
   function _stake(uint256 _index, uint256 _amount) internal override {
-    IAavePool pool = IAavePool(_poolProvider.getPool());
-    pool.supply({
-      asset: address(inputs[_index]),
+    _dHedgeSwapper.deposit({
+      pool: address(lpTokens[_index]),
+      depositAsset: address(inputs[_index]),
       amount: _amount,
-      onBehalfOf: address(this),
-      referralCode: 0
+      poolDepositAsset: address(inputs[_index]),
+      expectedLiquidityMinted: 1 // _inputToStake(_amount, _index).subBp(_4626StorageExt().maxSlippageBps)
     });
   }
 
@@ -59,8 +58,12 @@ contract AaveV3MultiStake is StrategyV5 {
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
    */
   function _unstake(uint256 _index, uint256 _amount) internal override {
-    IAavePool pool = IAavePool(_poolProvider.getPool());
-    pool.withdraw({asset: address(inputs[_index]), amount: _amount, to: address(this)});
+    _dHedgeSwapper.withdraw({
+      pool: address(lpTokens[_index]),
+      fundTokenAmount: _amount,
+      withdrawalAsset: address(inputs[_index]),
+      expectedAmountOut: 1
+    });
   }
 
   /**
@@ -68,19 +71,36 @@ contract AaveV3MultiStake is StrategyV5 {
    * @param _amount Allowance amount
    */
   function _setAllowances(uint256 _amount) internal override {
-    IAavePool pool = IAavePool(_poolProvider.getPool());
     for (uint8 i = 0; i < _inputLength; i++) {
-      inputs[i].forceApprove(address(pool), _amount);
-      lpTokens[i].forceApprove(address(pool), _amount);
+      inputs[i].forceApprove(address(_dHedgeSwapper), _amount);
     }
   }
 
   /**
-   * @notice Returns the invested input converted from the staked LP token
-   * @return Input value of the LP/staked balance
+   * @notice Converts LP/staked LP to input
+   * @return Input value of the LP amount
    */
-  function _investedInput(uint256 _index) internal view override returns (uint256) {
-    return lpTokens[_index].balanceOf(address(this));
+  function _stakeToInput(
+    uint256 _amount,
+    uint256 _index
+  ) internal view override returns (uint256) {
+    return _usdToInput(
+      _amount.mulDiv(IDHedgePool(address(lpTokens[_index])).tokenPrice(), 1e12), _index
+    );
+  }
+
+  /**
+   * @notice Converts input to LP/staked LP
+   * @return LP value of the input amount
+   */
+  function _inputToStake(
+    uint256 _amount,
+    uint256 _index
+  ) internal view override returns (uint256) {
+    return _inputToUsd(_amount, _index).mulDiv(
+      1e12 * 10 ** _lpTokenDecimals[_index],
+      IDHedgePool(address(lpTokens[_index])).tokenPrice()
+    ); // eg. 1e6*1e12*1e18/1e18 = 1e18
   }
 
   /**

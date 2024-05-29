@@ -185,3 +185,13 @@ interface ICometRewards {
 
   function rewardConfig(address comet) external view returns (RewardConfig memory);
 }
+
+interface ICometRewardsLegacy {
+  struct RewardConfig {
+    address token;
+    uint64 rescaleFactor;
+    bool shouldUpscale;
+  }
+
+  function rewardConfig(address comet) external view returns (RewardConfig memory);
+}

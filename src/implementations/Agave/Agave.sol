@@ -13,12 +13,12 @@ import "../Balancer/interfaces/v2/IBalancer.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AgaveMultiStake Strategy - Liquidity providing on Agave
+ * @title Agave Strategy - Liquidity providing on Agave
  * @author Astrolab DAO
  * @notice Liquidity providing strategy for Agave V3 (https://aave.com/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract AgaveMultiStake is StrategyV5 {
+contract Agave is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;
@@ -151,14 +151,6 @@ contract AgaveMultiStake is StrategyV5 {
   }
 
   /**
-   * @notice Returns the invested input converted from the staked LP token
-   * @return Input value of the LP/staked balance
-   */
-  function _investedInput(uint256 _index) internal view override returns (uint256) {
-    return lpTokens[_index].balanceOf(address(this));
-  }
-
-  /**
    * @notice Returns the available rewards
    * @return amounts Array of rewards available for each reward token
    */
@@ -170,15 +162,5 @@ contract AgaveMultiStake is StrategyV5 {
     uint256[] memory weights = IBalancerManagedPool(lp).getNormalizedWeights();
     uint256 rewardValueOfPool = rewardInPool * (100 / weights[rewardIndex]); // total value of the pool in reward token 1e18
     return ((rewardValueOfPool * shareOfSupply).subBp(200) / 1e18).toArray(); // 1e18+1e18-1e18 = 1e18
-  }
-
-  /**
-   * @notice Sets allowances for third party contracts (except rewardTokens)
-   * @param _amount Allowance amount
-   */
-  function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength; i++) {
-      inputs[i].forceApprove(address(lpTokens[i]), _amount);
-    }
   }
 }

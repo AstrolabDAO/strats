@@ -13,12 +13,12 @@ import "./interfaces/IStargate.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title StargateMultiStake - Liquidity providing on Stargate
+ * @title Stargate - Liquidity providing on Stargate
  * @author Astrolab DAO
  * @notice Basic liquidity providing strategy for Stargate (https://stargate.finance/)
  * @dev Asset->input[0]->LP->pools->LP->input[0]->asset
  */
-contract StargateMultiStake is StrategyV5 {
+contract Stargate is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
 

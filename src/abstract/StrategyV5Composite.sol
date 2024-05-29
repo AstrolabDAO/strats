@@ -63,16 +63,6 @@ contract StrategyV5Composite is StrategyV5 {
   }
 
   /**
-   * @notice Returns the investment in asset asset for the specified input
-   * @return total Amount invested
-   */
-  function invested(uint256 _index) public view override returns (uint256) {
-    return IStrategyV5(lpTokens[_index]).convertToAssets(
-      IStrategyV5(lpTokens[_index]).balanceOf(address(this))
-    );
-  }
-
-  /**
    * @notice Convert LP/staked LP to input
    * @param _amount Amount of LP/staked LP
    * @return Input value of the LP amount
@@ -88,45 +78,16 @@ contract StrategyV5Composite is StrategyV5 {
    * @notice Convert input to LP/staked LP
    * @return LP value of the input amount
    */
-  //   function _inputToStake(
-  //     uint256 _amount,
-  //     uint8 _index
-  //   ) internal view override returns (uint256) {
-  //     return IStrategyV5(lpTokens[_index]).convertToShares(_amount);
-  //   }
+  function _inputToStake(
+    uint256 _amount,
+    uint8 _index
+  ) internal view override returns (uint256) {
+    return IStrategyV5(lpTokens[_index]).convertToShares(_amount);
+  }
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                            SETTERS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @notice Changes the strategy input tokens
-   * @param _inputs Array of input token addresses
-   * @param _weights Array of input token weights
-   * @param _newPrimitives Array of primitives addresses
-   */
-  function setInputs(
-    address[] calldata _inputs,
-    uint16[] calldata _weights,
-    address[] calldata _newPrimitives
-  ) external onlyAdmin {
-    // update inputs and lpTokens
-    _setInputs(_inputs, _weights, _newPrimitives);
-    for (uint256 i = 0; i < _newPrimitives.length; i++) {
-      lpTokens[i] = _newPrimitives[i];
-    }
-    _setAllowances(AsMaths.MAX_UINT256);
-  }
-
-  /**
-   * @notice Sets allowances for third party contracts (except rewardTokens)
-   * @param _amount Allowance amount
-   */
-  function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength; i++) {
-      inputs[i].forceApprove(address(lpTokens[i]), _amount);
-    }
-  }
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║
@@ -177,10 +138,10 @@ contract StrategyV5Composite is StrategyV5 {
         revert Errors.AmountTooLow(supplied);
       }
 
-      //   unchecked {
-      //     totalInvested += spent;
-      //     i++;
-      //   }
+      // unchecked {
+      //   totalInvested += spent;
+      //   i++;
+      // }
     }
   }
 

@@ -1,6 +1,6 @@
 import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../../src/implementations/Sonne/addresses";
+import addresses from "../../../src/implementations/Compound/addresses";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
 import { suite } from "../StrategyV5.test";
 import { IFlow, testFlow } from "../flows";
@@ -8,28 +8,27 @@ import { setupStrat } from "../flows/StrategyV5";
 import { abiEncode, getEnv } from "../utils";
 
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab Primitive Sonne USD`,
-  symbol: `apSONNE.USD`,
+  name: `Astrolab Composite`,
+  symbol: `acUSD`,
   asset: "USDC",
   version: 1,
-  contract: "Sonne",
+  contract: "StrategyV5Composite",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  10: { ...baseDesc,inputs: ["USDCe", "DAI", "USDT"], inputWeights: [3000, 3000, 3000] }, // 90% allocation, 10% cash
-  8453: { ...baseDesc,inputs: ["USDC", "USDbC", "DAI"], inputWeights: [3000, 3000, 3000] },
+  42161: { ...baseDesc, inputs: ["USDC", "USDCe"], inputWeights: [4500, 4500] },
 };
 
 const desc = descByChainId[network.config.chainId!];
 
 describe(`test.${desc.name}`, () => {
   const addr = addresses[network.config.chainId!];
-  const protocolAddr = addr.Sonne;
-  // const protocolAddr: { [name: string]: string }[] = <any>desc.inputs.map(i => addr.Sonne[i]);
+  const protocolAddr: { [name: string]: string }[] = <any>(
+    desc.inputs.map((i) => addr.Compound[i])
+  );
   let env: IStrategyDeploymentEnv;
-
   beforeEach(async () => {});
   after(async () => {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
@@ -47,17 +46,19 @@ describe(`test.${desc.name}`, () => {
       desc.name,
       {
         // base params
-        erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata
+        erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata default to 12 decimals
         coreAddresses: { asset: addr.tokens[desc.asset] }, // coreAddresses (use default)
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        lpTokens: desc.inputs.map((input) => addr.Sonne[`so${input}`]), // LP tokens
-        rewardTokens: protocolAddr.rewardTokens, // SONNE/OP
-        extension: abiEncode(["address"], [protocolAddr.Unitroller]), // strategy specific params
+        lpTokens: desc.inputs.map((input) => addr.Compound[input].comet), // lpTokens
+        rewardTokens: Array.from(
+          new Set(protocolAddr.map((i) => i.rewardTokens).flat()),
+        ), // keep unique reward token: COMP
+        extension: abiEncode(["address"], [addr.Compound.cometRewards]), // strategy specific params
       },
       desc.seedLiquidityUsd, // seed liquidity in USD
-      ["AsAccounting"], // libraries to link and verify with the strategy
+      ["AsAccounting"], // "ChainlinkUtils"], // libraries to link and verify with the strategy
       env, // deployment environment
       false, // force verification (after deployment)
     );

@@ -12,7 +12,7 @@ const baseDesc: IStrategyDesc = {
   symbol: `apLODE.USD`,
   asset: "USDC",
   version: 1,
-  contract: "LodestarMultiStake",
+  contract: "Lodestar",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
 

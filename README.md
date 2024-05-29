@@ -65,12 +65,12 @@ As per the [licence](./LICENCE) states, the code is provided as-is and is under 
 ## Testing
 Testing As4626+StrategyV5 with Hardhat (make sure to set `HARDHAT_CHAIN_ID=42161` in `.env` to run the below test to be successful):
 ```bash
-yarn test-hardhat # yarn hardhat test test/Compound/CompoundV3MultiStake.test.ts --network hardhat
+yarn test-hardhat # yarn hardhat test test/Compound/CompoundV3.test.ts --network hardhat
 ```
 
 Testing As4626+StrategyV5 with Tenderly (make sure to set `TENDERLY_CHAIN_ID=42161` and define your tenderly fork ids in `.env` for the below  test to be successful):
 ```bash
-yarn test-tenderly # yarn hardhat test test/Compound/CompoundV3MultiStake.test.ts --network tenderly
+yarn test-tenderly # yarn hardhat test test/Compound/CompoundV3.test.ts --network tenderly
 ```
 
 Foundry tests are also in the works, used for fuzzing, drafting and debugging (not integration as test suites require extensive data manipulation and http querying).
@@ -90,18 +90,18 @@ async function main() {
 ```
 
 ## Strategies 🚧
-- [AaveV3MultiStake](./src/implementations/Aave/AaveV3MultiStake.sol)
-- [HopMultiStake](./src/implementations/Hop/HopMultiStake.sol)
-- [LodestarMultiStake](./src/implementations/Lodestar/LodestarMultiStake.sol)
-- [VenusMultiStake](./src/implementations/Venus/VenusMultiStake.sol)
-- [SonneMultiStake](./src/implementations/Sonne/SonneMultiStake.sol)
-- [CompoundV3MultiStake](./src/implementations/Compound/CompoundV3MultiStake.sol)
-- [AaveV3MultiStake](./src/implementations/Aave/AaveV3MultiStake.sol)
-- [MoonwellMultiStake](./src/implementations/Moonwell/MoonwellMultiStake.sol)
-- [MoonwellLegacyMultiStake](./src/implementations/Moonwell/MoonwellLegacyMultiStake.sol)
-- [StargateMultiStake](./src/implementations/Stargate/StargateMultiStake.sol)
-- [AgaveMultiStake](./src/implementations/Agave/AgaveMultiStake.sol)
-- [BenqiMultiStake](./src/implementations/Benqi/BenqiMultiStake.sol)
+- [AaveV3](./src/implementations/Aave/AaveV3.sol)
+- [Hop](./src/implementations/Hop/Hop.sol)
+- [Lodestar](./src/implementations/Lodestar/Lodestar.sol)
+- [Venus](./src/implementations/Venus/Venus.sol)
+- [Sonne](./src/implementations/Sonne/Sonne.sol)
+- [CompoundV3](./src/implementations/Compound/CompoundV3.sol)
+- [AaveV3](./src/implementations/Aave/AaveV3.sol)
+- [Moonwell](./src/implementations/Moonwell/Moonwell.sol)
+- [MoonwellLegacy](./src/implementations/Moonwell/MoonwellLegacy.sol)
+- [Stargate](./src/implementations/Stargate/Stargate.sol)
+- [Agave](./src/implementations/Agave/Agave.sol)
+- [Benqi](./src/implementations/Benqi/Benqi.sol)
 - and more
 
 ## Integrated/Watched Protocols 👀

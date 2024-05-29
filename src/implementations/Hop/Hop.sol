@@ -14,12 +14,12 @@ import "./interfaces/IStakingRewards.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title HopMultiStake - Liquidity providing on Hop (n stable (max 5), eg. USDC+USDT+DAI)
+ * @title Hop - Liquidity providing on Hop (n stable (max 5), eg. USDC+USDT+DAI)
  * @author Astrolab DAO
  * @notice Basic liquidity providing strategy for Hop protocol (https://hop.exchange/)
  * @dev Asset->input[0]->LP->rewardPools->LP->input[0]->asset
  */
-contract HopMultiStake is StrategyV5 {
+contract Hop is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;

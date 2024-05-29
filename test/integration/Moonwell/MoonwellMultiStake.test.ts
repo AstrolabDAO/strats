@@ -12,7 +12,7 @@ const baseDesc: IStrategyDesc = {
   symbol: `apWELL.USD`,
   asset: "USDC",
   version: 1,
-  contract: "MoonwellMultiStake",
+  contract: "Moonwell",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
 

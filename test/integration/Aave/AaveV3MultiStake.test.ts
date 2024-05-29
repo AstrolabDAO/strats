@@ -15,7 +15,7 @@ const baseDesc = {
   name: `Astrolab Primitive AAVE USD`,
   symbol: `apAAVE.USD`,
   version: 1,
-  contract: "AaveV3MultiStake",
+  contract: "AaveV3",
   asset: "USDC",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;

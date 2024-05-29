@@ -206,7 +206,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _amount,
     uint256 _index
   ) internal view virtual returns (uint256) {
-    return _amount;
+    return _amount; // defaults to 1:1 (eg. USDC:aUSDC, ETH:stETH)
   }
 
   /**
@@ -220,7 +220,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _amount,
     uint256 _index
   ) internal view virtual returns (uint256) {
-    return _amount;
+    return _amount; // defaults to 1:1 (eg. aUSDC:USDC, stETH:ETH)
   }
 
   /**
@@ -250,10 +250,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @dev This should be overriden by strategy implementations
    */
   function _investedInput(uint256 _index) internal view virtual returns (uint256) {
-    return 0;
+    return _stakeToInput(IERC20Metadata(lpTokens[_index]).balanceOf(address(this)), _index);
   }
 
-  function investedInput(uint256 _index) external view virtual returns (uint256) {
+  function investedInput(uint256 _index) external view returns (uint256) {
     return _investedInput(_index);
   }
 
@@ -629,13 +629,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   function updateAgent(address _agent) external onlyAdmin {
     _updateAgent(_agent);
   }
-
-  /**
-   * @notice Sets the strategy allowances
-   * @notice This should be overriden by strategy implementations
-   * @param _amount Amount for which to set the allowances
-   */
-  function _setAllowances(uint256 _amount) internal virtual;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║

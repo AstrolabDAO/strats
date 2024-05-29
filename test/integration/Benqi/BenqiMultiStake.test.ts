@@ -15,7 +15,7 @@ const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive Benqi USD`,
   symbol: `apBENQI.USD`,
   version: 1,
-  contract: "BenqiMultiStake",
+  contract: "Benqi",
   asset: "USDC",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
