@@ -225,6 +225,11 @@ library AsArrays {
     (arr[0], arr[1]) = (a, b);
   }
 
+  function toArray(bytes32 a, bytes32 b, bytes32 c) internal pure returns (bytes32[] memory arr) {
+    arr = new bytes32[](3);
+    (arr[0], arr[1], arr[2]) = (a, b, c);
+  }
+
   function dynamic(uint256[8] memory fixedArray)
     internal
     pure

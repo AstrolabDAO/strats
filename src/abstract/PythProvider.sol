@@ -61,35 +61,40 @@ contract PythProvider is PriceProvider {
    * @notice Converts one unit of `_asset` token to USD or vice versa
    * @param _asset Address of the base token
    * @param _invert Invert the quote
-   * @return USD amount equivalent to one `_asset` tokens
+   * @return USD amount equivalent to one `_asset` token
    */
   function _toUsdBp(
     address _asset,
     bool _invert
   ) internal view override returns (uint256) {
+
     bytes32 feed = feedByAsset[_asset];
     if (feed == bytes32(0)) {
       revert Errors.MissingOracle();
     }
+
     PythStructs.Price memory price = _pyth.getPrice(feed);
     uint256 validity = validityByAsset[_asset];
 
     if (
-      price.price < 0 || price.expo > 0 || price.expo <= -256
-        || block.timestamp > (price.publishTime + validity)
+      price.price < 0 || price.expo > 12 || price.expo < -12
+      || block.timestamp > (price.publishTime + validity)
     ) {
       revert Errors.InvalidOrStaleValue(price.publishTime, price.price);
     }
-    uint8 feedDecimals = uint8(uint32(-price.expo));
-    return _invert
-      ? (
-        (10 ** (_decimalsByAsset[_asset] + feedDecimals) * AsMaths.BP_BASIS)
-          / uint256(uint64(price.price))
-      )
-      : (
-        AsMaths.BP_BASIS * uint256(uint64(price.price))
-          * 10 ** uint256(USD_DECIMALS - feedDecimals)
-      );
+
+    uint256 assetDecimals = _decimalsByAsset[_asset];
+    uint256 priceValue = uint256(uint64(price.price));
+    int256 expo = price.expo;
+
+    if (_invert) {
+      int256 decimalOffset = int256(assetDecimals) - expo;
+      return decimalOffset >= 0
+        ? (10 ** uint256(decimalOffset) * AsMaths.BP_BASIS) / priceValue
+        : (AsMaths.BP_BASIS) / (priceValue * 10 ** uint256(-decimalOffset));
+    } else {
+      return AsMaths.BP_BASIS * priceValue * 10 ** uint256(expo + int256(USD_DECIMALS));
+    }
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -103,7 +108,7 @@ contract PythProvider is PriceProvider {
   function _update(bytes calldata _params) internal override {
     Params memory params = abi.decode(_params, (Params));
     (bool success,) = params.pyth.staticcall(
-      abi.encodeWithSelector(IPythAggregator.priceFeedExists.selector)
+      abi.encodeWithSelector(IPythAggregator.getValidTimePeriod.selector)
     );
     if (!success) {
       revert Errors.ContractNonCompliant();

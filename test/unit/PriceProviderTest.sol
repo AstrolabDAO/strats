@@ -15,6 +15,7 @@ import {
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AccessController} from "../../src/abstract/AccessController.sol";
 import {ChainlinkProvider} from "../../src/abstract/ChainlinkProvider.sol";
+import {PythProvider} from "../../src/abstract/PythProvider.sol";
 import {ERC20} from "../../src/abstract/ERC20.sol";
 
 contract PriceProviderTest is Test {
@@ -28,13 +29,19 @@ contract PriceProviderTest is Test {
   address WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1; // wgas
   address WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f; // wgas
 
-  address ETH_FEED = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
-  address BTC_FEED = 0x6ce185860a4963106506C203335A2910413708e9;
-  address USDC_FEED = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
-  address USDCe_FEED = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+  address CHAINLINK_ETH_FEED = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
+  address CHAINLINK_BTC_FEED = 0x6ce185860a4963106506C203335A2910413708e9;
+  address CHAINLINK_USDC_FEED = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+  address CHAINLINK_USDCe_FEED = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
+
+  address PYTH = 0xff1a0f4744e8582DF1aE09D5611b887B6a12925C;
+  bytes32 PYTH_ETH_FEED = 0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace;
+  bytes32 PYTH_USDC_FEED = 0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a;
+  bytes32 PYTH_BTC_FEED = 0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43;
 
   AccessController accessController;
-  ChainlinkProvider oracle;
+  ChainlinkProvider chainlink;
+  PythProvider pyth;
   ERC20 weth = ERC20(WETH);
 
   address admin = vm.addr(1);
@@ -52,29 +59,43 @@ contract PriceProviderTest is Test {
     uint256 validity = 1 days;
     // deploy strategy and agent back-end
     accessController = new AccessController(admin);
-    oracle = new ChainlinkProvider(address(accessController));
+    chainlink = new ChainlinkProvider(address(accessController));
+    pyth = new PythProvider(address(accessController));
+
     vm.prank(admin);
-    oracle.update(
+    chainlink.update(
       abi.encode(
         ChainlinkProvider.Params({
-          assets: AsArrays.toArray(USDC, WETH, WBTC), // [USDC]
-          feeds: AsArrays.toBytes32Array(USDC_FEED, ETH_FEED, BTC_FEED),
+          assets: AsArrays.toArray(USDC, WETH, WBTC),
+          feeds: AsArrays.toBytes32Array(CHAINLINK_USDC_FEED, CHAINLINK_ETH_FEED, CHAINLINK_BTC_FEED),
           validities: AsArrays.toArray(validity, validity, validity) // Chainlink default validity
+        })
+      )
+    );
+
+    vm.prank(admin);
+    pyth.update(
+      abi.encode(
+        PythProvider.Params({
+          pyth: PYTH,
+          assets: AsArrays.toArray(USDC, WETH, WBTC),
+          feeds: AsArrays.toArray(PYTH_USDC_FEED, PYTH_ETH_FEED, PYTH_BTC_FEED),
+          validities: AsArrays.toArray(validity, validity, validity)
         })
       )
     );
   }
 
   function getPrices() public {
-    console.log("USDC/USD (bps) %e", oracle.toUsd(USDC)); // usd 1e18 wei per usdc
-    console.log("WETH/USD (bps) %e", oracle.toUsd(WETH)); // usd 1e18 wei per weth
-    console.log("WBTC/USD (bps) %e", oracle.toUsd(WBTC)); // usd 1e18 wei per wbtc
+    console.log("USDC/USD (bps) %e vs %e", chainlink.toUsd(USDC), pyth.toUsd(USDC)); // usd 1e18 wei per usdc
+    console.log("WETH/USD (bps) %e vs %e", chainlink.toUsd(WETH), pyth.toUsd(WETH)); // usd 1e18 wei per weth
+    console.log("WBTC/USD (bps) %e vs %e", chainlink.toUsd(WBTC), pyth.toUsd(WBTC)); // usd 1e18 wei per wbtc
 
-    console.log("USD/WETH (bps) %e", oracle.fromUsd(WETH, 3800e18)); // weth wei per usd
-    console.log("USD/WBTC (bps) %e", oracle.fromUsd(WBTC, 68000e18)); // wbtc wei per usd
+    console.log("USD/WETH (bps) %e vs %e", chainlink.fromUsd(WETH, 3800e18), pyth.fromUsd(WETH, 3800e18)); // weth wei per usd
+    console.log("USD/WBTC (bps) %e vs %e", chainlink.fromUsd(WBTC, 68000e18), pyth.fromUsd(WBTC, 68000e18)); // wbtc wei per usd
 
-    console.log("WBTC/WETH (bps) %e", oracle.exchangeRate(WBTC, WETH)); // weth wei per wbtc
-    console.log("WETH/WBTC (bps) %e", oracle.exchangeRate(WETH, WBTC)); // wbtc wei per weth
+    console.log("WBTC/WETH (bps) %e vs %e", chainlink.exchangeRate(WBTC, WETH), pyth.exchangeRate(WBTC, WETH)); // weth wei per wbtc
+    console.log("WETH/WBTC (bps) %e vs %e", chainlink.exchangeRate(WETH, WBTC), pyth.exchangeRate(WETH, WBTC)); // wbtc wei per weth
   }
 
   function testAll() public {
