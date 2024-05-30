@@ -23,14 +23,14 @@ contract Moonwell is StrategyV5 {
   using SafeERC20 for IERC20Metadata;
 
   // strategy specific variables
-  IUnitroller internal _unitroller;
+  IUnitroller internal unitroller;
   bool internal _legacy;
 
   constructor(address _accessController) StrategyV5(_accessController) {}
 
   function _isLegacy(IUnitroller _unitroller) internal view returns (bool) {
     bool isLegacy;
-    try unitroller.claimReward(uint8(0), address(this)) {
+    try _unitroller.claimReward(uint8(0), address(this)) {
       isLegacy = true; // `rewardType` parameter exists
     } catch {
       isLegacy = false;
@@ -43,9 +43,9 @@ contract Moonwell is StrategyV5 {
    * @param _params Strategy specific parameters
    */
   function _setParams(bytes memory _params) internal override {
-    address unitroller = abi.decode(_params, (address));
-    _unitroller = IUnitroller(unitroller);
-    _legacy = _isLegacy(_unitroller);
+    address _unitroller = abi.decode(_params, (address));
+    unitroller = IUnitroller(_unitroller);
+    _legacy = _isLegacy(unitroller);
     _setAllowances(AsMaths.MAX_UINT256);
   }
 
