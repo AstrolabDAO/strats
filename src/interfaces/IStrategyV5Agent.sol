@@ -3,7 +3,6 @@ pragma solidity 0.8.22;
 
 import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
 import "./IWETH9.sol";
-import "./IAsManageable.sol";
 import "./IAsFlashLender.sol";
 import "./IAsPriceAware.sol";
 import "./IAs4626.sol";

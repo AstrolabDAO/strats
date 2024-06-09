@@ -34,7 +34,7 @@ contract Benqi is StrategyV5 {
   function _setParams(bytes memory _params) internal override {
     address unitroller = abi.decode(_params, (address));
     _unitroller = IUnitroller(unitroller);
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -48,7 +48,7 @@ contract Benqi is StrategyV5 {
 
     // wrap native rewards if needed
     _wrapNative();
-    for (uint8 i = 0; i < _rewardLength; i++) {
+    for (uint256 i = 0; i < _rewardLength; i++) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
     }
   }
@@ -75,8 +75,8 @@ contract Benqi is StrategyV5 {
    * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
-  function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength;) {
+  function _setLpTokenAllowances(uint256 _amount) internal override {
+    for (uint256 i = 0; i < _inputLength;) {
       inputs[i].forceApprove(address(lpTokens[i]), _amount);
       unchecked {
         i++;

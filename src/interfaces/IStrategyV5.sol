@@ -3,7 +3,6 @@ pragma solidity 0.8.22;
 
 import "./IStrategyV5Agent.sol";
 import "./IAsProxy.sol";
-import "./IAsRescuable.sol";
 
 interface IStrategyV5 is IStrategyV5Agent, IAsProxy {
   // Events

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
-import "../../libs/AsMaths.sol";
-import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5.sol";
 import "./interfaces/IStargate.sol";
 
@@ -47,7 +45,7 @@ contract Stargate is StrategyV5 {
       revert Errors.AddressZero();
     }
     lpStaker = ILPStaking(params.lpStaker);
-    for (uint8 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength;) {
       // Specify the pools]
       IPool lp = IPool(address(lpTokens[i]));
       stakingIds[i] = params.stakingIds[i];
@@ -58,7 +56,7 @@ contract Stargate is StrategyV5 {
         i++;
       }
     }
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -103,7 +101,7 @@ contract Stargate is StrategyV5 {
    */
   function claimRewards() public override returns (uint256[] memory amounts) {
     amounts = new uint256[](_rewardLength);
-    for (uint8 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength;) {
       if (address(inputs[i]) == address(0)) break;
       // withdraw/deposit with 0 still claims STG rewards
       lpStaker.withdraw(poolIds[i], 0);
@@ -111,7 +109,7 @@ contract Stargate is StrategyV5 {
         i++;
       }
     }
-    for (uint8 i = 0; i < _rewardLength;) {
+    for (uint256 i = 0; i < _rewardLength;) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
       unchecked {
         i++;
@@ -123,8 +121,8 @@ contract Stargate is StrategyV5 {
    * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
-  function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength; i++) {
+  function _setLpTokenAllowances(uint256 _amount) internal override {
+    for (uint256 i = 0; i < _inputLength; i++) {
       lpTokens[i].approve(address(lpStaker), _amount);
       inputs[i].approve(address(routers[i]), _amount);
     }
@@ -171,7 +169,7 @@ contract Stargate is StrategyV5 {
    */
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {
     amounts = uint256(_rewardLength).toArray();
-    for (uint8 i = 0; i < _inputLength; i++) {
+    for (uint256 i = 0; i < _inputLength; i++) {
       if (address(inputs[i]) == address(0)) break;
       amounts[0] += lpStaker.userInfo(poolIds[i], address(this)).amount;
     }

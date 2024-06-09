@@ -2,13 +2,10 @@
 pragma solidity 0.8.22;
 
 import "@astrolabs/swapper/contracts/interfaces/ISwapper.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IWETH9.sol";
 import "../interfaces/IStrategyV5.sol";
 import "../interfaces/IStrategyV5Agent.sol";
-import "../interfaces/IPriceProvider.sol";
 import "./As4626Abstract.sol";
-import "./AsManageable.sol";
 import "./AsPriceAware.sol";
 
 /**

@@ -3,13 +3,10 @@ pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "../interfaces/IAs4626.sol";
-import "../interfaces/IStrategyV5Agent.sol";
-import "../interfaces/IStrategyV5.sol";
 import "../libs/AsArrays.sol";
 import "../libs/AsMaths.sol";
 import "./AsRescuable.sol";
 import "./StrategyV5Abstract.sol";
-import "./AsPriceAware.sol";
 
 /**
  *             _             _       _
@@ -30,6 +27,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   using AsMaths for int256[8];
   using AsArrays for int256[8];
   using AsArrays for bytes[];
+  using SafeERC20 for IERC20Metadata;
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                         INITIALIZATION                         ║
@@ -631,8 +629,64 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /*═══════════════════════════════════════════════════════════════╗
+  ║                             HOOKS                              ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Called before investing underlying assets into the strategy inputs
+   * @param _amounts Amount of underlying assets to invest in each input
+   */
+  function _beforeInvest(uint256[8] calldata _amounts) internal virtual {}
+
+  /**
+   * @notice Called after investing underlying assets into the strategy inputs
+   * @param _totalInvested Sum of underlying assets invested
+   */
+  function _afterInvest(uint256 _totalInvested) internal virtual {}
+
+  /**
+   * @notice Called before harvesting rewards from the strategy
+   */
+  function _beforeHarvest() internal virtual {}
+
+  /**
+   * @notice Called after harvesting rewards from the strategy
+   * @param _assetsReceived Amount of underlying assets received from harvesting
+   */
+  function _afterHarvest(uint256 _assetsReceived) internal virtual {}
+
+  /**
+   * @notice Called before liquidating strategy inputs
+   * @param _amounts Amount of each input to liquidate
+   */
+  function _beforeLiquidate(uint256[8] calldata _amounts) internal virtual {}
+
+  /**
+   * @notice Called after liquidating strategy inputs
+   * @param _totalRecovered Total amount of underlying assets recovered from liquidation
+   */
+  function _afterLiquidate(uint256 _totalRecovered) internal virtual {}
+
+  /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║
   ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Sets the lpTokens's allowances on inputs
+   * @param _amount Amount of allowance to set
+   */
+  function _setLpTokenAllowances(uint256 _amount) internal virtual {
+
+    // default is to approve AsMaths.MAX_UINT256
+    _amount = _amount > 0 ? _amount : AsMaths.MAX_UINT256;
+    for (uint256 i = 0; i < _inputLength;) {
+      if (address(lpTokens[i]) == address(0)) break;
+      inputs[i].forceApprove(address(lpTokens[i]), _amount);
+      unchecked {
+        i++;
+      }
+    }
+  }
 
   /**
    * @notice Stakes or provides `_amount` from `input[_index]` to `lpTokens[_index]`
@@ -658,6 +712,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256[8] calldata _amounts, // from previewInvest()
     bytes[] calldata _params
   ) internal virtual returns (uint256 totalInvested) {
+
+    _beforeInvest(_amounts); // strat specific hook
+
     uint256 spent;
     uint256 toStake;
 
@@ -697,6 +754,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       }
     }
 
+    _afterInvest(totalInvested); // strat specific hook
+
     last.invest = uint64(block.timestamp);
     emit Invest(totalInvested, block.timestamp);
   }
@@ -728,6 +787,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     bool _panic,
     bytes[] calldata _params
   ) internal virtual returns (uint256 totalRecovered) {
+
+    _beforeLiquidate(_amounts); // strat specific hook
+
     // pre-liquidation sharePrice
     last.sharePrice = _sharePrice();
 
@@ -798,6 +860,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     if (liquidityAvailable < _minLiquidity && !_panic) {
       revert Errors.AmountTooLow(liquidityAvailable);
     }
+
+    _afterLiquidate(totalRecovered); // strat specific hook
 
     last.liquidate = uint64(block.timestamp);
     emit Liquidate(totalRecovered, liquidityAvailable, block.timestamp);
@@ -888,11 +952,16 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     virtual
     returns (uint256 assetsReceived)
   {
+    _beforeHarvest(); // strat specific hook
+
     assetsReceived = _swapRewards(claimRewards(), _params);
     // reset expected profits to updated value + amount
     _expectedProfits = AsAccounting.unrealizedProfits(
       last.harvest, _expectedProfits, _profitCooldown
     ) + assetsReceived;
+
+    _afterHarvest(assetsReceived); // strat specific hook
+
     last.harvest = uint64(block.timestamp);
     emit Harvest(assetsReceived, block.timestamp);
   }

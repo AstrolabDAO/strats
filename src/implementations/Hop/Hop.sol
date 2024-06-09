@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
-import "../../libs/AsMaths.sol";
-import "../../libs/AsArrays.sol";
 import "../../abstract/StrategyV5.sol";
 import "./interfaces/IStableRouter.sol";
 import "./interfaces/IStakingRewards.sol";
@@ -45,7 +43,7 @@ contract Hop is StrategyV5 {
    */
   function _setParams(bytes memory _params) internal override {
     Params memory params = abi.decode(_params, (Params));
-    for (uint8 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength;) {
       _tokenIndexes[i] = params.tokenIndexes[i];
       _stableRouters[i] = IStableRouter(params.stableRouters[i]);
       setRewardPools(params.rewardPools[i], i);
@@ -53,7 +51,7 @@ contract Hop is StrategyV5 {
         i++;
       }
     }
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -61,7 +59,7 @@ contract Hop is StrategyV5 {
    * @param rewardPools Array of reward pools
    */
   function setRewardPools(address[] memory rewardPools, uint256 _index) public onlyAdmin {
-    // for (uint8 j = 0; j < _rewardPools[_index].length; j++) {
+    // for (uint256 j = 0; j < _rewardPools[_index].length; j++) {
     IStakingRewards pool = IStakingRewards(rewardPools[0]);
     // if (addr == address(0)) break;
     _rewardPools[_index][0] = pool;
@@ -76,8 +74,8 @@ contract Hop is StrategyV5 {
    */
   function claimRewards() public override returns (uint256[] memory amounts) {
     amounts = new uint256[](_rewardLength);
-    for (uint8 i = 0; i < _inputLength;) {
-      // for (uint8 j = 0; j < _rewardPools[i].length; j++) {
+    for (uint256 i = 0; i < _inputLength;) {
+      // for (uint256 j = 0; j < _rewardPools[i].length; j++) {
       if (address(_rewardPools[i][0]) == address(0)) break;
       _rewardPools[i][0].getReward();
       // }
@@ -85,7 +83,7 @@ contract Hop is StrategyV5 {
         i++;
       }
     }
-    for (uint8 i = 0; i < _rewardLength;) {
+    for (uint256 i = 0; i < _rewardLength;) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
       unchecked {
         i++;
@@ -138,11 +136,11 @@ contract Hop is StrategyV5 {
    * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
-  function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength;) {
+  function _setLpTokenAllowances(uint256 _amount) internal override {
+    for (uint256 i = 0; i < _inputLength;) {
       inputs[i].forceApprove(address(_stableRouters[i]), _amount);
       lpTokens[i].forceApprove(address(_stableRouters[i]), _amount);
-      // for (uint8 j = 0; j < _rewardPools[i].length; j++) {
+      // for (uint256 j = 0; j < _rewardPools[i].length; j++) {
       if (address(_rewardPools[i][0]) == address(0)) break; // no overflow (static array)
       lpTokens[i].forceApprove(address(_rewardPools[i][0]), _amount);
       // }
@@ -192,9 +190,9 @@ contract Hop is StrategyV5 {
    */
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {
     amounts = uint256(_rewardLength).toArray();
-    for (uint8 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength;) {
       // uint8 length = uint8(rewardPools[i].length);
-      // for (uint8 j = 0; j < length; j++) {
+      // for (uint256 j = 0; j < length; j++) {
       IStakingRewards pool = _rewardPools[i][0];
       if (address(pool) == address(0)) break; // no overflow (static array)
       address rewardToken = _tokenByRewardPool[address(_rewardPools[i][0])];

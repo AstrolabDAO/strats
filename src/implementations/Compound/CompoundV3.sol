@@ -38,7 +38,7 @@ abstract contract CompoundV3Abstract is StrategyV5 {
    */
   function _isLegacy(ICometRewards _controller) internal view returns (bool) {
     bool isLegacy;
-    try _controller.rewardConfig(_lpTokens[0]) returns (ICometRewards.RewardConfig memory config) {
+    try _controller.rewardConfig(address(lpTokens[0])) returns (ICometRewards.RewardConfig memory config) {
       isLegacy = false; // `multiplier` field exists in the struct
     } catch {
       isLegacy = true;
@@ -53,7 +53,7 @@ abstract contract CompoundV3Abstract is StrategyV5 {
   function _loadConfigs() internal {
     for (uint256 i = 0; i < _inputLength;) {
       if (_legacy) {
-        ICometRewardsLegacy.RewardConfig memory tmp = _rewardController.rewardConfig(address(lpTokens[i]));
+        ICometRewardsLegacy.RewardConfig memory tmp = ICometRewardsLegacy(address(_rewardController)).rewardConfig(address(lpTokens[i]));
         _rewardConfigs[i] = ICometRewards.RewardConfig({
           token: tmp.token,
           rescaleFactor: tmp.rescaleFactor,
@@ -78,7 +78,7 @@ abstract contract CompoundV3Abstract is StrategyV5 {
     _rewardController = ICometRewards(rewardController);
     _legacy = _isLegacy(_rewardController);
     _loadConfigs();
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -95,7 +95,7 @@ abstract contract CompoundV3Abstract is StrategyV5 {
     // update inputs and lpTokens
     _setInputs(_inputs, _weights, _lpTokens);
     _loadConfigs();
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -145,7 +145,7 @@ abstract contract CompoundV3Abstract is StrategyV5 {
   {
     amounts = new uint256[](_rewardLength);
 
-    for (uint8 i = 0; i < lpTokens.length;) {
+    for (uint256 i = 0; i < lpTokens.length;) {
       if (address(lpTokens[i]) == address(0)) break;
       amounts[0] += _rebaseAccruedReward(
         IComet(address(lpTokens[i])).baseTrackingAccrued(address(this)), i
@@ -154,7 +154,7 @@ abstract contract CompoundV3Abstract is StrategyV5 {
         i++;
       }
     }
-    for (uint8 i = 0; i < _rewardLength;) {
+    for (uint256 i = 0; i < _rewardLength;) {
       amounts[i] += IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
       unchecked {
         i++;
@@ -170,14 +170,14 @@ abstract contract CompoundV3Abstract is StrategyV5 {
    */
   function claimRewards() public override returns (uint256[] memory amounts) {
     amounts = new uint256[](_rewardLength);
-    for (uint8 i = 0; i < lpTokens.length;) {
+    for (uint256 i = 0; i < lpTokens.length;) {
       if (address(lpTokens[i]) == address(0)) break;
       _rewardController.claim(address(lpTokens[i]), address(this), true);
       unchecked {
         i++;
       }
     }
-    for (uint8 i = 0; i < _rewardLength;) {
+    for (uint256 i = 0; i < _rewardLength;) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
       unchecked {
         i++;

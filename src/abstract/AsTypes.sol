@@ -75,6 +75,8 @@ struct Requests {
   uint256 totalRedemption; // total shares requested for redemption (1e12)
   uint256 totalClaimableDeposit; // total asset to be deposited (unused since all deposit are synchronous)
   uint256 totalClaimableRedemption; // total shares claimable for redemption (1e12)
+  uint256[8] liquidate; // liquidation requests amounts in each of `inputs`
+  // uint256 totalLiquidate; // total liquidation request amount
   mapping(address => OwnerRequests) byOwner; // mapping of ERC-7540 requests by owner
 }
 
@@ -82,6 +84,7 @@ struct Requests {
 struct Epoch {
   // dates
   uint64 feeCollection; // last fee collection timestamp
+  uint64 liquidateRequest; // last liquidation request timestamp
   uint64 liquidate; // last liquidation timestamp
   uint64 harvest; // last harvest timestamp
   uint64 invest; // last invest timestamp

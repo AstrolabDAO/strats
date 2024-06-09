@@ -46,7 +46,7 @@ contract Agave is StrategyV5 {
     _poolProvider = IPoolAddressesProvider(params.poolProvider);
     _balancerVault = IBalancerVault(params.balancerVault);
     _rewardPoolId = params.rewardPoolId;
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -98,7 +98,7 @@ contract Agave is StrategyV5 {
       request: request
     });
 
-    for (uint8 i = 0; i < _rewardLength; i++) {
+    for (uint256 i = 0; i < _rewardLength; i++) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
     }
   }

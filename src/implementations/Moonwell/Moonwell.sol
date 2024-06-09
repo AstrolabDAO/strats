@@ -23,14 +23,14 @@ contract Moonwell is StrategyV5 {
   using SafeERC20 for IERC20Metadata;
 
   // strategy specific variables
-  IUnitroller internal unitroller;
+  IUnitroller internal _unitroller;
   bool internal _legacy;
 
   constructor(address _accessController) StrategyV5(_accessController) {}
 
-  function _isLegacy(IUnitroller _unitroller) internal view returns (bool) {
+  function _isLegacy(IUnitroller _implementation) internal returns (bool) {
     bool isLegacy;
-    try _unitroller.claimReward(uint8(0), address(this)) {
+    try _implementation.claimReward(uint8(0), address(this)) {
       isLegacy = true; // `rewardType` parameter exists
     } catch {
       isLegacy = false;
@@ -43,10 +43,10 @@ contract Moonwell is StrategyV5 {
    * @param _params Strategy specific parameters
    */
   function _setParams(bytes memory _params) internal override {
-    address _unitroller = abi.decode(_params, (address));
-    unitroller = IUnitroller(_unitroller);
-    _legacy = _isLegacy(unitroller);
-    _setAllowances(AsMaths.MAX_UINT256);
+    address unitroller = abi.decode(_params, (address));
+    _unitroller = IUnitroller(unitroller);
+    _legacy = _isLegacy(_unitroller);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -63,7 +63,7 @@ contract Moonwell is StrategyV5 {
     }
     // wrap native rewards if needed
     _wrapNative();
-    for (uint8 i = 0; i < _rewardLength; i++) {
+    for (uint256 i = 0; i < _rewardLength; i++) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
     }
   }

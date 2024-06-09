@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.22;
 
-import "../interfaces/IWETH9.sol";
 import "./StrategyV5Abstract.sol";
 import "./As4626.sol";
 import "./AsFlashLender.sol";
@@ -353,6 +352,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     _rewardLength = uint8(_rewardTokens.length);
     _setSwapperAllowance(AsMaths.MAX_UINT256, false, true, false);
   }
+
+
 
   /**
    * @notice Sets the strategy reward tokens if any

@@ -3,7 +3,6 @@ pragma solidity 0.8.22;
 
 import "../interfaces/IPriceProvider.sol";
 import "./AsPermissioned.sol";
-import "./AsTypes.sol";
 
 /**
  *             _             _       _

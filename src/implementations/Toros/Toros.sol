@@ -34,7 +34,7 @@ contract Toros is StrategyV5 {
   function _setParams(bytes memory _params) internal override {
     address dHedgeSwapper = abi.decode(_params, (address));
     _dHedgeSwapper = IDhedgeEasySwapper(dHedgeSwapper);
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -70,8 +70,8 @@ contract Toros is StrategyV5 {
    * @notice Sets allowances for third party contracts (except rewardTokens)
    * @param _amount Allowance amount
    */
-  function _setAllowances(uint256 _amount) internal override {
-    for (uint8 i = 0; i < _inputLength; i++) {
+  function _setLpTokenAllowances(uint256 _amount) internal override {
+    for (uint256 i = 0; i < _inputLength; i++) {
       inputs[i].forceApprove(address(_dHedgeSwapper), _amount);
     }
   }

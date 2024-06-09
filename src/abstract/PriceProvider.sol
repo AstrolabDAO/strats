@@ -2,7 +2,6 @@
 pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
-import "./AsTypes.sol";
 import "../libs/AsMaths.sol";
 import "./AsPermissioned.sol";
 

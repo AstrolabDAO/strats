@@ -34,7 +34,7 @@ contract Venus is StrategyV5 {
   function _setParams(bytes memory _params) internal override {
     address unitroller = abi.decode(_params, (address));
     _unitroller = IUnitroller(unitroller);
-    _setAllowances(AsMaths.MAX_UINT256);
+    _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
   /**
@@ -49,7 +49,7 @@ contract Venus is StrategyV5 {
     _unitroller.claimVenus(address(this)); // claim for all markets
     // wrap native rewards if needed
     _wrapNative();
-    for (uint8 i = 0; i < _rewardLength; i++) {
+    for (uint256 i = 0; i < _rewardLength; i++) {
       amounts[i] = IERC20Metadata(rewardTokens[i]).balanceOf(address(this));
     }
   }

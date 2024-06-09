@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "../interfaces/IERC3156FlashBorrower.sol";
 import "./AsPermissioned.sol";
-import "./AsTypes.sol";
 import "../libs/AsMaths.sol";
 
 /**
