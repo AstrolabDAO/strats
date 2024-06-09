@@ -4,6 +4,7 @@ pragma solidity 0.8.22;
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "./IAsManageable.sol";
 import "./IAsRescuable.sol";
+import "../abstract/AsTypes.sol";
 
 interface IAs4626 is IERC20Metadata, IAsRescuable, IAsManageable {
   // Events
