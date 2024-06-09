@@ -46,22 +46,6 @@ contract StrategyV5Composite is StrategyV5Lock {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Returns the investment in asset asset for the specified input
-   * @return total Amount invested
-   */
-  function _investedInput(uint256 _index) internal view override returns (uint256) {
-    return _stakedInput(_index);
-  }
-
-  /**
-   * @notice Returns the invested input converted from the staked LP token
-   * @return Input value of the LP/staked balance
-   */
-  function _stakedInput(uint256 _index) internal view returns (uint256) {
-    return _primitives[_index].balanceOf(address(this));
-  }
-
-  /**
    * @notice Convert LP/staked LP to input
    * @param _amount Amount of LP/staked LP
    * @return Input value of the LP amount
