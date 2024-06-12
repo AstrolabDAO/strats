@@ -41,7 +41,7 @@ import {
 } from "../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
-import { findSymbolByAddress } from "../../../src/addresses";
+import { findSymbolByAddress, loadCreate3Salts } from "../../../src/addresses";
 import compoundAddresses from "../../../src/implementations/Compound/addresses";
 
 export const indexes = Array.from({ length: 8 }, (_, index) => index);
@@ -64,35 +64,40 @@ export const deployStrat = async (
   libNames = ["AsAccounting"],
   forceVerify = false, // check that the contract is verified on etherscan/tenderly
 ): Promise<IStrategyDeploymentEnv> => {
+
   // strategy dependencies
   const libraries: { [name: string]: string } = {};
   const contractUniqueName = name; // `${contract}.${env.deployment?.inputs?.map(i => i.symbol).join("-")}`;
-
+  const salts = await loadCreate3Salts();
   for (const n of libNames) {
     let lib = {} as Contract;
     const path = `src/libs/${n}.sol:${n}`;
     const address = env.addresses?.libs?.[n] ?? "";
     if (!libraries[n]) {
-      const libParams = {
+      const libParams: IDeploymentUnit = {
         contract: n,
         name: n,
         verify: true,
         deployed: address ? true : false,
         address,
         libraries: {}, // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
-      } as IDeploymentUnit;
+      };
       if (libParams.deployed) {
         console.log(`Using existing ${n} at ${libParams.address}`);
         lib = await SafeContract.build(
           address,
-          (loadAbi(n) as any[]) ?? [],
+          await loadAbi(n) as any[],
           env.deployer!,
         );
       } else {
-        lib = await deploy(libParams);
+        if (salts[n]) {
+          libParams.useCreate3 = true;
+          libParams.create3Salt = salts[n];
+        }
+        lib = await  deploy(libParams);
       }
     }
-    libraries[n] = lib.address;
+    libraries[n] = lib. address;
   }
 
   // exclude implementation specific libraries from agentLibs (eg. oracle libs)
@@ -166,10 +171,15 @@ export const deployStrat = async (
     units[c] = dep;
     if (!env.addresses!.astrolab?.[c]) {
       console.log(`Deploying missing ${c}`);
+      const create3Id = dep.contract == contract ? contractUniqueName : dep.contract;
+      if (salts[create3Id]) {
+        units[c].useCreate3 = true;
+        units[c].create3Salt = salts[create3Id];
+      }
       const d = await deploy(units[c]);
       preDeployments[c] = await SafeContract.build(
         d.address!,
-        loadAbi(dep.contract)! as any[],
+        await loadAbi(dep.contract) as any[],
         env.deployer!,
       );
       dep.verify = false; // we just verified it
@@ -177,7 +187,7 @@ export const deployStrat = async (
       console.log(`Using existing ${c} at ${env.addresses!.astrolab?.[c]}`);
       preDeployments[c] = await SafeContract.build(
         env.addresses!.astrolab?.[c]!,
-        loadAbi(dep.contract)! as any[],
+        await loadAbi(dep.contract) as any[],
         env.deployer!,
       );
     }
@@ -292,6 +302,10 @@ export const deployStrat = async (
   ) {
     console.log(`Using existing deployment [${name} Stack]`);
   } else {
+    if (salts[contractUniqueName]) {
+      env.deployment!.units![contract].useCreate3 = true;
+      env.deployment!.units![contract].create3Salt = salts[contractUniqueName];
+    }
     await deployAll(env.deployment!);
   }
 
@@ -305,13 +319,13 @@ export const deployStrat = async (
     if (dep[c]?.symbol) {
       dep[c] = await SafeContract.build(
         env.deployment!.units![c].address!, // dep[c].address
-        loadAbi(c) as any[],
+        await loadAbi(c) as any[],
       );
     }
   }
   env.deployment!.strat = await SafeContract.build(
     env.deployment!.units![contract].address!,
-    loadAbi(contract) as any[],
+    await loadAbi(contract) as any[],
   );
   return env as IStrategyDeploymentEnv;
 };
@@ -377,7 +391,7 @@ export async function setupStrat(
   if ((await proxy.agent()) != addressZero) {
     console.log(`Skipping init() as ${name} already initialized`);
   } else {
-    const initSignature = getInitSignature(contract);
+    const initSignature = await getInitSignature(contract);
     console.log("InitParams:", initParams);
     console.log("InitSignature:", initSignature);
     await proxy[initSignature](initParams, getOverrides(env)).then(
@@ -388,7 +402,7 @@ export async function setupStrat(
   // once the strategy is initialized, rebuild the SafeContract object as symbol and decimals are updated
   env.deployment!.strat = await SafeContract.build(
     env.deployment!.units![contract].address!,
-    loadAbi(contract) as any[], // use "StrategyV5" for strat generic abi
+    await loadAbi(contract) as any[], // use "StrategyV5" for strat generic abi
   );
 
   if (!isAddress(env.deployment!.strat.address)) {

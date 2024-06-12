@@ -1,6 +1,20 @@
 import { networkBySlug } from "@astrolabs/hardhat";
 
 const symbolByAddress: { [chainId: number]: { [address: string]: string } } = {};
+let create3Salts: { [id: string]: string } = {};
+
+export async function loadCreate3Salts() {
+  if (!Object.keys(create3Salts).length) {
+    try {
+      const module = await import('./salts.json');
+      create3Salts = module.default;
+    } catch (err) {
+      console.error('Error importing config file:', err);
+      throw err;
+    }
+  }
+  return create3Salts;
+}
 
 export function findSymbolByAddress(address: string, chainId: number): string | undefined {
   const networkAddresses = addresses[chainId];
@@ -34,6 +48,7 @@ export type NetworkAddresses = {
   oracles?: { [token: string]: string };
   tokens: { [name: string]: string };
   libs?: { [name: string]: string };
+  safe?: { [name: string]: string };
   // protocol specific addresses
   [protocol: string]: { [name: string]: string } | undefined;
   astrolab?: {
@@ -47,25 +62,39 @@ export type Addresses = {
   [networkId: number]: NetworkAddresses;
 };
 
+export const crossChainAddresses = {
+  safe: {
+    // https://github.com/safe-global/safe-smart-account/blob/main/CHANGELOG.md
+    proxyFactory: "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2", // "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67", // "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67", // v1.5
+    singleton: "0x41675C099F32341bf84BFc5382aF534df5C7461a",
+    singletonL2: "0x3e5c63644e683549055b9be8653de26e0b4cd36e", // 0x29fcB43b46531BcA003ddC8FCB67FFE91900C762", // "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+    callbackHandler: "0xeDCF620325E82e3B9836eaaeFdc4283E99Dd7562", // "0x1AC114C2099aFAf5261731655Dc6c306bFcd4Dbd",
+    compatibilityFallbackHandler: "0xf48f2b2d2a534e402487b3ee7c18c33aec0fe5e4", // "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99", // "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+  },
+  libs: {
+    AsMaths: "",
+    AsArrays: "",
+    AsAccounting: "0x00000abb1f7d0f6f7e73beb0be001d5f0d11a1a7",
+  },
+  astrolab: {
+    Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
+    AccessController: "0x00008c4cc59aa70c25d4274d6dc92dc4a83c4656",
+    ChainlinkProvider: "0x00001d45ef5fabb7b61d2ab7fc380402c0fe1465",
+    PriceProvider: "0x00001d45ef5fabb7b61d2ab7fc380402c0fe1465",
+    StrategyV5Agent: "0x00004676ff3b96eb9af97d763a4e33caab72aa5e",
+    "apAAVE.USD": "0x0000ae741ae3d95f292a7fc74c5fca124f444f5a",
+  },
+}
+
 export const addresses = {
   // ethereum
   1: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0xf977814e90da44bfa03b6295a0616a897441acec", // binance 8
     },
     oracles: {
       Pyth: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
-    },
-    libs: {
-      AsMaths: "",
-      AsArrays: "",
-      AsAccounting: "",
-      AccessController: "",
-    },
-    astrolab: {
-      Swapper: "0x281cc759925fc757c9bade12b2b001d6d646417f",
-      StrategyV5Agent: "",
-      "Astrolab Primitive CompoundV3 USD": "",
     },
     tokens: {
       WETH: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
@@ -132,22 +161,12 @@ export const addresses = {
   },
   // optimism
   10: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0xacD03D601e5bB1B275Bb94076fF46ED9D753435A",
     },
     oracles: {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
-    },
-    libs: {
-      AsMaths: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
-      AsArrays: "",
-      AsAccounting: "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
-    },
-    astrolab: {
-      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894", // PROD
-      // Swapper: "0xac64a35e398699dd3f22d4ba2252e5153c40fe9c",
-      StrategyV5Agent: "0xbe15f86da4800c03fca8f457cff30d6ef9fb7bff",
-      "Astrolab Sonne USD" : "0xe395a274de8195fad99fbce161c99472bf31b0b2",
     },
     tokens: {
       OP: "0x4200000000000000000000000000000000000042",
@@ -193,21 +212,12 @@ export const addresses = {
   },
   // bnb
   56: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0x8894E0a0c962CB723c1976a4421c95949bE2D4E3",
     },
     oracles: {
       Pyth: "0x4D7E825f80bDf85e913E0DD2A2D54927e9dE1594",
-    },
-    libs: {
-      AsMaths: "",
-      AsArrays: "",
-      AsAccounting: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
-    },
-    astrolab: {
-      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
-      "Astrolab Venus USD": "0xf3ecad6a4aab1d3e3add9ab61f13cf96e5a5b51f",
     },
     tokens: {
       WBNB: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
@@ -241,24 +251,12 @@ export const addresses = {
   },
   // xdai
   100: {
+    ...crossChainAddresses,
     accounts : {
       impersonate: "0x5bb83e95f63217cda6ae3d181ba580ef377d2109"
     },
     oracles: {
       Pyth: "0x2880aB155794e7179c9eE2e38200202908C17B43",
-    },
-    libs: {
-      AsMaths: "0x3Ad84F7Dd934D7ba3dc3A6EE42d900237F5ADa0C", // prod
-      AsArrays: "",
-      AsAccounting: "0x55B5e5C8541feAC305BeBDe91a7558a1a685FbFD", // prod
-    },
-    astrolab: {
-      Swapper: "0x47A84E64a9b50D6f489F9AB58DB1ab7a2719C42b", // prod
-      StrategyV5Agent: "0x39291B9dc8Fc83E731Bd7318922D34C90081e0DF",
-      "HopSingleStake.USDC": "",
-      "HopSingleStake.WETH": "",
-      "Astrolab Hop USD": "",
-      "Astrolab Aave USD": "0xB72F246bB229F67eCBbb1c4bd1b61f6fAA0AC40B",
     },
     tokens: {
       WXDAI: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
@@ -278,6 +276,7 @@ export const addresses = {
   },
   // manta
   169: {
+    ...crossChainAddresses,
     accounts: {},
     oracles: {
       Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
@@ -286,25 +285,12 @@ export const addresses = {
   },
   // polygon
   137: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0xF977814e90dA44bFA03b6295A0616a897441aceC", // binance
     },
     oracles: {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
-    },
-    libs: {
-      AsMaths: "0x78D5ECF1fBd052F7D8914DFBd7e3e5B5cD9aa6BB",
-      AsArrays: "",
-      AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718",
-    },
-    astrolab: {
-      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a",
-      "HopSingleStake.USDC": "",
-      "HopSingleStake.WETH": "",
-      "Astrolab Hop USD": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11",
-      "Astrolab Aave USD": "0x11c8f790d252f4a49cfbff5766310873898bf5d3",
-      "Astrolab Stargate USD": "",
     },
     tokens: {
       WBTC: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
@@ -346,6 +332,7 @@ export const addresses = {
   },
   // opbnb
   204: {
+    ...crossChainAddresses,
     accounts: {},
     oracles: {},
     tokens: {
@@ -357,6 +344,7 @@ export const addresses = {
   },
   // ftm
   250: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0x65bab4f268286b9005d6053a177948dddc29bad3",
     },
@@ -399,6 +387,7 @@ export const addresses = {
   },
   // zksync
   324: {
+    ...crossChainAddresses,
     impersonate: {},
     oracles: {
       Pyth: "0xf087c864AEccFb6A2Bf1Af6A0382B0d0f6c5D834",
@@ -423,12 +412,14 @@ export const addresses = {
   },
   // rollux
   570: {
+    ...crossChainAddresses,
     accounts: {},
     oracles: {},
     tokens: {},
   },
   // polygon zkevm
   1101: {
+    ...crossChainAddresses,
     accounts: {},
     oracles: {
       Pyth: "0xC5E56d6b40F3e3B5fbfa266bCd35C37426537c65",
@@ -437,21 +428,12 @@ export const addresses = {
   },
   // moonbeam
   1284: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0x73197B461eA369b36d5ee96A1C9f090Ef512be21",
     },
     oracles: {
       Pyth: "",
-    },
-    libs: {
-      AsMaths: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
-      AsArrays: "",
-      AsAccounting: "0x73f65FAEFB2bE3b7d868300fD5E3A9054E1769A6", // PROD
-    },
-    astrolab: {
-      Swapper: "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
-      StrategyV5Agent: "0x98bC71A155A11D516a2f4E675F4CD0DF04aA1d2B", // PROD
-      "Astrolab Moonwell USD": "0x11C8f790d252F4A49cFBFf5766310873898BF5D3", // PROD
     },
     tokens: {
       WGLMR: "0xAcc15dC74880C9944775448304B263D191c6077F",
@@ -480,6 +462,7 @@ export const addresses = {
   },
   // kava
   2222: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "",
     },
@@ -525,6 +508,7 @@ export const addresses = {
   },
   // horizen eon
   7332: {
+    ...crossChainAddresses,
     accounts: {},
     oracles: {
       Pyth: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
@@ -533,30 +517,12 @@ export const addresses = {
   },
   // base
   8453: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
     },
     oracles: {
       Pyth: "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a",
-    },
-    libs: {
-      // AsMaths: "0x78D5ECF1fBd052F7D8914DFBd7e3e5B5cD9aa6BB", // PROD
-      AsMaths: "",
-      AsArrays: "",
-      // AsAccounting: "0x1761FF905292548fF2254620166eabd988e48718", // PROD
-      AsAccounting: "",
-    },
-    astrolab: {
-      AccessController: "",
-      PriceProvider: "",
-      Swapper: "0xdfe11C1bEB360820a6Aa9aDa899243dE459b3894", // PROD
-      // StrategyV5Agent: "0xa8973d3A983157163e58C02683ED18ae0C7f990a", // PROD
-      StrategyV5Agent: "",
-      // "Astrolab Moonwell USD": "0x9C14F9137Fc7327F336cC73D4218d310F3Faba11", // PROD
-      "Astrolab Primitive Stargate USD": "",
-      // "Astrolab Aave USD": "0x2aeB4A62f40257bfC96D5be55519f70DB871c744", // PROD
-      "Astrolab Primitive CompoundV3 USD": "",
-      "Astrolab Primitive Sonne USD": "",
     },
     tokens: {
       WETH: "0x4200000000000000000000000000000000000006",
@@ -584,6 +550,7 @@ export const addresses = {
   },
   // evmos
   9001: {
+    ...crossChainAddresses,
     accounts: {},
     oracles: {
       Pyth: "0x354bF866A4B006C9AF9d9e06d9364217A8616E12",
@@ -592,24 +559,12 @@ export const addresses = {
   },
   // arbitrum
   42161: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0x489ee077994B6658eAfA855C308275EAd8097C4A",
     },
     oracles: {
-      Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
-    },
-    libs: {
-      AsMaths: "",
-      AsArrays: "",
-      AsAccounting: "",
-    },
-    astrolab: {
-      Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
-      AccessController: "",
-      PriceProvider: "",
-      StrategyV5Agent: "",
-      "Astrolab Lodestar USD": "",
-      "Astrolab Primitive CompoundV3 USD": "",
+      // Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
     tokens: {
       WETH: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -660,6 +615,7 @@ export const addresses = {
   },
   // celo
   42220: {
+    ...crossChainAddresses,
     oracles: {
       Pyth: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
     },
@@ -687,21 +643,12 @@ export const addresses = {
   },
   // avalanche
   43114: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0x9f8c163cBA728e99993ABe7495F06c0A3c8Ac8b9",
     },
     oracles: {
       Pyth: "0x4305FB66699C3B2702D4d05CF36551390A4c69C6",
-    },
-    libs: {
-      AsMaths: "0x282a975a87e5814e449d02be65b2c7e4dab4dec4",
-      AsArrays: "",
-      AsAccounting: "0x78d5ecf1fbd052f7d8914dfbd7e3e5b5cd9aa6bb",
-    },
-    astrolab: {
-      Swapper: "0xdfe11c1beb360820a6aa9ada899243de459b3894",
-      StrategyV5Agent: "0x7221ebdd4176b1a21c3c014fd70bab46e697e272",
-      "Astrolab Benqi USD": "0xa8973d3a983157163e58c02683ed18ae0c7f990a",
     },
     tokens: {
       WBTCe: "0x50b7545627a5162F82A992c33b87aDc75187B218",
@@ -724,6 +671,7 @@ export const addresses = {
   },
   // linea
   59144: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0x7160570bb153edd0ea1775ec2b2ac9b65f1ab61b",
     },
@@ -753,6 +701,7 @@ export const addresses = {
   },
   // scroll
   534352: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0xeFaAE8E0381bD4e23CE9A662cfA833Fb4ED916e5",
     },
@@ -778,6 +727,7 @@ export const addresses = {
   },
   // neon
   245022934: {
+    ...crossChainAddresses,
     accounts: {
       impersonate: "0xef117c0b7b2512c812a64d2ce9bfe767cbb4c1f8",
     },
@@ -797,6 +747,7 @@ export const addresses = {
   },
   // aurora
   1313161554: {
+    ...crossChainAddresses,
     accounts: {},
     oracles: {
       Pyth: "0xF89C7b475821EC3fDC2dC8099032c05c6c0c9AB9"

@@ -2,6 +2,7 @@ import {
   Log,
   TransactionReceipt,
   TransactionRequest,
+  deploy,
   ethers,
   getDeployer,
   loadAbi,
@@ -30,7 +31,7 @@ import {
   constants,
 } from "ethers";
 import { merge } from "lodash";
-import addresses, { Addresses } from "../../src/addresses";
+import addresses, { Addresses, NetworkAddresses, loadCreate3Salts } from "../../src/addresses";
 import {
   IChainlinkParams,
   IStrategyDeploymentEnv,
@@ -80,16 +81,14 @@ export function getAddresses(s: string) {
   return isAddress(s) ? s : addresses[network.config.chainId!].tokens[s];
 }
 
-type AbiFragment = { name: string; inputs: [{ type: string }] };
-
 /**
  * Retrieves the signature of the initialization function for a given contract
  * @param contract - Contract address or name
  * @returns The signature of the initialization function
  */
-export const getInitSignature = (contract: string) => {
-  const fragments = (loadAbi(contract) as AbiFragment[]).filter(
-    (a) => a.name === "init",
+export const getInitSignature = async (contract: string) => {
+  const fragments = (await loadAbi(contract) as any[]).filter(
+    a => a.name === "init",
   );
   const dummy = new Contract(addressZero, fragments, provider!);
   return Object.keys(dummy)
@@ -479,7 +478,7 @@ export const getEnv = async (
 ): Promise<ITestEnv> => {
   const addr = (addressesOverride ?? addresses)[network.config.chainId!];
   const oracles = (<any>chainlinkOracles)[network.config.chainId!];
-  const deployer = await getDeployer();
+  const deployer = await getDeployer() as SignerWithAddress;
   const multicallProvider = new MulticallProvider();
   await multicallProvider.init(provider);
   const live = isLive(env);
@@ -499,8 +498,8 @@ export const getEnv = async (
       wgas: await SafeContract.build(addr.tokens.WGAS, wethAbi, env.deployer!),
       addresses: addr,
       oracles,
-      deployer: deployer as SignerWithAddress,
-      provider: provider,
+      deployer,
+      provider,
       multicallProvider,
       needsFunding: false,
       gasUsedForFunding: 0, // denominated in wgas decimal
@@ -1045,4 +1044,54 @@ export function randomRedistribute(arr: number[]): number[] {
     }
   }
   return arr;
+}
+
+// cf. https://github.com/hujw77/safe-dao-factory/blob/07ae58dc5b9c90e962fe0c436557843987ce448f/src/SafeDaoFactory.sol#L8
+export async function deployMultisig(
+  env: Partial<ITestEnv>,
+  name: string="Astrolab DAO Council",
+  owners=[env.deployer!.address],
+  threshold=1,
+  overrides: Overrides = {
+    gasLimit: 2_500_000,
+  },
+): Promise<Contract> {
+  const addr: NetworkAddresses = addresses![network.config.chainId!];
+  const params = {
+    owners,
+    threshold,
+    to: addressZero,
+    data: "0x",
+    fallbackHandler: addr.safe!.compatibilityFallbackHandler,
+    paymentToken: addr.tokens.WGAS,
+    payment: 0,
+    paymentReceiver: addressZero,
+  };
+  const [proxyFactoryAbi, safeAbi] = await Promise.all([loadAbi("SafeProxyFactory"), loadAbi("Safe")]) as any;
+  const proxyFactory = new Contract(addr.safe!.proxyFactory, proxyFactoryAbi, env.deployer!);
+  const creationCode = await proxyFactory.proxyCreationCode();
+  // const create3Bytecode = ethers.utils.hexConcat([
+  //   creationCode,
+  //   ethers.utils.defaultAbiCoder.encode(['address'], [addr.safe!.singletonL2]),
+  // ]);
+  const create3Bytecode = ethers.utils.solidityPack(
+    ['bytes', 'uint256'],
+    [creationCode, BigNumber.from(addr.safe!.singletonL2)],
+  );
+  const salts = await loadCreate3Salts();
+  if (!salts[name]) {
+    throw new Error("Salt not found for " + name);
+  }
+  let safe = await deploy({
+    contract: "Safe", // proxy
+    name,
+    deployer: env.deployer!,
+    overrides,
+    useCreate3: true,
+    create3Salt: salts[name],
+    create3Bytecode,
+  });
+  safe = new Contract(safe.address, safeAbi, env.deployer!);
+  await safe.setup(params);
+  return safe;
 }

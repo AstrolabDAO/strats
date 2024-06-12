@@ -42,7 +42,7 @@ describe(`test.${desc.name}`, () => {
     // load environment+deploy+verify the strategy stack
     env = await setupStrat(
       desc.contract,
-      desc.name,
+      desc.symbol, // create3 identifier
       {
         // base params
         erc20Metadata: { name: desc.name, symbol: desc.symbol }, // erc20Metadata
