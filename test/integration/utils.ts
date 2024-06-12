@@ -1095,3 +1095,16 @@ export async function deployMultisig(
   await safe.setup(params);
   return safe;
 }
+
+export async function isDeployed(env: Partial<ITestEnv>, address: string) {
+  if (env.addresses!) {
+    const actual = Object.keys(env.addresses!).find((key) => env.addresses![key]![address]);
+    address = actual ?? address; // if address is an alias, use the actual address
+  }
+  try {
+    await provider.getCode(address);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}

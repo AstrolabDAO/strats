@@ -38,6 +38,7 @@ import {
   isStablePair,
   logState,
   getInputs,
+  isDeployed,
 } from "../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
@@ -78,7 +79,7 @@ export const deployStrat = async (
         contract: n,
         name: n,
         verify: true,
-        deployed: address ? true : false,
+        deployed: await isDeployed(env, address),
         address,
         libraries: {}, // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
       };
@@ -112,12 +113,13 @@ export const deployStrat = async (
 
   // delete stratLibs.AsAccounting; // not used statically by Strat
 
+  const deployed = await isDeployed(env, contractUniqueName);
   const units: { [name: string]: IDeploymentUnit } = {
     [contract]: {
       contract,
       name: contract,
       verify: true,
-      deployed: env.addresses!.astrolab?.[contractUniqueName] ? true : false,
+      deployed,
       address: env.addresses!.astrolab?.[contractUniqueName],
       proxied: ["StrategyV5Agent"],
       overrides: getOverrides(env),
@@ -154,8 +156,8 @@ export const deployStrat = async (
       contract: c,
       name: c,
       verify: true,
-      deployed: env.addresses!.astrolab?.[c] ? true : false,
-      address: env.addresses!.astrolab?.[c] ?? "",
+      deployed: await isDeployed(env, c),
+      address: env.addresses!.astrolab?.[c],
       overrides: getOverrides(env),
     } as any;
     if (c == "AccessController") {
