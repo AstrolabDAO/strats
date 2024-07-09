@@ -2,16 +2,87 @@
 pragma solidity 0.8.22;
 
 import "forge-std/Test.sol";
-import {Fees} from "../../src/abstract/AsTypes.sol";
+import "forge-std/console.sol";
+import {Fees, Erc20Metadata, CoreAddresses, StrategyParams} from "../../src/abstract/AsTypes.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
+import {StrategyV5} from "../../src/abstract/StrategyV5.sol";
+import {StrategyV5Simulator} from "../../src/implementations/StrategyV5Simulator.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-contract Erc7540VaultTest is TestEnvArb {
+contract StrategyV5CompositeTest is TestEnvArb {
   using AsMaths for uint256;
   using AsArrays for uint256[8];
+  using AsArrays for uint16;
+  using AsArrays for address;
+  using Strings for uint256;
+
+  uint256 public constant N_PRIMITIVES = 2; // 2+
 
   constructor() TestEnvArb(true, true) {}
+
+  function init(Fees memory _fees) public override {
+
+    // strategy core addresses
+    CoreAddresses memory coreAddresses = CoreAddresses({
+      wgas: WETH,
+      asset: USDC,
+      feeCollector: manager,
+      swapper: swapper,
+      agent: agent,
+      oracle: address(oracle)
+    });
+
+    StrategyV5[] memory primitives = new StrategyV5[](N_PRIMITIVES);
+    for (uint256 i = 0; i < N_PRIMITIVES; i++) {
+      Erc20Metadata memory erc20Meta = Erc20Metadata({
+        // use i as unique strategy suffix identifier
+        name: string(abi.encodePacked("Astrolab Primitive Dummy USD ", i.toString())),
+        symbol: string(abi.encodePacked("apDUMMY-USD-", i.toString())),
+        decimals: 12
+      });
+      StrategyParams memory primitiveParams = StrategyParams({
+        erc20Metadata: erc20Meta,
+        coreAddresses: coreAddresses,
+        fees: _fees,
+        inputs: USDC.toArray(), // [USDC]
+        inputWeights: uint16(100_00).toArray16(), // 100% weight on USDC
+        lpTokens: USDCe.toArray(),
+        rewardTokens: USDCe.toArray(),
+        extension: new bytes(0)
+      });
+
+      // deploy and initialize primitive strategy
+      primitives[i] = new StrategyV5Simulator(address(accessController));
+      vm.prank(admin);
+      StrategyV5(primitives[i]).init(primitiveParams);
+    }
+
+    // initialize the strategy
+    // ERC20 metadata
+    Erc20Metadata memory compositeErc20Meta = Erc20Metadata({
+      name: "Astrolab Composite Dummy USD",
+      symbol: "acDUMMY-USD",
+      decimals: 12
+    });
+
+    // aggregated strategy base parameters
+    StrategyParams memory compositeParams = StrategyParams({
+      erc20Metadata: compositeErc20Meta,
+      coreAddresses: coreAddresses,
+      fees: _fees,
+      inputs: USDC.toArray(USDC), // [USDC, USDC]
+      inputWeights: uint16(50_00).toArray16(50_00), // [50%, 50%]
+      lpTokens: address(primitives[0]).toArray(address(primitives[1])), // [Primitive0, Primitive1]
+      rewardTokens: USDC.toArray(),
+      extension: new bytes(1) // empty bytes are required in order for StrategyV5Composite.setParams() to be called
+    });
+
+    // initialize (admin only)
+    vm.prank(admin);
+    strat.init(compositeParams);
+  }
 
   function deposit(uint256 _toDeposit) public {
     console.log("--- deposit test ---");
@@ -90,7 +161,7 @@ contract Erc7540VaultTest is TestEnvArb {
   function requestedSharesReservation(uint256 _toWithdraw) public {
     console.log("--- requestedSharesReservation test ---");
     uint256 toRedeem = strat.convertToShares(_toWithdraw);
-    uint256 balanceBefore = usdc.balanceOf(bob);
+    // uint256 balanceBefore = usdc.balanceOf(bob);
     vm.startPrank(bob);
     strat.requestRedeem(toRedeem, bob, bob, "");
     // TODO: replace with try/catch
@@ -113,7 +184,7 @@ contract Erc7540VaultTest is TestEnvArb {
     Fees memory _fees,
     uint256 _minLiquidity
   ) public returns (uint256, uint256) {
-    deployStrat(_fees, _minLiquidity);
+    deployStrat(_fees, _minLiquidity, true);
     return (strat.totalAssets(), usdc.balanceOf(bob));
   }
 

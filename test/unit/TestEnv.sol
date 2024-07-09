@@ -2,17 +2,8 @@
 pragma solidity 0.8.22;
 
 import "forge-std/Test.sol";
-import {
-  StrategyParams,
-  Fees,
-  CoreAddresses,
-  Erc20Metadata,
-  Errors,
-  Roles
-} from "../../src/abstract/AsTypes.sol";
-
-import { AsRescuable } from "../../src/abstract/AsRescuable.sol";
-import {StrategyV5Simulator} from "../../src/implementations/StrategyV5Simulator.sol";
+import {StrategyParams, Fees, CoreAddresses, Erc20Metadata, Errors, Roles} from "../../src/abstract/AsTypes.sol";
+import {StrategyV5Simulator, StrategyV5CompositeSimulator} from "../../src/implementations/StrategyV5Simulator.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
 import {AccessController} from "../../src/abstract/AccessController.sol";
@@ -58,7 +49,12 @@ abstract contract TestEnv is Test {
   }
 
   // fund erc20 from sender
-  function fund(address _from, address _to, address _token, uint256 _amount) public {
+  function fund(
+    address _from,
+    address _to,
+    address _token,
+    uint256 _amount
+  ) public {
     vm.prank(_from);
     ERC20(_token).transfer(_to, _amount);
   }
@@ -101,8 +97,9 @@ abstract contract TestEnv is Test {
 
   function previewCollectFees() public returns (uint256 feesCollected) {
     vm.prank(manager);
-    bytes memory result =
-      strat.simulate{gas: 10_000_000}(abi.encodeWithSignature("collectFees()"));
+    bytes memory result = strat.simulate{gas: 10_000_000}(
+      abi.encodeWithSignature("collectFees()")
+    );
     (bool success, bytes memory data) = abi.decode(result, (bool, bytes));
     feesCollected = abi.decode(data, (uint256));
   }
@@ -118,8 +115,16 @@ abstract contract TestEnv is Test {
     vm.serializeUint(s, "balanceOf(admin)", strat.balanceOf(admin));
     vm.serializeUint(s, "balanceOf(manager)", strat.balanceOf(manager));
     vm.serializeUint(s, "balanceOf(user[0])", strat.balanceOf(bob));
-    vm.serializeUint(s, "asset.balanceOf(strat)", strat.asset().balanceOf(address(strat)));
-    vm.serializeUint(s, "claimableTransactionFees", strat.claimableTransactionFees());
+    vm.serializeUint(
+      s,
+      "asset.balanceOf(strat)",
+      strat.asset().balanceOf(address(strat))
+    );
+    vm.serializeUint(
+      s,
+      "claimableTransactionFees",
+      strat.claimableTransactionFees()
+    );
     uint256[] memory previewLiquidate = strat.previewLiquidate(0).dynamic();
     vm.serializeUint(s, "previewLiquidate", previewLiquidate);
     uint256[] memory previewInvest = strat.previewInvest(0).dynamic();
@@ -139,12 +144,20 @@ abstract contract TestEnv is Test {
 
   function init(Fees memory _fees) public virtual;
 
-  function deployAsRescuable() public {
-    asRescuable = AsRescuable(address(new StrategyV5Simulator(address(accessController))));
+  function deployStrat(Fees memory _fees, uint256 _minLiquidit) public {
+    deployStrat(_fees, _minLiquidit, false);
   }
 
-  function deployStrat(Fees memory _fees, uint256 _minLiquidity) public {
-    strat = IStrategyV5(address(new StrategyV5Simulator(address(accessController))));
+  function deployStrat(
+    Fees memory _fees,
+    uint256 _minLiquidity,
+    bool _isComposite
+  ) public {
+    strat = IStrategyV5(
+        _isComposite
+          ? address(new StrategyV5CompositeSimulator(address(accessController)))
+          : address(new StrategyV5Simulator(address(accessController)))
+      );
     init(_fees);
     vm.prank(admin);
     strat.setExemption(admin, true); // exempt admin from fees
@@ -162,7 +175,8 @@ abstract contract TestEnv is Test {
     vm.startPrank(admin);
     accessController.grantRole(Roles.KEEPER, keeper); // does not need acceptance
     require(
-      accessController.hasRole(Roles.KEEPER, keeper), "Keeper should have KEEPER role"
+      accessController.hasRole(Roles.KEEPER, keeper),
+      "Keeper should have KEEPER role"
     );
     accessController.grantRole(Roles.MANAGER, manager); // needs acceptance
     vm.stopPrank();
@@ -170,7 +184,8 @@ abstract contract TestEnv is Test {
     vm.prank(manager);
     accessController.acceptRole(Roles.MANAGER); // accept role
     require(
-      accessController.hasRole(Roles.MANAGER, manager), "Manager should have MANAGER role"
+      accessController.hasRole(Roles.MANAGER, manager),
+      "Manager should have MANAGER role"
     );
   }
 

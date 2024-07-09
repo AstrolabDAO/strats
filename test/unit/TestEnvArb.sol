@@ -66,7 +66,7 @@ abstract contract TestEnvArb is TestEnv {
     );
   }
 
-  function init(Fees memory _fees) public override {
+  function init(Fees memory _fees) public virtual override {
     // initialize the strategy
     // ERC20 metadata
     Erc20Metadata memory erc20Meta = Erc20Metadata({

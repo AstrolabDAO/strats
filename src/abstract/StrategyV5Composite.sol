@@ -2,6 +2,7 @@
 pragma solidity 0.8.22;
 
 import "./StrategyV5Lock.sol";
+import "../interfaces/IStrategyV5.sol";
 
 /**
  *             _             _       _
@@ -38,7 +39,8 @@ contract StrategyV5Composite is StrategyV5Lock {
    * @param _params Strategy specific parameters
    */
   function _setParams(bytes memory _params) internal override {
-    // placeholder
+    // no use of specific params, only inputs (primitives) and weights
+    _loadPrimitives();
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -72,6 +74,20 @@ contract StrategyV5Composite is StrategyV5Lock {
   ║                            SETTERS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
+  function _loadPrimitives() internal {
+    for (uint256 i = 0; i < _inputLength;) {
+      (bool success,) =
+        address(lpTokens[i]).staticcall(abi.encodeWithSelector(IStrategyV5.agent.selector));
+      if (!success) {
+        revert Errors.ContractNonCompliant();
+      }
+      unchecked {
+        _primitives.push(IStrategyV5(address(lpTokens[i])));
+        i++;
+      }
+    }
+  }
+
   /**
    * @notice Changes the strategy input tokens
    * @param _inputs Array of input addresses
@@ -85,13 +101,8 @@ contract StrategyV5Composite is StrategyV5Lock {
   ) external onlyAdmin {
     // update inputs and lpTokens
     _setInputs(_inputs, _weights, _lpTokens);
-    for (uint256 i = 0; i < _inputLength;) {
-      _primitives.push(_primitives[i]);
-      unchecked {
-        i++;
-      }
-    }
     _setLpTokenAllowances(AsMaths.MAX_UINT256);
+    _loadPrimitives();
   }
 
   /*═══════════════════════════════════════════════════════════════╗
