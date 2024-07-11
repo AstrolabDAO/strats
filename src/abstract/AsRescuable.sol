@@ -4,7 +4,6 @@ pragma solidity 0.8.22;
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./AsPermissioned.sol";
-import {console} from "forge-std/console.sol";
 
 /**
  *             _             _       _
@@ -106,7 +105,6 @@ abstract contract AsRescuable is AsPermissioned {
     require(!_isRescueUnlocked(req));
     // set pending rescue request
     req.receiver = msg.sender;
-    console.log("Rescue request for %s by %s", _token, msg.sender);
     req.timestamp = uint64(block.timestamp);
   }
 

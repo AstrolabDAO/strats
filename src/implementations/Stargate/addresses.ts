@@ -16,7 +16,7 @@ export default merge(addresses, {
         StargateFeeLibraryV07: "0x8C3085D9a554884124C998CDB7f6d7219E9C1e6F",
         StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
         WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
-        Pool: {
+        Pools: {
           WETH: "0x101816545F6bd2b1076434B54383a1E633390A2E",
           USDC: "0xdf0770dF86a8034b3EFEf0A1Bb3c889B8332FF56",
           USDT: "0x38EA452219524Bb87e18dE1C24D3bB59510BD783",
@@ -45,7 +45,7 @@ export default merge(addresses, {
         StargateFeeLibraryV07: "0xCA6522116e8611A346D53Cc2005AC4192e3fc2BC",
         StargateComposer: "0xeCc19E177d24551aA7ed6Bc6FE566eCa726CC8a9",
         WidgetSwap: "0x10d16248bED1E0D0c7cF94fFD99A50c336c7Bcdc",
-        Pool: {
+        Pools: {
           USDT: "0x9aA83081AA06AF7208Dcc7A4cB72C94d057D2cda",
           BUSD: "0x98a5737749490856b401DB5Dc27F522fC314A4e1",
           USDD: "0x4e145a589e4c03cBe3d28520e4BF3089834289Df",

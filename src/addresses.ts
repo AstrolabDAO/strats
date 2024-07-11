@@ -82,7 +82,7 @@ export const crossChainAddresses = {
     ChainlinkProvider: "0x00001d45ef5fabb7b61d2ab7fc380402c0fe1465",
     PriceProvider: "0x00001d45ef5fabb7b61d2ab7fc380402c0fe1465",
     StrategyV5Agent: "0x00004676ff3b96eb9af97d763a4e33caab72aa5e",
-    "apAAVE.USD": "0x0000ae741ae3d95f292a7fc74c5fca124f444f5a",
+    "apAAVEv3.USD": "" // "0x0000ae741ae3d95f292a7fc74c5fca124f444f5a",
   },
 }
 

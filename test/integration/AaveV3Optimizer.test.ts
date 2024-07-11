@@ -23,6 +23,7 @@ const baseDesc = {
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
   10: { ...baseDesc, inputs: ["USDCe", "USDT", "DAI", "USDC",], inputWeights: [1500, 3000, 1500, 3000] }, // 90% allocation, 10% cash
+  56: { ...baseDesc, inputs: ["USDC", "USDT", "FDUSD"], inputWeights: [3000, 6000, 0] },
   100: { ...baseDesc, inputs: ["USDC", "WXDAI"], inputWeights: [4500, 4500] },
   137: { ...baseDesc, inputs: ["USDCe", "USDT", "DAI"], inputWeights: [3000, 3000, 3000] },
   8453: { ...baseDesc, inputs: ["USDC", "USDbC"], inputWeights: [7000, 2000] },

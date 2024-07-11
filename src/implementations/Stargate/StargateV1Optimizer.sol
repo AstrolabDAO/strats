@@ -20,7 +20,7 @@ contract StargateV1Optimizer is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
 
-  IStargateRouter internal _router; // stargate router
+  IStargateRouter[8] internal routers; // stargate router
   ILPStaking internal lpStaker; // LP staker (one for all pools)
   uint16[8] internal poolIds; // pool ids
   uint16[8] internal stakingIds; // pool ids for the staking
@@ -44,7 +44,7 @@ contract StargateV1Optimizer is StrategyV5 {
       IPool lp = IPool(address(lpTokens[i]));
       stakingIds[i] = params.stakingIds[i];
       poolIds[i] = uint16(lp.poolId());
-      _routers[i] = IStargateRouter(lp.router());
+      routers[i] = IStargateRouter(lp.router());
       lpWeiPerShare[i] = 10 ** lp.decimals();
       unchecked {
         i++;
@@ -57,7 +57,7 @@ contract StargateV1Optimizer is StrategyV5 {
     uint256 _amount,
     uint256 _index
   ) internal returns (uint256 deposited) {
-    _router.addLiquidity(poolIds[_index], _amount, address(this));
+    routers[_index].addLiquidity(poolIds[_index], _amount, address(this));
     return lpTokens[_index].balanceOf(address(this));
   }
 
@@ -70,13 +70,13 @@ contract StargateV1Optimizer is StrategyV5 {
     // unstake LP
     lpStaker.withdraw(stakingIds[_index], _amount);
     // liquidate LP
-    _router.instantRedeemLocal(poolIds[_index], _amount, address(this));
+    routers[_index].instantRedeemLocal(poolIds[_index], _amount, address(this));
   }
 
   function _setLpTokenAllowances(uint256 _amount) internal override {
     for (uint256 i = 0; i < _inputLength; i++) {
       lpTokens[i].approve(address(lpStaker), _amount);
-      inputs[i].approve(address(_routers[i]), _amount);
+      inputs[i].approve(address(routers[i]), _amount);
     }
   }
 
