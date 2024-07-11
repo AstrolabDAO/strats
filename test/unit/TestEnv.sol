@@ -27,10 +27,10 @@ abstract contract TestEnv is Test {
   address bob = users[0];
   address alice = users[1];
   address charlie = users[2];
+  Fees zeroFees = Fees({perf: 0, mgmt: 0, entry: 0, exit: 0, flash: 0});
 
   AccessController accessController;
   IStrategyV5 strat;
-  AsRescuable asRescuable;
   ChainlinkProvider oracle;
   address agent;
 

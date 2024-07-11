@@ -128,7 +128,10 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     if (_inputs) {
       for (uint256 i = 0; i < _inputLength;) {
         if (address(inputs[i]) == address(0)) break;
-        inputs[i].forceApprove(swapperAddress, _amount);
+        uint256 currentAllowance = inputs[i].allowance(address(this), swapperAddress);
+        if (currentAllowance < _amount) {
+          inputs[i].forceApprove(swapperAddress, _amount);
+        }
         unchecked {
           i++;
         }

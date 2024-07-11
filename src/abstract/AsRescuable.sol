@@ -4,6 +4,7 @@ pragma solidity 0.8.22;
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./AsPermissioned.sol";
+import {console} from "forge-std/console.sol";
 
 /**
  *             _             _       _
@@ -105,6 +106,7 @@ abstract contract AsRescuable is AsPermissioned {
     require(!_isRescueUnlocked(req));
     // set pending rescue request
     req.receiver = msg.sender;
+    console.log("Rescue request for %s by %s", _token, msg.sender);
     req.timestamp = uint64(block.timestamp);
   }
 
@@ -123,14 +125,13 @@ abstract contract AsRescuable is AsPermissioned {
    * @param _token Token to be rescued - Use address(1) for native/gas tokens (ETH)
    */
   function _rescue(address _token) internal {
-    RescuableStorage storage $ = _rescuableRescuableStorage();
-    RescueRequest storage req = $.rescueRequests[_token];
+    RescueRequest storage req = _rescuableRescuableStorage().rescueRequests[_token];
 
     // check if rescue is pending
     require(_isRescueUnlocked(req));
 
     // reset pending request (timestamp reset to 0 avoids reentrancy)
-    delete $.rescueRequests[_token];
+    req.timestamp = 0;
 
     // send to receiver
     if (_token == address(1)) {
@@ -141,6 +142,7 @@ abstract contract AsRescuable is AsPermissioned {
         req.receiver, IERC20Metadata(_token).balanceOf(address(this))
       );
     }
+    delete _rescuableRescuableStorage().rescueRequests[_token];
   }
 
   /**

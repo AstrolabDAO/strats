@@ -74,7 +74,6 @@ contract Erc3156FlashLenderTest is TestEnvArb {
 
   function testAll() public {
     deployDependencies();
-    Fees memory zeroFees = Fees({perf: 0, mgmt: 0, entry: 0, exit: 0, flash: 0});
     usdcFlashLoan(zeroFees, 1000e6);
   }
 }

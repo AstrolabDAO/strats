@@ -1,7 +1,7 @@
 import { TransactionResponse } from "@astrolabs/hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { IStrategyDeploymentEnv, MaybeAwaitable } from "../../../src/types";
-import { getOverrides, keccak256, resolveMaybe } from "../utils";
+import { getOverrides, keccak256, resolveMaybe } from "../../utils";
 
 /**
  * Grants roles to a grantee using the provided environment and signer

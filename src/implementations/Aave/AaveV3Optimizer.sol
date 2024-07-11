@@ -13,36 +13,26 @@ import "./interfaces/v3/IOracle.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title AaveV3 Strategy - Liquidity providing on Aave
+ * @title AaveV3 Optimizer - Dynamic liquidity providing on Aave
  * @author Astrolab DAO
  * @notice Liquidity providing strategy for Aave V3 (https://aave.com/)
  * @dev Asset->inputs->LPs->inputs->asset
  */
-contract AaveV3 is StrategyV5 {
+contract AaveV3Optimizer is StrategyV5 {
   using AsMaths for uint256;
   using AsArrays for uint256;
   using SafeERC20 for IERC20Metadata;
 
-  // strategy specific variables
   IPoolAddressesProvider internal _poolProvider;
 
   constructor(address _accessController) StrategyV5(_accessController) {}
 
-  /**
-   * @notice Sets the strategy specific parameters
-   * @param _params Strategy specific parameters
-   */
   function _setParams(bytes memory _params) internal override {
     (address poolProvider) = abi.decode(_params, (address));
     _poolProvider = IPoolAddressesProvider(poolProvider);
     _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
-  /**
-   * @notice Stakes or provides `_amount` from `input[_index]` to `lpTokens[_index]`
-   * @param _index Index of the input to stake
-   * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
-   */
   function _stake(uint256 _index, uint256 _amount) internal override {
     IAavePool pool = IAavePool(_poolProvider.getPool());
     pool.supply({
@@ -53,20 +43,11 @@ contract AaveV3 is StrategyV5 {
     });
   }
 
-  /**
-   * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
-   * @param _index Index of the input to liquidate
-   * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
-   */
   function _unstake(uint256 _index, uint256 _amount) internal override {
     IAavePool pool = IAavePool(_poolProvider.getPool());
     pool.withdraw({asset: address(inputs[_index]), amount: _amount, to: address(this)});
   }
 
-  /**
-   * @notice Sets allowances for third party contracts (except rewardTokens)
-   * @param _amount Allowance amount
-   */
   function _setLpTokenAllowances(uint256 _amount) internal override {
     IAavePool pool = IAavePool(_poolProvider.getPool());
     for (uint256 i = 0; i < _inputLength; i++) {
@@ -75,9 +56,5 @@ contract AaveV3 is StrategyV5 {
     }
   }
 
-  /**
-   * @notice Returns the available rewards
-   * @return amounts Array of rewards available for each reward token
-   */
   function rewardsAvailable() public view override returns (uint256[] memory amounts) {}
 }

@@ -329,7 +329,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   function _excessLiquidity(
     uint256 _index,
     uint256 _total
-  ) internal view returns (int256) {
+  ) internal view virtual returns (int256) {
     if (_total == 0) {
       _total = _invested();
     }

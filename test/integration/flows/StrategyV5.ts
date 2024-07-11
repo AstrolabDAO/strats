@@ -39,7 +39,7 @@ import {
   logState,
   getInputs,
   isDeployed,
-} from "../utils";
+} from "../../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
 import { findSymbolByAddress, loadCreate3Salts } from "../../../src/addresses";

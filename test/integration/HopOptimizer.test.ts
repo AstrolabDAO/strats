@@ -1,14 +1,14 @@
 import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../../src/implementations/Hop/addresses";
+import addresses from "../../src/implementations/Hop/addresses";
 import {
   Fees,
   IStrategyDeploymentEnv,
   IStrategyDesc,
-} from "../../../src/types";
-import { suite } from "../StrategyV5.test";
-import { IFlow, testFlow } from "../flows";
-import { setupStrat } from "../flows/StrategyV5";
+} from "../../src/types";
+import { suite } from "./StrategyV5.test";
+import { IFlow, testFlow } from "./flows";
+import { setupStrat } from "./flows/StrategyV5";
 import { abiEncode, getEnv } from "../utils";
 
 const baseDesc: IStrategyDesc = {
@@ -16,7 +16,7 @@ const baseDesc: IStrategyDesc = {
   symbol: `apHOP.USD`,
   asset: "USDC",
   version: 1,
-  contract: "Hop",
+  contract: "HopOptimizer",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
 

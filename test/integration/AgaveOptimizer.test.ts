@@ -1,10 +1,10 @@
 import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../../src/implementations/Agave/addresses";
-import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../../src/types";
-import { suite } from "../StrategyV5.test";
-import { IFlow, testFlow } from "../flows";
-import { setupStrat } from "../flows/StrategyV5";
+import addresses from "../../src/implementations/Agave/addresses";
+import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
+import { suite } from "./StrategyV5.test";
+import { IFlow, testFlow } from "./flows";
+import { setupStrat } from "./flows/StrategyV5";
 import { abiEncode, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
@@ -12,7 +12,7 @@ const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive Agave USD`,
   symbol: `apAGVE.USD`,
   version: 1,
-  contract: "Agave",
+  contract: "AgaveOptimizer",
   asset: "USDC",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;

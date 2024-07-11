@@ -2,7 +2,7 @@
 
 import { ethers } from "hardhat";
 import { IStrategyDeploymentEnv } from "../../../src/types";
-import { isLive } from "../utils";
+import { isLive } from "../../utils";
 
 export interface IFlow {
   elapsedSec: number; // seconds since last block

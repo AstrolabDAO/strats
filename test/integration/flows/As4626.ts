@@ -19,7 +19,7 @@ import {
   getSwapperRateEstimate,
   getTxLogData,
   logState
-} from "../utils";
+} from "../../utils";
 
 /**
  * Sets the minimum liquidity for a strategy deployment

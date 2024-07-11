@@ -119,7 +119,6 @@ contract Erc7540VaultTest is TestEnvArb {
 
   function testAll() public {
     deployDependencies();
-    Fees memory zeroFees = Fees({perf: 0, mgmt: 0, entry: 0, exit: 0, flash: 0});
     uint256 assetsBefore;
     uint256 bobBalanceBefore;
 

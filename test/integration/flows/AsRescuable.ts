@@ -9,7 +9,7 @@ import {
   logBalances,
   logRescue,
   resolveMaybe,
-} from "../utils";
+} from "../../utils";
 
 /**
  * Transfers assets to a specified receiver

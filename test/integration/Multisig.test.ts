@@ -2,7 +2,7 @@ import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
 
 import addresses from "../../src/addresses";
-import { deployMultisig, getEnv } from "./utils";
+import { deployMultisig, getEnv } from "../utils";
 import { ITestEnv } from "../../src/types";
 
 const name = "CouncilMultisig";
