@@ -5,6 +5,7 @@ import {
   deploy,
   ethers,
   getDeployer,
+  getSalts,
   loadAbi,
   network,
   provider,
@@ -31,7 +32,7 @@ import {
   constants,
 } from "ethers";
 import { merge } from "lodash";
-import addresses, { Addresses, NetworkAddresses, loadCreate3Salts } from "../src/addresses";
+import addresses, { Addresses, NetworkAddresses } from "../src/addresses";
 import {
   IChainlinkParams,
   IStrategyDeploymentEnv,
@@ -58,6 +59,7 @@ export function isAddress(s: string) {
 }
 
 export function addressToBytes32(address: string) {
+  if (!isAddress(address)) throw new Error(`Invalid address: ${address}`);
   return ethers.utils.hexZeroPad(address, 32);
 }
 
@@ -211,7 +213,7 @@ export const isStable = (s: string) =>
     "EURS",
     "EURT",
     "EURTe",
-    "agEUR",
+    "EURA",
     "cEUR",
     "USD",
     "EUR",
@@ -765,7 +767,10 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
     );
     return;
   }
-  const params = env.deployment!.initParams[1] as IChainlinkParams;
+  const usedSymbols = env.deployment!.inputs.map(i => i.sym);
+  const feeds = new Set(usedSymbols.map((sym) =>
+    addressToBytes32(env.oracles![`Crypto.${sym}/USD`]),
+  ));
 
   if (!env.network.name.includes("tenderly")) return;
 
@@ -774,8 +779,7 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
       console.log(`Whitelisting oracle access for ${lib}`);
       switch (lib) {
         case "ChainlinkUtils": {
-          const oracles = new Set([params.feeds]);
-          for (const oracle of oracles) {
+          for (const feed of feeds) {
             const storageSlot =
               "0x0000000000000000000000000000000000000000000000000000000000000031";
             // set the storage slot for Chainlink's "checkEnabled" to false, in order to deactivate access control
@@ -783,7 +787,7 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
               "0x0000000000000000000000000000000000000000000000000000000000000000";
             // Sending the tenderly_setStorageAt command
             await provider.send("tenderly_setStorageAt", [
-              oracle,
+              feed,
               storageSlot,
               newValue,
             ]);
@@ -1078,7 +1082,7 @@ export async function deployMultisig(
     ['bytes', 'uint256'],
     [creationCode, BigNumber.from(addr.safe!.singletonL2)],
   );
-  const salts = await loadCreate3Salts();
+  const salts = getSalts();
   if (!salts[name]) {
     throw new Error("Salt not found for " + name);
   }
@@ -1109,7 +1113,7 @@ export async function isDeployed(env: Partial<ITestEnv>, address: string) {
   }
 }
 
-export function packBy(arr: any[], groupSize=2) {
+export function packBy(arr: any[], groupSize=2): any[] {
   const pairs = [];
   for (let i = 0; i < arr.length; i += groupSize) {
     pairs.push(arr.slice(i, i + groupSize));

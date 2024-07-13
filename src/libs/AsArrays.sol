@@ -21,7 +21,7 @@ library AsArrays {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Returns the sum of all elements in the array
+ * @notice Returns the sum of all elements in the array
    * @param self Storage array containing uint256 type variables
    * @return value Sum of all elements, does not check for overflow
    */

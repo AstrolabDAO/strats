@@ -99,7 +99,7 @@ export default merge(addresses, {
       DPI: { aToken: "0x724dc807b04555b71ed48a6896b6F41593b8C637" },
       EURS: { aToken: "0x38d693cE1dF5AaDF7bC62595A37D667aD57922e5" },
       jEUR: { aToken: "0x6533afac2E7BCCB20dca161449A13A32D391fb00" },
-      agEUR: { aToken: "0x8437d7C167dFB82ED4Cb79CD44B7a32A1dd95c77" },
+      EURA: { aToken: "0x8437d7C167dFB82ED4Cb79CD44B7a32A1dd95c77" },
       miMATIC: { aToken: "0xeBe517846d0F36eCEd99C735cbF6131e1fEB775D" },
       stMATIC: { aToken: "0xEA1132120ddcDDA2F119e99Fa7A27a0d036F7Ac9" },
       MaticX: { aToken: "0x80cA0d8C38d2e2BcbaB66aA1648Bd1C7160500FE" },

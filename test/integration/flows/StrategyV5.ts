@@ -3,6 +3,7 @@ import {
   TransactionResponse,
   deploy,
   deployAll,
+  getSalts,
   loadAbi,
   network,
 } from "@astrolabs/hardhat";
@@ -42,7 +43,7 @@ import {
 } from "../../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
-import { findSymbolByAddress, loadCreate3Salts } from "../../../src/addresses";
+import { findSymbolByAddress } from "../../../src/addresses";
 import compoundAddresses from "../../../src/implementations/Compound/addresses";
 
 export const indexes = Array.from({ length: 8 }, (_, index) => index);
@@ -69,7 +70,7 @@ export const deployStrat = async (
   // strategy dependencies
   const libraries: { [name: string]: string } = {};
   const contractUniqueName = name; // `${contract}.${env.deployment?.inputs?.map(i => i.symbol).join("-")}`;
-  const salts = await loadCreate3Salts();
+  const salts = getSalts();
   for (const n of libNames) {
     let lib = {} as Contract;
     const path = `src/libs/${n}.sol:${n}`;
@@ -196,29 +197,22 @@ export const deployStrat = async (
   }
 
   // TODO: only at PriceProvider deployment to avoid overhead
-  const baseAssets = Array.from(
+  const baseSymbols = Array.from(
     new Set([
-      ...initParams.inputs!,
-      ...["WETH", "WBTC", "USDC", "USDCe", "USDT", "FRAX", "DAI", "LUSD"]
-        .map((sym) => env.addresses!.tokens[sym])
-        .filter((t) => !!t),
-    ]),
+      ...env.deployment!.inputs.map(i => i.sym),  // initParams.inputs!,
+      ...["WETH", "WBTC", "USDC", "USDT", "FRAX", "DAI"]
+    ].filter((t) => !!t)),
   );
+  const baseAddresses = baseSymbols.map((sym) => env.addresses!.tokens[sym]);
   const checkFeeds = async () =>
     env.multicallProvider!.all(
-      baseAssets!.map((input) =>
-        preDeployments.PriceProvider.multi.hasFeed(input),
-      ),
+      baseAddresses!.map(addr => preDeployments.PriceProvider.multi.hasFeed(addr)),
     );
 
   // NB: the signer has to be the admin of `PriceProvider.accessController`, otherwise this will fail
   if ((await checkFeeds()).some((has) => !has)) {
-    const feeds = baseAssets.map((feed) =>
-      addressToBytes32(
-        env.oracles![
-          `Crypto.${findSymbolByAddress(feed, network.config.chainId!)}/USD`
-        ],
-      ),
+    const feeds = baseSymbols.map((sym) =>
+      addressToBytes32(env.oracles![`Crypto.${sym}/USD`]),
     );
     // NB: this is Chainlink's initializer, not Pyth
     await preDeployments.PriceProvider.update(
@@ -226,9 +220,9 @@ export const deployStrat = async (
         ["(address[],bytes32[],uint256[])"],
         [
           [
-            baseAssets,
+            baseAddresses,
             feeds,
-            baseAssets.map((feed) => 3600 * 48), // chainlink default validity (1 day) * 2
+            baseSymbols.map((feed) => 3600 * 48), // chainlink default validity (1 day) * 2
           ],
         ],
       ),
@@ -274,8 +268,8 @@ export const deployStrat = async (
 
   // inputs
   if (initParams.inputWeights.length == 1)
-    // default input weight == 100%
-    initParams.inputWeights = [100_00];
+    // default input weight == 90%, 10% cash
+    initParams.inputWeights = [90_00];
 
   // add the access controller as sole constructor parameter to the strategy and its agent
   units[contract].args = [preDeployments.AccessController.address];
@@ -918,7 +912,7 @@ export async function emptyStrategy(
   // step 2: harvest+liquidate all invested assets
   await harvest(env);
   await liquidate(env, asset.toAmount(await strat["invested()"]()));
-  await collectFees(env);
+  await collectFees(<IStrategyDeploymentEnv>env);
 
   // step 3: withdraw all assets
   await strat
@@ -1317,6 +1311,3 @@ export async function shuffleWeightsRebalance(
   // step 3: invest
   return await invest(env, 0);
 }
-// function findSymbolByAddress(to: string, arg1: number) {
-//   throw new Error("Function not implemented.");
-// }

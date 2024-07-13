@@ -26,7 +26,7 @@ const desc = descByChainId[network.config.chainId!];
 
 describe(`test.${desc.name}`, () => {
   const addr = addresses[network.config.chainId!];
-  const protocolAddr = addr.Thena;
+  const protocolAddr = addr.Thena!;
   let env: IStrategyDeploymentEnv;
 
   beforeEach(async () => {});
@@ -40,7 +40,7 @@ describe(`test.${desc.name}`, () => {
       { revertState: false },
       addresses,
     )) as IStrategyDeploymentEnv;
-    const pools = packBy(desc.inputs, 2).map((pair) => protocolAddr.algebraPools[pair.join("")]);
+    const pools = <string[]>packBy(desc.inputs, 2).map((pair) => protocolAddr.algebraPools[pair.join("")]);
     const hypervisors = pools.map((pool) => protocolAddr.hypervisorByPool[pool]);
     const gauges = hypervisors.map((hypervisor) => protocolAddr.gaugeByHypervisor[hypervisor]);
     env = await setupStrat(

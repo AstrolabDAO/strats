@@ -36,7 +36,7 @@ export default merge(addresses, {
         agUSDC: "0x291b5957c9cbe9ca6f0b98281594b4eb495f4ec1",
         agUSDT: "0x5b4ef67c63d091083ec4d30cfc4ac685ef051046",
         agWBTC: "0x4863cfaf3392f20531aa72ce19e5783f489817d6",
-        agEURe: "0xeb20b07a9abe765252e6b45e8292b12cb553cca6",
+        EURAe: "0xeb20b07a9abe765252e6b45e8292b12cb553cca6",
         agsDAI: "0xe1cf0d5a56c993c3c2a0442dd645386aeff1fc9a",
         // AGVEGNO_LP: "0xba12222222228d8ba445958a75a0704d566bf2c8",
         // AGVEsDAI_LP: "0x4b1a99467a284cc690e3237bc69105956816f762",

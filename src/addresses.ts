@@ -1,20 +1,6 @@
-import { networkBySlug } from "@astrolabs/hardhat";
+import { getRegistryLatest, networkBySlug } from "@astrolabs/hardhat";
 
 const symbolByAddress: { [chainId: number]: { [address: string]: string } } = {};
-let create3Salts: { [id: string]: string } = {};
-
-export async function loadCreate3Salts() {
-  if (!Object.keys(create3Salts).length) {
-    try {
-      const module = await import('./salts.json');
-      create3Salts = module.default;
-    } catch (err) {
-      console.error('Error importing config file:', err);
-      throw err;
-    }
-  }
-  return create3Salts;
-}
 
 export function findSymbolByAddress(address: string, chainId: number): string | undefined {
   const networkAddresses = addresses[chainId];
@@ -38,8 +24,8 @@ export function findSymbolByAddress(address: string, chainId: number): string | 
     }
   }
 
-  console.log(`Address ${address} not found in chainId ${chainId}.`);
-  return;
+  // console.log(`Address ${address} not found in chainId ${chainId}'s tokens.`);
+  return undefined;
 }
 
 export type NetworkAddresses = {
@@ -50,7 +36,7 @@ export type NetworkAddresses = {
   libs?: { [name: string]: string };
   safe?: { [name: string]: string };
   // protocol specific addresses
-  [protocol: string]: { [name: string]: string } | undefined;
+  [protocol: string]: { [name: string]: any } | undefined;
   astrolab?: {
     [contract: string]: string;
     Swapper: string;
@@ -77,12 +63,8 @@ export const crossChainAddresses = {
     AsAccounting: "0x00000abb1f7d0f6f7e73beb0be001d5f0d11a1a7",
   },
   astrolab: {
-    Swapper: "0x503301Eb7cfC64162b5ce95cc67B84Fbf6dF5255", // PROD
-    AccessController: "0x00008c4cc59aa70c25d4274d6dc92dc4a83c4656",
-    ChainlinkProvider: "0x00001d45ef5fabb7b61d2ab7fc380402c0fe1465",
-    PriceProvider: "0x00001d45ef5fabb7b61d2ab7fc380402c0fe1465",
-    StrategyV5Agent: "0x00004676ff3b96eb9af97d763a4e33caab72aa5e",
-    "apAAVEv3.USD": "" // "0x0000ae741ae3d95f292a7fc74c5fca124f444f5a",
+    ...getRegistryLatest(), // Swapper, AccessController, ChainlinkProvider, PriceProvider, StrategyV5Agent
+    "apAAVEv3.USD": "0x0000d7160045c92fcf78bada777a968e640d0278",
   },
 }
 
@@ -224,13 +206,13 @@ export const addresses = {
       WGAS: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
       WETH: "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
       BTCB: "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
-      BSCUSD: "0x55d398326f99059fF775485246999027B3197955",
+      WBTC: "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c", // polyfill for BTCB
+      USDT: "0x55d398326f99059fF775485246999027B3197955", // Binance-Peg BSC-USD
       USDC: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
       DAI: "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
       TUSD: "0x40af3827F39D0EAcBF4A168f8D4ee67c121D11c9",
       BUSD: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
       USDD: "0xd17479997F34dd9156Deef8F95A52D81D265be9c",
-      USDT: "0x55d398326f99059fF775485246999027B3197955", // Binance-Peg BSC-USD
       FDUSD: "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409",
       FRAX: "0x90C97F71E18723b0Cf0dfa30ee176Ab653E89F40",
       MAI: "0x3F56e0c36d275367b8C502090EDF38289b3dEa0d",
@@ -319,7 +301,7 @@ export const addresses = {
       TUSD: "0x2e1AD108fF1D8C782fcBbB89AAd783aC49586756",
       USDD: "0xFFA4D863C96e743A2e1513824EA006B8D0353C57",
       FRAX: "0x45c32fA6DF82ead1e2EF74d17b76547EDdFaFF89",
-      agEUR: "0xE0B52e49357Fd4DAf2c15e02058DCE6BC0057db4",
+      EURA: "0xE0B52e49357Fd4DAf2c15e02058DCE6BC0057db4",
 
       rETH: "0x0266F4F08D82372CF0FcbCCc0Ff74309089c74d1",
       frxETH: "0xEe327F889d5947c1dc1934Bb208a1E792F953E96",
@@ -593,7 +575,7 @@ export const addresses = {
       LUSD: "0x93b346b6bc2548da6a1e7d98e9a421b42541425b",
       MIM: "0xFEa7a6a0B346362BF88A9e4A88416B77a57D6c2A",
       USDD: "0x680447595e8b7b3Aa1B43beB9f6098C79ac2Ab3f",
-      AGEUR: "0xFA5Ed56A203466CbBC2430a43c66b9D8723528E7",
+      EURA: "0xFA5Ed56A203466CbBC2430a43c66b9D8723528E7",
 
       LINK: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4",
       SUSHI: "0xd4d42F0b6DEF4CE0383636770eF773390d85c61A",
