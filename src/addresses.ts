@@ -64,7 +64,6 @@ export const crossChainAddresses = {
   },
   astrolab: {
     ...getRegistryLatest(), // Swapper, AccessController, ChainlinkProvider, PriceProvider, StrategyV5Agent
-    "apAAVEv3.USD": "0x0000d7160045c92fcf78bada777a968e640d0278",
   },
 }
 
