@@ -21,6 +21,7 @@ import "./AsPriceAware.sol";
  * @dev All state variables must be here to match the proxy base storage layout (StrategyV5)
  */
 abstract contract StrategyV5Abstract is As4626Abstract {
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                              TYPES                             ║
   ╚═══════════════════════════════════════════════════════════════*/

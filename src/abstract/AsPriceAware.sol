@@ -16,6 +16,7 @@ import "./AsPermissioned.sol";
  * @notice Extending this contract allows for price feed consumption
  */
 abstract contract AsPriceAware is AsPermissioned {
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                            STRUCTS                             ║
   ╚═══════════════════════════════════════════════════════════════*/

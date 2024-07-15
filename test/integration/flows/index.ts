@@ -1,8 +1,7 @@
-// TODO: move generics to @astrolabs/hardhat
-
 import { ethers } from "hardhat";
+
+import { isLive } from "@astrolabs/hardhat";
 import { IStrategyDeploymentEnv } from "../../../src/types";
-import { isLive } from "../../utils";
 
 export interface IFlow {
   elapsedSec: number; // seconds since last block

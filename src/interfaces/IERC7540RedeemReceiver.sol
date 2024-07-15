@@ -6,6 +6,7 @@ pragma solidity 0.8.22;
  * @dev ERC-7540 Redeem Receiver interface
  */
 interface IERC7540RedeemReceiver {
+
   /**
    * @notice Redeem request callback
    * @dev The ERC-7540 smart contract calls this function on the receiver after a redeem request has been submitted

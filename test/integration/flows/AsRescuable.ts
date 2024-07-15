@@ -1,14 +1,11 @@
-import { TransactionResponse, weiToString } from "@astrolabs/hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { TransactionResponse, weiToString, SafeContract, MaybeAwaitable, SignerWithAddress, addressOne, resolveMaybe } from "@astrolabs/hardhat";
 import { BigNumber } from "ethers";
-import { IStrategyDeploymentEnv, MaybeAwaitable, SafeContract } from "../../../src/types";
+import { IStrategyDeploymentEnv } from "../../../src/types";
 import {
-  addressOne,
   fundAccount,
   getOverrides,
   logBalances,
-  logRescue,
-  resolveMaybe,
+  logRescue
 } from "../../utils";
 
 /**

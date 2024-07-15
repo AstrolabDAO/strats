@@ -6,6 +6,7 @@ pragma solidity 0.8.22;
  * @dev ERC-7540 Deposit Receiver interface
  */
 interface IERC7540DepositReceiver {
+
   /**
    * @notice Deposit request callback
    * @dev The ERC-7540 smart contract calls this function on the receiver after a deposit request has been submitted

@@ -1,5 +1,5 @@
-import { network, revertNetwork } from "@astrolabs/hardhat";
 import { assert } from "chai";
+import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
 import addresses from "../../src/implementations/Benqi/addresses";
 import {
   Fees,
@@ -9,7 +9,6 @@ import {
 import { suite } from "./StrategyV5.test";
 import { IFlow, testFlow } from "./flows";
 import { setupStrat } from "./flows/StrategyV5";
-import { abiEncode, getEnv } from "../utils";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive Benqi USD`,

@@ -1,4 +1,4 @@
-import addresses from "../../addresses";
+import { addresses } from "@astrolabs/hardhat";
 import merge from "lodash/merge";
 
 // cf. https://https://docs.aave.com/developers/deployed-contracts/v3-mainnet/
@@ -51,7 +51,7 @@ export default merge(addresses, {
       vWBETH: "0x6CFdEc747f37DAf3b87a35a1D9c8AD3063A1A8A0",
       vXRP: "0xB248a295732e0225acd3337607cc01068e3b9c10",
       vXVS: "0x151B1e2635A717bcDc836ECd6FbB62B674FE3E1D",
-      rewardTokens: [addresses[56].tokens.VXS],
+      rewardTokens: [addresses[56].tokens.XVS],
     }
   },
 } as { [chainId: number]: { [id: string]: any } });

@@ -1,4 +1,4 @@
-import addresses from "../../addresses";
+import { addresses } from "@astrolabs/hardhat";
 import merge from "lodash/merge";
 
 // cf. https://github.com/hop-protocol/hop/blob/develop/packages/core/src/addresses/mainnet.ts

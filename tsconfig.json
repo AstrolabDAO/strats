@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
+    "lib": ["es6", "es2020"],
     "declaration": true,
     "outDir": "./dist",
     "rootDir": "./",
@@ -12,12 +13,12 @@
     "strict": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "esModuleInterop": true,
+    "esModuleInterop": true
   },
   "include": [
     "./src/**/*",
     "./test/**/*",
-    "hardhat.config.ts",
+    "hardhat.config.ts"
   ],
   "exclude": [
     "node_modules",

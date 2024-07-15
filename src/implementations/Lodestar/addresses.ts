@@ -1,4 +1,4 @@
-import addresses from "../../addresses";
+import { addresses } from "@astrolabs/hardhat";
 import merge from "lodash/merge";
 
 // cf. https://docs.sonne.finance/protocol/contract-addresses
@@ -19,7 +19,7 @@ export default merge(addresses, {
         lDAI: "0x4987782da9a63bC3ABace48648B15546D821c720",
         lETH: "0x2193c45244AF12C280941281c8aa67dD08be0a64",
         lARB: "0x8991d64fe388fA79A4f7Aa7826E8dA09F0c3C96a",
-        lWSTETH: "0xfECe754D92bd956F681A941Cef4632AB65710495",
+        lwstETH: "0xfECe754D92bd956F681A941Cef4632AB65710495",
         lGMX: "0x79B6c5e1A7C0aD507E1dB81eC7cF269062BAb4Eb",
         lUSDC: "0x4C9aAed3b8c443b4b634D1A189a5e25C604768dE",
 
@@ -53,7 +53,7 @@ export default merge(addresses, {
         DAIDelegate: "0x0b2C0a787cf2E13bab703Fd5b12f21dbdb0706b1",
         ETHDelegate: "0xf96Bc59fC200B485fE5A84Cc077529De3627b24B",
         ARBDelegate: "0x8a76ff3410ED18a404eA5624a2C2c145a16b0f5d",
-        WSTETHDelegate: "0xb7F7d0790b21DECc56493Fdb62C690B2C1a9a7Ba",
+        wstETHDelegate: "0xb7F7d0790b21DECc56493Fdb62C690B2C1a9a7Ba",
         GMXDelegate: "0xFAB93372A50878a340DD03079Ff332f33B36DB65",
         Reservior: "0x941a4EE8a96e0EEd086D5853c3661Bc4f2357ef2",
         TokenFix: "0x8dF8E39103F196820EA56403733a79C60086608C",

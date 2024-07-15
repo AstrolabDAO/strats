@@ -1,64 +1,60 @@
-import { deployAll, ethers, getDeployer, getSalts } from "@astrolabs/hardhat";
-import { abiEncode, addressToBytes32 } from "../test/utils";
-import oraclesByChainId from "../src/chainlink-oracles.json";
-import addressesByChainId from "../src/addresses";
+import { abiEncode, addresses, addressToBytes32, deployAll, ethers, getChainlinkFeedsByChainId, getDeployer, getSalts } from "@astrolabs/hardhat";
 
 const salts = getSalts();
 const baseSymbols = [
-  "WETH", "BETH",
-  "WBTC", "BTCB",
-  "USDC", "USDCe",
-  "USDT", "FDUSD",
-  "TUSD", "FRAX",
-  "DAI", "USDD",
-  "MIM", "MAI",
-  "LUSD", "PYUSD",
-  "USDP", "USDY",
-  "SUSD", "GHO",
-  "USDB"
+  // flagships
+  "WETH", "BETH", "WBTC", "BTCB",
+  // stables
+  "WXDAI", "WBNB", "WFTM", "WAVAX", "WMATIC", "WCELO", "WKAVA", "WMNT",
+  "USDC", "USDCe", "USDT", "FDUSD", "TUSD", "FRAX", "DAI", "USDD", "XDAI",
+  "MIM", "MAI", "LUSD", "PYUSD", "USDP", "USDY", "SUSD", "crvUSD", "GHO", "USDB",
+  "USDbC", "DOLA",
+  // lst+lrt
+  "stETH", "wstETH", "rETH", "mETH", "cbETH", "BETH", "WBETH", "weETH", "frxETH", "sfrxETH", "ETHx", "ankrETH",
+  // alts
+  "ARB", "OP", "BLAST", "ETH", "MNT", "ZK", "MATIC", "POLY", "CELO", "KAVA", "AVAX", "BNB", "FTM", "GNO",
+  "HOP", "STG", "XVS", "AAVE", "COMP", "CAKE", "CRV", "UNI", "LINK",
 ];
 
 async function main() {
   const deployer = await getDeployer();
   const chainId = await deployer.getChainId();
-  const addresses = addressesByChainId[chainId];
-  const oracles = oraclesByChainId[chainId];
-  if (addresses.astrolab.Deployer != await deployer.getAddress()) {
+  const oracles = getChainlinkFeedsByChainId()[chainId];
+  const addr = addresses[chainId];
+
+  if (addr.astrolab.Deployer !== await deployer.getAddress()) {
     throw new Error("Deployer address is not the same as the one in the registry.");
   }
-  const knownAddresses = baseSymbols.map((sym) => addresses.tokens[sym]);
-  const knownFeeds = baseSymbols.map((sym) =>
-    oracles[`Crypto.${sym}/USD`] ? addressToBytes32(oracles[`Crypto.${sym}/USD`]) : null,
-  );
 
-  // keep only the addresses/feeds pairs that are known
-  const knwonSymbols = [];
-  for (const i in knownAddresses) {
-    if (!knownAddresses[i] || !knownFeeds[i]) {
-      knownAddresses.splice(Number(i), 1);
-      knownFeeds.splice(Number(i), 1);
-    } else {
-      knwonSymbols.push(baseSymbols[i]);
-    }
-  }
-  console.log(`Removed ${baseSymbols.length - knownAddresses.length} unknown feeds`);
-  console.log(`Deploying ChainlinkProvider with ${knownAddresses.length} known feeds:\n${knwonSymbols.join(", ")}`);
+  const knownSymbols = baseSymbols.filter((sym) =>
+    !!addr.tokens[sym] && !!oracles[`Crypto.${sym}/USD`]); // filter out unknown addresses/feeds
 
-  // deploy + verify ChainlinkProvider
+  const knownAddresses = knownSymbols.map((sym) => addr.tokens[sym]);
+  const knownFeeds = knownSymbols.map((sym) => addressToBytes32(oracles[`Crypto.${sym}/USD`]));
+
+  console.log(`Removed ${baseSymbols.length - knownSymbols.length} unknown feeds`);
+  console.log(`Deploying ChainlinkProvider with ${knownSymbols.length} known feeds:\n${knownSymbols.join(", ")}`);
+
+  // deploy + verify ChainlinkProvider (optimized for existing or new deployment)
+  // const deployed = await isDeployed({}, addresses.astrolab.ChainlinkProvider);
   const deployment = await deployAll({
     name: "ChainlinkProvider",
     contract: "ChainlinkProvider",
     verify: true,
     useCreate3: true,
-    create3Salt: salts.ChainlinkProvider, // used only if not already deployed
-    args: [addresses.astrolab.AccessController],
-    // overrides: { gasLimit: 1_200_000 }, // required for gnosis-chain (wrong rpc estimate)
-    // address: protocolAddr.ChainlinkProvider, // use if already deployed (eg. to verify)
+    create3Salt: salts.ChainlinkProvider,
+    args: [addr.astrolab.AccessController],
+    // overrides: { gasLimit: 2_000_000 }, // required for gnosis-chain (wrong rpc estimate)
+    // address: addresses.astrolab.ChainlinkProvider, // use if already deployed (eg. to verify)
   });
-  if (deployment.units[0].contract !== addresses.astrolab.ChainlinkProvider) {
+
+  if (deployment.units.ChainlinkProvider.address!.toLowerCase() !== addr.astrolab.ChainlinkProvider.toLowerCase()) {
     throw new Error("Deployed ChainlinkProvider address is not the registry expected one.");
   }
-  const cp = await ethers.getContractAt("ChainlinkProvider", addresses.astrolab.ChainlinkProvider);
+
+  const cp = await ethers.getContractAt("ChainlinkProvider", addr.astrolab.ChainlinkProvider);
+
+  console.log("Initializing oracle feeds...");
   await cp.update(
     abiEncode(
       ["(address[],bytes32[],uint256[])"],
@@ -71,6 +67,7 @@ async function main() {
       ],
     ),
   ).then((tx) => tx.wait());
+  console.log(`ChainlinkProvider initialized with ${knownSymbols.length} feeds: ${knownSymbols.join(", ")}`);
 }
 
 main()

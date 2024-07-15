@@ -1,4 +1,4 @@
-import addresses from "../../addresses";
+import { addresses } from "@astrolabs/hardhat";
 import merge from "lodash/merge";
 
 // cf. https://www.vaultka.com/app/vaults

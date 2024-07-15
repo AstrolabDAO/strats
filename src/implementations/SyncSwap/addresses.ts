@@ -1,4 +1,4 @@
-import addresses from "../../addresses";
+import { addresses } from "@astrolabs/hardhat";
 import merge from "lodash/merge";
 
 export default merge(addresses, {

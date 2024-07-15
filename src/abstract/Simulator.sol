@@ -7,6 +7,7 @@ pragma solidity 0.8.22;
  * cf. https://github.com/gnosis/util-contracts/blob/main/contracts/storage
  */
 abstract contract Simulator {
+
   /**
    * @dev Reads `length` bytes of storage in the currents contract
    * @param offset The offset in the current contract's storage in words to start reading from

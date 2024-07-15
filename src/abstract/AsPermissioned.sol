@@ -16,6 +16,7 @@ import "./AsTypes.sol";
  * @notice Extending this contract allows for role-based access control (RBAC)
  */
 abstract contract AsPermissioned {
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                              TYPES                             ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -95,5 +96,12 @@ abstract contract AsPermissioned {
     assembly {
       $.slot := _STORAGE_SLOT
     }
+  }
+
+  /**
+   * @return Access controller contract
+   */
+  function accessController() external view returns (address) {
+    return address(_storage().ac);
   }
 }

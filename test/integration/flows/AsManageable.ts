@@ -1,7 +1,6 @@
-import { TransactionResponse } from "@astrolabs/hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { IStrategyDeploymentEnv, MaybeAwaitable } from "../../../src/types";
-import { getOverrides, keccak256, resolveMaybe } from "../../utils";
+import { TransactionResponse, MaybeAwaitable, SignerWithAddress, keccak256, resolveMaybe } from "@astrolabs/hardhat";
+import { IStrategyDeploymentEnv } from "../../../src/types";
+import { getOverrides } from "../../utils";
 
 /**
  * Grants roles to a grantee using the provided environment and signer
@@ -57,9 +56,9 @@ export async function grantRoles(
 export async function acceptRoles(
   env: Partial<IStrategyDeploymentEnv>,
   roles: string[],
-  signer: MaybeAwaitable<SignerWithAddress> = env.deployer!, // == grantee
+  _signer: MaybeAwaitable<SignerWithAddress> = env.deployer!, // == grantee
 ): Promise<boolean> {
-  signer = await resolveMaybe(signer);
+  const signer = await resolveMaybe(_signer) as SignerWithAddress;
   const [strat, accessController] = await Promise.all([
     env.deployment!.strat.copy(signer),
     env.deployment!.AccessController.copy(signer)

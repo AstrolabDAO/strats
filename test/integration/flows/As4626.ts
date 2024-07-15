@@ -1,25 +1,16 @@
-import {
-  TransactionResponse,
-  network,
-  weiToString
-} from "@astrolabs/hardhat";
-import {
-  ITransactionRequestWithEstimate,
-  getTransactionRequest,
-} from "@astrolabs/swapper";
-import { erc20Abi } from "abitype/abis";
 import * as ethers from "ethers";
 import { BigNumber, Contract } from "ethers";
 import {
-  IStrategyDeploymentEnv
-} from "../../../src/types";
-import {
+  TransactionResponse,
+  network,
+  weiToString,
   MaxUint256,
-  getOverrides,
-  getSwapperRateEstimate,
   getTxLogData,
-  logState
-} from "../../utils";
+  ERC20_ABI,
+} from "@astrolabs/hardhat";
+import { ITransactionRequestWithEstimate, getTransactionRequest } from "@astrolabs/swapper";
+import { IStrategyDeploymentEnv } from "../../../src/types";
+import { getOverrides, getSwapperRateEstimate, logState } from "../../utils";
 
 /**
  * Sets the minimum liquidity for a strategy deployment
@@ -127,7 +118,7 @@ export async function swapSafeDeposit(
   _amount = 10,
 ): Promise<BigNumber> {
   const { strat, asset } = env.deployment!;
-  const depositAsset = new Contract(inputAddress!, erc20Abi, env.deployer);
+  const depositAsset = new Contract(inputAddress!, ERC20_ABI, env.deployer);
   const [minSwapOut, minSharesOut] = [1, 1];
   let amount = depositAsset.toWei(_amount);
 
@@ -411,8 +402,7 @@ export async function collectFees(
   ]);
   await logState(env, "Before CollectFees");
   console.log(
-    `FeeCollector balances before: ${asset.toAmount(balancesBefore[0])} ${
-      asset.sym
+    `FeeCollector balances before: ${asset.toAmount(balancesBefore[0])} ${asset.sym
     }, ${strat.toAmount(balancesBefore[1])} ${strat.sym}`,
   );
   const receipt = await strat
@@ -425,8 +415,7 @@ export async function collectFees(
   ]);
   await logState(env, "After CollectFees", 1_000);
   console.log(
-    `FeeCollector balances after: ${asset.toAmount(balancesAfter[0])} ${
-      asset.sym
+    `FeeCollector balances after: ${asset.toAmount(balancesAfter[0])} ${asset.sym
     }, ${strat.toAmount(balancesAfter[1])} ${strat.sym}`,
   );
   return getTxLogData(

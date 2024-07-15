@@ -6,6 +6,21 @@ import {
   getSalts,
   loadAbi,
   network,
+  findSymbolByAddress,
+  SafeContract,
+  abiEncode,
+  addressToBytes32,
+  addressZero,
+  arraysEqual,
+  duplicatesOnly,
+  getEnv,
+  getInitSignature,
+  getTxLogData,
+  isAddress,
+  isLive,
+  isOracleLib,
+  isStablePair,
+  isDeployed,
 } from "@astrolabs/hardhat";
 import {
   ITransactionRequestWithEstimate,
@@ -18,32 +33,17 @@ import {
   IStrategyParams,
   IStrategyDeployment,
   IStrategyDeploymentEnv,
-  SafeContract,
 } from "../../../src/types";
 import {
-  abiEncode,
-  addressToBytes32,
-  addressZero,
-  arraysEqual,
-  duplicatesOnly,
   randomRedistribute,
   ensureFunding,
   ensureOracleAccess,
-  getEnv,
-  getInitSignature,
   getOverrides,
-  getTxLogData,
-  isAddress,
-  isLive,
-  isOracleLib,
-  isStablePair,
   logState,
   getInputs,
-  isDeployed,
 } from "../../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
-import { findSymbolByAddress } from "../../../src/addresses";
 import compoundAddresses from "../../../src/implementations/Compound/addresses";
 
 export const indexes = Array.from({ length: 8 }, (_, index) => index);

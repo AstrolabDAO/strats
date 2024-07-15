@@ -170,6 +170,13 @@ contract AccessController {
   }
 
   /**
+   * @return Address of the admin
+   */
+  function admin() external view returns (address) {
+    return getMembers(Roles.ADMIN)[0];
+  }
+
+  /**
    * @return Array of `MANAGER` addresses
    */
   function getManagers() external view returns (address[] memory) {

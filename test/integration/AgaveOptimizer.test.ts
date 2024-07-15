@@ -1,11 +1,10 @@
-import { network, revertNetwork } from "@astrolabs/hardhat";
+import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import addresses from "../../src/implementations/Agave/addresses";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { suite } from "./StrategyV5.test";
 import { IFlow, testFlow } from "./flows";
 import { setupStrat } from "./flows/StrategyV5";
-import { abiEncode, getEnv } from "../utils";
 
 // strategy description to be converted into test/deployment params
 const baseDesc: IStrategyDesc = {

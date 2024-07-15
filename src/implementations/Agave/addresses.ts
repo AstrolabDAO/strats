@@ -1,4 +1,4 @@
-import addresses from "../../addresses";
+import { addresses } from "@astrolabs/hardhat";
 import merge from "lodash/merge";
 
 // cf. https://agavedev.notion.site/Deployed-Contracts-d6ec9d23c8d341ba9fa7c1fd7fd4535e

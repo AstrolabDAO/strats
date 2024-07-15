@@ -1,15 +1,22 @@
 import {
-  Log,
-  TransactionReceipt,
+  MaxUint256,
   TransactionRequest,
-  deploy,
+  addressOne,
+  addressToBytes32,
+  addressZero,
   ethers,
-  getDeployer,
-  getSalts,
-  loadAbi,
+  getAddress,
+  isLive,
+  isOracleLib,
   network,
   provider,
+  sleep,
   weiToString,
+  ITestEnv,
+  SafeContract,
+  addresses,
+  WETH_ABI,
+  ERC20_ABI,
 } from "@astrolabs/hardhat";
 import {
   ISwapperParams,
@@ -18,116 +25,18 @@ import {
   getTransactionRequest,
   swapperParamsToString,
 } from "@astrolabs/swapper";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import chainlinkOracles from "../src/chainlink-oracles.json";
-import { erc20Abi, wethAbi } from "abitype/abis";
 import { assert } from "chai";
-import crypto from "crypto";
-import { Provider as MulticallProvider } from "ethcall";
 import {
   BigNumber,
   BigNumberish,
   Contract,
-  Overrides,
-  constants,
+  Overrides
 } from "ethers";
-import { merge } from "lodash";
-import addresses, { Addresses, NetworkAddresses } from "../src/addresses";
-import {
-  IChainlinkParams,
-  IStrategyDeploymentEnv,
-  ITestEnv,
-  MaybeAwaitable,
-  SafeContract,
-} from "../src/types";
+import { IStrategyDeploymentEnv } from "../src/types";
 
-export const addressZero = constants.AddressZero;
-export const addressOne = "0x0000000000000000000000000000000000000001";
-export const MaxUint256 = ethers.constants.MaxUint256;
-export const keccak256 = (s: string) => ethers.utils.keccak256(ethers.utils.toUtf8Bytes(s));
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
 
 export const indexes = Array.from({ length: 8 }, (_, index) => index);
-
-export function isLive(env: any) {
-  const n = env.network ?? network;
-  return !["tenderly", "localhost", "hardhat"].some((s) => n?.name.includes(s));
-}
-
-export function isAddress(s: string) {
-  return /^0x[a-fA-F0-9]{40}$/.test(s);
-}
-
-export function addressToBytes32(address: string) {
-  if (!isAddress(address)) throw new Error(`Invalid address: ${address}`);
-  return ethers.utils.hexZeroPad(address, 32);
-}
-
-export function isAwaitable(o: any): boolean {
-  return typeof o?.then === "function"; // typeof then = "function" for promises
-}
-
-export async function resolveMaybe<T = any>(o: MaybeAwaitable<T>): Promise<T> {
-  return isAwaitable(o) ? await o : o;
-}
-
-export async function signerGetter(index: number): Promise<SignerWithAddress> {
-  return (await ethers.getSigners())[index];
-}
-
-export async function signerAddressGetter(index: number): Promise<string> {
-  return (await signerGetter(index)).address;
-}
-
-export function getAddresses(s: string) {
-  return isAddress(s) ? s : addresses[network.config.chainId!].tokens[s];
-}
-
-/**
- * Retrieves the signature of the initialization function for a given contract
- * @param contract - Contract address or name
- * @returns The signature of the initialization function
- */
-export const getInitSignature = async (contract: string) => {
-  const fragments = (await loadAbi(contract) as any[]).filter(
-    a => a.name === "init",
-  );
-  const dummy = new Contract(addressZero, fragments, provider!);
-  return Object.keys(dummy)
-    .filter((s) => s.startsWith("init"))
-    .sort((s1, s2) => s2.length - s1.length)?.[0];
-};
-
-/**
- * Retrieves all the selectors for a contract
- * @param abi - ABI of the contract
- * @returns The selectors of the contract
- */
-export function getSelectors(abi: any) {
-  const i = new ethers.utils.Interface(abi);
-  return Object.keys(i.functions).map((signature) => ({
-    name: i.functions[signature].name,
-    signature: i.getSighash(i.functions[signature]),
-  }));
-}
-
-/**
- * Checks if two arrays are equal
- * @param a - The first array
- * @param b - The second array
- * @returns True if the arrays are equal, false otherwise
- */
-export const arraysEqual = (a: any[], b: any[]) =>
-  a === b ||
-  (a && b && a.length === b.length && a.every((val, idx) => val === b[idx]));
-
-/**
- * Checks if all elements in an array are duplicates of each other
- * @param a - The array to check
- * @returns `true` if all elements in the array are duplicates, `false` otherwise
- */
-export const duplicatesOnly = (a: any[]) =>
-  a.every((v) => v === a[0]);
 
 /**
  * Overrides for different network chain IDs
@@ -169,69 +78,6 @@ export const getOverrides = (env: Partial<ITestEnv>) => {
   return overrides;
 };
 
-export const sleep = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-export const isStable = (s: string) =>
-  [
-    "USDC",
-    "USDCe",
-    "USDbC",
-    "xcUSDC",
-    "lzUSDC",
-    "sgUSDC",
-    "axlUSDC",
-    "whUSDC",
-    "cUSDC",
-    "USDT",
-    "USDTe",
-    "xcUSDT",
-    "lzUSDT",
-    "sgUSDT",
-    "axlUSDT",
-    "whUSDT",
-    "BUSD",
-    "DAI",
-    "DAIe",
-    "lzDAI",
-    "axlDAI",
-    "whDAI",
-    "xcDAI",
-    "XDAI",
-    "WXDAI",
-    "SDAI",
-    "FRAX",
-    "sFRAX",
-    "LUSD",
-    "USDD",
-    "CRVUSD",
-    "GHO",
-    "DOLA",
-    "USDP",
-    "USD+",
-    "USDD",
-    "EURS",
-    "EURT",
-    "EURTe",
-    "EURA",
-    "cEUR",
-    "USD",
-    "EUR",
-  ].includes(s.toUpperCase());
-
-export const isStablePair = (s1: string, s2: string) =>
-  isStable(s1) && isStable(s2);
-
-/**
- * Checks if the given string contains the name of an oracle library
- * @param name - Name of the oracle
- * @returns True if the oracle matches
- */
-export const isOracleLib = (name: string) =>
-  ["Pyth", "RedStone", "Chainlink", "Witnet"].some((libname) =>
-    name.includes(libname),
-  );
-
 /**
  * Logs the balances of the given token for the given addresses
  * @param env - Partial ITestEnv object representing the environment
@@ -257,11 +103,9 @@ export async function logBalances(
       env.multicallProvider!.getEthBalance(receiver),
     ]);
     console.log(`
-    State ${
-      step ?? ""
-    }:\nBalances of ${tokenId}\n  - payer (eg. rescued strat): ${
-      balances[0]
-    }\n  - receiver (eg. rescuer): ${balances[1]}`);
+    State ${step ?? ""
+      }:\nBalances of ${tokenId}\n  - payer (eg. rescued strat): ${balances[0]
+      }\n  - receiver (eg. rescuer): ${balances[1]}`);
   } else {
     if (typeof token === "string") token = await SafeContract.build(token);
     tokenId = `${token.sym} (${token.address})`;
@@ -270,11 +114,10 @@ export async function logBalances(
       token.multi.balanceOf(receiver),
     ]);
     console.log(`
-    State ${
-      step ?? ""
-    }:\nBalances of ${tokenId}\n  - payer (eg. rescued strat): ${token.toAmount(
-      balances[0],
-    )}\n  - receiver (eg. rescuer): ${token.toAmount(balances[1])}`);
+    State ${step ?? ""
+      }:\nBalances of ${tokenId}\n  - payer (eg. rescued strat): ${token.toAmount(
+        balances[0],
+      )}\n  - receiver (eg. rescuer): ${token.toAmount(balances[1])}`);
   }
 }
 
@@ -301,8 +144,8 @@ export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[
 
   const [currentInputs, currentWeights, currentLpTokens] = [
     stratParams.slice(0, lastInputIndex),
-    stratParams.slice(8, 8+lastInputIndex),
-    stratParams.slice(16, 16+lastInputIndex),
+    stratParams.slice(8, 8 + lastInputIndex),
+    stratParams.slice(16, 16 + lastInputIndex),
   ] as [string[], number[], string[]];
   return [currentInputs, currentWeights, currentLpTokens];
 }
@@ -370,7 +213,7 @@ export async function logState(
       // await assetTokenContract.balanceOf(strategy.address),
     ]);
     const [inputAddresses, inputWeights, lpTokenAddresses] = await getInputs(env);
-    const inputs = await Promise.all(inputAddresses.map((input) => SafeContract.build(input)));
+    const inputs = await Promise.all(inputAddresses.map((input) => SafeContract.build(input))) as SafeContract[];
     const lpTokens = await Promise.all(lpTokenAddresses.map((lpToken) => SafeContract.build(lpToken)));
     const rewardsAddresses = rewardTokens.map((reward) => reward.address);
     // ethcall only knows functions overloads, so we fetch invested() first then multicall the details for each input
@@ -388,78 +231,75 @@ export async function logState(
       `State ${step ?? ""}:
     asset: ${asset.sym} (${asset.address})
     inputs: [${inputs
-      .map((input) => input.sym + " (" + input.address)
-      .join("), ")})]
+        .map((input) => input.sym + " (" + input.address)
+        .join("), ")})]
     inputWeights: [${inputWeights.join(", ")}]
     lpTokens: [${lpTokens
-      .map((lpToken) => lpToken.sym + " (" + lpToken.address)
-      .join("), ")})]
+        .map((lpToken) => lpToken.sym + " (" + lpToken.address)
+        .join("), ")})]
     rewardTokens: [${rewardsAddresses.join(", ")}]
     sharePrice(): ${strat.toAmount(sharePrice)} (${sharePrice}wei)
     totalSuply(): ${strat.toAmount(totalSupply)} (${totalSupply}wei)
     totalAccountedSupply(): ${strat.toAmount(
-      totalAccountedSupply,
-    )} (${totalAccountedSupply}wei)
+          totalAccountedSupply,
+        )} (${totalAccountedSupply}wei)
     totalAssets(): ${asset.toAmount(totalAssets)} (${totalAssets}wei)
     totalAccountedAssets(): ${asset.toAmount(
-      totalAccountedAssets,
-    )} (${totalAccountedAssets}wei)
+          totalAccountedAssets,
+        )} (${totalAccountedAssets}wei)
     totalClaimableAssetFees(): ${asset.toAmount(
-      totalClaimableAssetFees,
-    )} (${totalClaimableAssetFees}wei)
+          totalClaimableAssetFees,
+        )} (${totalClaimableAssetFees}wei)
     invested(): ${asset.toAmount(invested)} (${invested}wei)\n${inputs
-      .map(
-        (input, index) =>
-          `      -${input.sym}: ${<any>(
-            asset.toAmount(totalInvested[index])
-          )} (${totalInvested[index]}wei)`,
-      )
-      .join("\n")}
-    available(): ${available / asset.weiPerUnit} (${available}wei) (${
-      Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
-    }%)
+        .map(
+          (input, index) =>
+            `      -${input.sym}: ${<any>(
+              asset.toAmount(totalInvested[index])
+            )} (${totalInvested[index]}wei)`,
+        )
+        .join("\n")}
+    available(): ${available / asset.weiPerUnit} (${available}wei) (${Math.round(totalAssets.lt(10) ? 0 : (available * 100) / totalAssets) / 100
+      }%)
     totalRedemptionRequest(): ${strat.toAmount(
-      totalRedemptionRequest,
-    )} (${totalRedemptionRequest}wei)
+        totalRedemptionRequest,
+      )} (${totalRedemptionRequest}wei)
     totalClaimableRedemption(): ${strat.toAmount(
-      totalClaimableRedemption,
-    )} (${totalClaimableRedemption}wei) (${
-      Math.round(
+        totalClaimableRedemption,
+      )} (${totalClaimableRedemption}wei) (${Math.round(
         totalRedemptionRequest.lt(10)
           ? 0
           : (totalClaimableRedemption * 100) / totalRedemptionRequest,
       ) / 100
-    }%)
+      }%)
     rewardsAvailable():\n${rewardTokens
-      .map(
-        (reward, index) =>
-          `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${
-            rewardsAvailable[index]
-          }wei)`,
-      )
-      .join("\n")}
+        .map(
+          (reward, index) =>
+            `      -${reward.sym}: ${reward.toAmount(rewardsAvailable[index])} (${rewardsAvailable[index]
+            }wei)`,
+        )
+        .join("\n")}
     previewInvest(0 == available()*.9):\n${inputs
-      .map(
-        (input, i) =>
-          `      -${input.sym}: ${asset.toAmount(
-            previewInvest[i],
-          )} (${previewInvest[i].toString()}wei)`,
-      )
-      .join("\n")}
+        .map(
+          (input, i) =>
+            `      -${input.sym}: ${asset.toAmount(
+              previewInvest[i],
+            )} (${previewInvest[i].toString()}wei)`,
+        )
+        .join("\n")}
     previewLiquidate(0 == pendingWithdrawRequests + invested()*.01):\n${inputs
-      .map(
-        (input, i) =>
-          `      -${input.sym}: ${inputs[i].toAmount(
-            previewLiquidate[i],
-          )} (${previewLiquidate[i].toString()}wei)`,
-      )
-      .join("\n")}
+        .map(
+          (input, i) =>
+            `      -${input.sym}: ${inputs[i].toAmount(
+              previewLiquidate[i],
+            )} (${previewLiquidate[i].toString()}wei)`,
+        )
+        .join("\n")}
     stratAssetBalance(): ${asset.toAmount(
-      stratAssetBalance,
-    )} (${stratAssetBalance}wei)
+          stratAssetBalance,
+        )} (${stratAssetBalance}wei)
     deployerBalances(shares, asset): [${strat.toAmount(
-      deployerSharesBalance,
-    )},${asset.toAmount(deployerAssetBalance)}]
+          deployerSharesBalance,
+        )},${asset.toAmount(deployerAssetBalance)}]
     `,
     );
     if (sleepAfter) await sleep(sleepAfter);
@@ -467,51 +307,6 @@ export async function logState(
     console.log(`Error logging state ${step ?? ""}: ${e}`);
   }
 }
-
-/**
- * Completes the given strategy deployment environment
- * @param env - Strategy deployment environment
- * @param addressesOverride - Optional addresses override
- * @returns Completed strategy deployment environment
- */
-export const getEnv = async (
-  env: Partial<ITestEnv> = {},
-  addressesOverride?: Addresses,
-): Promise<ITestEnv> => {
-  const addr = (addressesOverride ?? addresses)[network.config.chainId!];
-  const oracles = (<any>chainlinkOracles)[network.config.chainId!];
-  const deployer = await getDeployer() as SignerWithAddress;
-  const multicallProvider = new MulticallProvider();
-  await multicallProvider.init(provider);
-  const live = isLive(env);
-  if (live) env.revertState = false;
-  let snapshotId = 0;
-  try {
-    snapshotId = live ? 0 : await provider.send("evm_snapshot", []);
-  } catch (e) {
-    console.error(`Failed to snapshot: ${e}`);
-  }
-  env = merge(
-    {
-      network,
-      blockNumber: await provider.getBlockNumber(),
-      snapshotId,
-      revertState: false,
-      wgas: await SafeContract.build(addr.tokens.WGAS, wethAbi, env.deployer!),
-      addresses: addr,
-      oracles,
-      deployer,
-      provider,
-      multicallProvider,
-      needsFunding: false,
-      gasUsedForFunding: 0, // denominated in wgas decimal
-    },
-    env,
-  );
-  const rpc = (network.config as any)?.forking?.url ?? (network.config as any)?.url ?? "???";
-  console.log(`Live: ${live}\nRpc: ${rpc}`);
-  return env as ITestEnv;
-};
 
 /**
  * Swaps tokens using the specified parameters
@@ -540,7 +335,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
 
   if (!o.input) {
     o.input = env.addresses!.tokens.WGAS;
-    input = new Contract(env.addresses!.tokens.WGAS, wethAbi, env.deployer);
+    input = new Contract(env.addresses!.tokens.WGAS, WETH_ABI, env.deployer);
 
     const symbol = await input.symbol();
     if (["ETH", "BTC"].some((s) => symbol.includes(s))) {
@@ -554,7 +349,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
     console.log(`wrapped ${wrapped} ${o.input}`);
     console.assert(wrapped.eq(o.amountWei));
   } else {
-    input = new Contract(o.input, erc20Abi, env.deployer);
+    input = new Contract(o.input, ERC20_ABI, env.deployer);
   }
   if (o.inputChainId == o.outputChainId && o.input == o.output) {
     console.log(`input == output, skipping swap`);
@@ -577,7 +372,7 @@ async function _swap(env: Partial<IStrategyDeploymentEnv>, o: ISwapperParams) {
     inputBalance = await input.balanceOf(o.payer);
   }
 
-  const output = new Contract(o.output, erc20Abi, env.deployer);
+  const output = new Contract(o.output, ERC20_ABI, env.deployer);
   const outputBalanceBeforeSwap = await output.balanceOf(o.payer);
 
   await input.approve(env.deployment!.Swapper.address, MaxUint256.toString());
@@ -628,7 +423,7 @@ export async function fundAccount(
   asset: string,
   receiver: string,
 ): Promise<void> {
-  const output = new Contract(asset, erc20Abi, env.deployer!);
+  const output = new Contract(asset, ERC20_ABI, env.deployer!);
   const balanceBefore = await output.balanceOf(receiver);
   let balanceAfter = balanceBefore;
   let retries = 3;
@@ -706,8 +501,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
 
   if (env.needsFunding) {
     console.log(
-      `Funding ${env.deployer.address} from ${
-        env.gasUsedForFunding || "(auto)"
+      `Funding ${env.deployer.address} from ${env.gasUsedForFunding || "(auto)"
       }wei ${env.wgas.sym} (gas tokens) to ${minLiquidity}wei ${assetSymbol}`,
     );
     let gas =
@@ -799,72 +593,6 @@ export async function ensureOracleAccess(env: IStrategyDeploymentEnv) {
 }
 
 /**
- * Encodes the given values into their ABI-encoded form using the provided types
- * @param types Array of strings representing the types of the values to encode
- * @param values Array of values to encode
- * @param isTuple Indicates whether the values represent a tuple (default: false)
- * @returns ABI-encoded string representation of the values
- */
-export function abiEncode(
-  types: string[],
-  values: any[],
-  isTuple = false,
-): string {
-  return ethers.utils.defaultAbiCoder.encode(types, values);
-}
-
-/**
- * Decodes the given ABI-encoded data into its corresponding values using the provided types
- * @param types Array of strings representing the types of the values to decode
- * @param data ABI-encoded string representation of the values to decode
- * @param isTuple Indicates whether the values represent a tuple (default: false)
- * @returns Array of decoded values
- */
-export function abiDecode(
-  types: string[],
-  data: string,
-  isTuple = false,
-): any {
-  return ethers.utils.defaultAbiCoder.decode(types, data);
-}
-
-
-/**
- * Retrieves the data from a transaction log (used as flows return value)
- * @param tx - Transaction receipt
- * @param types - Array of types to decode the log data
- * @param outputIndex - Index of the decoded data to return
- * @param logIndex - Index or event name of the log to retrieve
- * @returns The decoded data from the log, or undefined if not found/parsing failure
- */
-export function getTxLogData(
-  tx: TransactionReceipt,
-  types = ["uint256"],
-  outputIndex = 0,
-  logIndex: string | number = -1,
-): any {
-  const logs = (tx as any).events || tx.logs;
-  let log: Log;
-  try {
-    if (!logs?.length) throw "No logs found on tx ${tx.transactionHash}";
-    if (typeof logIndex === "string") {
-      log = logs.find((l: any) => l?.event === logIndex) as Log;
-    } else {
-      if (logIndex < 0) logIndex = logs.length + logIndex;
-      log = logs[logIndex];
-    }
-    if (!log) throw `Log ${logIndex} not found on tx ${tx.transactionHash}`;
-    const decoded = ethers.utils.defaultAbiCoder.decode(types, log.data);
-    return decoded?.[outputIndex];
-  } catch (e) {
-    console.error(
-      `Failed to parse log ${e}: tx ${tx.transactionHash} probably reverted`,
-    );
-    return undefined;
-  }
-}
-
-/**
  * Calculates the estimated exchange rate for swapping tokens
  * @param from The token to swap from
  * @param to The token to swap to
@@ -925,7 +653,7 @@ export async function getSwapperEstimate(
   inputChainId = 1,
   outputChainId?: number,
 ): Promise<ITransactionRequestWithEstimate | undefined> {
-  const [input, output] = [from, to].map((s) => getAddresses(s));
+  const [input, output] = [from, to].map((s) => getAddress(s));
   if (!input || !output)
     throw new Error(
       `Token ${from} or ${to} not found in addresses.ts:ethereum`,
@@ -933,7 +661,7 @@ export async function getSwapperEstimate(
   if (input == output)
     return {
       estimatedOutputWei: inputWei,
-      // estimatedOutput: Number(simulatedSwapSizeWei.toString()) / (10 ** (await (new Contract(input, erc20Abi, provider)).decimals()).toNumber?.()),
+      // estimatedOutput: Number(simulatedSwapSizeWei.toString()) / (10 ** (await (new Contract(input, ERC20_ABI, provider)).decimals()).toNumber?.()),
       estimatedExchangeRate: 1,
     };
   const tr = (await getTransactionRequest({
@@ -946,51 +674,6 @@ export async function getSwapperEstimate(
     testPayer: addresses[inputChainId].accounts!.impersonate,
   })) as ITransactionRequestWithEstimate;
   return tr;
-}
-
-/**
- * Finds a function name in the given ABI (Application Binary Interface) based on its signature
- * @param signature - Function signature to search for
- * @param abi - ABI array to search in
- * @returns The name of the function matching the provided signature
- * @throws Error if the function signature is not found in the ABI
- */
-export function findSignature(signature: string, abi: any[]): string {
-  for (let item of abi) {
-    // Ensure the item is a function and has an 'inputs' field
-    if (item.type === "function" && item.inputs) {
-      // Construct the function signature string
-      const funcSig = `${item.name}(${item.inputs
-        .map((input: any) => input.type)
-        .join(",")})`;
-
-      // Compute the hash of the function signature
-      const hash = ethers.utils.id(funcSig).substring(0, 10); // utils.id returns the Keccak-256 hash, we only need the first 10 characters
-
-      // Compare the hash with the provided signature
-      if (hash === signature) {
-        return item.name;
-      }
-    }
-  }
-  throw new Error(`Function signature ${signature} not found in ABI`);
-}
-
-/**
- * Converts a given text into a nonce (used for nonce determinism)
- * @param text - Text to be converted into a nonce
- * @returns The nonce as a number
- */
-export function toNonce(text: string): number {
-  // Hash the text using SHA-256
-  const hash = crypto.createHash("sha256");
-  hash.update(text);
-  // Convert the hash into a hexadecimal string
-  const hexHash = hash.digest("hex");
-  // Convert the hexadecimal hash into an integer
-  // NB: we use a hash substring to as js big numeric management is inacurate
-  const nonce = parseInt(hexHash.substring(0, 15), 16);
-  return nonce;
 }
 
 /**
@@ -1024,7 +707,7 @@ export function randomRedistribute(arr: number[]): number[] {
 
   let [leftoverPositive, leftoverNegative] = [totalPositive, totalNegative];
 
-  while ((leftoverPositive-leftoverNegative) > 0) {
+  while ((leftoverPositive - leftoverNegative) > 0) {
     for (let i = 0; i < arr.length; i++) {
       if (arr[i] > 0 && totalPositive > 0) {
         let adjustment = Math.random() * (totalPositive / positiveCount);
@@ -1048,75 +731,4 @@ export function randomRedistribute(arr: number[]): number[] {
     }
   }
   return arr;
-}
-
-// cf. https://github.com/hujw77/safe-dao-factory/blob/07ae58dc5b9c90e962fe0c436557843987ce448f/src/SafeDaoFactory.sol#L8
-export async function deployMultisig(
-  env: Partial<ITestEnv>,
-  name: string="Astrolab DAO Council",
-  owners=[env.deployer!.address],
-  threshold=1,
-  overrides: Overrides = {
-    gasLimit: 2_500_000,
-  },
-): Promise<Contract> {
-  const addr: NetworkAddresses = addresses![network.config.chainId!];
-  const params = {
-    owners,
-    threshold,
-    to: addressZero,
-    data: "0x",
-    fallbackHandler: addr.safe!.compatibilityFallbackHandler,
-    paymentToken: addr.tokens.WGAS,
-    payment: 0,
-    paymentReceiver: addressZero,
-  };
-  const [proxyFactoryAbi, safeAbi] = await Promise.all([loadAbi("SafeProxyFactory"), loadAbi("Safe")]) as any;
-  const proxyFactory = new Contract(addr.safe!.proxyFactory, proxyFactoryAbi, env.deployer!);
-  const creationCode = await proxyFactory.proxyCreationCode();
-  // const create3Bytecode = ethers.utils.hexConcat([
-  //   creationCode,
-  //   ethers.utils.defaultAbiCoder.encode(['address'], [addr.safe!.singletonL2]),
-  // ]);
-  const create3Bytecode = ethers.utils.solidityPack(
-    ['bytes', 'uint256'],
-    [creationCode, BigNumber.from(addr.safe!.singletonL2)],
-  );
-  const salts = getSalts();
-  if (!salts[name]) {
-    throw new Error("Salt not found for " + name);
-  }
-  let safe = await deploy({
-    contract: "Safe", // proxy
-    name,
-    deployer: env.deployer!,
-    overrides,
-    useCreate3: true,
-    create3Salt: salts[name],
-    create3Bytecode,
-  });
-  safe = new Contract(safe.address, safeAbi, env.deployer!);
-  await safe.setup(params);
-  return safe;
-}
-
-export async function isDeployed(env: Partial<ITestEnv>, address: string) {
-  if (env.addresses!) {
-    const actual = Object.keys(env.addresses!).find((key) => env.addresses![key]![address]);
-    address = actual ?? address; // if address is an alias, use the actual address
-  }
-  try {
-    await provider.getCode(address);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-export function packBy(arr: any[], groupSize=2): any[] {
-  const pairs = [];
-  for (let i = 0; i < arr.length; i += groupSize) {
-    pairs.push(arr.slice(i, i + groupSize));
-  }
-  return pairs;
 }

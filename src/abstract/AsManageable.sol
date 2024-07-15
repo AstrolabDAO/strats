@@ -18,6 +18,7 @@ import "./AsPermissioned.sol";
  * @notice Abstract contract to check roles against AccessController and contract pausing
  */
 contract AsManageable is AsPermissioned, Pausable, ReentrancyGuard {
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/

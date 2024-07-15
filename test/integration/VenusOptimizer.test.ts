@@ -1,11 +1,10 @@
-import { network, revertNetwork } from "@astrolabs/hardhat";
+import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
 import { assert } from "chai";
 import addresses from "../../src/implementations/Venus/addresses";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { suite } from "./StrategyV5.test";
 import { IFlow, testFlow } from "./flows";
 import { setupStrat } from "./flows/StrategyV5";
-import { abiEncode, getEnv } from "../utils";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive Venus USD`,
@@ -51,7 +50,7 @@ describe(`test.${desc.name}`, () => {
         inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         lpTokens: desc.inputs.map((input) => addr.Venus[`v${input}`]), // LP tokens
-        rewardTokens: protocolAddr.rewardTokens, // VXS
+        rewardTokens: protocolAddr.rewardTokens, // XVS
         extension: abiEncode(["address"], [protocolAddr.Comptroller]),
       },
       desc.seedLiquidityUsd, // seed liquidity in USD

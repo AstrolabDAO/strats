@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 //  requestOpenPosition(uint256 _amount, uint16 _leverage) // RumVault
 
 interface IAlpVault {
+
   /**
    * @dev Struct representing user-specific information for a position in the strategy
    */

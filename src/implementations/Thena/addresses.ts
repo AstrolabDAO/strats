@@ -1,4 +1,4 @@
-import addresses from "../../addresses";
+import { addresses } from "@astrolabs/hardhat";
 import merge from "lodash/merge";
 
 export default merge(addresses, {
@@ -25,7 +25,7 @@ export default merge(addresses, {
         BNBxBNB: "0xf2a4e4261fcdfbb891bcf703640fbe713c6cd0fe",
         ETHankrETH: "0xc9df4ae113fa7cb67ce1779cb1560d1f43c2d373",
         ankrBNBBNB: "0x2f6c6e00e517944ee5efe310cd0b98a3fc61cb98",
-        frxETHwBETH: "0x3bc0fc25ad4456cdd4e4805ed89ec0d80db5e2c4",
+        frxETHWBETH: "0x3bc0fc25ad4456cdd4e4805ed89ec0d80db5e2c4",
         BTCBFRAX: "0xa4cf2a122e22bddaee91d9f3f086b07dce5cf805",
         slisBNBBNB: "0xa07bbf09b48e8d219774ac9b92622f5260a9c9f4",
         lisUSDfrxETH: "0xf8a4cdf9efc4b9b38eaa6e27ee281cb2111fa664",
