@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.22;
+pragma solidity 0.8.25;
 
 interface IComptroller {
   function claimReward(uint8 rewardType, address holder) external;

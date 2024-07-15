@@ -5,7 +5,7 @@ import { config } from "@astrolabs/hardhat/dist/hardhat.config";
 
 config.solidity!.compilers = [
   {
-    version: `0.8.22`,
+    version: `0.8.25`,
     settings: {
       optimizer: {
         enabled: true,

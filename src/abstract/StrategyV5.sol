@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.25;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "../interfaces/IAs4626.sol";

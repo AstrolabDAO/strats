@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.25;
 
 import "./StrategyV5Abstract.sol";
 import "./As4626.sol";
@@ -26,7 +26,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor(address _accessController) StrategyV5Abstract(_accessController) {}
+  constructor(
+    address _accessController
+  ) StrategyV5Abstract(_accessController) {}
 
   /**
    * @notice Initializes the strategy with base `_params`
@@ -128,7 +130,10 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     if (_inputs) {
       for (uint256 i = 0; i < _inputLength;) {
         if (address(inputs[i]) == address(0)) break;
-        uint256 currentAllowance = inputs[i].allowance(address(this), swapperAddress);
+        uint256 currentAllowance = inputs[i].allowance(
+          address(this),
+          swapperAddress
+        );
         if (currentAllowance < _amount) {
           inputs[i].forceApprove(swapperAddress, _amount);
         }
@@ -207,18 +212,12 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     bytes calldata _swapData,
     uint256 _exchangeRateBp
   ) internal {
-    if (_asset == address(0)) {
-      revert Errors.AddressZero();
-    }
-    if (_asset == address(asset)) return;
-
-    if (_exchangeRateBp == 0) {
-      revert Errors.InvalidData();
-    }
 
     // check if there are pending redemptions
-    // liquidate() should be called first to ensure rebasing
-    if (_req.totalRedemption > 0) {
+    // totalRedemption > 0 not allowed as the request basis changes here: liquidate() should be called first
+    // exchangeRateBp == 0 not allowed as it would break the accounting basis
+    // asset == address(0) and address(asset) not allowed as none is a valid new denomination
+    if (_exchangeRateBp == 0 || _req.totalRedemption > 0 || _asset == address(0) || _asset == address(asset)) {
       revert Errors.Unauthorized();
     }
 
@@ -242,8 +241,10 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     _weiPerAsset = 10 ** _assetDecimals;
     last.accountedAssets = totalAssets();
     last.accountedSupply = totalSupply();
-    last.sharePrice =
-      last.sharePrice.mulDiv(_exchangeRateBp, AsMaths.BP_BASIS * _weiPerAsset); // multiply then debase
+    last.sharePrice = last.sharePrice.mulDiv(
+      _exchangeRateBp,
+      AsMaths.BP_BASIS * _weiPerAsset
+    ); // multiply then debase
     // pre-emptively pause the strategy for manual checks
     _pause();
   }
@@ -294,8 +295,9 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     address[] calldata _lpTokens
   ) internal {
     if (
-      _inputs.length > _MAX_INPUTS || _inputs.length != _weights.length
-        || _lpTokens.length != _inputs.length
+      _inputs.length > _MAX_INPUTS ||
+      _inputs.length != _weights.length ||
+      _lpTokens.length != _inputs.length
     ) {
       revert Errors.Unauthorized();
     }
@@ -356,13 +358,13 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     _setSwapperAllowance(AsMaths.MAX_UINT256, false, true, false);
   }
 
-
-
   /**
    * @notice Sets the strategy reward tokens if any
    * @param _rewardTokens Array of reward tokens
    */
-  function setRewardTokens(address[] calldata _rewardTokens) external onlyManager {
+  function setRewardTokens(
+    address[] calldata _rewardTokens
+  ) external onlyManager {
     _setRewardTokens(_rewardTokens);
   }
 
@@ -371,18 +373,25 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    */
   function available() public view override returns (uint256) {
     return
-      availableClaimable().subMax0(_convertToAssets(_req.totalClaimableRedemption, false));
+      availableClaimable().subMax0(
+        _convertToAssets(_req.totalClaimableRedemption, false)
+      );
   }
 
   /**
    * @return Total amount of underlying assets available to withdraw
    */
   function availableClaimable() public view override returns (uint256) {
-    return asset.balanceOf(address(this)).subMax0(
-      claimableTransactionFees // entry + exit fees
-        + _lenderStorage().claimableFlashFees // flash loan fees
-        + AsAccounting.unrealizedProfits(last.harvest, _expectedProfits, _profitCooldown)
-    );
+    return
+      asset.balanceOf(address(this)).subMax0(
+        claimableTransactionFees + // entry + exit fees
+          _lenderStorage().claimableFlashFees + // flash loan fees
+          AsAccounting.unrealizedProfits(
+            last.harvest,
+            _expectedProfits,
+            _profitCooldown
+          )
+      );
   }
 
   /**
@@ -397,14 +406,16 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
    * @return Maximum amount of shares that can currently be redeemed by `_owner`
    */
   function maxRedeem(address _owner) public view override returns (uint256) {
-    return paused()
-      ? 0
-      : AsMaths.min(
-        balanceOf(msg.sender),
-        AsMaths.max(
-          claimableRedeemRequest(_owner, _owner), _convertToShares(available(), false)
-        )
-      );
+    return
+      paused()
+        ? 0
+        : AsMaths.min(
+          balanceOf(msg.sender),
+          AsMaths.max(
+            claimableRedeemRequest(_owner, _owner),
+            _convertToShares(available(), false)
+          )
+        );
   }
 
   /**
@@ -416,12 +427,17 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
       revert Errors.AddressZero();
     }
 
-    (uint256 assets, uint256 price, uint256 profit, uint256 dynamicFees) =
-      AsAccounting.claimableDynamicFees(IStrategyV5(address(this)));
+    (
+      uint256 assets,
+      uint256 price,
+      uint256 profit,
+      uint256 dynamicFees
+    ) = AsAccounting.claimableDynamicFees(IStrategyV5(address(this)));
 
     // sum up all fees: dynamicFees (perf+mgmt) + claimableTransactionFees (entry+exit) + flash loan fees
-    uint256 totalFees =
-      dynamicFees + claimableTransactionFees + _lenderStorage().claimableFlashFees;
+    uint256 totalFees = dynamicFees +
+      claimableTransactionFees +
+      _lenderStorage().claimableFlashFees;
     uint256 inflationBps = dynamicFees.mulDiv(AsMaths.BP_BASIS, assets); // claimable entry+exit+flash fees are not inflationary as subtracted from available()
     toMint = totalFees.mulDiv(_WEI_PER_SHARE_SQUARED, price * _weiPerAsset);
 
@@ -433,7 +449,10 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     _mint(feeCollector, toMint);
 
     // re-calculate the sharePrice dynamically to avoid sharePrice() distortion
-    last.sharePrice = price.mulDiv(AsMaths.BP_BASIS, AsMaths.BP_BASIS + inflationBps);
+    last.sharePrice = price.mulDiv(
+      AsMaths.BP_BASIS,
+      AsMaths.BP_BASIS + inflationBps
+    );
     last.feeCollection = uint64(block.timestamp);
     last.accountedAssets = assets;
     last.accountedSharePrice = last.sharePrice;

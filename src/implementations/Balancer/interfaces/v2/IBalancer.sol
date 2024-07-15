@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.22;
+pragma solidity 0.8.25;
 
 // cf. https://github.com/balancer/balancer-v2-monorepo/blob/main/pkg/interfaces/contracts/pool-stable/StablePoolUserData.sol#L19
 library StablePoolUserData {

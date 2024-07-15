@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.22;
+pragma solidity 0.8.25;
 
 import {StrategyV5} from "../abstract/StrategyV5.sol";
 import {StrategyV5Composite} from "../abstract/StrategyV5Composite.sol";
