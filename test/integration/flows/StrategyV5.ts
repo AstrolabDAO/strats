@@ -80,7 +80,7 @@ export const deployStrat = async (
         contract: n,
         name: n,
         verify: true,
-        deployed: await isDeployed(env, address),
+        deployed: await isDeployed(address, env),
         address,
         libraries: {}, // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
       };
@@ -114,14 +114,14 @@ export const deployStrat = async (
 
   // delete stratLibs.AsAccounting; // not used statically by Strat
 
-  const deployed = await isDeployed(env, contractUniqueName);
+  const deployed = await isDeployed(contractUniqueName, env);
   const units: { [name: string]: IDeploymentUnit } = {
     [contract]: {
       contract,
       name: contract,
       verify: true,
       deployed,
-      address: env.addresses!.astrolab?.[contractUniqueName],
+      address: deployed ? env.addresses!.astrolab?.[contractUniqueName] : "",
       proxied: ["StrategyV5Agent"],
       overrides: getOverrides(env),
       libraries: stratLibs, // External libraries are only used in StrategyV5Agent
@@ -153,12 +153,13 @@ export const deployStrat = async (
   ];
   const preDeployments: { [name: string]: Contract } = {};
   for (const c of preDeploymentsContracts) {
+    const deployed = await isDeployed(c, env);
     const dep = {
       contract: c,
       name: c,
       verify: true,
-      deployed: await isDeployed(env, c),
-      address: env.addresses!.astrolab?.[c],
+      deployed,
+      address: deployed ? env.addresses!.astrolab?.[c] : "",
       overrides: getOverrides(env),
     } as any;
     if (c == "AccessController") {
@@ -168,7 +169,7 @@ export const deployStrat = async (
       dep.libraries = agentLibs;
     } else if (c == "PriceProvider") {
       dep.args = [preDeployments.AccessController.address];
-      // NB: Chainlink only, not Pyth
+      // NB: Chainlink only for now, not Pyth/API3/RedStone
       dep.contract = "ChainlinkProvider";
     }
     units[c] = dep;
@@ -180,12 +181,13 @@ export const deployStrat = async (
         units[c].create3Salt = salts[create3Id];
       }
       const d = await deploy(units[c]);
+      // construct deployed contract
       preDeployments[c] = await SafeContract.build(
         d.address!,
         await loadAbi(dep.contract) as any[],
         env.deployer!,
       );
-      dep.verify = false; // we just verified it
+      dep.verify = false; // we just verified it (theoretically)
     } else {
       console.log(`Using existing ${c} at ${env.addresses!.astrolab?.[c]}`);
       preDeployments[c] = await SafeContract.build(
@@ -196,7 +198,9 @@ export const deployStrat = async (
     }
   }
 
-  // TODO: only at PriceProvider deployment to avoid overhead
+  // NB: PriceProvider deployments + feeds initialization (eg. ChainlinkProvider.update())
+  // eliminates the need for in-testing price feed setup
+  // this remains here for custom dev setup
   const baseSymbols = Array.from(
     new Set([
       ...env.deployment!.inputs.map(i => i.sym),  // initParams.inputs!,
@@ -214,7 +218,7 @@ export const deployStrat = async (
     const feeds = baseSymbols.map((sym) =>
       addressToBytes32(env.oracles![`Crypto.${sym}/USD`]),
     );
-    // NB: this is Chainlink's initializer, not Pyth
+    // NB: this is Chainlink's initializer, not Pyth (Pyth takes bytes32[] feeds and not addresses)
     await preDeployments.PriceProvider.update(
       abiEncode(
         ["(address[],bytes32[],uint256[])"],
@@ -237,7 +241,7 @@ export const deployStrat = async (
   initParams.erc20Metadata = merge(
     {
       name,
-      decimals: 12,
+      decimals: 12, // default strategy decimals
     },
     initParams.erc20Metadata,
   );
