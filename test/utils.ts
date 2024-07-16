@@ -17,6 +17,7 @@ import {
   addresses,
   WETH_ABI,
   ERC20_ABI,
+  getDeployer,
 } from "@astrolabs/hardhat";
 import {
   ISwapperParams,
@@ -77,6 +78,11 @@ export const getOverrides = (env: Partial<ITestEnv>) => {
     : networkOverrides[env.network!.config.chainId!] ?? {};
   return overrides;
 };
+
+export const ensureDeployer = (addr: string) =>
+  getDeployer()
+    .then(d => d.getAddress()
+      .then(a => assert(a === addr, `Deployer address is not the expected one.`)));
 
 /**
  * Logs the balances of the given token for the given addresses

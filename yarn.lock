@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@adraffy/ens-normalize/-/ens-normalize-1.10.0.tgz#d2a39395c587e092d77cbbc80acf956a54f38bf7"
   integrity sha512-nA9XHtlAkYfJxY7bce8DcN7eKxWWCWkU+1GR9d+U6MbNpfwQp8TI7vqOsBsMcHoT4mBu2kypKoSKnghEzOOq5Q==
 
-"@astrolabs/hardhat@^1.2.16":
-  version "1.2.16"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.16.tgz#1c555e66e51e5e4ef9ea9bafdcac6813d1061791"
-  integrity sha512-LCzXgftiwcC7NY14nO4t9weU/Ohl2Wa1Qg3t/D5cGIiO/adtY3saV3dtn+aRp+l4R0Ss03yJ1DM3X1tIS7v7Aw==
+"@astrolabs/hardhat@^1.2.18":
+  version "1.2.18"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.18.tgz#ca9f52bd836bd6d4be2eebf3c474d7474b95e19a"
+  integrity sha512-rNcxL0u++yNlK29XFiFaKq30Ah/yG2Y/jsqEehXr814CDSa4shZICIGJtEBFcylToQX/G2dMB2y43KI071tFSQ==
   dependencies:
     "@astrolabs/hardhat" "^1.2.9"
     "@nomiclabs/hardhat-ethers" "^2.1.0"
@@ -23,9 +23,9 @@
     sync-fetch "^0.5.2"
 
 "@astrolabs/hardhat@^1.2.9":
-  version "1.2.11"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.11.tgz#aab330b14506ca5fdd9961521fa2a2d4e1c59b22"
-  integrity sha512-bb+2Bpwf9VWsh9sIPzkkgxozFS7gPXenJGQrwih3bHZu7CZMLH1gaBbA5ppI7OgFASlTndculWPGWPrYAGNyRQ==
+  version "1.2.17"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.17.tgz#1f1d8e6627909b99839739bf16c74902ac20d60c"
+  integrity sha512-dScE9jfJmM6QzwBqVkIITr9Ky8oo58PQXlI97OS3egCgUZmhW1NbDy3+c70oABd7U3Tyvd1rlIcGl9tGQ4tPyw==
   dependencies:
     "@astrolabs/hardhat" "^1.2.9"
     "@nomiclabs/hardhat-ethers" "^2.1.0"
@@ -34,6 +34,7 @@
     ethcall "4.8.13"
     ethers "^5.7.0"
     hardhat "^2.10.2"
+    lodash "^4.17.21"
     sync-fetch "^0.5.2"
 
 "@astrolabs/swapper@^1.0.30":
@@ -1001,9 +1002,9 @@
   integrity sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==
 
 "@types/lodash@^4.14.201":
-  version "4.17.6"
-  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.17.6.tgz#193ced6a40c8006cfc1ca3f4553444fb38f0e543"
-  integrity sha512-OpXEVoCKSS3lQqjx9GGGOapBeuW5eUboYHRlHP9urXPX25IKZ6AnP5ZRxtVf63iieUbsHxLn8NQ5Nlftc6yzAA==
+  version "4.17.7"
+  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.17.7.tgz#2f776bcb53adc9e13b2c0dfd493dfcbd7de43612"
+  integrity sha512-8wTvZawATi/lsmNu10/j2hk1KEP0IvjubqPE3cu1Xz7xfXXt5oCq3SNUz4fMIP4XGF9Ky+Ue2tBA3hcS7LSBlA==
 
 "@types/lru-cache@^5.1.0":
   version "5.1.1"
@@ -2350,9 +2351,9 @@ ethereum-cryptography@^1.0.3:
     "@scure/bip39" "1.1.1"
 
 ethereum-multicall@^2.19.0:
-  version "2.24.0"
-  resolved "https://registry.yarnpkg.com/ethereum-multicall/-/ethereum-multicall-2.24.0.tgz#b6ff351a632cae7882ca24224bd3ea2426b6e213"
-  integrity sha512-+xWNmtWdpL4zOdAF2zeLYa1ZsrHLeU7KLmBAsc0el140qdQmF9ubyM9SwKHzy+xztTHi+eCnmCjknqhEU25gFA==
+  version "2.25.0"
+  resolved "https://registry.yarnpkg.com/ethereum-multicall/-/ethereum-multicall-2.25.0.tgz#6330e24ba351f3791e9a72ea437b586a583e1325"
+  integrity sha512-IkcsjLz/cjuLDsT5bn8OJT1GtFhoLTpWFx4TVvulRz8mWUvm9WRoeanlJ6g+VYLLR9c9eTz1mtu+h1MxMYXXuQ==
   dependencies:
     "@ethersproject/providers" "^5.0.10"
     ethers "^5.0.15"
@@ -2903,7 +2904,7 @@ hardhat@^2.10.2, hardhat@^2.19.1:
     raw-body "^2.4.1"
     resolve "1.17.0"
     semver "^6.3.0"
-    solc "0.8.25"
+    solc "0.8.26"
     source-map-support "^0.5.13"
     stacktrace-parser "^0.1.10"
     tsort "0.0.1"
@@ -4242,9 +4243,9 @@ solady@^0.0.177:
   resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.177.tgz#a5bdcb0d754d8121993700369452f4f9a8a5e8f5"
   integrity sha512-ac9eCKPmJMZEcqTXmqtUfy3hQdPh2w+YYupsSncaO2A1mxqH3jvpskJz9TpYEH/o0wDupf6f9NBkjCLGJFyplg==
 
-solc@0.8.25:
-  version "0.8.25"
-  resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.25.tgz#afc78078953f6ab3e727c338a2fefcd80dd5b01a"
+solc@0.8.26:
+  version "0.8.26"
+  resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.26.tgz#afc78078953f6ab3e727c338a2fefcd80dd5b01a"
   integrity sha512-yiPQNVf5rBFHwN6SIf3TUUvVAFKcQqmSUFeq+fb6pNRCo0ZCgpYOZDi3BVoezCPIAcKrVYd/qXlBLUP9wVrZ9g==
   dependencies:
     command-exists "^1.2.8"

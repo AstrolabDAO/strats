@@ -1,30 +1,34 @@
-import { abiEncode, addresses, addressToBytes32, deployAll, ethers, getChainlinkFeedsByChainId, getDeployer, getSalts } from "@astrolabs/hardhat";
+import { abiEncode, addresses, addressToBytes32, deployAll, ethers, getChainlinkFeedsByChainId, getDeployer, getSalts, NetworkAddresses, provider } from "@astrolabs/hardhat";
+import { ensureDeployer } from "../test/utils";
 
 const salts = getSalts();
 const baseSymbols = [
   // flagships
-  "WETH", "BETH", "WBTC", "BTCB",
+  "WETH", "BETH", "WBTC", "BTCB", "BTCb",
   // stables
   "WXDAI", "WBNB", "WFTM", "WAVAX", "WMATIC", "WCELO", "WKAVA", "WMNT",
   "USDC", "USDCe", "USDT", "FDUSD", "TUSD", "FRAX", "DAI", "USDD", "XDAI",
   "MIM", "MAI", "LUSD", "PYUSD", "USDP", "USDY", "SUSD", "crvUSD", "GHO", "USDB",
+  "USDCe", "USDTe", "DAIe", "FDUSDe", "TUSDe", "FRAXe",
+  "USDCb", "USDTb", "DAIb", "FDUSDb", "TUSDb", "FRAXb",
+  "fUSDC", "fUSDT", "fDAI", "fFDUSD", "fTUSD", "fFRAX",
+  "axlUSDC", "lzUSDC", "whUSDC", "axlUSDT", "lzUSDT", "whUSDT", "axlDAI", "lzDAI", "whDAI",	"axlFRAX", "lzFRAX", "whFRAX",
+  "axlETH", "lzETH", "whETH", "axlBTC", "lzBTC", "whBTC",
+  "xcUSDC", "xcUSDT", "xcDAI", "xcFRAX", "xcETH", "xcBTC",
   "USDbC", "DOLA",
   // lst+lrt
   "stETH", "wstETH", "rETH", "mETH", "cbETH", "BETH", "WBETH", "weETH", "frxETH", "sfrxETH", "ETHx", "ankrETH",
+  "xBNB", "ankrBNB", "sAVAX",
   // alts
   "ARB", "OP", "BLAST", "ETH", "MNT", "ZK", "MATIC", "POLY", "CELO", "KAVA", "AVAX", "BNB", "FTM", "GNO",
   "HOP", "STG", "XVS", "AAVE", "COMP", "CAKE", "CRV", "UNI", "LINK",
 ];
 
 async function main() {
-  const deployer = await getDeployer();
-  const chainId = await deployer.getChainId();
+  const chainId = await provider.getNetwork().then((n) => n.chainId);
+  const addr = addresses[chainId] as NetworkAddresses;
+  await ensureDeployer(addr.astrolab.Deployer);
   const oracles = getChainlinkFeedsByChainId()[chainId];
-  const addr = addresses[chainId];
-
-  if (addr.astrolab.Deployer !== await deployer.getAddress()) {
-    throw new Error("Deployer address is not the same as the one in the registry.");
-  }
 
   const knownSymbols = baseSymbols.filter((sym) =>
     !!addr.tokens[sym] && !!oracles[`Crypto.${sym}/USD`]); // filter out unknown addresses/feeds
@@ -45,7 +49,7 @@ async function main() {
     create3Salt: salts.ChainlinkProvider,
     args: [addr.astrolab.AccessController],
     // overrides: { gasLimit: 2_000_000 }, // required for gnosis-chain (wrong rpc estimate)
-    // address: addresses.astrolab.ChainlinkProvider, // use if already deployed (eg. to verify)
+    // address: addr.astrolab.ChainlinkProvider, // use if already deployed (eg. to verify)
   });
 
   if (deployment.units.ChainlinkProvider.address!.toLowerCase() !== addr.astrolab.ChainlinkProvider.toLowerCase()) {
