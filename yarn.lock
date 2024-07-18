@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@adraffy/ens-normalize/-/ens-normalize-1.10.0.tgz#d2a39395c587e092d77cbbc80acf956a54f38bf7"
   integrity sha512-nA9XHtlAkYfJxY7bce8DcN7eKxWWCWkU+1GR9d+U6MbNpfwQp8TI7vqOsBsMcHoT4mBu2kypKoSKnghEzOOq5Q==
 
-"@astrolabs/hardhat@^1.2.18":
-  version "1.2.18"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.18.tgz#ca9f52bd836bd6d4be2eebf3c474d7474b95e19a"
-  integrity sha512-rNcxL0u++yNlK29XFiFaKq30Ah/yG2Y/jsqEehXr814CDSa4shZICIGJtEBFcylToQX/G2dMB2y43KI071tFSQ==
+"@astrolabs/hardhat@^1.2.25":
+  version "1.2.25"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.25.tgz#60c5d2dd378f9d29ed78c1a2b0ada83f4c7957e2"
+  integrity sha512-CPpUwxeoj8UuKXbc7fPKKxLSq9C9MLma4NdosoSVwYgYgJMhu0JpV0G5B+Zi/jRlpPFqpbVUHZrjmcJXUFdHjg==
   dependencies:
     "@astrolabs/hardhat" "^1.2.9"
     "@nomiclabs/hardhat-ethers" "^2.1.0"
@@ -37,10 +37,10 @@
     lodash "^4.17.21"
     sync-fetch "^0.5.2"
 
-"@astrolabs/swapper@^1.0.30":
-  version "1.0.30"
-  resolved "https://registry.yarnpkg.com/@astrolabs/swapper/-/swapper-1.0.30.tgz#7795a5c73a9bec1960862e9926224bf02ac33837"
-  integrity sha512-KM96hVCoVrzI4gaucXRcgVg0HybHVulpiYu2kJTft+oy8JiZrpktqu90rDVbgcpU+ZS2Yi3VJPwxBWV+XXwToA==
+"@astrolabs/swapper@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@astrolabs/swapper/-/swapper-1.1.0.tgz#302dd906875e6b27d13161344264fba54fe4e60a"
+  integrity sha512-/MroiqZtiRruIHfL29dr91M2CTwfJdz/A9VqM6HyOSx1ITd23pFym+P+dffTX8rVO4y59J/kToTtN9IphAkPAw==
   dependencies:
     dotenv "^16.3.1"
     qs "^6.11.2"

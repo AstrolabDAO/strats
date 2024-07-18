@@ -24,19 +24,19 @@ export async function setMinLiquidity(
 ): Promise<BigNumber> {
   const { strat, asset } = env.deployment!;
   const [from, to] = ["USDC", env.deployment!.asset.sym];
-  const exchangeRate = await getSwapperRateEstimate(from, to, 1e12);
+  const exchangeRate = await getSwapperRateEstimate(from, to, 1e12, 1, <any>env);
   const seedAmount = asset.toWei(usdAmount * exchangeRate);
-  if ((await strat.minLiquidity()).gte(seedAmount)) {
-    console.log(`Skipping setMinLiquidity as minLiquidity == ${seedAmount}`);
+  const minLiquidity = await strat.minLiquidity();
+  if (minLiquidity.gte(seedAmount)) {
+    console.log(`Skipping setMinLiquidity as minLiquidity >= ${seedAmount}`);
   } else {
     console.log(
       `Setting minLiquidity to ${seedAmount} ${to} wei (${usdAmount} USDC)`,
     );
-    await strat
-      .setMinLiquidity(seedAmount)
+    await strat.safe("setMinLiquidity", [seedAmount], getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
     console.log(
-      `Liquidity can now be seeded with ${await strat.minLiquidity()}wei ${to}`,
+      `Liquidity can now be seeded with ${minLiquidity}wei ${to}`,
     );
   }
   return seedAmount;
@@ -54,11 +54,16 @@ export async function seedLiquidity(
 ): Promise<BigNumber> {
   const { strat, asset } = env.deployment!;
   let amount = asset.toWei(_amount);
-  if ((await strat.totalAssets()).gte(await strat.minLiquidity())) {
+  const [totalAssets, minLiquidity, allowance] = await env.multicallProvider!.all([
+    strat.multi.totalAssets(),
+    strat.multi.minLiquidity(),
+    asset.multi.allowance(env.deployer.address, strat.address),
+  ]) as BigNumber[];
+  if (totalAssets.gte(minLiquidity)) {
     console.log(`Skipping seedLiquidity as totalAssets > minLiquidity`);
     return BigNumber.from(1);
   }
-  if ((await asset.allowance(env.deployer.address, strat.address)).lt(amount))
+  if (await allowance.lt(amount))
     await asset
       .approve(strat.address, MaxUint256, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
@@ -67,7 +72,6 @@ export async function seedLiquidity(
   // only exec if static call is successful
   const receipt = await strat
     .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
-    // .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted
@@ -84,22 +88,25 @@ export async function deposit(
   _amount = 10,
 ): Promise<BigNumber> {
   const { strat, asset } = env.deployment!;
-  const balance = await asset.balanceOf(env.deployer.address);
+  const [balance, allowance] = await env.multicallProvider!.all([
+    asset.multi.balanceOf(env.deployer.address),
+    asset.multi.allowance(env.deployer.address, strat.address),
+  ]) as BigNumber[];
   let amount = asset.toWei(_amount);
 
   if (balance.lt(amount)) {
     console.warn(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
-  if ((await asset.allowance(env.deployer.address, strat.address)).lt(amount))
+  if (allowance.lt(amount))
     await asset
       .approve(strat.address, MaxUint256, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
   await logState(env, `Before Deposit ${_amount}`);
   // only exec if static call is successful
   const receipt = await strat
-    .safe("safeDeposit", [amount, 1, env.deployer.address], getOverrides(env))
-    // .safeDeposit(amount, 1, env.deployer.address, getOverrides(env))
+    .safe("safeDeposit", [amount, 1, env.deployer.address], { gasLimit: 1e7 })
+    // .safeDeposit(amount, 1, env.deployer.address, { gasLimit: 1e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, `After Deposit ${_amount}`, 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -147,18 +154,17 @@ export async function swapSafeDeposit(
     );
   }
   await logState(env, "Before SwapSafeDeposit");
-  const receipt = await strat
-    .safe(
-      "swapSafeDeposit",
-      [
-        depositAsset.address, // input
-        amount, // amount == 100$
-        env.deployer.address, // receiver
-        minSharesOut, // minShareAmount in wei
-        swapData,
-      ], // swapData
-      getOverrides(env),
-    )
+  const receipt = await strat.safe(
+    "swapSafeDeposit",
+    [
+      depositAsset.address, // input
+      amount, // amount == 100$
+      env.deployer.address, // receiver
+      minSharesOut, // minShareAmount in wei
+      swapData,
+    ], // swapData
+    getOverrides(env),
+  )
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SwapSafeDeposit", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -176,7 +182,10 @@ export async function withdraw(
 ): Promise<BigNumber> {
   const { asset, inputs, strat } = env.deployment!;
   const minAmountOut = 1; // TODO: use callstatic to define accurate minAmountOut
-  const max = await strat.maxWithdraw(env.deployer!.address);
+  const [max, balance] = await env.multicallProvider!.all([
+    strat.multi.maxWithdraw(env.deployer!.address),
+    strat.multi.balanceOf(env.deployer!.address),
+  ]) as BigNumber[];
   let amount = asset.toWei(_amount);
 
   if (max.lt(10)) {
@@ -186,20 +195,19 @@ export async function withdraw(
     return BigNumber.from(1);
   }
 
-  if (BigNumber.from(amount).gt(max)) {
-    console.warn(`Using maxWithdraw ${max} (< ${amount})`);
+  if (amount.gt(max)) {
+    console.warn(`Using maxWithdraw ${max} (< ${amount}), balance: ${balance}`);
     amount = max;
   }
 
   await logState(env, "Before Withdraw");
-  // only exec if static call is successful
   const receipt = await strat
-    .safe(
-      "safeWithdraw",
-      [amount, minAmountOut, env.deployer!.address, env.deployer!.address],
-      getOverrides(env),
-    )
-    // .safeWithdraw(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
+    .safe("safeWithdraw", [
+      amount,
+      minAmountOut,
+      env.deployer!.address,
+      env.deployer!.address
+    ], { gasLimit: 2e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Withdraw", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // recovered
@@ -216,35 +224,37 @@ export async function requestWithdraw(
   _amount = 50,
 ): Promise<BigNumber> {
   const { asset, inputs, strat } = env.deployment!;
-  const balance = await strat.balanceOf(env.deployer.address);
-  const pendingRequest = await strat.pendingWithdrawRequest(env.deployer.address);
-  let amount = asset.toWei(_amount);
+  let amount = strat.toWei(_amount); // in shares
+  const [balance, pendingRequest, assetAmount] = await env.multicallProvider!.all([
+    strat.multi.balanceOf(env.deployer.address),
+    strat.multi.pendingWithdrawRequest(env.deployer.address, env.deployer.address),
+    strat.multi.convertToAssets(amount),
+  ]) as BigNumber[];
 
   if (balance.lt(10)) {
-    console.log(
+    console.warn(
       `Skipping requestWithdraw as balance < 10wei (user owns no shares)`,
     );
     return BigNumber.from(1);
   }
 
-  if (BigNumber.from(amount).gt(balance)) {
+  if (amount.gt(balance)) { // shares vs shares
     console.warn(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
 
-  if (pendingRequest.gte(amount.mul(weiToString(asset.weiPerUnit)))) {
-    console.warn(`Skipping requestWithdraw as pendingRedeemRequest > amount`);
+  if (pendingRequest.gte(assetAmount)) {
+    console.warn(`Skipping requestWithdraw as pendingRedeemRequest > amount already`);
     return BigNumber.from(1);
   }
   await logState(env, "Before RequestWithdraw");
   const receipt = await strat
-    .requestWithdraw(
-      amount,
+    .safe("requestWithdraw", [
+      assetAmount,
       env.deployer.address,
       env.deployer.address,
-      "0x",
-      getOverrides(env),
-    )
+      "0x"
+    ], { gasLimit: 2e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After RequestWithdraw", 1_000);
   return (
@@ -275,7 +285,7 @@ export async function redeem(
     return BigNumber.from(1);
   }
 
-  if (BigNumber.from(amount).gt(max)) {
+  if (amount.gt(max)) {
     console.warn(`Using maxRedeem ${max} (< ${amount})`);
     amount = max;
   }
@@ -283,11 +293,12 @@ export async function redeem(
   await logState(env, "Before Redeem");
   // only exec if static call is successful
   const receipt = await strat
-    .safe(
-      "safeRedeem",
-      [amount, minAmountOut, env.deployer!.address, env.deployer!.address],
-      getOverrides(env),
-    )
+    .safe("safeRedeem", [
+      amount,
+      minAmountOut,
+      env.deployer!.address,
+      env.deployer!.address
+    ], { gasLimit: 2e7 })
     // .safeRedeem(amount, minAmountOut, env.deployer.address, env.deployer.address, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Redeem", 1_000);
@@ -305,9 +316,11 @@ export async function requestRedeem(
   _amount = 50,
 ): Promise<BigNumber> {
   const { strat } = env.deployment!;
-  const balance = await strat.balanceOf(env.deployer.address);
-  const pendingRequest = await strat.pendingWithdrawRequest(env.deployer.address);
   let amount = strat.toWei(_amount);
+  const [balance, pendingRequest] = await env.multicallProvider!.all([
+    strat.multi.balanceOf(env.deployer.address),
+    strat.multi.pendingWithdrawRequest(env.deployer.address, env.deployer.address),
+  ]) as BigNumber[];
 
   if (balance.lt(10)) {
     console.warn(
@@ -316,24 +329,25 @@ export async function requestRedeem(
     return BigNumber.from(1);
   }
 
-  if (BigNumber.from(amount).gt(balance)) {
+  if (amount.gt(balance)) {
     console.warn(`Using full balance ${balance} (< ${amount})`);
     amount = balance;
   }
 
-  if (pendingRequest.gte(amount.mul(weiToString(strat.weiPerUnit)))) {
-    console.warn(`Skipping requestRedeem as pendingRedeemRequest > amount`);
+  const assetAmount = await strat["convertToAssets(uint256)"](amount);
+
+  if (pendingRequest.gte(assetAmount)) {
+    console.warn(`Skipping requestRedeem as pendingRedeemRequest > amount already`);
     return BigNumber.from(1);
   }
   await logState(env, "Before RequestRedeem");
   const receipt = await strat
-    .requestRedeem(
+    .safe("requestRedeem", [
       amount,
       env.deployer.address,
       env.deployer.address,
       "0x",
-      getOverrides(env),
-    )
+    ], { gasLimit: 2e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After RequestRedeem", 1_000);
   return (
@@ -362,25 +376,22 @@ export async function requestLiquidate(
     return BigNumber.from(1);
   }
 
-  let amounts: BigNumber[] = _amounts.map((amount) =>
-    BigNumber.from(asset.toWei(amount)),
-  );
+  const amounts: BigNumber[] = _amounts.map((amount) => asset.toWei(amount));
 
-  let totalAmount = amounts.reduce((acc, amount) => acc.add(amount), BigNumber.from(0));
+  const totalAmount = amounts.reduce((acc, amount) => acc.add(amount), BigNumber.from(0));
 
-  if (BigNumber.from(totalAmount).gt(balance)) {
+  if (totalAmount.gt(balance)) {
     console.warn(`Trying to requestLiquidate more than balance ${balance}wei`);
     return BigNumber.from(0);
   }
 
   await logState(env, "Before RequestLiquidate");
   const result = await strat
-    .requestLiquidate(
+    .safe("requestLiquidate", [
       amounts,
       caller, // operator
-      caller, // owner
-      getOverrides(env),
-    )
+      caller // owner
+    ], { gasLimit: 2e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After RequestLiquidate", 2_000);
   return BigNumber.from(1);

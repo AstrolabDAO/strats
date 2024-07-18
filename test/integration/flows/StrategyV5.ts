@@ -74,13 +74,13 @@ export const deployStrat = async (
   for (const n of libNames) {
     let lib = {} as Contract;
     const path = `src/libs/${n}.sol:${n}`;
-    const address = env.addresses?.libs?.[n] ?? "";
+    const address = env.addresses!.astrolab?.[n] ?? "";
     if (!libraries[n]) {
       const libParams: IDeploymentUnit = {
         contract: n,
         name: n,
         verify: true,
-        deployed: await isDeployed(address, env),
+        deployed: !!address && await isDeployed(address, env),
         address,
         libraries: {}, // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
       };
@@ -526,7 +526,7 @@ export async function invest(
   // only exec if static call is successful
   const receipt = await strat
     // .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
-    .invest(...params, getOverrides(env))
+    .invest(...params, { gasLimit: 3e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -762,7 +762,7 @@ export async function liquidate(
   // only exec if static call is successful
   const receipt = await strat
     // .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
-    .liquidate(amounts, 1, false, swapData, getOverrides(env))
+    .liquidate(amounts, 1, false, swapData, { gasLimit: 3e7 })
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 1_000);

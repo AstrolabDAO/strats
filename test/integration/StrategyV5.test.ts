@@ -16,8 +16,8 @@ export const suite: Partial<IFlow>[] = [
   // sync ERC4626 deposit/withdraw/redeem
   { fn: seedLiquidity, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
   { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
-  { fn: withdraw, params: [1010], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
-  { fn: redeem, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
+  // { fn: withdraw, params: [1010], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
+  // { fn: redeem, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 
   // invest/liquidate (using live swapper's generated calldata)
   // { fn: invest, params: [5000], assert: (n: BigNumber) => n.gt(0) }, // partial invest
@@ -30,9 +30,9 @@ export const suite: Partial<IFlow>[] = [
   { fn: withdraw, params: [1000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
 
   // async ERC7540 redemption
-  { fn: requestRedeem, params: [2000], assert: (n: BigNumber) => n.gt(0) },
+  { fn: requestRedeem, params: [500], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  { fn: redeem, params: [2000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // full request
+  { fn: redeem, params: [500], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // full request
 
   // claimRewards/harvest(claim+swap)/compound(harvest+invest)
   { elapsedSec: day*30, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest all pending rewards

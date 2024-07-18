@@ -1,6 +1,4 @@
-import { ethers } from "hardhat";
-
-import { isLive } from "@astrolabs/hardhat";
+import { ethers, isLive, increaseTime, getNetworkTimestamp } from "@astrolabs/hardhat";
 import { IStrategyDeploymentEnv } from "../../../src/types";
 
 export interface IFlow {
@@ -28,24 +26,12 @@ export async function testFlow(flow: IFlow): Promise<any> {
   );
   let snapshotId = 0;
 
-  // TODO: move this to @astrolabs/hardhat
   if (!live) {
     if (revertState) snapshotId = await env.provider.send("evm_snapshot", []);
     if (elapsedSec) {
-      const timeBefore = new Date(
-        (await env.provider.getBlock("latest"))?.timestamp * 1000,
-      );
-      await env.provider.send("evm_increaseTime", [
-        ethers.utils.hexValue(elapsedSec),
-      ]);
-      if (env.network.name.includes("tenderly")) {
-        await env.provider.send("evm_increaseBlocks", ["0x20"]);
-      } else { // ganache
-        await env.provider.send("evm_mine", []);
-      }
-      const timeAfter = new Date(
-        (await env.provider.getBlock("latest"))?.timestamp * 1000,
-      );
+      const timeBefore = new Date(await getNetworkTimestamp() * 1000);
+      await increaseTime(elapsedSec, env);
+      const timeAfter = new Date(await getNetworkTimestamp() * 1000);
       console.log(
         `⏰🔜 Advanced blocktime by ${elapsedSec}s: ${timeBefore} -> ${timeAfter}`,
       );
@@ -61,13 +47,9 @@ export async function testFlow(flow: IFlow): Promise<any> {
 
   // revert the state of the chain to the beginning of this test, not to env.snapshotId
   if (!live && revertState) {
-    const timeBefore = new Date(
-      (await env.provider.getBlock("latest"))?.timestamp * 1000,
-    );
+    const timeBefore = new Date(await getNetworkTimestamp() * 1000);
     await env.provider.send("evm_revert", [snapshotId]);
-    const timeAfter = new Date(
-      (await env.provider.getBlock("latest"))?.timestamp * 1000,
-    );
+    const timeAfter = new Date(await getNetworkTimestamp() * 1000);
     console.log(`⏰🔙 Reverted blocktime: ${timeBefore} -> ${timeAfter}`);
   }
 

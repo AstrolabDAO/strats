@@ -11,11 +11,11 @@ import { IFlow, testFlow } from "./flows";
 import { setupStrat } from "./flows/StrategyV5";
 
 const baseDesc = {
-  name: `Astrolab Primitive AAVE V3 USD`,
-  symbol: `apAAVEv3.USD`,
+  name: `Astrolab Primitive: AAVE V3 Optimizer USD`,
+  symbol: `apUSD-AAVEv3-O`,
+  asset: "USDC",
   version: 1,
   contract: "AaveV3Optimizer",
-  asset: "USDC",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
 

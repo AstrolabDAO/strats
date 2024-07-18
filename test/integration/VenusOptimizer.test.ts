@@ -7,8 +7,8 @@ import { IFlow, testFlow } from "./flows";
 import { setupStrat } from "./flows/StrategyV5";
 
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab Primitive Venus USD`,
-  symbol: `apXVS.USD`,
+  name: `Astrolab Primitive: Venus Optimizer USD`,
+  symbol: `apUSD-XVS-O`,
   asset: "USDC",
   version: 1,
   contract: "VenusOptimizer",
@@ -17,7 +17,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["USDC", "DAI", "USDT", "BUSD"],inputWeights: [9000] }, // 90% allocation, 10% cash
+  56: { ...baseDesc, inputs: ["USDC", "USDT", "DAI", "FDUSD"], inputWeights: [3000, 3000, 3000, 0] }, // 90% allocation, 10% cash
 };
 
 const desc = descByChainId[network.config.chainId!];
@@ -49,9 +49,9 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        lpTokens: desc.inputs.map((input) => addr.Venus[`v${input}`]), // LP tokens
+        lpTokens: desc.inputs.map((input) => protocolAddr[`v${input}`]), // LP tokens
         rewardTokens: protocolAddr.rewardTokens, // XVS
-        extension: abiEncode(["address"], [protocolAddr.Comptroller]),
+        extension: abiEncode(["address"], [protocolAddr.Unitroller]),
       },
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsAccounting"], // libraries to link and verify with the strategy

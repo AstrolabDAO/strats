@@ -115,7 +115,7 @@ interface IComptroller {
     uint256 repayAmount
   ) external view returns (uint256, uint256);
 
-  function markets(address) external view returns (bool, uint256);
+  function markets(address) external view returns (bool, uint256, bool);
 
   function oracle() external view returns (address);
 

@@ -335,3 +335,31 @@ interface IRewardsController {
     external
     returns (address[] memory rewardsList, uint256[] memory claimedAmounts);
 }
+
+interface IFlashLoanReceiver {
+  function executeOperation(
+    address[] calldata assets,
+    uint256[] calldata amounts,
+    uint256[] calldata premiums,
+    address initiator,
+    bytes calldata params
+  ) external returns (bool);
+
+  function ADDRESSES_PROVIDER() external view returns (IPoolAddressesProvider);
+
+  function POOL() external view returns (IAavePool);
+}
+
+interface IFlashLoanSimpleReceiver {
+  function executeOperation(
+    address asset,
+    uint256 amount,
+    uint256 premium,
+    address initiator,
+    bytes calldata params
+  ) external returns (bool);
+
+  function ADDRESSES_PROVIDER() external view returns (IPoolAddressesProvider);
+
+  function POOL() external view returns (IAavePool);
+}

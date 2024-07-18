@@ -5,7 +5,6 @@ import {
   addressToBytes32,
   addressZero,
   ethers,
-  getAddress,
   isLive,
   isOracleLib,
   network,
@@ -18,6 +17,7 @@ import {
   WETH_ABI,
   ERC20_ABI,
   getDeployer,
+  resolveAddress,
 } from "@astrolabs/hardhat";
 import {
   ISwapperParams,
@@ -46,6 +46,9 @@ export const indexes = Array.from({ length: 8 }, (_, index) => index);
 const networkOverrides: { [chainId: number]: Overrides } = {
   1: {
     gasLimit: 1e7,
+  },
+  56: {
+    // gasLimit: 1e7,
   },
   100: {
     // gasLimit: 1e7,
@@ -175,7 +178,7 @@ export async function logState(
     await sleep(sleepBefore);
   }
   try {
-    const asset = await SafeContract.build(await strat.asset());
+    const asset = env.deployment!.asset;
     const [
       sharePrice,
       totalSupply,
@@ -518,6 +521,7 @@ export async function ensureFunding(env: IStrategyDeploymentEnv) {
         50_010e6,
         network.config.chainId!,
         network.config.chainId!,
+        env
       )) ||
       0;
     if (!gas) {
@@ -611,10 +615,11 @@ export async function getSwapperRateEstimate(
   to: string,
   inputWei: BigNumberish | bigint,
   chainId = 1,
+  env?: IStrategyDeploymentEnv,
 ): Promise<number> {
   return (
     Number(
-      (await getSwapperEstimate(from, to, inputWei, chainId))
+      (await getSwapperEstimate(from, to, inputWei, chainId, chainId, env))
         ?.estimatedExchangeRate,
     ) ?? 0
   );
@@ -635,9 +640,10 @@ export async function getSwapperOutputEstimate(
   inputWei: BigNumberish | bigint,
   chainId = 1,
   outputChainId?: number,
+  env?: IStrategyDeploymentEnv,
 ): Promise<BigNumber> {
   return BigNumber.from(
-    (await getSwapperEstimate(from, to, inputWei, chainId, outputChainId))
+    (await getSwapperEstimate(from, to, inputWei, chainId, outputChainId, env))
       ?.estimatedOutputWei ?? 0,
   );
 }
@@ -658,11 +664,12 @@ export async function getSwapperEstimate(
   inputWei: BigNumberish | bigint,
   inputChainId = 1,
   outputChainId?: number,
+  env?: IStrategyDeploymentEnv,
 ): Promise<ITransactionRequestWithEstimate | undefined> {
-  const [input, output] = [from, to].map((s) => getAddress(s));
+  const [input, output] = await Promise.all([from, to].map((s) => resolveAddress(s, env)));
   if (!input || !output)
     throw new Error(
-      `Token ${from} or ${to} not found in addresses.ts:ethereum`,
+      `Token ${from} or ${to} not found in addresses`,
     );
   if (input == output)
     return {

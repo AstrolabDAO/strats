@@ -21,7 +21,12 @@ import "./StrategyV5Abstract.sol";
  * @dev All state variables must be in StrategyV5abstract to match the proxy base storage layout (StrategyV5)
  * @dev Can be deplpoyed standalone for dummy strategy testing
  */
-abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, Proxy {
+abstract contract StrategyV5 is
+  StrategyV5Abstract,
+  AsRescuable,
+  AsPriceAware,
+  Proxy
+{
   using AsMaths for uint256;
   using AsMaths for int256;
   using AsMaths for int256[8];
@@ -33,10 +38,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor(address _accessController)
-    StrategyV5Abstract(_accessController)
-    AsRescuable()
-  {
+  constructor(
+    address _accessController
+  ) StrategyV5Abstract(_accessController) AsRescuable() {
     _pause();
   }
 
@@ -69,7 +73,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       _updateOracle(_params.coreAddresses.oracle);
     }
     _agentStorage().delegator = IStrategyV5(address(this));
-    (bool success,) = _baseStorageExt().agent.delegatecall(
+    (bool success, ) = _baseStorageExt().agent.delegatecall(
       abi.encodeWithSelector(IStrategyV5Agent.init.selector, _params)
     );
     if (!success) {
@@ -89,9 +93,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Agent's initialization state (ERC-897)
    */
   function initialized() public view virtual returns (bool) {
-    return _initialized && _baseStorageExt().agent != address(0)
-      && address(asset) != address(0);
+    return
+      _initialized &&
+      _baseStorageExt().agent != address(0) &&
+      address(asset) != address(0);
   }
+
   /**
    * @return Agent's implementation address (OZ Proxy's internal override)
    */
@@ -124,8 +131,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _amount,
     uint256 _index
   ) internal view whenPriceAware returns (uint256) {
-    return _priceAwareStorage().oracle.toUsdBp(address(inputs[_index]), _amount)
-      / AsMaths.BP_BASIS;
+    return
+      _priceAwareStorage().oracle.toUsdBp(address(inputs[_index]), _amount) /
+      AsMaths.BP_BASIS;
   }
 
   /**
@@ -138,8 +146,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _amount,
     uint256 _index
   ) internal view whenPriceAware returns (uint256) {
-    return _priceAwareStorage().oracle.fromUsdBp(address(inputs[_index]), _amount)
-      / AsMaths.BP_BASIS;
+    return
+      _priceAwareStorage().oracle.fromUsdBp(address(inputs[_index]), _amount) /
+      AsMaths.BP_BASIS;
   }
 
   /**
@@ -147,8 +156,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _amount Amount of underlying asset
    * @return Equivalent USD amount
    */
-  function _assetToUsd(uint256 _amount) internal view whenPriceAware returns (uint256) {
-    return _priceAwareStorage().oracle.toUsdBp(address(asset), _amount) / AsMaths.BP_BASIS;
+  function _assetToUsd(
+    uint256 _amount
+  ) internal view whenPriceAware returns (uint256) {
+    return
+      _priceAwareStorage().oracle.toUsdBp(address(asset), _amount) /
+      AsMaths.BP_BASIS;
   }
 
   /**
@@ -156,9 +169,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _amount Amount of USD
    * @return Equivalent amount of underlying asset
    */
-  function _usdToAsset(uint256 _amount) internal view whenPriceAware returns (uint256) {
+  function _usdToAsset(
+    uint256 _amount
+  ) internal view whenPriceAware returns (uint256) {
     return
-      _priceAwareStorage().oracle.fromUsdBp(address(asset), _amount) / AsMaths.BP_BASIS;
+      _priceAwareStorage().oracle.fromUsdBp(address(asset), _amount) /
+      AsMaths.BP_BASIS;
   }
 
   /**
@@ -172,9 +188,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _amount,
     uint256 _index
   ) internal view virtual returns (uint256) {
-    return _priceAwareStorage().oracle.convert(
-      address(asset), _amount, address(inputs[_index])
-    );
+    return
+      _priceAwareStorage().oracle.convert(
+        address(asset),
+        _amount,
+        address(inputs[_index])
+      );
   }
 
   /**
@@ -188,9 +207,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 _amount,
     uint256 _index
   ) internal view virtual returns (uint256) {
-    return _priceAwareStorage().oracle.convert(
-      address(inputs[_index]), _amount, address(asset)
-    );
+    return
+      _priceAwareStorage().oracle.convert(
+        address(inputs[_index]),
+        _amount,
+        address(asset)
+      );
   }
 
   /**
@@ -227,7 +249,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _index Index of the input
    * @return Underlying asset amount equivalent to `_amount` LP/staked LP
    */
-  function _stakeToAsset(uint256 _amount, uint256 _index) internal view returns (uint256) {
+  function _stakeToAsset(
+    uint256 _amount,
+    uint256 _index
+  ) internal view returns (uint256) {
     return _inputToAsset(_stakeToInput(_amount, _index), _index);
   }
 
@@ -237,7 +262,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _index Index of the input
    * @return LP/staked LP equivalent to `_amount` underlying assets
    */
-  function _assetToStake(uint256 _amount, uint256 _index) internal view returns (uint256) {
+  function _assetToStake(
+    uint256 _amount,
+    uint256 _index
+  ) internal view returns (uint256) {
     return _inputToStake(_assetToInput(_amount, _index), _index);
   }
 
@@ -247,8 +275,14 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Input equivalent to the full LP/staked LP balance
    * @dev This should be overriden by strategy implementations
    */
-  function _investedInput(uint256 _index) internal view virtual returns (uint256) {
-    return _stakeToInput(IERC20Metadata(lpTokens[_index]).balanceOf(address(this)), _index);
+  function _investedInput(
+    uint256 _index
+  ) internal view virtual returns (uint256) {
+    return
+      _stakeToInput(
+        IERC20Metadata(lpTokens[_index]).balanceOf(address(this)),
+        _index
+      );
   }
 
   function investedInput(uint256 _index) external view returns (uint256) {
@@ -273,7 +307,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return total Amount invested
    */
   function _invested() internal view virtual override returns (uint256 total) {
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       total += _invested(i);
       unchecked {
         i++;
@@ -290,29 +324,31 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
-   * @dev Calculates the excess weight for a given input (inputs[`_index`]) in basis points
+   * @notice Calculates the excess weight for a given input (inputs[`_index`]) in basis points
    * @param _index Index of the input
    * @param _total Sum of all invested inputs (`0 == 100% == invested()`)
    * @return Excess input weight in basis points
    */
-  function _excessWeight(uint256 _index, uint256 _total) internal view returns (int256) {
+  function _excessWeight(
+    uint256 _index,
+    uint256 _total
+  ) internal view returns (int256) {
     if (_total == 0) _total = _invested();
-    return int256(_invested(_index).mulDiv(AsMaths.BP_BASIS, _total))
-      - int256(uint256(inputWeights[_index])); // de-facto safe as weights are sanitized
+    return
+      int256(_invested(_index).mulDiv(AsMaths.BP_BASIS, _total)) -
+      int256(uint256(inputWeights[_index])); // de-facto safe as weights are sanitized
   }
 
   /**
-   * @dev Calculates the excess weights for all inputs
+   * @notice Calculates the excess weights for all inputs
    * @param _total Sum of all invested inputs (`0 == 100% == invested()`)
    * @return excessWeights Array[8] of excess input weights in basis points
    */
-  function _excessWeights(uint256 _total)
-    internal
-    view
-    returns (int256[8] memory excessWeights)
-  {
+  function _excessWeights(
+    uint256 _total
+  ) internal view returns (int256[8] memory excessWeights) {
     if (_total == 0) _total = _invested();
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       excessWeights[i] = _excessWeight(i, _total);
       unchecked {
         i++;
@@ -321,7 +357,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
-   * @dev Calculates the excess liquidity for a given input (inputs[`_index`])
+   * @notice Calculates the excess liquidity for a given input (inputs[`_index`])
    * @param _index Index of the input
    * @param _total Sum of all invested inputs (`0 == 100% == invested()`)
    * @return Excess input liquidity
@@ -334,23 +370,23 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       _total = _invested();
     }
     int256 allocated = int256(_invested(_index));
-    return _totalWeight == 0
-      ? allocated
-      : (allocated - int256(_total.mulDiv(uint256(inputWeights[_index]), _totalWeight)));
+    return
+      _totalWeight == 0
+        ? allocated
+        : (allocated -
+          int256(_total.mulDiv(uint256(inputWeights[_index]), _totalWeight)));
   }
 
   /**
-   * @dev Calculates the excess liquidity for all inputs
+   * @notice Calculates the excess liquidity for all inputs
    * @param _total Sum of all invested inputs (`0 == 100% == invested()`)
    * @return excessLiquidity Array[8] of excess input liquidities
    */
-  function _excessLiquidity(uint256 _total)
-    internal
-    view
-    returns (int256[8] memory excessLiquidity)
-  {
+  function _excessLiquidity(
+    uint256 _total
+  ) internal view virtual returns (int256[8] memory excessLiquidity) {
     if (_total == 0) _total = _invested();
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       excessLiquidity[i] = _excessLiquidity(i, _total);
       unchecked {
         i++;
@@ -359,11 +395,13 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
-   * @dev Previews the amounts that would be liquidated to recover `_amount + totalPendingWithdrawRequest() + allocated.bp(150)` of liquidity
+   * @notice Previews the amounts that would be liquidated to recover `_amount + totalPendingWithdrawRequest() + allocated.bp(150)` of liquidity
    * @param _amount Amount of underlying assets to recover
    * @return amounts Array[8] of previewed liquidated amounts in input tokens
    */
-  function previewLiquidate(uint256 _amount) public returns (uint256[8] memory amounts) {
+  function previewLiquidate(
+    uint256 _amount
+  ) public onlyKeeper returns (uint256[8] memory amounts) {
     (uint256 allocated, uint256 cash) = (_invested(), _available());
     uint256 total = allocated + cash;
     uint256 targetAlloc = total.mulDiv(_totalWeight, AsMaths.BP_BASIS);
@@ -379,7 +417,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       _amount = uint256(totalExcess);
     }
 
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       if (_amount < 10) break; // no leftover
       unchecked {
         if (targetExcesses[i] > 0) {
@@ -396,23 +434,28 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   }
 
   /**
-   * @dev Previews the breakdown of `_amount` underlying assets that would be invested in each input based on the current excess liquidities
+   * @notice Previews the breakdown of `_amount` underlying assets that would be invested in each input based on the current excess liquidities
    * @param _amount Amount of underlying assets to invest
    * @return amounts Array[8] of previewed invested amounts
    */
-  function previewInvest(uint256 _amount) public returns (uint256[8] memory amounts) {
+  function previewInvest(
+    uint256 _amount
+  ) public onlyKeeper returns (uint256[8] memory amounts) {
     (uint256 allocated, uint256 cash) = (_invested(), _available());
     uint256 total = allocated + cash;
 
     if (_amount == 0) {
-      uint256 targetCash = total.mulDiv(AsMaths.BP_BASIS - _totalWeight, AsMaths.BP_BASIS);
+      uint256 targetCash = total.mulDiv(
+        AsMaths.BP_BASIS - _totalWeight,
+        AsMaths.BP_BASIS
+      );
       _amount = cash.subMax0(targetCash);
     }
 
     // compute the excess liquidity
     int256[8] memory targetExcesses = _excessLiquidity(allocated + _amount);
 
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       if (_amount < 10) break; // no leftover
       unchecked {
         if (targetExcesses[i] < 0) {
@@ -427,6 +470,35 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       }
     }
   }
+
+  /**
+   * @notice Previews strategy specific swap needs for `_amount` underlying assets to be invested
+   * @param _amount Amount of underlying assets to invest
+   * @return from Array[8] of swap input (base) tokens
+   * @return to Array[8] of swap output (quote) tokens
+   * @return amounts Array[8] of swap amounts in input tokens
+   */
+  function _previewInvestSwapAddons(
+    uint256 _amount
+  )
+    internal
+    view
+    virtual
+    returns (
+      address[8] memory from,
+      address[8] memory to,
+      uint256[8] memory amounts
+    ) {}
+
+  function previewInvestSwapAddons()
+    external
+    view
+    onlyKeeper
+    returns (
+      address[8] memory from,
+      address[8] memory to,
+      uint256[8] memory amounts
+    ) {}
 
   /**
    * @notice ERC-165 `supportsInterface` check
@@ -450,9 +522,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Balance of `_token` in the strategy
    */
   function _balance(address _token) internal view virtual returns (uint256) {
-    return (_token == address(1) || _token == address(_wgas))
-      ? address(this).balance + _wgas.balanceOf(address(this)) // native+wrapped native
-      : IERC20Metadata(_token).balanceOf(address(this));
+    return
+      (_token == address(1) || _token == address(_wgas))
+        ? address(this).balance + _wgas.balanceOf(address(this)) // native+wrapped native
+        : IERC20Metadata(_token).balanceOf(address(this));
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -479,9 +552,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
         revert Errors.MissingOracle();
       }
     }
-    (bool success,) = _baseStorageExt().agent.delegatecall(
+    (bool success, ) = _baseStorageExt().agent.delegatecall(
       abi.encodeWithSelector(
-        IStrategyV5Agent.updateAsset.selector, _asset, _swapData, _exchangeRateBp
+        IStrategyV5Agent.updateAsset.selector,
+        _asset,
+        _swapData,
+        _exchangeRateBp
       )
     );
     if (!success) {
@@ -526,9 +602,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint16[] calldata _weights,
     address[] calldata _lpTokens
   ) internal {
-    (bool success,) = _baseStorageExt().agent.delegatecall(
+    (bool success, ) = _baseStorageExt().agent.delegatecall(
       abi.encodeWithSelector(
-        IStrategyV5Agent.setInputs.selector, _inputs, _weights, _lpTokens
+        IStrategyV5Agent.setInputs.selector,
+        _inputs,
+        _weights,
+        _lpTokens
       )
     );
     if (!success) {
@@ -542,8 +621,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _rewardTokens Array of input addresses
    */
   function _setRewardTokens(address[] calldata _rewardTokens) internal {
-    (bool success,) = _baseStorageExt().agent.delegatecall(
-      abi.encodeWithSelector(IStrategyV5Agent.setRewardTokens.selector, _rewardTokens)
+    (bool success, ) = _baseStorageExt().agent.delegatecall(
+      abi.encodeWithSelector(
+        IStrategyV5Agent.setRewardTokens.selector,
+        _rewardTokens
+      )
     );
     if (!success) {
       revert Errors.FailedDelegateCall();
@@ -612,8 +694,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     if (_agent == address(0)) {
       revert Errors.AddressZero();
     }
-    (bool success,) =
-      _agent.staticcall(abi.encodeWithSelector(IStrategyV5Agent.proxyType.selector));
+    (bool success, ) = _agent.staticcall(
+      abi.encodeWithSelector(IStrategyV5Agent.proxyType.selector)
+    );
     if (!success) {
       revert Errors.ContractNonCompliant();
     }
@@ -635,14 +718,18 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
   /**
    * @notice Called before investing underlying assets into the strategy inputs
    * @param _amounts Amount of underlying assets to invest in each input
+   * @param _params Swaps calldata
    */
-  function _beforeInvest(uint256[8] calldata _amounts) internal virtual {}
+  function _beforeInvest(
+    uint256[8] calldata _amounts,
+    bytes[] calldata _params
+  ) internal virtual {}
 
   /**
    * @notice Called after investing underlying assets into the strategy inputs
    * @param _totalInvested Sum of underlying assets invested
    */
-  function _afterInvest(uint256 _totalInvested) internal virtual {}
+  function _afterInvest(uint256 _totalInvested, bytes[] calldata _params) internal virtual {}
 
   /**
    * @notice Called before harvesting rewards from the strategy
@@ -676,10 +763,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _amount Amount of allowance to set
    */
   function _setLpTokenAllowances(uint256 _amount) internal virtual {
-
     // default is to approve AsMaths.MAX_UINT256
     _amount = _amount > 0 ? _amount : AsMaths.MAX_UINT256;
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       if (address(lpTokens[i]) == address(0)) break;
       inputs[i].forceApprove(address(lpTokens[i]), _amount);
       unchecked {
@@ -712,13 +798,12 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256[8] calldata _amounts, // from previewInvest()
     bytes[] calldata _params
   ) internal virtual returns (uint256 totalInvested) {
-
-    _beforeInvest(_amounts); // strat specific hook
+    _beforeInvest(_amounts, _params); // strat specific hook
 
     uint256 spent;
     uint256 toStake;
 
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       if (_amounts[i] < 10) {
         unchecked {
           i++;
@@ -744,7 +829,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       _stake(i, toStake);
       staked -= inputs[i].balanceOf(address(this));
 
-      if (staked < _inputToStake(toStake, i).subBp(_4626StorageExt().maxSlippageBps)) {
+      if (
+        staked <
+        _inputToStake(toStake, i).subBp(_4626StorageExt().maxSlippageBps)
+      ) {
         revert Errors.AmountTooLow(staked);
       }
 
@@ -754,7 +842,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
       }
     }
 
-    _afterInvest(totalInvested); // strat specific hook
+    _afterInvest(totalInvested, _params); // strat specific hook
 
     last.invest = uint64(block.timestamp);
     emit Invest(totalInvested, block.timestamp);
@@ -787,7 +875,6 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     bool _panic,
     bytes[] calldata _params
   ) internal virtual returns (uint256 totalRecovered) {
-
     _beforeLiquidate(_amounts); // strat specific hook
 
     // pre-liquidation sharePrice
@@ -800,7 +887,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     uint256 toUnstake;
     uint256 recovered;
 
-    for (uint256 i = 0; i < _inputLength;) {
+    for (uint256 i = 0; i < _inputLength; ) {
       if (_amounts[i] < 10) {
         unchecked {
           i++;
@@ -823,7 +910,7 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
         if (address(inputs[i]) == address(1)) {
           _wrapNative(recovered); // ETH->WETH to swap with
         }
-        (recovered,) = swapper.decodeAndSwap({ // `asset` recovered
+        (recovered, ) = swapper.decodeAndSwap({ // `asset` recovered
           _input: address(inputs[i]),
           _output: address(asset),
           _amount: _amounts[i],
@@ -835,7 +922,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
 
       // unified slippage check (unstake+remove liquidity+swap out)
       if (
-        recovered < _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps)
+        recovered <
+        _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps)
       ) {
         revert Errors.AmountTooLow(recovered);
       }
@@ -852,7 +940,8 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     // use availableClaimable() and not borrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
     uint256 liquidityAvailable = _availableClaimable().subMax0(
       _req.totalClaimableRedemption.mulDiv(
-        last.sharePrice * _weiPerAsset, _WEI_PER_SHARE_SQUARED
+        last.sharePrice * _weiPerAsset,
+        _WEI_PER_SHARE_SQUARED
       )
     );
 
@@ -890,7 +979,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return Amount of underlying assets to be liquidated
    * @dev This should be overriden by strategy implementations, used for lockable strategies
    */
-  function _liquidateRequest(uint256 _amount) internal virtual returns (uint256) {
+  function _liquidateRequest(
+    uint256 _amount
+  ) internal virtual returns (uint256) {
     return 0;
   }
 
@@ -909,8 +1000,22 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @return amounts Array of amounts of reward tokens claimed
    * @dev Should be overriden by strategy implementations
    */
-  function claimRewards() public virtual returns (uint256[] memory amounts) {
+  function _claimRewards() internal virtual returns (uint256[] memory amounts) {
     return new uint256[](_rewardLength);
+  }
+
+  /**
+   * @notice Claims rewards from the strategy underlying protocols
+   * @return amounts Array of amounts of reward tokens claimed
+   * @dev Should be overriden by strategy implementations
+   */
+  function claimRewards()
+    public
+    virtual
+    onlyKeeper
+    returns (uint256[] memory amounts)
+  {
+    return _claimRewards();
   }
 
   /**
@@ -924,9 +1029,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     bytes[] calldata _params
   ) internal virtual onlyKeeper returns (uint256 assetsReceived) {
     uint256 received;
-    for (uint256 i = 0; i < _rewardLength;) {
+    for (uint256 i = 0; i < _rewardLength; ) {
       if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
-        (received,) = swapper.decodeAndSwap({
+        (received, ) = swapper.decodeAndSwap({
           _input: rewardTokens[i],
           _output: address(asset),
           _amount: _balances[i],
@@ -947,18 +1052,20 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _params Swaps calldata
    * @return assetsReceived Amount of underlying assets received (after swap)
    */
-  function _harvest(bytes[] calldata _params)
-    internal
-    virtual
-    returns (uint256 assetsReceived)
-  {
+  function _harvest(
+    bytes[] calldata _params
+  ) internal virtual returns (uint256 assetsReceived) {
     _beforeHarvest(); // strat specific hook
 
-    assetsReceived = _swapRewards(claimRewards(), _params);
+    assetsReceived = _swapRewards(_claimRewards(), _params);
     // reset expected profits to updated value + amount
-    _expectedProfits = AsAccounting.unrealizedProfits(
-      last.harvest, _expectedProfits, _profitCooldown
-    ) + assetsReceived;
+    _expectedProfits =
+      AsAccounting.unrealizedProfits(
+        last.harvest,
+        _expectedProfits,
+        _profitCooldown
+      ) +
+      assetsReceived;
 
     _afterHarvest(assetsReceived); // strat specific hook
 
@@ -971,12 +1078,9 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
    * @param _params Swaps calldata
    * @return assetsReceived Amount of underlying assets received (after swap)
    */
-  function harvest(bytes[] calldata _params)
-    external
-    onlyKeeper
-    nonReentrant
-    returns (uint256)
-  {
+  function harvest(
+    bytes[] calldata _params
+  ) external onlyKeeper nonReentrant returns (uint256) {
     return _harvest(_params);
   }
 
@@ -996,7 +1100,10 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     bytes[] calldata _investParams
   ) internal virtual returns (uint256 totalHarvested, uint256 totalInvested) {
     // we expect the SwapData to cover harvesting + investing
-    if (_harvestParams.length != _rewardLength || _investParams.length != _inputLength) {
+    if (
+      _harvestParams.length != _rewardLength ||
+      _investParams.length != _inputLength
+    ) {
       revert Errors.InvalidData();
     }
 
@@ -1025,7 +1132,11 @@ abstract contract StrategyV5 is StrategyV5Abstract, AsRescuable, AsPriceAware, P
     onlyKeeper
     returns (uint256 totalHarvested, uint256 totalInvested)
   {
-    (totalHarvested, totalInvested) = _compound(_amounts, _harvestParams, _investParams);
+    (totalHarvested, totalInvested) = _compound(
+      _amounts,
+      _harvestParams,
+      _investParams
+    );
   }
 
   /**
