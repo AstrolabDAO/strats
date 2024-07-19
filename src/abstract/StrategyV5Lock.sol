@@ -59,7 +59,7 @@ abstract contract StrategyV5Lock is StrategyV5 {
    * @notice Called before liquidating strategy inputs
    * @param _amounts Amount of each input to liquidate
    */
-  function _beforeLiquidate(uint256[8] calldata _amounts) internal override {
+  function _beforeLiquidate(uint256[8] calldata _amounts, bytes[] calldata) internal override {
     for (uint256 i = 0; i < _inputLength; i++) {
       if (_req.liquidate[i] < _amounts[i]) {
         revert Errors.AmountTooHigh(_amounts[i]);
@@ -70,5 +70,5 @@ abstract contract StrategyV5Lock is StrategyV5 {
     }
   }
 
-  function _afterLiquidate(uint256 _totalRecovered) internal override {}
+  function _afterLiquidate(uint256 _totalRecovered, bytes[] calldata _params) internal override {}
 }

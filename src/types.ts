@@ -1,5 +1,5 @@
 import { IDeployment, Erc20Metadata, SafeContract, ITestEnv } from "@astrolabs/hardhat";
-import { Contract } from "ethers";
+import { Contract, BigNumber } from "ethers";
 
 export interface CoreAddresses {
   wgas: string;
@@ -45,6 +45,12 @@ export interface IStrategyParams {
   lpTokens: string[];
   rewardTokens: string[];
   extension?: string;
+}
+
+export interface IAddons {
+  from: string[];
+  to: string[];
+  amounts: BigNumber[];
 }
 
 export interface IPythParams {

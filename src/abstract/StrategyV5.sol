@@ -473,32 +473,69 @@ abstract contract StrategyV5 is
 
   /**
    * @notice Previews strategy specific swap needs for `_amount` underlying assets to be invested
-   * @param _amount Amount of underlying assets to invest
+   * @param _previewAmounts Array[8] of previewed amounts in asset
    * @return from Array[8] of swap input (base) tokens
    * @return to Array[8] of swap output (quote) tokens
    * @return amounts Array[8] of swap amounts in input tokens
    */
   function _previewInvestSwapAddons(
-    uint256 _amount
+    uint256[8] calldata _previewAmounts
   )
     internal
-    view
     virtual
     returns (
       address[8] memory from,
       address[8] memory to,
       uint256[8] memory amounts
-    ) {}
+    )
+  {}
 
-  function previewInvestSwapAddons()
+  function previewInvestSwapAddons(
+    uint256[8] calldata _previewAmounts
+  )
     external
-    view
     onlyKeeper
     returns (
       address[8] memory from,
       address[8] memory to,
       uint256[8] memory amounts
-    ) {}
+    )
+  {
+    return _previewInvestSwapAddons(_previewAmounts);
+  }
+
+  /**
+   * @notice Previews strategy specific swap needs for `_amount` underlying assets to be liquidated
+   * @param _previewAmounts Array[8] of previewed amounts in each input tokens
+   * @return from Array[8] of swap input (base) tokens
+   * @return to Array[8] of swap output (quote) tokens
+   * @return amounts Array[8] of swap amounts in input tokens
+   */
+  function _previewLiquidateSwapAddons(
+    uint256[8] calldata _previewAmounts
+  )
+    internal
+    virtual
+    returns (
+      address[8] memory from,
+      address[8] memory to,
+      uint256[8] memory amounts
+    )
+  {}
+
+  function previewLiquidateSwapAddons(
+    uint256[8] calldata _previewAmounts
+  )
+    external
+    onlyKeeper
+    returns (
+      address[8] memory from,
+      address[8] memory to,
+      uint256[8] memory amounts
+    )
+  {
+    return _previewLiquidateSwapAddons(_previewAmounts);
+  }
 
   /**
    * @notice ERC-165 `supportsInterface` check
@@ -729,7 +766,10 @@ abstract contract StrategyV5 is
    * @notice Called after investing underlying assets into the strategy inputs
    * @param _totalInvested Sum of underlying assets invested
    */
-  function _afterInvest(uint256 _totalInvested, bytes[] calldata _params) internal virtual {}
+  function _afterInvest(
+    uint256 _totalInvested,
+    bytes[] calldata _params
+  ) internal virtual {}
 
   /**
    * @notice Called before harvesting rewards from the strategy
@@ -746,13 +786,19 @@ abstract contract StrategyV5 is
    * @notice Called before liquidating strategy inputs
    * @param _amounts Amount of each input to liquidate
    */
-  function _beforeLiquidate(uint256[8] calldata _amounts) internal virtual {}
+  function _beforeLiquidate(
+    uint256[8] calldata _amounts,
+    bytes[] calldata _params
+  ) internal virtual {}
 
   /**
    * @notice Called after liquidating strategy inputs
    * @param _totalRecovered Total amount of underlying assets recovered from liquidation
    */
-  function _afterLiquidate(uint256 _totalRecovered) internal virtual {}
+  function _afterLiquidate(
+    uint256 _totalRecovered,
+    bytes[] calldata _params
+  ) internal virtual {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             LOGIC                              ║
@@ -875,7 +921,7 @@ abstract contract StrategyV5 is
     bool _panic,
     bytes[] calldata _params
   ) internal virtual returns (uint256 totalRecovered) {
-    _beforeLiquidate(_amounts); // strat specific hook
+    _beforeLiquidate(_amounts, _params); // strat specific hook
 
     // pre-liquidation sharePrice
     last.sharePrice = _sharePrice();
@@ -950,7 +996,7 @@ abstract contract StrategyV5 is
       revert Errors.AmountTooLow(liquidityAvailable);
     }
 
-    _afterLiquidate(totalRecovered); // strat specific hook
+    _afterLiquidate(totalRecovered, _params); // strat specific hook
 
     last.liquidate = uint64(block.timestamp);
     emit Liquidate(totalRecovered, liquidityAvailable, block.timestamp);

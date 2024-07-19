@@ -33,6 +33,7 @@ import {
   IStrategyParams,
   IStrategyDeployment,
   IStrategyDeploymentEnv,
+  IAddons,
 } from "../../../src/types";
 import {
   randomRedistribute,
@@ -76,11 +77,12 @@ export const deployStrat = async (
     const path = `src/libs/${n}.sol:${n}`;
     const address = env.addresses!.astrolab?.[n] ?? "";
     if (!libraries[n]) {
+      const deployed = !!address && await isDeployed(address, env);
       const libParams: IDeploymentUnit = {
         contract: n,
         name: n,
-        verify: true,
-        deployed: !!address && await isDeployed(address, env),
+        verify: !deployed,
+        deployed,
         address,
         libraries: {}, // isOracleLib(n) ? { AsMaths: libraries.AsMaths } : {},
       };
@@ -119,7 +121,7 @@ export const deployStrat = async (
     [contract]: {
       contract,
       name: contract,
-      verify: true,
+      verify: !deployed,
       deployed,
       address: deployed ? env.addresses!.astrolab?.[contractUniqueName] : "",
       proxied: ["StrategyV5Agent"],
@@ -157,7 +159,7 @@ export const deployStrat = async (
     const dep = {
       contract: c,
       name: c,
-      verify: true,
+      verify: !deployed,
       deployed,
       address: deployed ? env.addresses!.astrolab?.[c] : "",
       overrides: getOverrides(env),
@@ -459,12 +461,12 @@ export async function setupStrat(
  */
 export async function preInvest(
   env: Partial<IStrategyDeploymentEnv>,
-  _amount = 100,
+  _amount = 0,
 ) {
   const { asset, inputs, strat } = env.deployment!;
-  const stratLiquidity = await strat.available();
   const [minSwapOut, minIouOut] = [1, 1];
   let amount = asset.toWei(_amount);
+  const stratLiquidity = await strat.available();
 
   if (stratLiquidity.lt(amount)) {
     console.warn(
@@ -478,25 +480,26 @@ export async function preInvest(
   const swapData = [] as string[];
 
   for (const i in inputs) {
-    let tr = {
+    let tr = <ITransactionRequestWithEstimate>({
       to: addressZero,
       data: "0x00",
-    } as ITransactionRequestWithEstimate;
+      estimatedExchangeRate: 1, // no swap 1:1
+      estimatedOutputWei: amounts[i],
+    });
 
     // only generate swapData if the input is not the asset
     if (asset.address != inputs[i].address && amounts[i].gt(10)) {
-      console.log("Preparing invest() SwapData from inputs/inputWeights");
       // const weight = env.deployment!.initParams.inputWeights[i];
       // if (!weight) throw new Error(`No inputWeight found for input ${i} (${inputs[i].symbol})`);
       // inputAmount = amount.mul(weight).div(100_00).toString()
-      tr = (await getTransactionRequest({
+      tr = <ITransactionRequestWithEstimate>(await getTransactionRequest({
         input: asset.address,
         output: inputs[i].address,
         amountWei: amounts[i], // using a 100_00 bp basis (100_00 = 100%)
         inputChainId: network.config.chainId!,
         payer: strat.address,
         testPayer: env.addresses!.accounts!.impersonate,
-      })) as ITransactionRequestWithEstimate;
+      }));
     }
     trs.push(tr);
     swapData.push(
@@ -507,6 +510,34 @@ export async function preInvest(
       ),
     );
   }
+
+  // generate investAddons swapdata if any
+  const addons = await strat.callStatic.previewInvestSwapAddons(amounts) as IAddons;
+  for (const i in addons.amounts) {
+    if (addons.from[i] == addons.to[i]) continue;
+    if (addons.to[i] == addressZero || addons.from[i] == addressZero) break;
+    if (addons.amounts[i].gt(10)) {
+      const tr = <ITransactionRequestWithEstimate>(await getTransactionRequest({
+        input: addons.from[i],
+        output: addons.to[i],
+        amountWei: addons.amounts[i],
+        inputChainId: network.config.chainId!,
+        payer: strat.address,
+        testPayer: env.addresses!.accounts!.impersonate,
+      }));
+      trs.push(tr);
+      swapData.push(
+        ethers.utils.defaultAbiCoder.encode(
+          ["address", "uint256", "bytes"],
+          [tr.to, 1, tr.data],
+        ),
+      );
+    }
+  }
+  console.log(`InvestAddons:\n\t${addons.amounts.map((a, i) => `${
+    findSymbolByAddress(addons.from[i])} -> ${
+      findSymbolByAddress(addons.to[i])}: ${
+        a.toString()}`).join("\n\t")}`);
   return [amounts, swapData];
 }
 
@@ -521,12 +552,11 @@ export async function invest(
   _amount = 0,
 ): Promise<BigNumber> {
   const { strat } = env.deployment!;
-  const params = await preInvest(env!, _amount);
+  const [amounts, swapData] = await preInvest(env!, _amount);
   await logState(env, "Before Invest");
-  // only exec if static call is successful
   const receipt = await strat
-    // .safe("invest(uint256[8],bytes[])", params, getOverrides(env))
-    .invest(...params, { gasLimit: 3e7 })
+    .invest(amounts, swapData, getOverrides(env))
+    // .safe("invest(uint256[8],bytes[])", params, { gasLimit: 3e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -640,17 +670,17 @@ export async function liquidatePrimitives(
 }
 
 /**
- * Executes the on-chain liquidation of a strategy (protocol to cash)
+ * Pre-divestment function that computes the amounts and swap data for an on-chain invest call
  * @param env - Strategy deployment environment
- * @param _amount - Amount to liquidate (default: 0 will liquidate all required liquidity)
- * @returns Liquidity available after liquidation
+ * @param _amount - Amount to invest (default: 100)
+ * @returns Array containing the calculated amounts and swap data
  */
-export async function liquidate(
+export async function preLiquidate(
   env: Partial<IStrategyDeploymentEnv>,
   _amount = 0,
-): Promise<BigNumber> {
+) {
   const { asset, inputs, strat, PriceProvider } = env.deployment!;
-
+  const [minSwapOut, minIouOut] = [1, 1];
   let amount = asset.toWei(_amount);
 
   const pendingWithdrawalRequest = await strat.totalPendingWithdrawRequest();
@@ -685,12 +715,12 @@ export async function liquidate(
   for (const i in amounts) {
 
     // by default input == asset, no swapData is required
-    let tr = {
+    let tr = <ITransactionRequestWithEstimate>({
       to: addressZero,
       data: "0x00",
       estimatedExchangeRate: 1, // no swap 1:1
       estimatedOutputWei: amounts[i],
-    } as ITransactionRequestWithEstimate;
+    });
 
     if (investedInputs[i] && amounts[i].gt(investedInputs[i])) {
       console.log(
@@ -701,7 +731,8 @@ export async function liquidate(
       amounts[i] = investedInputs[i];
     }
 
-    if (inputs[i] && asset.address != inputs[i].address) {
+    // only generate swapData if the input is not the asset
+    if (inputs[i] && asset.address != inputs[i].address && amounts[i].gt(10)) {
       // add 1% slippage to the input amount, .1% if stable (2x as switching from ask estimate->bid)
       // NB: in case of a volatility event (eg. news/depeg), the liquidity would be one sided
       // and these estimates would be off. Liquidation would require manual parametrization
@@ -712,30 +743,47 @@ export async function liquidate(
       // const slippage = stablePair ? 25 : 250; // .025% or .25%
       // amounts[i] = amounts[i].mul(100_00 + derivation).div(100_00);
 
-      if (amounts[i].gt(10)) {
-        // only generate swapData if the input is not the asset
-        tr = (await getTransactionRequest({
-          input: inputs[i].address,
-          output: asset.address,
-          amountWei: amounts[i], // take slippage off so that liquidated LP value > swap input
-          inputChainId: network.config.chainId!,
-          payer: strat.address, // env.deployer.address
-          testPayer: env.addresses!.accounts!.impersonate,
-          maxSlippage: 5000, // TODO: use a smarter slippage
-        })) as ITransactionRequestWithEstimate;
-        if (!tr.to)
-          throw new Error(
-            `No swapData generated for ${inputs[i].address} -> ${asset.address}`,
-          );
-      }
+      tr = <ITransactionRequestWithEstimate>(await getTransactionRequest({
+        input: inputs[i].address,
+        output: asset.address,
+        amountWei: amounts[i], // take slippage off so that liquidated LP value > swap input
+        inputChainId: network.config.chainId!,
+        payer: strat.address, // env.deployer.address
+        testPayer: env.addresses!.accounts!.impersonate,
+        maxSlippage: 5_000, // TODO: use a smarter slippage estimation cf. above
+      }));
     }
     trs.push(tr);
     swapData.push(
       ethers.utils.defaultAbiCoder.encode(
         ["address", "uint256", "bytes"],
-        [tr.to, 1, tr.data],
+        [tr.to, minSwapOut, tr.data],
       ),
     );
+  }
+
+  // generate liquidateAddons swapdata if any
+  const addons = await strat.callStatic.previewLiquidateSwapAddons(amounts) as IAddons;
+  for (const i in addons.amounts) {
+    if (addons.from[i] == addons.to[i]) continue;
+    if (addons.to[i] == addressZero || addons.from[i] == addressZero) break;
+    if (addons.amounts[i].gt(10)) {
+      const tr = <ITransactionRequestWithEstimate>(await getTransactionRequest({
+        input: addons.from[i],
+        output: addons.to[i],
+        amountWei: addons.amounts[i],
+        inputChainId: network.config.chainId!,
+        payer: strat.address,
+        testPayer: env.addresses!.accounts!.impersonate,
+      }));
+      trs.push(tr);
+      swapData.push(
+        ethers.utils.defaultAbiCoder.encode(
+          ["address", "uint256", "bytes"],
+          [tr.to, 1, tr.data],
+        ),
+      );
+    }
   }
   console.log(
     `Liquidating ${asset.toAmount(amount)}${
@@ -757,11 +805,28 @@ export async function liquidate(
         )
         .join(""),
   );
+  console.log(`LiquidateAddons:\n\t${addons.amounts.map((a, i) => `${
+    findSymbolByAddress(addons.from[i])} -> ${
+      findSymbolByAddress(addons.to[i])}: ${
+        a.toString()}`).join("\n\t")}`);
+  return [amounts, swapData];
+}
 
+/**
+ * Executes the on-chain liquidation of a strategy (protocol to cash)
+ * @param env - Strategy deployment environment
+ * @param _amount - Amount to liquidate (default: 0 will liquidate all required liquidity)
+ * @returns Liquidity available after liquidation
+ */
+export async function liquidate(
+  env: Partial<IStrategyDeploymentEnv>,
+  _amount = 0,
+): Promise<BigNumber> {
+  const { strat } = env.deployment!;
+  const [amounts, swapData] = await preLiquidate(env, _amount);
   await logState(env, "Before Liquidate");
-  // only exec if static call is successful
   const receipt = await strat
-    // .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
+    // .safe("liquidate", [amounts, 1, false, swapData], { gasLimit: 3e7 })
     .liquidate(amounts, 1, false, swapData, { gasLimit: 3e7 })
     .then((tx: TransactionResponse) => tx.wait());
 

@@ -7,10 +7,10 @@
   resolved "https://registry.yarnpkg.com/@adraffy/ens-normalize/-/ens-normalize-1.10.0.tgz#d2a39395c587e092d77cbbc80acf956a54f38bf7"
   integrity sha512-nA9XHtlAkYfJxY7bce8DcN7eKxWWCWkU+1GR9d+U6MbNpfwQp8TI7vqOsBsMcHoT4mBu2kypKoSKnghEzOOq5Q==
 
-"@astrolabs/hardhat@^1.2.25":
-  version "1.2.25"
-  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.25.tgz#60c5d2dd378f9d29ed78c1a2b0ada83f4c7957e2"
-  integrity sha512-CPpUwxeoj8UuKXbc7fPKKxLSq9C9MLma4NdosoSVwYgYgJMhu0JpV0G5B+Zi/jRlpPFqpbVUHZrjmcJXUFdHjg==
+"@astrolabs/hardhat@^1.2.29":
+  version "1.2.29"
+  resolved "https://registry.yarnpkg.com/@astrolabs/hardhat/-/hardhat-1.2.29.tgz#cf57bed8df8f7cd03278a39912424c43185b9a1a"
+  integrity sha512-LMr+3xRz0W+kKLHa7RXOqD38f1gX8Qml/h2/yGCJU/3C/oP4R3ByziGWsKcJMZGJSECcx/Bwu9yLB7cp4KGswg==
   dependencies:
     "@astrolabs/hardhat" "^1.2.9"
     "@nomiclabs/hardhat-ethers" "^2.1.0"
