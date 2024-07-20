@@ -1,5 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
-// import "hardhat-contract-sizer";
+import "hardhat-contract-sizer";
 // import "hardhat-storage-layout";
 import { config } from "@astrolabs/hardhat/dist/hardhat.config";
 
@@ -12,7 +12,20 @@ config.solidity!.compilers = [
         runs: 160
       },
       viaIR: false,
-      evmVersion: `paris`
+      evmVersion: `paris`,
+      details: {
+        yul: true,
+        peephole: true,
+        jumpdestRemoval: true,
+        orderLiterals: true,
+        deduplicate: true,
+        cse: true,
+        constantOptimizer: true,
+        yulDetails: {
+          stackAllocation: false,
+          optimizerSteps: "dhfoDgvulfnTUtnIf"
+        }
+      }
     }
   },
 ];

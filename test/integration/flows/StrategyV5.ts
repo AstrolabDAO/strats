@@ -534,10 +534,10 @@ export async function preInvest(
       );
     }
   }
-  console.log(`InvestAddons:\n\t${addons.amounts.map((a, i) => `${
+  console.log(`InvestAddons:\n\t${addons.from.filter((f) => !!f).map((f, i) => `${
     findSymbolByAddress(addons.from[i])} -> ${
       findSymbolByAddress(addons.to[i])}: ${
-        a.toString()}`).join("\n\t")}`);
+        addons.amounts[i].toString()}`).join("\n\t")}`);
   return [amounts, swapData];
 }
 
@@ -555,7 +555,7 @@ export async function invest(
   const [amounts, swapData] = await preInvest(env!, _amount);
   await logState(env, "Before Invest");
   const receipt = await strat
-    .invest(amounts, swapData, getOverrides(env))
+    .invest(amounts, swapData, { gasLimit: 3e7 })
     // .safe("invest(uint256[8],bytes[])", params, { gasLimit: 3e7 })
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 1_000);
@@ -712,7 +712,7 @@ export async function preLiquidate(
     inputs.map((input, i) => strat.multi.investedInput(i)),
   ) as BigNumber[];
 
-  for (const i in amounts) {
+  for (const i in inputs) {
 
     // by default input == asset, no swapData is required
     let tr = <ITransactionRequestWithEstimate>({
@@ -805,10 +805,10 @@ export async function preLiquidate(
         )
         .join(""),
   );
-  console.log(`LiquidateAddons:\n\t${addons.amounts.map((a, i) => `${
+  console.log(`LiquidateAddons:\n\t${addons.from.filter((f) => !!f).map((f, i) => `${
     findSymbolByAddress(addons.from[i])} -> ${
       findSymbolByAddress(addons.to[i])}: ${
-        a.toString()}`).join("\n\t")}`);
+        addons.amounts[i].toString()}`).join("\n\t")}`);
   return [amounts, swapData];
 }
 

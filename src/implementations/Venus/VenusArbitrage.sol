@@ -28,7 +28,6 @@ contract VenusArbitrage is StrategyV5 {
     IUnitroller unitroller;
     IPoolAddressesProvider aavePoolProvider;
     uint256 leverage; // 100 == 1:1 leverage
-    uint256 haircut; // 100bps == 1% haircut
   }
 
   Params public params;
@@ -47,10 +46,7 @@ contract VenusArbitrage is StrategyV5 {
     params.unitroller.enterMarkets(address(lpTokens[0]).toArray(address(lpTokens[1])));
   }
 
-  function _setLeverage(uint256 _l, uint256 _haircut) internal {
-    if (_haircut > AsMaths.BP_BASIS || _l * 100 <= _haircut) {
-      revert Errors.InvalidData();
-    }
+  function _setLeverage(uint256 _l) internal {
     // make sure that max leverage is sound with the cToken max collateral factor
     (, uint256 ltv, ) = params.unitroller.markets(address(lpTokens[0])); // base 1e18
     uint256 maxLeverage = (100 * 1e18) / (1e18 - ltv); // base 100 eg. 500 == 5:1
@@ -58,17 +54,21 @@ contract VenusArbitrage is StrategyV5 {
       revert Errors.Unauthorized();
     }
     params.leverage = _l;
-    params.haircut = _haircut;
   }
 
-  function setLeverage(uint256 _l, uint256 _haircut) external onlyAdmin {
-    _setLeverage(_l, _haircut);
+  function setLeverage(uint256 _l) external onlyAdmin {
+    _setLeverage(_l);
+  }
+
+  function _leveraged(uint256 _cash) internal view returns (uint256) {
+    return _cash.mulDiv(params.leverage, 100);
   }
 
   function _previewInvestSwapAddons(
     uint256[8] calldata _previewAmounts
   )
     internal
+    view
     override
     returns (
       address[8] memory from,
@@ -76,18 +76,9 @@ contract VenusArbitrage is StrategyV5 {
       uint256[8] memory amounts
     )
   {
-    IPriceProvider oracle = _priceAwareStorage().oracle;
-    uint256 flashLoanAmount = oracle
-      .convert(address(asset), _previewAmounts[0], address(inputs[0]))
-      .mulDiv(params.leverage, 100);
-
     from[0] = address(inputs[1]); // eg. FDUSD
     to[0] = address(inputs[0]); // eg. USDC
-    amounts[0] = oracle.convert(
-      address(inputs[1]),
-      flashLoanAmount.mulDiv(params.leverage - 100, params.leverage).subBp(params.haircut), // borrow cap
-      address(inputs[0])
-    );
+    amounts[0] = _debtForSupply(_leveraged(_previewAmounts[0])); // borrow target
   }
 
   function _beforeInvest(
@@ -113,13 +104,11 @@ contract VenusArbitrage is StrategyV5 {
     // - _params[1] == 0x00 empty swap calldata for asset->input[1]
     // - _params[2] == arbitrage swap calldata addon for input[1]->input[0] (eg. FDUSD->USDC)
 
-    uint256 leveragedAmount = (_amount * params.leverage) / 100;
-
     // flashloan to leverage amount[0] converted in input[0] (eg. USDC)
     IAavePool(params.aavePoolProvider.getPool()).flashLoanSimple(
       address(this),
       address(inputs[0]), // eg. USDC to be deposited
-      leveragedAmount,
+      _leveraged(_amount),
       abi.encode(true), // investing
       0 // project identifier eg. for fee exemption
     );
@@ -132,16 +121,16 @@ contract VenusArbitrage is StrategyV5 {
     IVToken(address(lpTokens[0])).mint(_loan);
 
     // convert collateral from input[0] (eg. USDC) to input[1] target debt (eg. FDUSD)
-    uint256 borrowAmount = _debtForSupply(_loan);
+    uint256 _debt = _debtForSupply(_loan);
 
     // borrow the input[1] tokens (eg. FDUSD) against the collateral (1/(1-LTV) == leverage)
-    IVToken(address(lpTokens[1])).borrow(borrowAmount);
+    IVToken(address(lpTokens[1])).borrow(_debt);
 
     // swap the borrowed tokens (eg. FDUSD) to input[0] (eg. USDC)
     (uint256 received, uint256 spent) = swapper.decodeAndSwap({
       _input: address(inputs[1]),
       _output: address(inputs[0]),
-      _amount: borrowAmount,
+      _amount: _debt,
       _params: _pendingInvestCalldata
     });
 
@@ -160,18 +149,102 @@ contract VenusArbitrage is StrategyV5 {
     // we end up with just enough input[0] (swapped from invested assets + input[1]) to pay the flashloan back
   }
 
+  function _afterInvest(
+    uint256 _amount,
+    bytes[] calldata _params
+  ) internal override {
+    // no need to repay flashloan
+  }
+
+  function _toRepay(uint256 _liquidatedInput0) internal view returns (uint256) {
+    uint256 debtEquivalent = _leveraged(_liquidatedInput0).subMax0(_liquidatedInput0);
+    return
+      _priceAwareStorage().oracle.convert({
+        _base: address(asset),
+        _amount: debtEquivalent,
+        _quote: address(inputs[1])
+      });
+  }
+
+  function _debtForSupply(uint256 _cash) internal view returns (uint256) {
+    return
+      _priceAwareStorage()
+        .oracle
+        .convert(address(inputs[0]), _cash, address(inputs[1]))
+        .mulDiv(params.leverage - 100, params.leverage);
+  }
+
+  function _supplyForDebt(uint256 _debt) internal view returns (uint256) {
+    return
+      _priceAwareStorage()
+        .oracle
+        .convert(address(inputs[1]), _debt, address(inputs[0]))
+        .mulDiv(params.leverage, params.leverage - 100);
+  }
+
+  function _previewLiquidateSwapAddons(
+    uint256[8] calldata _previewAmounts
+  )
+    internal
+    view
+    override
+    returns (
+      address[8] memory from,
+      address[8] memory to,
+      uint256[8] memory amounts
+    )
+  {
+    from[0] = address(inputs[0]); // eg. USDC
+    to[0] = address(inputs[1]); // eg. FDUSD
+    // add slippage to make sure we can pay fees + slippage
+    amounts[0] = _toRepay(_previewAmounts[0]).addBp(_4626StorageExt().maxSlippageBps);
+  }
+
+  function _beforeLiquidate(
+    uint256[8] calldata,
+    bytes[] calldata _params
+  ) internal override {
+    if (_params.length > 1) {
+      _pendingLiquidateCalldata = _params[2];
+    } else {
+      revert Errors.InvalidData(); // missing calldata
+    }
+  }
+
+  function _unstake(uint256 _index, uint256 _amount) internal override {
+    if (_index > 0) {
+      return; // no need to unstake input[1] tokens (eg. FDUSD)
+    }
+
+    // flashloan to leverage amount[0] converted in input[0] (eg. USDC)
+    IAavePool(params.aavePoolProvider.getPool()).flashLoanSimple(
+      address(this),
+      address(inputs[1]), // eg. FDUSD to be repaid
+      _toRepay(_stakeToInput(_amount, _index)),
+      abi.encode(false), // liquidating
+      0 // project identifier eg. for fee exemption
+    );
+    // cf. executeOperation() with _investing == false for the flashloan callback
+  }
+
   function _deleverage(uint256 _loan, uint256 _due) internal {
     // repay debt
     IVToken(address(lpTokens[1])).repayBorrow(_loan);
 
     // deleverage
-    IVToken(address(lpTokens[0])).redeem(_supplyForDebt(_loan));
+    IVToken(address(lpTokens[0])).redeemUnderlying(_supplyForDebt(_loan)); // could also redeem(_inputToStake)
 
     // swap enough to pay the flashloan back
     (uint256 received, ) = swapper.decodeAndSwap({
       _input: address(inputs[0]),
       _output: address(inputs[1]),
-      _amount: _loan,
+      _amount: _priceAwareStorage().oracle.convert(
+        address(inputs[1]),
+        _loan,
+        address(inputs[0])
+      ).addBp(
+        _4626StorageExt().maxSlippageBps // make sure we can pay back with fees + slippage
+      ),
       _params: _pendingLiquidateCalldata
     });
 
@@ -180,13 +253,15 @@ contract VenusArbitrage is StrategyV5 {
     }
 
     // if asset != input[1], use dust to repay a bit more debt
-    if ((received - _due) > 0 && address(asset) != address(inputs[1])) {
+    if (received > _due && address(asset) != address(inputs[1])) {
       IVToken(address(lpTokens[1])).repayBorrow(received - _due);
     }
     // we end up with just enough input[1] to pay the flashloan back and input[0] to satisfy the liquidate() call
   }
 
-  // AAVE FlashLoanReceiverSimple implementation (executed in _stake())
+  // AAVE FlashLoanReceiverSimple implementation
+  // - _stake()->executeOperation(_investing=true)->_leverage()
+  // - _unstake()->executeOperation(_investing=false)->_deleverage()
   function executeOperation(
     address _token,
     uint256 _loan,
@@ -211,100 +286,15 @@ contract VenusArbitrage is StrategyV5 {
     return true;
   }
 
-  function _afterInvest(
+  function _inputToStake(
     uint256 _amount,
-    bytes[] calldata _params
-  ) internal override {
-    // no need to repay flashloan
-  }
-
-  function _toRepay(uint256 _liquidatedAmount) internal view returns (uint256) {
-    uint256 debtEquivalent = _liquidatedAmount
-      .mulDiv(params.leverage - 100, 100)
-      .subBp(params.haircut); // in assets
-
+    uint256 _index
+  ) internal view override returns (uint256) {
     return
-      _priceAwareStorage().oracle.convert(
-        address(asset),
-        debtEquivalent,
-        address(inputs[1])
-      ); // in input[1] (eg. FDUSD)
-  }
-
-  function _debtForSupply(uint256 _cash) internal view returns (uint256) {
-    return
-      _priceAwareStorage()
-        .oracle
-        .convert(address(inputs[0]), _cash, address(inputs[1]))
-        .mulDiv(params.leverage - 100, params.leverage)
-        .subBp(params.haircut);
-  }
-
-  function _supplyForDebt(uint256 _debt) internal view returns (uint256) {
-    return
-      _priceAwareStorage()
-        .oracle
-        .convert(
-          address(inputs[1]),
-          _debt.revAddBp(params.haircut),
-          address(inputs[0])
-        )
-        .mulDiv(params.leverage, params.leverage - 100);
-  }
-
-  function _toFlashBorrow(
-    uint256 _repaidAmount
-  ) internal view returns (uint256) {
-    return
-      _priceAwareStorage()
-        .oracle
-        .convert(address(inputs[1]), _repaidAmount, address(inputs[0]))
-        .addBp(_4626StorageExt().maxSlippageBps); // in input[0] (eg. USDC)
-  }
-
-  function _previewLiquidateSwapAddons(
-    uint256[8] calldata _previewAmounts
-  )
-    internal
-    override
-    returns (
-      address[8] memory from,
-      address[8] memory to,
-      uint256[8] memory amounts
-    )
-  {
-    from[0] = address(inputs[0]); // eg. USDC
-    to[0] = address(inputs[1]); // eg. FDUSD
-    amounts[0] = _toRepay(_previewAmounts[0]).addBp(
-      _4626StorageExt().maxSlippageBps
-    ); // add slippage to make sure we can pay fees + slippage
-  }
-
-  function _beforeLiquidate(
-    uint256[8] calldata,
-    bytes[] calldata _params
-  ) internal override {
-    if (_params.length > 1) {
-      _pendingLiquidateCalldata = _params[2];
-    } else {
-      revert Errors.InvalidData(); // missing calldata
-    }
-  }
-
-  function _unstake(uint256 _index, uint256 _amount) internal override {
-    if (_index > 0) {
-      return; // no need to unstake input[1] tokens (eg. FDUSD)
-    }
-
-    // flashloan to leverage amount[0] converted in input[0] (eg. USDC)
-    IAavePool(params.aavePoolProvider.getPool()).flashLoanSimple(
-      address(this),
-      address(inputs[1]), // eg. FDUSD to be repaid
-      _toRepay(_amount),
-      abi.encode(false), // liquidating
-      0 // project identifier eg. for fee exemption
-    );
-    // cf. executeOperation() with _investing == false for the flashloan callback
+      _amount.mulDiv(
+        1e18,
+        IVToken(address(lpTokens[_index])).exchangeRateStored()
+      ); // eg. 1e18*1e18/1e(36-8) = 1e12
   }
 
   function _stakeToInput(
@@ -316,17 +306,6 @@ contract VenusArbitrage is StrategyV5 {
         IVToken(address(lpTokens[_index])).exchangeRateStored(),
         1e18
       ); // eg. 1e12*1e(36-8)/1e18 = 1e18
-  }
-
-  function _inputToStake(
-    uint256 _amount,
-    uint256 _index
-  ) internal view override returns (uint256) {
-    return
-      _amount.mulDiv(
-        1e18,
-        IVToken(address(lpTokens[_index])).exchangeRateStored()
-      ); // eg. 1e18*1e18/1e(36-8) = 1e12
   }
 
   function _investedInput(

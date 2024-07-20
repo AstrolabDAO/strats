@@ -410,7 +410,7 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
       paused()
         ? 0
         : AsMaths.min(
-          balanceOf(msg.sender),
+          balanceOf(_owner),
           AsMaths.max(
             claimableRedeemRequest(_owner, _owner),
             _convertToShares(available(), false)
@@ -426,7 +426,6 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
     if (feeCollector == address(0)) {
       revert Errors.AddressZero();
     }
-
     (
       uint256 assets,
       uint256 price,

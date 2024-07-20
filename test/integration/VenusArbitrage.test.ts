@@ -17,7 +17,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["USDC", "FDUSD"], inputWeights: [9000, 0] }, // 90% allocation, 10% cash
+  56: { ...baseDesc, inputs: ["USDT", "FDUSD"], inputWeights: [9200, 0] }, // 90% allocation, 10% cash
 };
 
 const desc = descByChainId[network.config.chainId!];
@@ -54,8 +54,7 @@ describe(`test.${desc.name}`, () => {
         extension: abiEncode(["address","address","uint16","uint16"], [
           protocolAddr.Unitroller,
           addr.Aave.poolProvider,
-          3_00, // 3:1 leverage
-          3_00, // 3% haircut (avoid margin calling when depegged)
+          4_50, // 4.5:1 leverage
         ]),
       },
       desc.seedLiquidityUsd, // seed liquidity in USD
