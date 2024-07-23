@@ -41,7 +41,7 @@ import {
   ensureOracleAccess,
   getOverrides,
   logState,
-  getInputs,
+  getStratParams,
 } from "../../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
@@ -98,10 +98,10 @@ export const deployStrat = async (
           libParams.useCreate3 = true;
           libParams.create3Salt = salts[n];
         }
-        lib = await  deploy(libParams);
+        lib = await deploy(libParams);
       }
     }
-    libraries[n] = lib. address;
+    libraries[n] = lib.address;
   }
 
   // exclude implementation specific libraries from agentLibs (eg. oracle libs)
@@ -475,7 +475,7 @@ export async function preInvest(
     amount = stratLiquidity;
   }
 
-  const amounts = await strat.callStatic.previewInvest(amount); // parsed as uint256[8]
+  const amounts = await strat.callStatic.preview(amount, true); // parsed as uint256[8]
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
 
@@ -512,7 +512,7 @@ export async function preInvest(
   }
 
   // generate investAddons swapdata if any
-  const addons = await strat.callStatic.previewInvestSwapAddons(amounts) as IAddons;
+  const addons = await strat.callStatic.previewSwapAddons(amounts, true) as IAddons;
   for (const i in addons.amounts) {
     if (addons.from[i] == addons.to[i]) continue;
     if (addons.to[i] == addressZero || addons.from[i] == addressZero) break;
@@ -534,10 +534,7 @@ export async function preInvest(
       );
     }
   }
-  console.log(`InvestAddons:\n\t${addons.from.filter((f) => !!f).map((f, i) => `${
-    findSymbolByAddress(addons.from[i])} -> ${
-      findSymbolByAddress(addons.to[i])}: ${
-        addons.amounts[i].toString()}`).join("\n\t")}`);
+  console.log(`InvestAddons:\n\t${addons.from.filter((f) => !!f).map((f, i) => `${findSymbolByAddress(addons.from[i])} -> ${findSymbolByAddress(addons.to[i])}: ${addons.amounts[i].toString()}`).join("\n\t")}`);
   return [amounts, swapData];
 }
 
@@ -555,8 +552,8 @@ export async function invest(
   const [amounts, swapData] = await preInvest(env!, _amount);
   await logState(env, "Before Invest");
   const receipt = await strat
-    .invest(amounts, swapData, { gasLimit: 3e7 })
-    // .safe("invest(uint256[8],bytes[])", params, { gasLimit: 3e7 })
+    // .invest(amounts, swapData, getOverrides(env))
+    .safe("invest(uint256[8],bytes[])", [amounts, swapData], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -588,7 +585,7 @@ export async function liquidatePrimitives(
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
-  // const amounts = Object.assign([], await strat.previewLiquidate(amount));
+  // const amounts = Object.assign([], await strat.preview(amount, false));
   const swapAmounts = new Array<BigNumber>(amounts.length).fill(
     BigNumber.from(0),
   );
@@ -641,27 +638,26 @@ export async function liquidatePrimitives(
   }
   console.log(
     `Liquidating ${asset.sym}\n` +
-      inputs
-        .map(
-          (input, i) =>
-            `  - ${input.sym}: ${input.toAmount(amounts[i][0])} (${amounts[
+    inputs
+      .map(
+        (input, i) =>
+          `  - ${input.sym}: ${input.toAmount(amounts[i][0])} (${amounts[
+            i
+          ].toString()}wei), swap amount: ${input.toAmount(
+            swapAmounts[i],
+          )} (${swapAmounts[i].toString()}wei), est. output: ${trs[i]
+            .estimatedOutput!} ${asset.sym} (${trs[
               i
-            ].toString()}wei), swap amount: ${input.toAmount(
-              swapAmounts[i],
-            )} (${swapAmounts[i].toString()}wei), est. output: ${trs[i]
-              .estimatedOutput!} ${asset.sym} (${trs[
-              i
-            ].estimatedOutputWei?.toString()}wei - exchange rate: ${
-              trs[i].estimatedExchangeRate
-            })\n`,
-        )
-        .join(""),
+            ].estimatedOutputWei?.toString()}wei - exchange rate: ${trs[i].estimatedExchangeRate
+          })\n`,
+      )
+      .join(""),
   );
 
   await logState(env, "Before Liquidate primitives");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("liquidatePrimitives", [amounts, 1, false, [  ]], getOverrides(env))
+    .safe("liquidatePrimitives", [amounts, 1, false, []], getOverrides(env))
     // .liquidatePrimitives(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
@@ -702,7 +698,7 @@ export async function preLiquidate(
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
-  const amounts = (await strat.callStatic.previewLiquidate(amount) as BigNumber[]);
+  const amounts = (await strat.callStatic.preview(amount, false) as BigNumber[]);
 
   // NB: no need to convert to input amounts anymore as amounts are already in input units
   // const inputSwapAmounts = await env.multicallProvider?.all(
@@ -763,7 +759,7 @@ export async function preLiquidate(
   }
 
   // generate liquidateAddons swapdata if any
-  const addons = await strat.callStatic.previewLiquidateSwapAddons(amounts) as IAddons;
+  const addons = await strat.callStatic.previewSwapAddons(amounts, false) as IAddons;
   for (const i in addons.amounts) {
     if (addons.from[i] == addons.to[i]) continue;
     if (addons.to[i] == addressZero || addons.from[i] == addressZero) break;
@@ -786,29 +782,24 @@ export async function preLiquidate(
     }
   }
   console.log(
-    `Liquidating ${asset.toAmount(amount)}${
-      asset.sym
+    `Liquidating ${asset.toAmount(amount)}${asset.sym
     } (default: 0 will liquidate all required liquidity)\n` +
-      inputs
-        .map(
-          (input, i) =>
-            `  - ${input.sym}: ${input.toAmount(amounts[i])} (${amounts[
+    inputs
+      .map(
+        (input, i) =>
+          `  - ${input.sym}: ${input.toAmount(amounts[i])} (${amounts[
+            i
+          ].toString()}wei), swap amount: ${input.toAmount(
+            amounts[i],
+          )} (${amounts[i].toString()}wei), est. output: ${trs[i]
+            .estimatedOutput!} ${asset.sym} (${trs[
               i
-            ].toString()}wei), swap amount: ${input.toAmount(
-              amounts[i],
-            )} (${amounts[i].toString()}wei), est. output: ${trs[i]
-              .estimatedOutput!} ${asset.sym} (${trs[
-              i
-            ].estimatedOutputWei?.toString()}wei - exchange rate: ${
-              trs[i].estimatedExchangeRate
-            })\n`,
-        )
-        .join(""),
+            ].estimatedOutputWei?.toString()}wei - exchange rate: ${trs[i].estimatedExchangeRate
+          })\n`,
+      )
+      .join(""),
   );
-  console.log(`LiquidateAddons:\n\t${addons.from.filter((f) => !!f).map((f, i) => `${
-    findSymbolByAddress(addons.from[i])} -> ${
-      findSymbolByAddress(addons.to[i])}: ${
-        addons.amounts[i].toString()}`).join("\n\t")}`);
+  console.log(`LiquidateAddons:\n\t${addons.from.filter((f) => !!f).map((f, i) => `${findSymbolByAddress(addons.from[i])} -> ${findSymbolByAddress(addons.to[i])}: ${addons.amounts[i].toString()}`).join("\n\t")}`);
   return [amounts, swapData];
 }
 
@@ -826,8 +817,8 @@ export async function liquidate(
   const [amounts, swapData] = await preLiquidate(env, _amount);
   await logState(env, "Before Liquidate");
   const receipt = await strat
-    // .safe("liquidate", [amounts, 1, false, swapData], { gasLimit: 3e7 })
-    .liquidate(amounts, 1, false, swapData, { gasLimit: 3e7 })
+    .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
+    // .liquidate(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 1_000);
@@ -1110,7 +1101,7 @@ export async function updateInputs(
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
   const [currentInputs, currentWeights, currentLpTokens] =
-    prev ?? (await getInputs(env));
+    prev ?? (await getStratParams(env));
 
   // step 2: Initialize final inputs and weights arrays
   let orderedInputs: string[] = new Array<string>(inputs.length).fill("");
@@ -1182,14 +1173,14 @@ export async function updateInputs(
 
   console.log(`Reordering (reordered: ${reorder}):\n
     prev inputs: [${currentInputs.join(",")}] weights: [${currentWeights.join(
-      ",",
-    )}] lpTokens: [${currentLpTokens.join(",")}]
+    ",",
+  )}] lpTokens: [${currentLpTokens.join(",")}]
     raw inputs: [${inputs.join(",")}] weights: [${weights.join(
-      ",",
-    )}] lpTokens: [${lpTokens.join(", ")}]
+    ",",
+  )}] lpTokens: [${lpTokens.join(", ")}]
     ord inputs: [${orderedInputs.join(",")}] weights: [${orderedWeights.join(
-      ",",
-    )}] lpTokens: [${orderedLpTokens.join(",")}]
+    ",",
+  )}] lpTokens: [${orderedLpTokens.join(",")}]
   `);
 
   // step 5: Set new input weights with current inputs to liquidate it all
@@ -1252,7 +1243,7 @@ export async function shuffleInputs(
 ): Promise<BigNumber> {
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
-  const [inputs, weights, lpTokens] = await getInputs(env);
+  const [inputs, weights, lpTokens] = await getStratParams(env);
   const symbols = inputs.map((i) =>
     findSymbolByAddress(i, network.config.chainId!),
   );
@@ -1315,30 +1306,30 @@ export async function shuffleInputs(
  * @param weights - New weights to be set
  * @returns Boolean indicating whether the input weights were successfully updated
  */
-export async function updateInputWeights(
+export async function setInputWeights(
   env: Partial<IStrategyDeploymentEnv>,
   weights: number[],
+  resetInputs = false,
 ): Promise<boolean> {
   // step 1: retrieve current inputs
   const strat = await env.deployment!.strat;
-  const [currentInputs, currentWeights] = (await env.multicallProvider!.all([
-    strat.multi.inputs(),
-    strat.multi.inputWeights(),
-  ])) as [string[], number[]];
-
-  // step 2: return updateInputs with the above
-  const receipt = await strat
-    .safe(
-      "setInputs(address[],uint16[])", // StrategyV5Agent overload
-      [currentInputs, currentWeights],
-      getOverrides(env),
-    )
-    .then((tx: TransactionResponse) => tx.wait());
-  const updatedWeights = await strat.inputWeights();
-
-  for (let i = 0; i < env!.deployment!.inputs.length; i++)
-    if (weights[i] != updatedWeights[i].toNumber()) return false;
-  return true;
+  let tx;
+  const [prevInputs, prevWeights, prevLpTokens] = await getStratParams(env);
+  if (resetInputs) {
+    tx = await strat
+      .safe(
+        "setInputs(address[],uint16[],address[])", // StrategyV5Agent overload
+        [prevInputs, prevWeights, prevLpTokens],
+        getOverrides(env)
+      );
+  } else {
+    tx = await strat
+      .safe("setInputWeights", [weights], getOverrides(env));
+  }
+  const receipt = await tx.wait();
+  const updatedWeights = (await getStratParams(env))[1];
+  console.log(`Updated weights: ${prevWeights}->${updatedWeights}`);
+  return weights.every((weight, i) => weight == updatedWeights[i]);
 }
 
 /**
@@ -1358,7 +1349,7 @@ export async function shuffleInputWeights(
   const randomWeights = shuffle(currentWeights);
 
   // step 3: return updateInputs with the above
-  return await updateInputWeights(env, randomWeights);
+  return await setInputWeights(env, randomWeights);
 }
 
 /**

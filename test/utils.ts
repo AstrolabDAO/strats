@@ -18,6 +18,9 @@ import {
   ERC20_ABI,
   getDeployer,
   resolveAddress,
+  getEnv,
+  loadAbi,
+  isAddress,
 } from "@astrolabs/hardhat";
 import {
   ISwapperParams,
@@ -33,7 +36,7 @@ import {
   Contract,
   Overrides
 } from "ethers";
-import { IStrategyDeploymentEnv } from "../src/types";
+import { IStrategyDeployment, IStrategyDeploymentEnv } from "../src/types";
 
 const maxTopup = BigNumber.from(weiToString(5 * 1e18));
 
@@ -48,10 +51,10 @@ const networkOverrides: { [chainId: number]: Overrides } = {
     gasLimit: 1e7,
   },
   56: {
-    // gasLimit: 1e7,
+    gasLimit: 3e7,
   },
   100: {
-    // gasLimit: 1e7,
+    gasLimit: 3e7,
     maxPriorityFeePerGas: 5e9,
     maxFeePerGas: 25e9,
     // gasPrice: 4e9,
@@ -133,30 +136,28 @@ export async function logBalances(
 export const logRescue = logBalances;
 
 /**
- * Retrieves the inputs, weights, and LP tokens from the given strategy deployment environment
+ * Retrieves the env strategy parameters (inputs, weights, and LP tokens)
  * @param env - The strategy deployment environment
  * @returns Array containing the current inputs, weights, and LP tokens
  */
-export async function getInputs(env: Partial<IStrategyDeploymentEnv>): Promise<[string[], number[], string[]]> {
-  const strat = await env.deployment!.strat;
+export async function getStratParams(env: Partial<IStrategyDeploymentEnv>): Promise<[string[], number[], string[]]> {
+  const { strat } = await env.deployment!;
   const indexes = [...Array(8).keys()];
 
-  const stratParams = await env.multicallProvider!.all([
+  const all = await env.multicallProvider!.all([
     ...indexes.map((i) => strat.multi.inputs(i)),
     ...indexes.map((i) => strat.multi.inputWeights(i)),
     ...indexes.map((i) => strat.multi.lpTokens(i)),
   ]);
 
-  let lastInputIndex = stratParams.findIndex((input) => input == addressZero);
+  let inputLength = all.findIndex((input) => input == addressZero);
+  if (inputLength < 0) inputLength = indexes.length; // max 8 inputs (if no empty address found)
 
-  if (lastInputIndex < 0) lastInputIndex = indexes.length; // max 8 inputs (if no empty address found)
-
-  const [currentInputs, currentWeights, currentLpTokens] = [
-    stratParams.slice(0, lastInputIndex),
-    stratParams.slice(8, 8 + lastInputIndex),
-    stratParams.slice(16, 16 + lastInputIndex),
+  return [
+    all.slice(0, inputLength),
+    all.slice(8, 8 + inputLength),
+    all.slice(16, 16 + inputLength),
   ] as [string[], number[], string[]];
-  return [currentInputs, currentWeights, currentLpTokens];
 }
 
 /**
@@ -221,7 +222,7 @@ export async function logState(
       strat.multi.balanceOf(env.deployer!.address),
       // await assetTokenContract.balanceOf(strategy.address),
     ]);
-    const [inputAddresses, inputWeights, lpTokenAddresses] = await getInputs(env);
+    const [inputAddresses, inputWeights, lpTokenAddresses] = await getStratParams(env);
     const inputs = await Promise.all(inputAddresses.map((input) => SafeContract.build(input))) as SafeContract[];
     const lpTokens = await Promise.all(lpTokenAddresses.map((lpToken) => SafeContract.build(lpToken)));
     const rewardsAddresses = rewardTokens.map((reward) => reward.address);
@@ -229,8 +230,8 @@ export async function logState(
     const [invested, rewardsAvailable, previewInvest, previewLiquidate] = await Promise.all([
       strat["invested()"](),
       strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.(),
-      strat.callStatic.previewInvest(0),
-      strat.callStatic.previewLiquidate(0),
+      strat.callStatic.preview(0, true),
+      strat.callStatic.preview(0, false),
     ]);
     const totalInvested: BigNumber[] = await env.multicallProvider!.all(
       inputs.map((input, index) => strat.multi.invested(index)),
@@ -744,4 +745,30 @@ export function randomRedistribute(arr: number[]): number[] {
     }
   }
   return arr;
+}
+
+export async function getRuntimeEnv(addr: string): Promise<IStrategyDeploymentEnv> {
+  const env = await getEnv({}) as IStrategyDeploymentEnv;
+  const abi = await loadAbi("StrategyV5");
+  const strat = await SafeContract.build(
+    isAddress(addr) ? addr : await resolveAddress(addr),
+    <[]>abi,
+    (await ethers.getSigners())[0]
+  );
+  const indexes = [...Array(8).keys()];
+  const all: string[] =
+    await env.multicallProvider!.all([
+      strat.multi.asset(),
+      ...indexes.map((_, i) => strat.multi.inputs(i)),
+      ...indexes.map((_, i) => strat.multi.rewardTokens(i)),
+    ]);
+
+  env.deployment = <IStrategyDeployment>{
+    strat,
+    asset: await SafeContract.build(all[0]),
+    inputs: await Promise.all(all.slice(1, 9).map(t => SafeContract.build(t))),
+    rewardTokens: await Promise.all(all.slice(9, 17).map(t => SafeContract.build(t))),
+  };
+
+  return env;
 }

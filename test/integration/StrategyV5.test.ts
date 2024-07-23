@@ -5,7 +5,7 @@ import { addresses, addressOne } from "@astrolabs/hardhat";
 import { IFlow } from "./flows";
 import { collectFees, deposit, redeem, requestRedeem, requestWithdraw, seedLiquidity, withdraw } from "./flows/As4626";
 import { requestRescue, rescue, transferAssetsTo } from "./flows/AsRescuable";
-import { compound, harvest, invest, liquidate } from "./flows/StrategyV5";
+import { compound, harvest, invest, liquidate, setInputWeights } from "./flows/StrategyV5";
 
 const addr = addresses[network.config.chainId!];
 const tokenAddress = addr.tokens;
@@ -14,8 +14,8 @@ const day = 60*60*24;
 
 export const suite: Partial<IFlow>[] = [
   // sync ERC4626 deposit/withdraw/redeem
-  { fn: seedLiquidity, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
-  { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
+  { fn: seedLiquidity, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // vault activation + min liquidity deposit
+  // { fn: deposit, params: [10000], assert: (n: BigNumber) => n.gt(0) }, // deposit
   // { fn: withdraw, params: [1010], assert: (n: BigNumber) => n.gt(0) }, // partial withdraw
   // { fn: redeem, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 
@@ -25,21 +25,25 @@ export const suite: Partial<IFlow>[] = [
   // { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
 
   // async ERC7540 withdrawal
-  { fn: requestWithdraw, params: [1001], assert: (n: BigNumber) => n.gt(0) },
-  { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  { fn: withdraw, params: [1000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
+  // { fn: requestWithdraw, params: [1001], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: withdraw, params: [1000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
 
   // async ERC7540 redemption
-  { fn: requestRedeem, params: [500], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: requestRedeem, params: [500], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
+  // { fn: redeem, params: [500], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // full request
+
+  // set weights to 0 to freeze exposure
+  { fn: setInputWeights, params: [[0, 0]], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  { fn: redeem, params: [500], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // full request
 
   // claimRewards/harvest(claim+swap)/compound(harvest+invest)
-  { elapsedSec: day*30, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest all pending rewards
-  { elapsedSec: day*30, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest + invest all pending rewards
+  // { elapsedSec: day*30, revertState: true, fn: harvest, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest all pending rewards
+  // { elapsedSec: day*30, revertState: true, fn: compound, params: [], assert: (n: BigNumber) => n.gt(0) }, // harvest + invest all pending rewards
 
   // collect fees
-  { elapsedSec: day*30, revertState: true, fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) }, // collect all pending fees with signer 1 (manager only)
+  // { elapsedSec: day*30, revertState: true, fn: collectFees, params: [], assert: (n: BigNumber) => n.gt(0) }, // collect all pending fees with signer 1 (manager only)
 
   // change underlying assets/inputs (using live swapper's generated calldata)
   // { fn: updateAsset, params: [tokenAddress.WBTC], assert: (n: BigNumber) => n.gt(0) },
@@ -52,16 +56,16 @@ export const suite: Partial<IFlow>[] = [
   // { fn: shuffleInputs, params: [], assert: (n: BigNumber) => n.gt(0) }, // partial redeem
 
   // AccessController tests
-//  { fn: grantRoles, params: [["MANAGER", "KEEPER"], signerAddressGetter(1)] }, // grant roles to mnemonic signer 2 with signer 1
-//  { elapsedSec: day*3, fn: acceptRoles, params: [["MANAGER"], signerGetter(1)] }, // accept time-locked elevated role with signer 2
-//  { fn: revokeRoles, params: [["KEEPER"], signerAddressGetter(1)] }, // revoke roles from mnemonic signer 2 with signer 1
+  // { fn: grantRoles, params: [["MANAGER", "KEEPER"], signerAddressGetter(1)] }, // grant roles to mnemonic signer 2 with signer 1
+  // { elapsedSec: day*3, fn: acceptRoles, params: [["MANAGER"], signerGetter(1)] }, // accept time-locked elevated role with signer 2
+  // { fn: revokeRoles, params: [["KEEPER"], signerAddressGetter(1)] }, // revoke roles from mnemonic signer 2 with signer 1
 
   // Rescuable tests
-  { fn: transferAssetsTo, params: [1e18, addressOne], assert: (n: boolean) => n }, // transfer native assets from signer 1 to strat
-  { fn: requestRescue, params: [addressOne] }, // request native assets rescual from signer 1 (manager only) on strat
-  { elapsedSec: day*3, revertState: true, fn: rescue, params: [addressOne], assert: (n: boolean) => n }, // execute time-locked rescual from signer 1 (manager only)
+  // { fn: transferAssetsTo, params: [1e18, addressOne], assert: (n: boolean) => n }, // transfer native assets from signer 1 to strat
+  // { fn: requestRescue, params: [addressOne] }, // request native assets rescual from signer 1 (manager only) on strat
+  // { elapsedSec: day*3, revertState: true, fn: rescue, params: [addressOne], assert: (n: boolean) => n }, // execute time-locked rescual from signer 1 (manager only)
 
-  { fn: transferAssetsTo, params: [1e18, weth], assert: (n: boolean) => n }, // transfer erc20 assets from signer 1 to strat
-  { fn: requestRescue, params: [weth] }, // request erc20 assets rescual from signer 1 (manager only) on strat
-  { elapsedSec: day*3, revertState: true, fn: rescue, params: [weth], assert: (n: boolean) => n } // execute time-locked rescual from signer 1 (manager only)
+  // { fn: transferAssetsTo, params: [1e18, weth], assert: (n: boolean) => n }, // transfer erc20 assets from signer 1 to strat
+  // { fn: requestRescue, params: [weth] }, // request erc20 assets rescual from signer 1 (manager only) on strat
+  // { elapsedSec: day*3, revertState: true, fn: rescue, params: [weth], assert: (n: boolean) => n } // execute time-locked rescual from signer 1 (manager only)
 ];

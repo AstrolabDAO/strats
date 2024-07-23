@@ -51,10 +51,10 @@ describe(`test.${desc.name}`, () => {
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         lpTokens: desc.inputs.map((input) => protocolAddr[`v${input}`]), // LP tokens
         rewardTokens: protocolAddr.rewardTokens, // XVS
-        extension: abiEncode(["address","address","uint16","uint16"], [
+        extension: abiEncode(["address","address","uint16"], [
           protocolAddr.Unitroller,
           addr.Aave.poolProvider,
-          4_50, // 4.5:1 leverage
+          4_00, // 4:1 leverage
         ]),
       },
       desc.seedLiquidityUsd, // seed liquidity in USD

@@ -25,12 +25,14 @@ struct Fees {
   uint64 flash; // Flash loan fee
 }
 
+// ERC-20 common metadata
 struct Erc20Metadata {
   string name;
   string symbol;
   uint8 decimals;
 }
 
+// Strategy common init core addresses
 struct CoreAddresses {
   address wgas; // wrapped native (WETH/WAVAX...)
   address asset;
@@ -40,7 +42,7 @@ struct CoreAddresses {
   address oracle;
 }
 
-// StrategyV5 init params
+// Strategy common init params
 struct StrategyParams {
   Erc20Metadata erc20Metadata;
   CoreAddresses coreAddresses;
@@ -52,6 +54,7 @@ struct StrategyParams {
   bytes extension;
 }
 
+// Strategy owner requests
 struct OwnerRequests {
   uint256 totalDeposit; // total amount requested for deposit (unused since all deposit are synchronous)
   uint256 totalRedemption; // total shares requested for redemption (1e12)
@@ -96,12 +99,24 @@ struct Epoch {
   uint256 accountedSupply; // last accounted total supply (fee collection)
 }
 
+// Strategy aggregation level
+enum AggregationLevel {
+  CROSS_CHAIN, // 0 (0x000...AAA1) eg. acUSD
+  CHAIN, // 1 (0x000...AAA2) eg. acUSD-ETH
+  CLASS // 2 (0x000...AAA3) eg. acUSD-ETH-AMM
+}
+
+enum AverageType {
+  ARITHMETIC,
+  GEOMETRIC,
+  HARMONIC,
+  QUADRATIC,
+  EXPONENTIAL
+}
+
 library Errors {
 
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                             ERRORS                             ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
+  // errors only
   error InvalidInitStatus();
   error Unauthorized();
   error FailedDelegateCall();
@@ -115,15 +130,13 @@ library Errors {
   error AcceptanceExpired();
   error AcceptanceLocked();
   error ContractNonCompliant();
+  error NonImplemented();
   error MissingOracle();
 }
 
 library Roles {
 
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                           CONSTANTS                            ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
+  // constants only
   bytes32 internal constant ADMIN = 0x00;
   bytes32 internal constant KEEPER = keccak256("KEEPER");
   bytes32 internal constant MANAGER = keccak256("MANAGER");

@@ -61,11 +61,15 @@ abstract contract AsPermissioned {
     return _storage().ac.hasRole(_role, _account);
   }
 
+  function _checkRole(bytes32 _role, address _account) internal view {
+    _storage().ac.checkRole(_role, _account);
+  }
+
   /**
    * @notice Checks if an account has the keeper role
    */
   modifier onlyKeeper() {
-    _storage().ac.checkRole(Roles.KEEPER, msg.sender);
+    _checkRole(Roles.KEEPER, msg.sender);
     _;
   }
 
@@ -73,7 +77,7 @@ abstract contract AsPermissioned {
    * @notice Checks if an account has the manager role
    */
   modifier onlyManager() {
-    _storage().ac.checkRole(Roles.MANAGER, msg.sender);
+    _checkRole(Roles.MANAGER, msg.sender);
     _;
   }
 
@@ -81,7 +85,7 @@ abstract contract AsPermissioned {
    * @notice Checks if an account has the admin role
    */
   modifier onlyAdmin() {
-    _storage().ac.checkRole(Roles.ADMIN, msg.sender);
+    _checkRole(Roles.ADMIN, msg.sender);
     _;
   }
 

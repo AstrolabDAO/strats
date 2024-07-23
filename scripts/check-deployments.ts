@@ -5,13 +5,25 @@ const contracts = [
   "DAOCouncil",
   "DAOTreasury",
   "AccessController",
+  "Swapper",
+  // "Bridger",
+  // "StableMint",
   "ChainlinkProvider",
   // "PythProvider",
   // "API3Provider",
   // "RedstoneProvider",
   "AsAccounting",
-  "StrategyV5Agent"
-];
+  "StrategyV5Agent",
+  // "apUSDC-ETH",
+  // "apUSD-BASE",
+  // "apUSD-ARB",
+  // "apUSD-OP",
+  // "apUSD-POLY",
+  // "apUSD-BNB",
+  // "apUSD-AVAX",
+  // "apUSD-FTM",
+  // "apUSD-ARB",
+]
 
 async function main() {
 

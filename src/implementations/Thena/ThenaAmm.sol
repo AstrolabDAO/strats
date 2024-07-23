@@ -147,7 +147,7 @@ contract ThenaAmm is StrategyV5 {
     uint256 _index,
     uint256 _amount
   ) internal view override returns (uint256) {
-    IPriceProvider oracle = _priceAwareStorage().oracle;
+    IPriceProvider oracle = oracle();
     address base = address(inputs[_index]);
     if (oracle.hasFeed(base)) {
       return oracle.convert(base, _amount, address(asset));
@@ -167,7 +167,7 @@ contract ThenaAmm is StrategyV5 {
     uint256 _index,
     uint256 _amount
   ) internal view override returns (uint256) {
-    IPriceProvider oracle = _priceAwareStorage().oracle;
+    IPriceProvider oracle = oracle();
     address base = address(inputs[_index]);
     if (oracle.hasFeed(base)) {
       return oracle.convert(address(asset), _amount, base);
@@ -188,7 +188,7 @@ contract ThenaAmm is StrategyV5 {
     uint256 _index
   ) internal view override returns (uint256) {
     IHypervisor hypervisor = _hypervisors[_index / 2];
-    IPriceProvider oracle = _priceAwareStorage().oracle;
+    IPriceProvider oracle = oracle();
     
     (uint256 amount0, uint256 amount1) = hypervisor.getTotalAmounts();
     uint256 posBaseValue;

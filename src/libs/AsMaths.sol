@@ -30,7 +30,6 @@ library AsMaths {
     Ceil, // Toward positive infinity
     Trunc, // Toward zero
     Expand // Away from zero
-
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -44,6 +43,8 @@ library AsMaths {
   ╚═══════════════════════════════════════════════════════════════*/
 
   // Constants
+  uint256 internal constant WAD = 1e18; // 18 decimal fixed-point number
+  uint256 internal constant RAY = 1e27; // 27 decimal fixed-point number
   uint256 internal constant BP_BASIS = 100_00; // 50% == 5_000 == 5e3
   uint256 internal constant PRECISION_BP_BASIS = BP_BASIS ** 2; // 50% == 50_000_000 == 5e7
   uint256 internal constant SEC_PER_YEAR = 31_556_952; // 365.2425 days, more precise than 365 days const
@@ -63,8 +64,13 @@ library AsMaths {
    * @param basisPoints Proportion to subtract
    * @return Result of subtracting the proportion
    */
-  function subBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, BP_BASIS - basisPoints, BP_BASIS);
+  function subBp(
+    uint256 amount,
+    uint256 basisPoints
+  ) internal pure returns (uint256) {
+    unchecked {
+      return mulDiv(amount, BP_BASIS - basisPoints, BP_BASIS);
+    }
   }
 
   /**
@@ -73,8 +79,13 @@ library AsMaths {
    * @param basisPoints Proportion to add
    * @return Result of adding the proportion
    */
-  function addBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, BP_BASIS + basisPoints, BP_BASIS);
+  function addBp(
+    uint256 amount,
+    uint256 basisPoints
+  ) internal pure returns (uint256) {
+    unchecked {
+      return mulDiv(amount, BP_BASIS + basisPoints, BP_BASIS);
+    }
   }
 
   /**
@@ -83,8 +94,13 @@ library AsMaths {
    * @param basisPoints Proportion to calculate
    * @return Calculated proportion of the amount /BP_BASIS
    */
-  function bp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, basisPoints, BP_BASIS);
+  function bp(
+    uint256 amount,
+    uint256 basisPoints
+  ) internal pure returns (uint256) {
+    unchecked {
+      return mulDiv(amount, basisPoints, BP_BASIS);
+    }
   }
 
   /**
@@ -93,8 +109,13 @@ library AsMaths {
    * @param basisPoints Proportion to calculate
    * @return Calculated proportion of the amount /BP_BASIS
    */
-  function revBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, basisPoints, BP_BASIS - basisPoints);
+  function revBp(
+    uint256 amount,
+    uint256 basisPoints
+  ) internal pure returns (uint256) {
+    unchecked {
+      return mulDiv(amount, basisPoints, BP_BASIS - basisPoints);
+    }
   }
 
   /**
@@ -107,7 +128,9 @@ library AsMaths {
     uint256 amount,
     uint256 basisPoints
   ) internal pure returns (uint256) {
-    return mulDiv(amount, basisPoints, PRECISION_BP_BASIS);
+    unchecked {
+      return mulDiv(amount, basisPoints, PRECISION_BP_BASIS);
+    }
   }
 
   /**
@@ -116,8 +139,13 @@ library AsMaths {
    * @param basisPoints Proportion to reverse add
    * @return Result of reverse adding the proportion
    */
-  function revAddBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, BP_BASIS, BP_BASIS - basisPoints);
+  function revAddBp(
+    uint256 amount,
+    uint256 basisPoints
+  ) internal pure returns (uint256) {
+    unchecked {
+      return mulDiv(amount, BP_BASIS, BP_BASIS - basisPoints);
+    }
   }
 
   /**
@@ -126,8 +154,44 @@ library AsMaths {
    * @param basisPoints Proportion to reverse subtract
    * @return Result of reverse subtracting the proportion
    */
-  function revSubBp(uint256 amount, uint256 basisPoints) internal pure returns (uint256) {
-    return mulDiv(amount, BP_BASIS, BP_BASIS + basisPoints);
+  function revSubBp(
+    uint256 amount,
+    uint256 basisPoints
+  ) internal pure returns (uint256) {
+    unchecked {
+      return mulDiv(amount, BP_BASIS, BP_BASIS + basisPoints);
+    }
+  }
+
+  /**
+   * @notice Checks if a value is within a range
+   * @param value Value to check
+   * @param _min Minimum value
+   * @param _max Maximum value
+   * @return Boolean indicating if the value is within the range
+   */
+  function within(uint256 value, uint256 _min, uint256 _max) internal pure returns (bool) {
+    unchecked {
+      return value >= _min && value <= _max;
+    }
+  }
+
+  function within(uint32 value, uint32 _min, uint32 _max) internal pure returns (bool) {
+    unchecked {
+      return value >= _min && value <= _max;
+    }
+  }
+
+  function within(uint64 value, uint64 _min, uint64 _max) internal pure returns (bool) {
+    unchecked {
+      return value >= _min && value <= _max;
+    }
+  }
+
+  function within(int256 value, int256 _min, int256 _max) internal pure returns (bool) {
+    unchecked {
+      return value >= _min && value <= _max;
+    }
   }
 
   /**
@@ -137,7 +201,11 @@ library AsMaths {
    * @param val Allowable difference
    * @return Boolean indicating if the difference is within the specified range
    */
-  function within(uint256 a, uint256 b, uint256 val) internal pure returns (bool) {
+  function diffWithin(
+    uint256 a,
+    uint256 b,
+    uint256 val
+  ) internal pure returns (bool) {
     return diff(a, b) <= val;
   }
 
@@ -147,8 +215,8 @@ library AsMaths {
    * @param b Second value
    * @return Boolean indicating if the difference is within 1
    */
-  function within1(uint256 a, uint256 b) internal pure returns (bool) {
-    return within(a, b, 1);
+  function diffWithin1(uint256 a, uint256 b) internal pure returns (bool) {
+    return diffWithin(a, b, 1);
   }
 
   /**
@@ -183,7 +251,9 @@ library AsMaths {
    */
   function subNoNeg(int256 a, int256 b) internal pure returns (int256) {
     if (a < b) revert AsCast.ValueOutOfCastRange();
-    return a - b; // no unchecked since if b is very negative, a - b might overflow
+    unchecked {
+      return a - b; // no unchecked since if b is very negative, a - b might overflow
+    }
   }
 
   /**
@@ -259,7 +329,10 @@ library AsMaths {
    * @return Absolute value of the input
    */
   function abs(int256 x) internal pure returns (uint256) {
-    return x == type(int256).min ? uint256(type(int256).max) + 1 : uint256(x > 0 ? x : -x);
+    return
+      x == type(int256).min
+        ? uint256(type(int256).max) + 1
+        : uint256(x > 0 ? x : -x);
   }
 
   /**
@@ -304,8 +377,12 @@ library AsMaths {
    * @param eps Maximum allowable difference between `a` and `b`
    * @return Boolean indicating whether the two values are approximately equal
    */
-  function approxEq(uint256 a, uint256 b, uint256 eps) internal pure returns (bool) {
-    return mulDown(b, 1e18 - eps) <= a && a <= mulDown(b, 1e18 + eps);
+  function approxEq(
+    uint256 a,
+    uint256 b,
+    uint256 eps
+  ) internal pure returns (bool) {
+    return mulDown(b, WAD - eps) <= a && a <= mulDown(b, WAD + eps);
   }
 
   /**
@@ -316,8 +393,12 @@ library AsMaths {
    * @param eps Maximum allowable difference between `a` and `b`
    * @return Boolean indicating whether `a` is approximately greater than `b`
    */
-  function approxGt(uint256 a, uint256 b, uint256 eps) internal pure returns (bool) {
-    return a >= b && a <= mulDown(b, 1e18 + eps);
+  function approxGt(
+    uint256 a,
+    uint256 b,
+    uint256 eps
+  ) internal pure returns (bool) {
+    return a >= b && a <= mulDown(b, WAD + eps);
   }
 
   /**
@@ -328,8 +409,12 @@ library AsMaths {
    * @param eps Maximum allowable difference between `a` and `b`
    * @return Boolean indicating whether `a` is approximately less than `b`
    */
-  function approxLt(uint256 a, uint256 b, uint256 eps) internal pure returns (bool) {
-    return a <= b && a >= mulDown(b, 1e18 - eps);
+  function approxLt(
+    uint256 a,
+    uint256 b,
+    uint256 eps
+  ) internal pure returns (bool) {
+    return a <= b && a >= mulDown(b, WAD - eps);
   }
 
   /**
@@ -392,7 +477,7 @@ library AsMaths {
   }
 
   /**
-   * @dev Returnss the division of two unsigned integers, with a division by zero flag
+   * @notice Returnss the division of two unsigned integers, with a division by zero flag
    * @param a Numerator
    * @param b Denominator
    * @return Tuple with a boolean indicating success and the result of the division
@@ -405,7 +490,7 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag
+   * @notice Returns the remainder of dividing two unsigned integers, with a division by zero flag
    * @param a Numerator
    * @param b Denominator
    * @return Tuple with a boolean indicating success and the result of the remainder
@@ -418,7 +503,7 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns the average of two numbers. Result is rounded towards zero
+   * @notice Returns the average of two numbers. Result is rounded towards zero
    * @param a First number
    * @param b Second number
    * @return Average of the two numbers
@@ -429,7 +514,7 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns the ceiling of the division of two numbers
+   * @notice Returns the ceiling of the division of two numbers
    *
    * This differs from standard division with `/` in that it rounds towards infinity instead
    * of rounding towards zero
@@ -577,7 +662,7 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns the square root of a number. If the number is not a perfect square, the value is rounded
+   * @notice Returns the square root of a number. If the number is not a perfect square, the value is rounded
    * towards zero
    * @param a Input value
    * @return Square root of the input value
@@ -625,12 +710,42 @@ library AsMaths {
   function sqrt(uint256 a, Rounding rounding) internal pure returns (uint256) {
     unchecked {
       uint256 result = sqrt(a);
-      return result + (unsignedRoundsUp(rounding) && result * result < a ? 1 : 0);
+      return
+        result + (unsignedRoundsUp(rounding) && result * result < a ? 1 : 0);
     }
   }
 
   /**
-   * @dev Returns the log in base 2 of a positive value rounded towards zero
+   * @notice Returns the cube root of a number. If the number is not a perfect cube, the value is rounded
+   * towards zero
+   * @param a Input value
+   * @return s Cube root of the input value
+   */
+  function cbrt(uint256 a) internal pure returns (uint256 s) {
+    /// @solidity memory-safe-assembly
+    assembly {
+      let r := shl(7, lt(0xffffffffffffffffffffffffffffffff, a))
+      r := or(r, shl(6, lt(0xffffffffffffffff, shr(r, a))))
+      r := or(r, shl(5, lt(0xffffffff, shr(r, a))))
+      r := or(r, shl(4, lt(0xffff, shr(r, a))))
+      r := or(r, shl(3, lt(0xff, shr(r, a))))
+
+      s := div(shl(div(r, 3), shl(lt(0xf, shr(r, a)), 0xf)), xor(7, mod(r, 3)))
+
+      s := div(add(add(div(a, mul(s, s)), s), s), 3)
+      s := div(add(add(div(a, mul(s, s)), s), s), 3)
+      s := div(add(add(div(a, mul(s, s)), s), s), 3)
+      s := div(add(add(div(a, mul(s, s)), s), s), 3)
+      s := div(add(add(div(a, mul(s, s)), s), s), 3)
+      s := div(add(add(div(a, mul(s, s)), s), s), 3)
+      s := div(add(add(div(a, mul(s, s)), s), s), 3)
+
+      s := sub(s, lt(div(a, mul(s, s)), s))
+    }
+  }
+
+  /**
+   * @notice Returns the log in base 2 of a positive value rounded towards zero
    * Returns 0 if given 0
    * @param value Input value
    * @return Log in base 2 of the input value
@@ -674,21 +789,25 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns the log in base 2, following the selected rounding direction, of a positive value
+   * @notice Returns the log in base 2, following the selected rounding direction, of a positive value
    * Returns 0 if given 0
    * @param value Input value
    * @param rounding Rounding direction
    * @return Log in base 2 of the input value with the specified rounding
    */
-  function log2(uint256 value, Rounding rounding) internal pure returns (uint256) {
+  function log2(
+    uint256 value,
+    Rounding rounding
+  ) internal pure returns (uint256) {
     unchecked {
       uint256 result = log2(value);
-      return result + (unsignedRoundsUp(rounding) && 1 << result < value ? 1 : 0);
+      return
+        result + (unsignedRoundsUp(rounding) && 1 << result < value ? 1 : 0);
     }
   }
 
   /**
-   * @dev Returns the log in base 10 of a positive value rounded towards zero
+   * @notice Returns the log in base 10 of a positive value rounded towards zero
    * Returns 0 if given 0
    * @param value Input value
    * @return Log in base 10 of the input value
@@ -728,21 +847,25 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns the log in base 10, following the selected rounding direction, of a positive value
+   * @notice Returns the log in base 10, following the selected rounding direction, of a positive value
    * Returns 0 if given 0
    * @param value Input value
    * @param rounding Rounding direction
    * @return Log in base 10 of the input value with the specified rounding
    */
-  function log10(uint256 value, Rounding rounding) internal pure returns (uint256) {
+  function log10(
+    uint256 value,
+    Rounding rounding
+  ) internal pure returns (uint256) {
     unchecked {
       uint256 result = log10(value);
-      return result + (unsignedRoundsUp(rounding) && 10 ** result < value ? 1 : 0);
+      return
+        result + (unsignedRoundsUp(rounding) && 10 ** result < value ? 1 : 0);
     }
   }
 
   /**
-   * @dev Returns the log in base 256 of a positive value rounded towards zero
+   * @notice Returns the log in base 256 of a positive value rounded towards zero
    * Returns 0 if given 0
    * Adding one to the result gives the number of pairs of hex symbols needed to represent `value` as a hex string
    * @param value Input value
@@ -775,21 +898,284 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns the log in base 256, following the selected rounding direction, of a positive value
+   * @notice Returns the log in base 256, following the selected rounding direction, of a positive value
    * Returns 0 if given 0
    * @param value Input value
    * @param rounding Rounding direction
    * @return Log in base 256 of the input value with the specified rounding
    */
-  function log256(uint256 value, Rounding rounding) internal pure returns (uint256) {
+  function log256(
+    uint256 value,
+    Rounding rounding
+  ) internal pure returns (uint256) {
     unchecked {
       uint256 result = log256(value);
-      return result + (unsignedRoundsUp(rounding) && 1 << (result << 3) < value ? 1 : 0);
+      return
+        result +
+        (unsignedRoundsUp(rounding) && 1 << (result << 3) < value ? 1 : 0);
+    }
+  }
+
+  function toWad(uint32 bps) internal pure returns (uint256) {
+    return uint256(bps) * WAD / BP_BASIS;
+  }
+
+  function toWad(uint256 bps) internal pure returns (uint256) {
+    return bps * WAD / BP_BASIS;
+  }
+
+  function toBps(uint256 wad) internal pure returns (uint256) {
+    return wad * BP_BASIS / WAD;
+  }
+
+  function rayToBps(uint256 ray) internal pure returns (uint256) {
+    return ray * BP_BASIS / RAY;
+  }
+
+  function bpsToRay(uint256 bps) internal pure returns (uint256) {
+    return bps * RAY / BP_BASIS;
+  }
+
+  /**
+   * @dev Equivalent to `x` to the power of `y` denominated in `WAD`
+   * because `x ** y = (e ** ln(x)) ** y = e ** (ln(x) * y)`
+   * Note: This function is an approximation
+   */
+  function powWad(int256 x, int256 y) internal pure returns (int256) {
+    // Using `ln(x)` means `x` must be greater than 0
+    return expWad((lnWad(x) * y) / int256(WAD));
+  }
+
+  /**
+   * @dev Returns `exp(x)`, denominated in `WAD`
+   * Credit to Remco Bloemen under MIT license: https://2π.com/22/exp-ln
+   * Note: This function is an approximation. Monotonically increasing
+   */
+  function expWad(int256 x) internal pure returns (int256 r) {
+    unchecked {
+      // When the result is less than 0.5 we return zero
+      // This happens when `x <= (log(1e-18) * 1e18) ~ -4.15e19`
+      if (x <= -41446531673892822313) return r;
+
+      /// @solidity memory-safe-assembly
+      assembly {
+        // When the result is greater than `(2**255 - 1) / 1e18` we can not represent it as
+        // an int. This happens when `x >= floor(log((2**255 - 1) / 1e18) * 1e18) ≈ 135`
+        if iszero(slt(x, 135305999368893231589)) {
+          mstore(0x00, 0xa37bfec9) // `ExpOverflow()`
+          revert(0x1c, 0x04)
+        }
+      }
+
+      // `x` is now in the range `(-42, 136) * 1e18`. Convert to `(-42, 136) * 2**96`
+      // for more intermediate precision and a binary basis. This base conversion
+      // is a multiplication by 1e18 / 2**96 = 5**18 / 2**78
+      x = (x << 78) / 5 ** 18;
+
+      // Reduce range of x to (-½ ln 2, ½ ln 2) * 2**96 by factoring out powers
+      // of two such that exp(x) = exp(x') * 2**k, where k is an integer
+      // Solving this gives k = round(x / log(2)) and x' = x - k * log(2)
+      int256 k = ((x << 96) / 54916777467707473351141471128 + 2 ** 95) >> 96;
+      x = x - k * 54916777467707473351141471128;
+
+      // `k` is in the range `[-61, 195]`.
+
+      // Evaluate using a (6, 7)-term rational approximation
+      // `p` is made monic, we'll multiply by a scale factor later
+      int256 y = x + 1346386616545796478920950773328;
+      y = ((y * x) >> 96) + 57155421227552351082224309758442;
+      int256 p = y + x - 94201549194550492254356042504812;
+      p = ((p * y) >> 96) + 28719021644029726153956944680412240;
+      p = p * x + (4385272521454847904659076985693276 << 96);
+
+      // We leave `p` in `2**192` basis so we don't need to scale it back up for the division
+      int256 q = x - 2855989394907223263936484059900;
+      q = ((q * x) >> 96) + 50020603652535783019961831881945;
+      q = ((q * x) >> 96) - 533845033583426703283633433725380;
+      q = ((q * x) >> 96) + 3604857256930695427073651918091429;
+      q = ((q * x) >> 96) - 14423608567350463180887372962807573;
+      q = ((q * x) >> 96) + 26449188498355588339934803723976023;
+
+      /// @solidity memory-safe-assembly
+      assembly {
+        // Div in assembly because solidity adds a zero check despite the unchecked
+        // The q polynomial won't have zeros in the domain as all its roots are complex
+        // No scaling is necessary because p is already `2**96` too large
+        r := sdiv(p, q)
+      }
+
+      // r should be in the range `(0.09, 0.25) * 2**96`.
+
+      // We now need to multiply r by:
+      // - The scale factor `s ≈ 6.031367120`
+      // - The `2**k` factor from the range reduction
+      // - The `1e18 / 2**96` factor for base conversion
+      // We do this all at once, with an intermediate result in `2**213`
+      // basis, so the final right shift is always by a positive amount
+      r = int256(
+        (uint256(r) * 3822833074963236453042738258902158003155416615667) >>
+          uint256(195 - k)
+      );
     }
   }
 
   /**
-   * @dev Returns whether a provided rounding mode is considered rounding up for unsigned integers
+   * @dev Returns `ln(x)`, denominated in `WAD`
+   * Credit to Remco Bloemen under MIT license: https://2π.com/22/exp-ln
+   * Note: This function is an approximation. Monotonically increasing
+   */
+  function lnWad(int256 x) internal pure returns (int256 r) {
+    /// @solidity memory-safe-assembly
+    assembly {
+      // We want to convert `x` from `10**18` fixed point to `2**96` fixed point
+      // We do this by multiplying by `2**96 / 10**18`. But since
+      // `ln(x * C) = ln(x) + ln(C)`, we can simply do nothing here
+      // and add `ln(2**96 / 10**18)` at the end.
+
+      // Compute `k = log2(x) - 96`, `r = 159 - k = 255 - log2(x) = 255 ^ log2(x)`
+      r := shl(7, lt(0xffffffffffffffffffffffffffffffff, x))
+      r := or(r, shl(6, lt(0xffffffffffffffff, shr(r, x))))
+      r := or(r, shl(5, lt(0xffffffff, shr(r, x))))
+      r := or(r, shl(4, lt(0xffff, shr(r, x))))
+      r := or(r, shl(3, lt(0xff, shr(r, x))))
+      // We place the check here for more optimal stack operations
+      if iszero(sgt(x, 0)) {
+        mstore(0x00, 0x1615e638) // `LnWadUndefined()`
+        revert(0x1c, 0x04)
+      }
+      // forgefmt: disable-next-item
+      r := xor(
+        r,
+        byte(
+          and(0x1f, shr(shr(r, x), 0x8421084210842108cc6318c6db6d54be)),
+          0xf8f9f9faf9fdfafbf9fdfcfdfafbfcfef9fafdfafcfcfbfefafafcfbffffffff
+        )
+      )
+
+      // Reduce range of x to (1, 2) * 2**96
+      // ln(2^k * x) = k * ln(2) + ln(x)
+      x := shr(159, shl(r, x))
+
+      // Evaluate using a (8, 8)-term rational approximation
+      // `p` is made monic, we will multiply by a scale factor later
+      // forgefmt: disable-next-item
+      let p := sub(
+        // This heavily nested expression is to avoid stack-too-deep for via-ir
+        sar(
+          96,
+          mul(
+            add(
+              43456485725739037958740375743393,
+              sar(
+                96,
+                mul(
+                  add(
+                    24828157081833163892658089445524,
+                    sar(96, mul(add(3273285459638523848632254066296, x), x))
+                  ),
+                  x
+                )
+              )
+            ),
+            x
+          )
+        ),
+        11111509109440967052023855526967
+      )
+      p := sub(sar(96, mul(p, x)), 45023709667254063763336534515857)
+      p := sub(sar(96, mul(p, x)), 14706773417378608786704636184526)
+      p := sub(mul(p, x), shl(96, 795164235651350426258249787498))
+      // We leave `p` in `2**192` basis so we don't need to scale it back up for the division.
+
+      // `q` is monic by convention
+      let q := add(5573035233440673466300451813936, x)
+      q := add(71694874799317883764090561454958, sar(96, mul(x, q)))
+      q := add(283447036172924575727196451306956, sar(96, mul(x, q)))
+      q := add(401686690394027663651624208769553, sar(96, mul(x, q)))
+      q := add(204048457590392012362485061816622, sar(96, mul(x, q)))
+      q := add(31853899698501571402653359427138, sar(96, mul(x, q)))
+      q := add(909429971244387300277376558375, sar(96, mul(x, q)))
+
+      // `p / q` is in the range `(0, 0.125) * 2**96`.
+
+      // Finalization, we need to:
+      // - Multiply by the scale factor `s = 5.549…`
+      // - Add `ln(2**96 / 10**18)`
+      // - Add `k * ln(2)`
+      // - Multiply by `10**18 / 2**96 = 5**18 >> 78`.
+
+      // The q polynomial is known not to have zeros in the domain
+      // No scaling required because p is already `2**96` too large
+      p := sdiv(p, q)
+      // Multiply by the scaling factor: `s * 5**18 * 2**96`, base is now `5**18 * 2**192`
+      p := mul(1677202110996718588342820967067443963516166, p)
+      // Add `ln(2) * k * 5**18 * 2**192`
+      // forgefmt: disable-next-item
+      p := add(
+        mul(
+          16597577552685614221487285958193947469193820559219878177908093499208371,
+          sub(159, r)
+        ),
+        p
+      )
+      // Add `ln(2**96 / 10**18) * 5**18 * 2**192`
+      p := add(
+        600920179829731861736702779321621459595472258049074101567377883020018308,
+        p
+      )
+      // Base conversion: mul `2**18 / 2**192`
+      r := sar(174, p)
+    }
+  }
+
+  /// @dev Returns the square root of `x`, denominated in `WAD`, rounded down
+  function sqrtWad(uint256 x) internal pure returns (uint256 z) {
+    unchecked {
+      if (x <= type(uint256).max / 10 ** 18) return sqrt(x * 10 ** 18);
+      z = (1 + sqrt(x)) * 10 ** 9;
+      z = (fullMulDivUnchecked(x, 10 ** 18, z) + z) >> 1;
+    }
+    /// @solidity memory-safe-assembly
+    assembly {
+      z := sub(z, gt(999999999999999999, sub(mulmod(z, z, x), 1)))
+    }
+  }
+
+  /// @dev Returns the cube root of `x`, denominated in `WAD`, rounded down
+  function cbrtWad(uint256 x) internal pure returns (uint256 z) {
+    unchecked {
+      if (x <= type(uint256).max / 10 ** 36) return cbrt(x * 10 ** 36);
+      z = (1 + cbrt(x)) * 10 ** 12;
+      z = (fullMulDivUnchecked(x, 10 ** 36, z * z) + z + z) / 3;
+      x = fullMulDivUnchecked(x, 10 ** 36, z * z);
+    }
+    /// @solidity memory-safe-assembly
+    assembly {
+      z := sub(z, lt(x, z))
+    }
+  }
+
+  /// @dev Returns the factorial of `x`
+  function factorial(uint256 x) internal pure returns (uint256 result) {
+    /// @solidity memory-safe-assembly
+    assembly {
+      result := 1
+      if iszero(lt(x, 58)) {
+        mstore(0x00, 0xaba0f2a2) // `FactorialOverflow()`
+        revert(0x1c, 0x04)
+      }
+      for {
+
+      } x {
+        x := sub(x, 1)
+      } {
+        result := mul(result, x)
+      }
+    }
+  }
+
+  /**
+   * @notice Returns whether a provided rounding mode is considered rounding up for unsigned integers
    * @param rounding Rounding direction
    * @return Whether the provided rounding mode is considered rounding up for unsigned integers
    */
@@ -814,7 +1200,7 @@ library AsMaths {
   }
 
   /**
-   * @dev Calculates the sum of an array of uint256 values
+   * @notice Calculates the sum of an array of uint256 values
    * @param data The array of uint256 values
    * @return total sum of the array elements
    */

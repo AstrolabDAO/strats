@@ -26,6 +26,7 @@
     "test": "yarn ts-mocha --require hardhat/register --timeout 120000 --recursive \"test/**/*.ts\" --exit",
     "build": "tsc --build .",
     "verify-tenderly": "yarn hardhat run --network tenderly scripts/verify.ts",
+    "set-weights-and-liquidate-tenderly": "yarn hardhat run --network tenderly scripts/set-weights-and-liquidate.ts",
     "test-multisig-tenderly": "yarn hardhat test test/integration/Multisig.test.ts --network tenderly",
     "test-multisig-arbitrum": "yarn hardhat test test/integration/Multisig.test.ts --network arbitrum-mainnet-one",
     "test-venus-optimizer-tenderly": "yarn hardhat test test/integration/VenusOptimizer.test.ts --network tenderly",

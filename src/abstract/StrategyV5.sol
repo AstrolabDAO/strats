@@ -307,10 +307,9 @@ abstract contract StrategyV5 is
    * @return total Amount invested
    */
   function _invested() internal view virtual override returns (uint256 total) {
-    for (uint256 i = 0; i < _inputLength; ) {
-      total += _invested(i);
-      unchecked {
-        i++;
+    unchecked {
+      for (uint256 i = 0; i < _inputLength; i++) {
+        total += _invested(i);
       }
     }
   }
@@ -348,10 +347,9 @@ abstract contract StrategyV5 is
     uint256 _total
   ) internal view returns (int256[8] memory excessWeights) {
     if (_total == 0) _total = _invested();
-    for (uint256 i = 0; i < _inputLength; ) {
-      excessWeights[i] = _excessWeight(i, _total);
-      unchecked {
-        i++;
+    unchecked {
+      for (uint256 i = 0; i < _inputLength; i++) {
+        excessWeights[i] = _excessWeight(i, _total);
       }
     }
   }
@@ -386,10 +384,9 @@ abstract contract StrategyV5 is
     uint256 _total
   ) internal view virtual returns (int256[8] memory excessLiquidity) {
     if (_total == 0) _total = _invested();
-    for (uint256 i = 0; i < _inputLength; ) {
-      excessLiquidity[i] = _excessLiquidity(i, _total);
-      unchecked {
-        i++;
+    unchecked {
+      for (uint256 i = 0; i < _inputLength; i++) {
+        excessLiquidity[i] = _excessLiquidity(i, _total);
       }
     }
   }
@@ -399,27 +396,27 @@ abstract contract StrategyV5 is
    * @param _amount Amount of underlying assets to recover
    * @return amounts Array[8] of previewed liquidated amounts in input tokens
    */
-  function previewLiquidate(
+  function _previewLiquidate(
     uint256 _amount
-  ) public onlyKeeper returns (uint256[8] memory amounts) {
+  ) internal returns (uint256[8] memory amounts) {
     (uint256 allocated, uint256 cash) = (_invested(), _available());
-    uint256 total = allocated + cash;
-    uint256 targetAlloc = total.mulDiv(_totalWeight, AsMaths.BP_BASIS);
-    uint256 pending = _totalPendingAssetsRequest();
-    _amount += pending + targetAlloc.bp(50); // overliquidate (0.5% of allocated) to buffer withdraw-ready liquidity
-    _amount = AsMaths.min(_amount, allocated);
+    unchecked {
+      uint256 total = allocated + cash;
+      uint256 targetAlloc = total.mulDiv(_totalWeight, AsMaths.BP_BASIS);
+      uint256 pending = _totalPendingAssetsRequest();
+      _amount += pending + targetAlloc.bp(50); // overliquidate (0.5% of allocated) to buffer withdraw-ready liquidity
+      _amount = AsMaths.min(_amount, allocated);
 
-    // excesses accounts for the weights and the cash available in the strategy
-    int256[8] memory targetExcesses = _excessLiquidity(targetAlloc - _amount);
-    int256 totalExcess = targetExcesses.sum();
+      // excesses accounts for the weights and the cash available in the strategy
+      int256[8] memory targetExcesses = _excessLiquidity(targetAlloc - _amount);
+      int256 totalExcess = targetExcesses.sum();
 
-    if (totalExcess > 0 && uint256(totalExcess) > _amount) {
-      _amount = uint256(totalExcess);
-    }
+      if (totalExcess > 0 && uint256(totalExcess) > _amount) {
+        _amount = uint256(totalExcess);
+      }
 
-    for (uint256 i = 0; i < _inputLength; ) {
-      if (_amount < 10) break; // no leftover
-      unchecked {
+      for (uint256 i = 0; i < _inputLength; i++) {
+        if (_amount < 10) break; // no leftover
         if (targetExcesses[i] > 0) {
           uint256 need = targetExcesses[i].abs();
           if (need > _amount) {
@@ -428,7 +425,6 @@ abstract contract StrategyV5 is
           amounts[i] = _assetToInput(need, i);
           _amount -= need;
         }
-        i++;
       }
     }
   }
@@ -438,26 +434,38 @@ abstract contract StrategyV5 is
    * @param _amount Amount of underlying assets to invest
    * @return amounts Array[8] of previewed invested amounts
    */
-  function previewInvest(
-    uint256 _amount
+  function preview(
+    uint256 _amount,
+    bool _investing
   ) public onlyKeeper returns (uint256[8] memory amounts) {
+    return _investing ? _previewInvest(_amount) : _previewLiquidate(_amount);
+  }
+
+  /**
+   * @notice Previews the breakdown of `_amount` underlying assets that would be invested in each input based on the current excess liquidities
+   * @param _amount Amount of underlying assets to invest
+   * @return amounts Array[8] of previewed invested amounts
+   */
+  function _previewInvest(
+    uint256 _amount
+  ) internal returns (uint256[8] memory amounts) {
     (uint256 allocated, uint256 cash) = (_invested(), _available());
-    uint256 total = allocated + cash;
+    unchecked {
+      uint256 total = allocated + cash;
 
-    if (_amount == 0) {
-      uint256 targetCash = total.mulDiv(
-        AsMaths.BP_BASIS - _totalWeight,
-        AsMaths.BP_BASIS
-      );
-      _amount = cash.subMax0(targetCash);
-    }
+      if (_amount == 0) {
+        uint256 targetCash = total.mulDiv(
+          AsMaths.BP_BASIS - _totalWeight,
+          AsMaths.BP_BASIS
+        );
+        _amount = cash.subMax0(targetCash);
+      }
 
-    // compute the excess liquidity
-    int256[8] memory targetExcesses = _excessLiquidity(allocated + _amount);
+      // compute the excess liquidity
+      int256[8] memory targetExcesses = _excessLiquidity(allocated + _amount);
 
-    for (uint256 i = 0; i < _inputLength; ) {
-      if (_amount < 10) break; // no leftover
-      unchecked {
+      for (uint256 i = 0; i < _inputLength; i++) {
+        if (_amount < 10) break; // no leftover
         if (targetExcesses[i] < 0) {
           uint256 need = targetExcesses[i].abs();
           if (need > _amount) {
@@ -466,65 +474,21 @@ abstract contract StrategyV5 is
           amounts[i] = need;
           _amount -= need;
         }
-        i++;
       }
     }
   }
 
   /**
-   * @notice Previews strategy specific swap needs for `_amount` underlying assets to be invested
-   * @param _previewAmounts Array[8] of previewed amounts in asset
-   * @return from Array[8] of swap input (base) tokens
-   * @return to Array[8] of swap output (quote) tokens
-   * @return amounts Array[8] of swap amounts in input tokens
-   */
-  function _previewInvestSwapAddons(
-    uint256[8] calldata _previewAmounts
-  )
-    internal
-    virtual
-    returns (
-      address[8] memory from,
-      address[8] memory to,
-      uint256[8] memory amounts
-    )
-  {}
-
-  function previewInvestSwapAddons(
-    uint256[8] calldata _previewAmounts
-  )
-    external
-    onlyKeeper
-    returns (
-      address[8] memory from,
-      address[8] memory to,
-      uint256[8] memory amounts
-    )
-  {
-    return _previewInvestSwapAddons(_previewAmounts);
-  }
-
-  /**
-   * @notice Previews strategy specific swap needs for `_amount` underlying assets to be liquidated
+   * @notice Previews strategy specific swap needs for `_amount` underlying assets to be invested or liquidated
    * @param _previewAmounts Array[8] of previewed amounts in each input tokens
+   * @param _investing True if the swaps are for investing, false if the swaps are for liquidating
    * @return from Array[8] of swap input (base) tokens
    * @return to Array[8] of swap output (quote) tokens
    * @return amounts Array[8] of swap amounts in input tokens
    */
-  function _previewLiquidateSwapAddons(
-    uint256[8] calldata _previewAmounts
-  )
-    internal
-    virtual
-    returns (
-      address[8] memory from,
-      address[8] memory to,
-      uint256[8] memory amounts
-    )
-  {}
-
-  function previewLiquidateSwapAddons(
-    uint256[8] calldata _previewAmounts
+  function previewSwapAddons(
+    uint256[8] calldata _previewAmounts,
+    bool _investing
   )
     external
     onlyKeeper
@@ -534,8 +498,21 @@ abstract contract StrategyV5 is
       uint256[8] memory amounts
     )
   {
-    return _previewLiquidateSwapAddons(_previewAmounts);
+    return _previewSwapAddons(_previewAmounts, _investing);
   }
+
+  function _previewSwapAddons(
+    uint256[8] calldata _previewAmounts,
+    bool _investing
+  )
+    internal
+    virtual
+    returns (
+      address[8] memory from,
+      address[8] memory to,
+      uint256[8] memory amounts
+    )
+  {}
 
   /**
    * @notice ERC-165 `supportsInterface` check
@@ -559,10 +536,12 @@ abstract contract StrategyV5 is
    * @return Balance of `_token` in the strategy
    */
   function _balance(address _token) internal view virtual returns (uint256) {
-    return
-      (_token == address(1) || _token == address(_wgas))
-        ? address(this).balance + _wgas.balanceOf(address(this)) // native+wrapped native
-        : IERC20Metadata(_token).balanceOf(address(this));
+    unchecked {
+      return
+        (_token == address(1) || _token == address(_wgas))
+          ? address(this).balance + _wgas.balanceOf(address(this)) // native+wrapped native
+          : IERC20Metadata(_token).balanceOf(address(this));
+    }
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -810,12 +789,11 @@ abstract contract StrategyV5 is
    */
   function _setLpTokenAllowances(uint256 _amount) internal virtual {
     // default is to approve AsMaths.MAX_UINT256
-    _amount = _amount > 0 ? _amount : AsMaths.MAX_UINT256;
-    for (uint256 i = 0; i < _inputLength; ) {
-      if (address(lpTokens[i]) == address(0)) break;
-      inputs[i].forceApprove(address(lpTokens[i]), _amount);
-      unchecked {
-        i++;
+    unchecked {
+      _amount = _amount > 0 ? _amount : AsMaths.MAX_UINT256;
+      for (uint256 i = 0; i < _inputLength; i++) {
+        if (address(lpTokens[i]) == address(0)) break;
+        inputs[i].forceApprove(address(lpTokens[i]), _amount);
       }
     }
   }
@@ -824,15 +802,29 @@ abstract contract StrategyV5 is
    * @notice Stakes or provides `_amount` from `input[_index]` to `lpTokens[_index]`
    * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
+   * @param _params Swaps calldata
    */
-  function _stake(uint256 _index, uint256 _amount) internal virtual;
+  function _stake(uint256 _index, uint256 _amount, bytes[] calldata _params) internal virtual {
+    _stake(_index, _amount);
+  }
+
+  function _stake(uint256 _index, uint256 _amount) internal virtual {
+    revert Errors.ContractNonCompliant();
+  }
 
   /**
    * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
    * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
+   * @param _params Swaps calldata
    */
-  function _unstake(uint256 _index, uint256 _amount) internal virtual;
+  function _unstake(uint256 _index, uint256 _amount, bytes[] calldata _params) internal virtual {
+    _unstake(_index, _amount);
+  }
+
+  function _unstake(uint256 _index, uint256 _amount) internal virtual {
+    revert Errors.ContractNonCompliant();
+  }
 
   /**
    * @notice Invests `_amounts` of underlying assets in the strategy inputs
@@ -845,53 +837,48 @@ abstract contract StrategyV5 is
     bytes[] calldata _params
   ) internal virtual returns (uint256 totalInvested) {
     _beforeInvest(_amounts, _params); // strat specific hook
+    unchecked {
+      uint256 spent;
+      uint256 toStake;
 
-    uint256 spent;
-    uint256 toStake;
-
-    for (uint256 i = 0; i < _inputLength; ) {
-      if (_amounts[i] < 10) {
-        unchecked {
-          i++;
+      for (uint256 i = 0; i < _inputLength; i++) {
+        if (_amounts[i] < 10) {
+          continue;
         }
-        continue;
-      }
 
-      if (asset != inputs[i]) {
-        (toStake, spent) = swapper.decodeAndSwap({
-          _input: address(asset),
-          _output: address(inputs[i]),
-          _amount: _amounts[i],
-          _params: _params[i]
-        });
-        // pick up any input dust (eg. from previous liquidate()), not just the swap output
-        toStake = inputs[i].balanceOf(address(this));
-      } else {
-        toStake = _amounts[i];
-        spent = _amounts[i];
-      }
+        if (asset != inputs[i]) {
+          (toStake, spent) = swapper.decodeAndSwap({
+            _input: address(asset),
+            _output: address(inputs[i]),
+            _amount: _amounts[i],
+            _params: _params[i]
+          });
+          // pick up any input dust (eg. from previous liquidate()), not just the swap output
+          toStake = inputs[i].balanceOf(address(this));
+        } else {
+          toStake = _amounts[i];
+          spent = _amounts[i];
+        }
 
-      uint256 staked = inputs[i].balanceOf(address(this));
-      _stake(i, toStake);
-      staked -= inputs[i].balanceOf(address(this));
+        uint256 staked = inputs[i].balanceOf(address(this));
+        _stake(i, toStake, _params);
+        staked -= inputs[i].balanceOf(address(this));
 
-      if (
-        staked <
-        _inputToStake(toStake, i).subBp(_4626StorageExt().maxSlippageBps)
-      ) {
-        revert Errors.AmountTooLow(staked);
-      }
+        if (
+          staked <
+          _inputToStake(toStake, i).subBp(_4626StorageExt().maxSlippageBps)
+        ) {
+          revert Errors.AmountTooLow(staked);
+        }
 
-      unchecked {
         totalInvested += spent;
-        i++;
       }
+
+      _afterInvest(totalInvested, _params); // strat specific hook
+
+      last.invest = uint64(block.timestamp);
+      emit Invest(totalInvested, block.timestamp);
     }
-
-    _afterInvest(totalInvested, _params); // strat specific hook
-
-    last.invest = uint64(block.timestamp);
-    emit Invest(totalInvested, block.timestamp);
   }
 
   /**
@@ -922,84 +909,76 @@ abstract contract StrategyV5 is
     bytes[] calldata _params
   ) internal virtual returns (uint256 totalRecovered) {
     _beforeLiquidate(_amounts, _params); // strat specific hook
+    unchecked {
+      // pre-liquidation sharePrice
+      last.sharePrice = _sharePrice();
 
-    // pre-liquidation sharePrice
-    last.sharePrice = _sharePrice();
+      // in share
+      uint256 pendingRedemption = _totalPendingRedemptionRequest();
 
-    // in share
-    uint256 pendingRedemption = _totalPendingRedemptionRequest();
+      // liquidate protocol positions
+      uint256 toUnstake;
+      uint256 recovered;
 
-    // liquidate protocol positions
-    uint256 toUnstake;
-    uint256 recovered;
-
-    for (uint256 i = 0; i < _inputLength; ) {
-      if (_amounts[i] < 10) {
-        unchecked {
-          i++;
+      for (uint256 i = 0; i < _inputLength; i++) {
+        if (_amounts[i] < 10) {
+          continue;
         }
-        continue;
-      }
-      toUnstake = _inputToStake(_amounts[i], i);
-      // AsMaths.min(_inputToStake(_amounts[i], i), lpTokens[i].balanceOf(address(this)));
-      uint256 balanceBefore = inputs[i].balanceOf(address(this));
-      _unstake(uint8(i), toUnstake);
-      recovered = inputs[i].balanceOf(address(this)) - balanceBefore; // `inputs[i]` recovered
-
-      // swap the unstaked `input[i]` tokens for underlying assets if necessary
-      if (inputs[i] != asset) {
-        // check for missing swapData
-        if (_params[i].length == 0) {
-          revert Errors.InvalidData();
+        toUnstake = _inputToStake(_amounts[i], i);
+        // AsMaths.min(_inputToStake(_amounts[i], i), lpTokens[i].balanceOf(address(this)));
+        uint256 balanceBefore = inputs[i].balanceOf(address(this));
+        _unstake(uint8(i), toUnstake, _params);
+        recovered = inputs[i].balanceOf(address(this)) - balanceBefore; // `inputs[i]` recovered
+        // swap the unstaked `input[i]` tokens for underlying assets if necessary
+        if (inputs[i] != asset) {
+          // check for missing swapData
+          if (_params[i].length == 0) {
+            revert Errors.InvalidData();
+          }
+          // check for natives to before swapping
+          if (address(inputs[i]) == address(1)) {
+            _wrapNative(recovered); // ETH->WETH to swap with
+          }
+          (recovered, ) = swapper.decodeAndSwap({ // `asset` recovered
+            _input: address(inputs[i]),
+            _output: address(asset),
+            _amount: _amounts[i],
+            _params: _params[i]
+          });
+        } else {
+          recovered = _amounts[i];
         }
-        // check for natives to before swapping
-        if (address(inputs[i]) == address(1)) {
-          _wrapNative(recovered); // ETH->WETH to swap with
+
+        // unified slippage check (unstake+remove liquidity+swap out)
+        if (
+          recovered <
+          _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps)
+        ) {
+          revert Errors.AmountTooLow(recovered);
         }
-        (recovered, ) = swapper.decodeAndSwap({ // `asset` recovered
-          _input: address(inputs[i]),
-          _output: address(asset),
-          _amount: _amounts[i],
-          _params: _params[i]
-        });
-      } else {
-        recovered = _amounts[i];
-      }
 
-      // unified slippage check (unstake+remove liquidity+swap out)
-      if (
-        recovered <
-        _inputToAsset(_amounts[i], i).subBp(_4626StorageExt().maxSlippageBps)
-      ) {
-        revert Errors.AmountTooLow(recovered);
-      }
-
-      // sum up the recovered underlying assets
-      unchecked {
+        // sum up the recovered underlying assets
         totalRecovered += recovered;
-        i++;
       }
+
+      _req.totalClaimableRedemption += pendingRedemption;
+
+      // use availableClaimable() and not borrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
+      uint256 liquidityAvailable = _availableClaimable().subMax0(
+        _req.totalClaimableRedemption.mulDiv(
+          last.sharePrice * _weiPerAsset,
+          _WEI_PER_SHARE_SQUARED
+        )
+      );
+
+      // check if we have enough cash to repay redemption requests
+      if (liquidityAvailable < _minLiquidity && !_panic) {
+        revert Errors.AmountTooLow(liquidityAvailable);
+      }
+      _afterLiquidate(totalRecovered, _params); // strat specific hook
+      last.liquidate = uint64(block.timestamp);
+      emit Liquidate(totalRecovered, liquidityAvailable, block.timestamp);
     }
-
-    _req.totalClaimableRedemption += pendingRedemption;
-
-    // use availableClaimable() and not borrowable() to avoid intra-block cash variance (absorbed by the redemption claim delays)
-    uint256 liquidityAvailable = _availableClaimable().subMax0(
-      _req.totalClaimableRedemption.mulDiv(
-        last.sharePrice * _weiPerAsset,
-        _WEI_PER_SHARE_SQUARED
-      )
-    );
-
-    // check if we have enough cash to repay redemption requests
-    if (liquidityAvailable < _minLiquidity && !_panic) {
-      revert Errors.AmountTooLow(liquidityAvailable);
-    }
-
-    _afterLiquidate(totalRecovered, _params); // strat specific hook
-
-    last.liquidate = uint64(block.timestamp);
-    emit Liquidate(totalRecovered, liquidityAvailable, block.timestamp);
   }
 
   /**
@@ -1075,20 +1054,19 @@ abstract contract StrategyV5 is
     bytes[] calldata _params
   ) internal virtual onlyKeeper returns (uint256 assetsReceived) {
     uint256 received;
-    for (uint256 i = 0; i < _rewardLength; ) {
-      if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
-        (received, ) = swapper.decodeAndSwap({
-          _input: rewardTokens[i],
-          _output: address(asset),
-          _amount: _balances[i],
-          _params: _params[i]
-        });
-        assetsReceived += received;
-      } else {
-        assetsReceived += _balances[i];
-      }
-      unchecked {
-        i++;
+    unchecked {
+      for (uint256 i = 0; i < _rewardLength; i++) {
+        if (rewardTokens[i] != address(asset) && _balances[i] > 10) {
+          (received, ) = swapper.decodeAndSwap({
+            _input: rewardTokens[i],
+            _output: address(asset),
+            _amount: _balances[i],
+            _params: _params[i]
+          });
+          assetsReceived += received;
+        } else {
+          assetsReceived += _balances[i];
+        }
       }
     }
   }
@@ -1102,21 +1080,20 @@ abstract contract StrategyV5 is
     bytes[] calldata _params
   ) internal virtual returns (uint256 assetsReceived) {
     _beforeHarvest(); // strat specific hook
-
-    assetsReceived = _swapRewards(_claimRewards(), _params);
-    // reset expected profits to updated value + amount
-    _expectedProfits =
-      AsAccounting.unrealizedProfits(
-        last.harvest,
-        _expectedProfits,
-        _profitCooldown
-      ) +
-      assetsReceived;
-
-    _afterHarvest(assetsReceived); // strat specific hook
-
-    last.harvest = uint64(block.timestamp);
-    emit Harvest(assetsReceived, block.timestamp);
+    unchecked {
+      assetsReceived = _swapRewards(_claimRewards(), _params);
+      // reset expected profits to updated value + amount
+      _expectedProfits =
+        AsAccounting.unrealizedProfits(
+          last.harvest,
+          _expectedProfits,
+          _profitCooldown
+        ) +
+        assetsReceived;
+      _afterHarvest(assetsReceived); // strat specific hook
+      last.harvest = uint64(block.timestamp);
+      emit Harvest(assetsReceived, block.timestamp);
+    }
   }
 
   /**

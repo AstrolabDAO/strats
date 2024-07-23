@@ -66,8 +66,8 @@ abstract contract AsPriceAware is AsPermissioned {
   /**
    * @return Oracle implementation address
    */
-  function oracle() external view returns (address) {
-    return address(_priceAwareStorage().oracle);
+  function oracle() public view returns (IPriceProvider) {
+    return _priceAwareStorage().oracle;
   }
 
   /*═══════════════════════════════════════════════════════════════╗
