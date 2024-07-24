@@ -125,9 +125,9 @@ abstract contract TestEnv is Test {
       "claimableTransactionFees",
       strat.claimableTransactionFees()
     );
-    uint256[] memory previewLiquidate = strat.previewLiquidate(0).dynamic();
+    uint256[] memory previewLiquidate = strat.preview(0, false).dynamic();
     vm.serializeUint(s, "previewLiquidate", previewLiquidate);
-    uint256[] memory previewInvest = strat.previewInvest(0).dynamic();
+    uint256[] memory previewInvest = strat.preview(0, true).dynamic();
     s = vm.serializeUint(s, "previewInvest", previewInvest);
     console.log(_msg, s);
   }

@@ -106,7 +106,7 @@ contract StrategyV5CompositeTest is TestEnvArb {
     uint256 balanceBefore = usdc.balanceOf(bob);
     vm.prank(bob);
     strat.requestRedeem(toRedeem, bob, bob, "");
-    uint256[8] memory liquidateAmounts = strat.previewLiquidate(0);
+    uint256[8] memory liquidateAmounts = strat.preview(0, false);
     bytes[] memory swapData = new bytes[](1);
     vm.prank(keeper);
     strat.liquidate(liquidateAmounts, 0, false, swapData); // free the redemption requests
@@ -125,7 +125,7 @@ contract StrategyV5CompositeTest is TestEnvArb {
     uint256 balanceBefore = usdc.balanceOf(bob);
     vm.prank(bob);
     strat.requestWithdraw(_toWithdraw, bob, bob, ""); // non standard as no guarantee of price (uses requestRedeem)
-    uint256[8] memory liquidateAmounts = strat.previewLiquidate(0);
+    uint256[8] memory liquidateAmounts = strat.preview(0, false);
     bytes[] memory swapData = new bytes[](1);
     vm.prank(keeper);
     strat.liquidate(liquidateAmounts, 0, false, swapData); // free the redemption requests

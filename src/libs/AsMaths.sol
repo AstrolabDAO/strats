@@ -194,6 +194,18 @@ library AsMaths {
     }
   }
 
+  function within32(uint32 value, uint256 _min, uint256 _max) internal pure returns (bool) {
+    unchecked {
+      return uint256(value) >= _min && uint256(value) <= _max;
+    }
+  }
+
+  function within64(uint64 value, uint256 _min, uint256 _max) internal pure returns (bool) {
+    unchecked {
+      return uint256(value) >= _min && uint256(value) <= _max;
+    }
+  }
+
   /**
    * @notice Checks if the difference between two values is within a specified range
    * @param a First value
@@ -916,7 +928,7 @@ library AsMaths {
     }
   }
 
-  function toWad(uint32 bps) internal pure returns (uint256) {
+  function toWad32(uint32 bps) internal pure returns (uint256) {
     return uint256(bps) * WAD / BP_BASIS;
   }
 
@@ -1128,12 +1140,12 @@ library AsMaths {
     }
   }
 
-  /// @dev Returns the square root of `x`, denominated in `WAD`, rounded down
+  /// @notice Returns the square root of `x`, denominated in `WAD`, rounded down
   function sqrtWad(uint256 x) internal pure returns (uint256 z) {
     unchecked {
       if (x <= type(uint256).max / 10 ** 18) return sqrt(x * 10 ** 18);
       z = (1 + sqrt(x)) * 10 ** 9;
-      z = (fullMulDivUnchecked(x, 10 ** 18, z) + z) >> 1;
+      z = (mulDiv(x, 10 ** 18, z) + z) >> 1;
     }
     /// @solidity memory-safe-assembly
     assembly {
@@ -1141,13 +1153,13 @@ library AsMaths {
     }
   }
 
-  /// @dev Returns the cube root of `x`, denominated in `WAD`, rounded down
+  /// @notice Returns the cube root of `x`, denominated in `WAD`, rounded down
   function cbrtWad(uint256 x) internal pure returns (uint256 z) {
     unchecked {
       if (x <= type(uint256).max / 10 ** 36) return cbrt(x * 10 ** 36);
       z = (1 + cbrt(x)) * 10 ** 12;
-      z = (fullMulDivUnchecked(x, 10 ** 36, z * z) + z + z) / 3;
-      x = fullMulDivUnchecked(x, 10 ** 36, z * z);
+      z = (mulDiv(x, 10 ** 36, z * z) + z + z) / 3;
+      x = mulDiv(x, 10 ** 36, z * z);
     }
     /// @solidity memory-safe-assembly
     assembly {
@@ -1155,7 +1167,19 @@ library AsMaths {
     }
   }
 
-  /// @dev Returns the factorial of `x`
+  /// @notice Returns the nth root of `x`, denominated in `WAD`, rounded down
+  function nrtWad(uint256 x, uint256 n) internal pure returns (uint256) {
+    require(n != 0 && x >= 0);
+    
+    if (x == 0) return 0;
+    if (x == WAD || n == 1) return x;
+
+    unchecked {
+      return uint256(powWad(int256(x), int256(WAD * WAD / n))); // x^(1/n) approximation
+    }
+  }
+
+  /// @notice Returns the factorial of `x`
   function factorial(uint256 x) internal pure returns (uint256 result) {
     /// @solidity memory-safe-assembly
     assembly {
