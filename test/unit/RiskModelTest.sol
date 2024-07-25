@@ -12,18 +12,19 @@ contract RiskModelTest is TestEnvArb {
 
   RiskModel public riskModel;
   IStrategyV5[] public strategies;
-  bytes score1 = abi.encode(80, 30, 90, 40);
-  bytes score2 = abi.encode(80, 30, 90, 40);
+  bytes score1 = abi.encode(uint16(80), uint16(30), uint16(90), uint16(40));
+  bytes score2 = abi.encode(uint16(80), uint16(30), uint16(90), uint16(40));
 
   constructor() TestEnvArb(true, true) {}
 
   function _setUp() internal override {
-    riskModel = new RiskModel(address(this)); // Assuming the test contract is the access controller
+    riskModel = new RiskModel(address(accessController)); // Assuming the test contract is the access controller
 
     // create and set up strategies
-    strategies.push(newStrat(1000000e6, 100000e6)); // $1M TVL, $50k liquidity
-    strategies.push(newStrat(500000e6, 75000e6)); // $500k TVL, $100k liquidity
-    strategies.push(newStrat(2000000e6, 300000e6)); // $2M TVL, $300k liquidity
+    strategies.push(newStrat(100_000e6, 2_000e6)); // $100k TVL, $2k liquidity
+    strategies.push(newStrat(100_000e6, 20_000e6)); // $100k TVL, $20k liquidity
+    strategies.push(newStrat(500_000e6, 10_000e6)); // 500K TVL, $10k liquidity
+    strategies.push(newStrat(500_000e6, 100_000e6)); // $500K TVL, $100k liquidity
 
     // assign scores to strategies
     vm.startPrank(manager);

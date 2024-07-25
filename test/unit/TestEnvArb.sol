@@ -3,6 +3,7 @@ pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
 import "../../src/abstract/AsTypes.sol";
+import {IStrategyV5} from "../../src/interfaces/IStrategyV5.sol";
 import {ChainlinkProvider} from "../../src/abstract/ChainlinkProvider.sol";
 import {TestEnv} from "./TestEnv.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
@@ -38,10 +39,10 @@ abstract contract TestEnvArb is TestEnv {
     // create arbitrum fork and deal test tokens
     vm.createSelectFork(vm.rpcUrl(vm.envString("arbitrum_private_rpc")));
     if (_fund) {
-      fundAll(rich, USDC, 100_000e6);
-      fundAll(rich, USDCe, 100_000e6);
-      fundAll(rich, WETH, 100e18);
-      fundAll(rich, WBTC, 10e8);
+      fundAll(rich, USDC, 2_000_000e6);
+      fundAll(rich, USDCe, 500_000e6);
+      fundAll(rich, WETH, 500e18);
+      fundAll(rich, WBTC, 20e8);
     }
   }
 
@@ -58,7 +59,7 @@ abstract contract TestEnvArb is TestEnv {
     );
   }
 
-  function init(Fees memory _fees) public virtual override {
+  function init(IStrategyV5 _strat, Fees memory _fees) public virtual override {
     // initialize the strategy
     // ERC20 metadata
     Erc20Metadata memory erc20Meta = Erc20Metadata({
@@ -91,6 +92,6 @@ abstract contract TestEnvArb is TestEnv {
 
     // initialize (admin only)
     vm.prank(admin);
-    strat.init(params);
+    _strat.init(params);
   }
 }

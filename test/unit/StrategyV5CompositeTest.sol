@@ -22,7 +22,7 @@ contract IStrategyV5CompositeTest is TestEnvArb {
 
   constructor() TestEnvArb(true, true) {}
 
-  function init(Fees memory _fees) public override {
+  function init(IStrategyV5 _strat, Fees memory _fees) public override {
 
     // strategy core addresses
     CoreAddresses memory coreAddresses = CoreAddresses({
@@ -83,7 +83,7 @@ contract IStrategyV5CompositeTest is TestEnvArb {
 
     // initialize (admin only)
     vm.prank(admin);
-    strat.init(compositeParams);
+    _strat.init(compositeParams);
   }
 
   function deposit(uint256 _toDeposit) public {
@@ -108,6 +108,7 @@ contract IStrategyV5CompositeTest is TestEnvArb {
     uint256 balanceBefore = usdc.balanceOf(bob);
     vm.prank(bob);
     strat.requestRedeem(toRedeem, bob, bob, "");
+    vm.prank(keeper);
     uint256[8] memory liquidateAmounts = strat.preview(0, false);
     bytes[] memory swapData = new bytes[](1);
     vm.prank(keeper);
@@ -127,6 +128,7 @@ contract IStrategyV5CompositeTest is TestEnvArb {
     uint256 balanceBefore = usdc.balanceOf(bob);
     vm.prank(bob);
     strat.requestWithdraw(_toWithdraw, bob, bob, ""); // non standard as no guarantee of price (uses requestRedeem)
+    vm.prank(keeper);
     uint256[8] memory liquidateAmounts = strat.preview(0, false);
     bytes[] memory swapData = new bytes[](1);
     vm.prank(keeper);
@@ -186,12 +188,11 @@ contract IStrategyV5CompositeTest is TestEnvArb {
     Fees memory _fees,
     uint256 _minLiquidity
   ) public returns (uint256, uint256) {
-    deployStrat(_fees, _minLiquidity, true);
+    strat = deployStrat(_fees, _minLiquidity, true);
     return (strat.totalAssets(), usdc.balanceOf(bob));
   }
 
   function testAll() public {
-    deployDependencies();
     uint256 assetsBefore;
     uint256 bobBalanceBefore;
 

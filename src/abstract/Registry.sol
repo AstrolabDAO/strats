@@ -2,9 +2,9 @@
 pragma solidity 0.8.25;
 
 import "../libs/AsMaths.sol";
-import "../libs/AsIterableSet.sol";	
-import "./AsPermissioned.sol";
+import "../libs/AsIterableSet.sol";
 import "../interfaces/IStrategyV5.sol";
+import "./AsManageable.sol";
 
 /**
  *             _             _       _
@@ -17,7 +17,7 @@ import "../interfaces/IStrategyV5.sol";
  * @author Astrolab DAO
  * @notice Source of truth for all production deployments
  */
-contract Registry is AsPermissioned {
+contract Registry is AsManageable {
   using AsIterableSet for AsIterableSet.Set;
   using AsCast for bytes32;
   using AsCast for address;
@@ -84,7 +84,7 @@ contract Registry is AsPermissioned {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  constructor(address _accessController) AsPermissioned(_accessController) {}
+  constructor(address _accessController) AsManageable(_accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             VIEWS                              ║
@@ -95,7 +95,9 @@ contract Registry is AsPermissioned {
    * @param _aggregationLevel Aggregation level
    * @return Array of composite strategies
    */
-  function getComposites(uint256 _aggregationLevel) public view virtual returns (address[] memory) {
+  function getComposites(
+    uint256 _aggregationLevel
+  ) public view virtual returns (address[] memory) {
     return _composites[_aggregationLevel].valuesAsAddress();
   }
 
@@ -103,7 +105,12 @@ contract Registry is AsPermissioned {
    * @notice Gets the list of cross-chain composite strategies (0x000...AAA1)
    * @return Array of cross-chain composite strategies
    */
-  function getCrossChainComposites() public view virtual returns (address[] memory) {
+  function getCrossChainComposites()
+    public
+    view
+    virtual
+    returns (address[] memory)
+  {
     return _composites[uint256(AggregationLevel.CROSS_CHAIN)].valuesAsAddress();
   }
 
@@ -135,7 +142,9 @@ contract Registry is AsPermissioned {
    * @notice Checks if the given aggregation level is valid and if the caller has the required role
    * @param _aggregationLevel Aggregation level to check
    */
-  function _checkAggregationLevel(AggregationLevel _aggregationLevel) internal view virtual {
+  function _checkAggregationLevel(
+    AggregationLevel _aggregationLevel
+  ) internal view virtual {
     if (uint256(_aggregationLevel) > 2) revert Errors.InvalidData();
     if (_aggregationLevel == AggregationLevel.CROSS_CHAIN) {
       _checkRole(Roles.ADMIN, msg.sender);
@@ -147,7 +156,7 @@ contract Registry is AsPermissioned {
    * @param _strategy Address of the strategy to check
    */
   function _checkStrategy(address _strategy) internal view virtual {
-    (bool success,) = _strategy.staticcall(
+    (bool success, ) = _strategy.staticcall(
       abi.encodeWithSelector(IAccessController.isAdmin.selector, msg.sender)
     );
     if (!success || address(IStrategyV5(_strategy).asset()) == address(0)) {
@@ -164,11 +173,16 @@ contract Registry is AsPermissioned {
    * @param _aggregationLevel Aggregation level to add the composite strategy to
    * @param _strategy Address of the composite strategy to add
    */
-  function addComposite(AggregationLevel _aggregationLevel, address _strategy) external onlyManager {
+  function addComposite(
+    AggregationLevel _aggregationLevel,
+    address _strategy
+  ) external onlyManager whenNotPaused {
     _checkAggregationLevel(_aggregationLevel);
     _checkStrategy(_strategy);
     if (_aggregationLevel == AggregationLevel.CROSS_CHAIN) {
-      composite1ByUnderlying[address(IStrategyV5(_strategy).asset())] = _strategy;
+      composite1ByUnderlying[
+        address(IStrategyV5(_strategy).asset())
+      ] = _strategy;
     }
     _composites[uint256(_aggregationLevel)].push(_strategy);
     emit CompositeAdded(_aggregationLevel, _strategy);
@@ -179,7 +193,10 @@ contract Registry is AsPermissioned {
    * @param _aggregationLevel Aggregation level to remove the composite strategy from
    * @param _strategy Address of the composite strategy to remove
    */
-  function removeComposite(AggregationLevel _aggregationLevel, address _strategy) external onlyManager {
+  function removeComposite(
+    AggregationLevel _aggregationLevel,
+    address _strategy
+  ) external onlyManager whenNotPaused {
     _checkAggregationLevel(_aggregationLevel);
     if (_aggregationLevel == AggregationLevel.CROSS_CHAIN) {
       delete composite1ByUnderlying[address(IStrategyV5(_strategy).asset())];
@@ -192,7 +209,7 @@ contract Registry is AsPermissioned {
    * @notice Adds a primitive strategy
    * @param _strategy Address of the primitive strategy to add
    */
-  function addPrimitive(address _strategy) external onlyManager {
+  function addPrimitive(address _strategy) external onlyManager whenNotPaused {
     _checkStrategy(_strategy);
     _primitives.push(_strategy);
     emit PrimitiveAdded(_strategy);
@@ -202,7 +219,9 @@ contract Registry is AsPermissioned {
    * @notice Removes a primitive strategy
    * @param _strategy Address of the primitive strategy to remove
    */
-  function removePrimitive(address _strategy) external onlyManager {
+  function removePrimitive(
+    address _strategy
+  ) external onlyManager whenNotPaused {
     _primitives.remove(_strategy);
     emit PrimitiveRemoved(_strategy);
   }

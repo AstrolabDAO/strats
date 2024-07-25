@@ -78,6 +78,7 @@ abstract contract TestEnv is Test {
     }
   }
 
+  // fund admin + manager + keeper + bob + alice + charlie
   function fundAll(address _from, address _token, int256 _amount) public {
     vm.startPrank(_from);
     ERC20(_token).transfer(admin, uint256(_amount));
@@ -108,32 +109,38 @@ abstract contract TestEnv is Test {
     feesCollected = abi.decode(data, (uint256));
   }
 
-  function logState(string memory _msg) public {
+  function logState(IStrategyV5 _strat, string memory _msg) public {
     string memory s = "state";
-    vm.serializeUint(s, "sharePrice", strat.sharePrice());
-    vm.serializeUint(s, "totalSupply", strat.totalSupply());
-    vm.serializeUint(s, "totalAccountedSupply", strat.totalAccountedSupply());
-    vm.serializeUint(s, "totalAccountedAssets", strat.totalAccountedAssets());
-    vm.serializeUint(s, "invested", strat.invested());
-    vm.serializeUint(s, "available", strat.available());
-    vm.serializeUint(s, "balanceOf(admin)", strat.balanceOf(admin));
-    vm.serializeUint(s, "balanceOf(manager)", strat.balanceOf(manager));
-    vm.serializeUint(s, "balanceOf(user[0])", strat.balanceOf(bob));
+    vm.serializeUint(s, "sharePrice", _strat.sharePrice());
+    vm.serializeUint(s, "totalSupply", _strat.totalSupply());
+    vm.serializeUint(s, "totalAccountedSupply", _strat.totalAccountedSupply());
+    vm.serializeUint(s, "totalAccountedAssets", _strat.totalAccountedAssets());
+    vm.serializeUint(s, "invested", _strat.invested());
+    vm.serializeUint(s, "available", _strat.available());
+    vm.serializeUint(s, "balanceOf(admin)", _strat.balanceOf(admin));
+    vm.serializeUint(s, "balanceOf(manager)", _strat.balanceOf(manager));
+    vm.serializeUint(s, "balanceOf(user[0])", _strat.balanceOf(bob));
     vm.serializeUint(
       s,
       "asset.balanceOf(strat)",
-      strat.asset().balanceOf(address(strat))
+      _strat.asset().balanceOf(address(_strat))
     );
     vm.serializeUint(
       s,
       "claimableTransactionFees",
-      strat.claimableTransactionFees()
+      _strat.claimableTransactionFees()
     );
-    uint256[] memory previewLiquidate = strat.preview(0, false).dynamic();
+    vm.prank(keeper);
+    uint256[] memory previewLiquidate = _strat.preview(0, false).dynamic();
     vm.serializeUint(s, "previewLiquidate", previewLiquidate);
-    uint256[] memory previewInvest = strat.preview(0, true).dynamic();
+    vm.prank(keeper);
+    uint256[] memory previewInvest = _strat.preview(0, true).dynamic();
     s = vm.serializeUint(s, "previewInvest", previewInvest);
     console.log(_msg, s);
+  }
+
+  function logState(string memory _msg) public {
+    logState(strat, _msg);
   }
 
   function initOracle() public virtual;
@@ -146,7 +153,7 @@ abstract contract TestEnv is Test {
     agent = address(new StrategyV5Agent(address(accessController)));
   }
 
-  function init(Fees memory _fees) public virtual;
+  function init(IStrategyV5 _strat, Fees memory _fees) public virtual;
 
   function deployStrat(Fees memory _fees, uint256 _minLiquidit) public returns (IStrategyV5) {
     return deployStrat(_fees, _minLiquidit, false);
@@ -157,12 +164,15 @@ abstract contract TestEnv is Test {
     uint256 _minLiquidity,
     bool _isComposite
   ) public returns (IStrategyV5) {
+    if (address(agent) == address(0)) {
+      deployDependencies();
+    }
     IStrategyV5 s = IStrategyV5(
       _isComposite
         ? address(new StrategyV5CompositeSimulator(address(accessController), vm))
         : address(new StrategyV5Simulator(address(accessController), vm))
     );
-    init(_fees); // overriden in TestArbEnv, TestBaseEnv...
+    init(s, _fees); // overriden in TestArbEnv, TestBaseEnv...
     vm.prank(admin);
     s.setExemption(admin, true); // exempt admin from fees
     vm.prank(admin);
@@ -170,8 +180,8 @@ abstract contract TestEnv is Test {
     require(s.exemptionList(admin), "Admin should be exempt from fees");
     require(s.exemptionList(manager), "Manager should be exempt from fees");
 
-    seedLiquidity(_minLiquidity);
-    logState("deployed new dummy strat");
+    seedLiquidity(s, _minLiquidity);
+    logState(s, "Deployed new dummy strat");
     return s;
   }
 
@@ -194,15 +204,15 @@ abstract contract TestEnv is Test {
     );
   }
 
-  function seedLiquidity(uint256 _minLiquidity) public {
+  function seedLiquidity(IStrategyV5 _strat, uint256 _minLiquidity) public {
     vm.startPrank(admin);
-    strat.setMinLiquidity(_minLiquidity);
-    strat.asset().approve(address(strat), type(uint256).max);
-    strat.seedLiquidity(_minLiquidity, type(uint256).max); // seed liquidity, set maxTvl, unpause
+    _strat.setMinLiquidity(_minLiquidity);
+    _strat.asset().approve(address(_strat), type(uint256).max);
+    _strat.seedLiquidity(_minLiquidity, type(uint256).max); // seed liquidity, set maxTvl, unpause
     vm.stopPrank();
     vm.prank(manager);
     require(
-      strat.collectFees() == 0,
+      _strat.collectFees() == 0,
       "Collected fees should be 0 since the admin seeded and is exempt from fees"
     );
   }

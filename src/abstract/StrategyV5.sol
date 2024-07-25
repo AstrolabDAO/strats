@@ -809,7 +809,7 @@ abstract contract StrategyV5 is
   }
 
   function _stake(uint256 _index, uint256 _amount) internal virtual {
-    revert Errors.ContractNonCompliant();
+    revert Errors.NotImplemented();
   }
 
   /**

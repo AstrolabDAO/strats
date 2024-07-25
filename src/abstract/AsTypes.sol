@@ -130,7 +130,7 @@ library Errors {
   error AcceptanceExpired();
   error AcceptanceLocked();
   error ContractNonCompliant();
-  error NonImplemented();
+  error NotImplemented();
   error MissingOracle();
 }
 

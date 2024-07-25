@@ -33,12 +33,21 @@ contract StrategyV5Simulator is StrategyV5, Simulator {
   function _setParams(bytes memory _params) internal override {}
 
   function _stake(uint256 _index, uint256 _amount) internal override {
-    inputs[_index].safeTransferFrom(address(this), dummyVault, _amount);
+    console.log("staking:", inputs[_index].symbol(), _amount);
+    console.log("balance:", inputs[_index].balanceOf(address(this)));
+    console.log("balance of dummyVault:", inputs[_index].balanceOf(dummyVault));
+    inputs[_index].forceApprove(dummyVault, _amount);
+    inputs[_index].safeTransfer(dummyVault, _amount);
   }
 
   function _unstake(uint256 _index, uint256 _amount) internal override {
+    console.log("staking:", inputs[_index].symbol(), _amount);
+    console.log("balance:", inputs[_index].balanceOf(address(this)));
+    console.log("balance of dummyVault:", inputs[_index].balanceOf(dummyVault));
     vm.prank(dummyVault);
-    inputs[_index].safeTransferFrom(dummyVault, address(this), _amount);
+    inputs[_index].forceApprove(address(this), _amount);
+    vm.prank(dummyVault);
+    inputs[_index].safeTransfer(address(this), _amount);
   }
 
   function _investedInput(

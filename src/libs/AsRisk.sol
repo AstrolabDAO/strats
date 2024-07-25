@@ -4,7 +4,6 @@ pragma solidity 0.8.25;
 import "./AsMaths.sol";
 import "./AsArrays.sol";
 import "../abstract/AsTypes.sol";
-import {console} from "forge-std/console.sol";
 
 /**
  *             _             _       _
@@ -231,7 +230,7 @@ library AsRisk {
         }
         return uint16((n * 1e18) / sum);
       } else {
-        revert Errors.NonImplemented();
+        revert Errors.NotImplemented();
       }
     }
   }

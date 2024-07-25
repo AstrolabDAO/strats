@@ -35,6 +35,7 @@ contract Erc7540VaultTest is TestEnvArb {
     uint256 balanceBefore = usdc.balanceOf(bob);
     vm.prank(bob);
     strat.requestRedeem(toRedeem, bob, bob, "");
+    vm.prank(keeper);
     uint256[8] memory liquidateAmounts = strat.preview(0, false);
     bytes[] memory swapData = new bytes[](1);
     vm.prank(keeper);
@@ -54,6 +55,7 @@ contract Erc7540VaultTest is TestEnvArb {
     uint256 balanceBefore = usdc.balanceOf(bob);
     vm.prank(bob);
     strat.requestWithdraw(_toWithdraw, bob, bob, ""); // non standard as no guarantee of price (uses requestRedeem)
+    vm.prank(keeper);
     uint256[8] memory liquidateAmounts = strat.preview(0, false);
     bytes[] memory swapData = new bytes[](1);
     vm.prank(keeper);

@@ -30,7 +30,7 @@ contract CompoundV3Optimizer is StrategyV5 {
 
   function _isLegacy(ICometRewards _controller) internal view returns (bool) {
     bool isLegacy;
-    try _controller.rewardConfig(address(lpTokens[0])) returns (ICometRewards.RewardConfig memory config) {
+    try _controller.rewardConfig(address(lpTokens[0])) returns (ICometRewards.RewardConfig memory) {
       isLegacy = false; // `multiplier` field exists in the struct
     } catch {
       isLegacy = true;

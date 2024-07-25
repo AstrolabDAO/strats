@@ -4,7 +4,7 @@ pragma solidity 0.8.25;
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsRisk.sol";
-import "./AsPermissioned.sol";
+import "./AsManageable.sol";
 import "../interfaces/IStrategyV5.sol";
 
 /**
@@ -18,7 +18,7 @@ import "../interfaces/IStrategyV5.sol";
  * @author Astrolab DAO
  * @notice Dictates how strategies are evaluated, allocated to, and rebalanced
  */
-contract RiskModel is AsPermissioned {
+contract RiskModel is AsManageable {
   using AsMaths for uint256;
   using AsMaths for uint32;
   using AsMaths for uint64;
@@ -57,7 +57,7 @@ contract RiskModel is AsPermissioned {
    * @notice Constructor to initialize the RiskModel contract
    * @param _accessController Address of the access controller
    */
-  constructor(address _accessController) AsPermissioned(_accessController) {}
+  constructor(address _accessController) AsManageable(_accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             VIEWS                              ║
@@ -110,7 +110,9 @@ contract RiskModel is AsPermissioned {
   function primitiveCScores(
     IStrategyV5 _composite
   ) public view returns (uint16[] memory) {
-    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(_composite);
+    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(
+      _composite
+    );
     return primitiveCScores(_primitives, _boundary);
   }
 
@@ -123,8 +125,15 @@ contract RiskModel is AsPermissioned {
   function compositeCScore(
     IStrategyV5 _composite
   ) public view returns (uint16) {
-    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(_composite);
-    return AsRisk.cScore(primitiveCScores(_primitives, _boundary), _boundary, allocationParams.scoring.mean);
+    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(
+      _composite
+    );
+    return
+      AsRisk.cScore(
+        primitiveCScores(_primitives, _boundary),
+        _boundary,
+        allocationParams.scoring.mean
+      );
   }
 
   /**
@@ -245,7 +254,9 @@ contract RiskModel is AsPermissioned {
     IStrategyV5 _strategy,
     uint256 _amount
   ) external view returns (uint256[] memory) {
-    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(_strategy);
+    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(
+      _strategy
+    );
     return targetCompositeAllocation(_primitives, _boundary, _amount);
   }
 
@@ -299,162 +310,6 @@ contract RiskModel is AsPermissioned {
       }
     }
     return allocation;
-  }
-
-  /*═══════════════════════════════════════════════════════════════╗
-  ║                             METHODS                            ║
-  ╚═══════════════════════════════════════════════════════════════*/
-
-  /**
-   * @notice Internal function to update the score of a strategy
-   * @param _strategy Strategy
-   * @param _performance Performance score
-   * @param _safety Safety score
-   * @param _scalability Scalability score
-   * @param _liquidity Liquidity score
-   */
-  function _updateScore(
-    IStrategyV5 _strategy,
-    uint16 _performance,
-    uint16 _safety,
-    uint16 _scalability,
-    uint16 _liquidity
-  ) internal {
-    RiskParams.StrategyScore memory _score = AsRisk.computeStrategyScore(
-      AsArrays.toArray16(_performance, _safety, _scalability, _liquidity),
-      allocationParams.scoring.mean
-    );
-    scoreByStrategy[_strategy] = _score;
-    emit StrategyScoreUpdated(_strategy, _score);
-  }
-
-  /**
-   * @notice Internal function to update the score of a strategy using score data
-   * @param _strategy Strategy
-   * @param _scoreData Score data
-   */
-  function _updateScore(
-    IStrategyV5 _strategy,
-    bytes calldata _scoreData
-  ) internal {
-    (uint16 _perf, uint16 _safety, uint16 _scalability, uint16 _liquidity) = abi
-      .decode(_scoreData, (uint16, uint16, uint16, uint16));
-    _updateScore(_strategy, _perf, _safety, _scalability, _liquidity);
-  }
-
-  /**
-   * @notice Updates the score of a strategy
-   * @param _strategy Strategy
-   * @param _scoreData Score data
-   */
-  function updateScore(
-    IStrategyV5 _strategy,
-    bytes calldata _scoreData
-  ) external onlyManager {
-    _updateScore(_strategy, _scoreData);
-  }
-
-  /**
-   * @notice Updates the scores of multiple strategies
-   * @param _strategies Array of strategies
-   * @param _scoreData Array of score data
-   */
-  function updateScores(
-    IStrategyV5[] memory _strategies,
-    bytes[] calldata _scoreData
-  ) external onlyManager {
-    unchecked {
-      for (uint256 i = 0; i < _strategies.length; i++) {
-        _updateScore(_strategies[i], _scoreData[i]);
-      }
-    }
-  }
-
-  /**
-   * @notice Updates the strategy parameters
-   * @param _p New strategy parameters
-   */
-  function updateStrategyParams(
-    RiskParams.Strategy memory _p
-  ) external onlyAdmin {
-    unchecked {
-      if (
-        // strategy defaults sanitization
-        !_p.defaultSeedUsd.within(10e18, 100_000e18) || // liquidity seeding (>$10, <$100k)
-        !_p.defaultDepositCapUsd.within(0, 1_000_000e18) || // deposit cap (>$100, <$1m)
-        !_p.defaultMaxLeverage.within32(2_00, 200_00) || // max leverage to not brick any strats (>2:1, <200:1)
-        !_p.defaultMaxSlippage.within32(6, 5_00) || // slippage range (>0.06%, <5%)
-        !_p.minUpkeepInterval.within64(1800, 604_800) // forced upkeep interval (>30min, <7days)
-      ) revert Errors.InvalidData();
-      strategyParams = _p;
-      emit StrategyParamsUpdated(_p);
-    }
-  }
-
-  /**
-   * @notice Updates the allocation parameters for the risk model
-   * @param _p New allocation parameters
-   */
-  function updateAllocationParams(
-    RiskParams.Allocation memory _p
-  ) external onlyAdmin {
-    unchecked {
-      if (
-        // scoring methodology sanitization
-        (_p.scoring.mean != AverageType.ARITHMETIC &&
-          _p.scoring.mean != AverageType.GEOMETRIC &&
-          _p.scoring.mean != AverageType.HARMONIC) ||
-        !_p.scoring.exponent.within32(7000, 2_5000) || // score exponent (>0.7, <2.5)
-        // diversification bias sanitization
-        !_p.diversification.minRatio.within32(0, 2_000) || // min allocation (<20%)
-        !_p.diversification.minMaxRatio.within32(10_00, 60_00) || // min max allocation (>10%,<60%)
-        !_p.diversification.exponent.within32(2000, 2_0000) || // max allocation exponent (.2>, <2)
-        // trailing profits/rewards harvesting sanitization
-        !_p.harvestTrigger.factor.within32(1000, 100_0000) || // harvest tvl factor (>.1, <100)
-        !_p.harvestTrigger.exponent.within32(3000, 8500) || // harvest tvl exponent (>.3, <.85)
-        // target liquidity (netting gravity center) sanitization
-        !_p.targetLiquidity.minRatio.within32(300, 2_500) || // target liquidity ratio (>3%, <25%)
-        !_p.targetLiquidity.factor.within32(100, 100_000) || // target liquidity tvl factor (>.01, <1000)
-        !_p.targetLiquidity.exponent.within32(500, 7000) || // target liquidity tvl exponent (>.05, <.7)
-        // liquidity upper band (allocation) sanitization
-        !_p.allocationTrigger.minRatio.within32(25, 1000) || // allocation trigger tvl factor (>.25%, <10%)
-        !_p.allocationTrigger.factor.within32(100, 1500) || // allocation trigger tvl factor (>.01, <.15)
-        !_p.allocationTrigger.exponent.within32(500, 1_0000) || // allocation trigger tvl exponent (>.0005, <1)
-        // liquidation lower band (soft-liquidation) sanitization
-        !_p.liquidationTrigger.minRatio.within32(25, 1000) || // liquidation trigger tvl factor (>.25%, <10%)
-        !_p.liquidationTrigger.factor.within32(100, 1500) || // liquidation trigger tvl factor (>.01, <.15)
-        !_p.liquidationTrigger.exponent.within32(500, 1_0000) || // liquidation trigger tvl exponent (>.0005, <1)
-        // liquidation 2nd lower band (hard-liquidation) sanitization
-        !_p.panicTrigger.minRatio.within32(30, 2_000) || // panic trigger tvl factor (>.05%, <20%)
-        !_p.panicTrigger.factor.within32(120, 1700) || // panic trigger tvl factor (>.012, <.17)
-        !_p.panicTrigger.exponent.within32(6, 1_0000) || // panic trigger tvl exponent (>.0006, <1)
-        // hard-liquidation vs soft-liquidation sanitization
-        _p.liquidationTrigger.minRatio <= _p.panicTrigger.minRatio ||
-        _p.liquidationTrigger.factor <= _p.panicTrigger.factor ||
-        _p.liquidationTrigger.exponent <= _p.panicTrigger.exponent
-      ) revert Errors.InvalidData();
-      allocationParams = _p;
-      emit AllocationParamsUpdated(_p);
-    }
-  }
-
-  /**
-   * @notice Updates the stable mint parameters for the risk model
-   * @param _p New stable mint parameters
-   */
-  function updateStableMintParams(
-    RiskParams.StableMint memory _p
-  ) external onlyAdmin {
-    unchecked {
-      if (
-        !_p.compositeCollateral.defaultLtv.within32(0, 9800) || // collateralization factor (<98%)
-        !_p.primitiveCollateral.defaultLtv.within32(0, 9800) || // collateralization factor (<98%)
-        !_p.compositeCollateral.maxLtv.within32(0, 9800) || // max collateralization factor (<98%)
-        !_p.primitiveCollateral.maxLtv.within32(0, 9800) // max collateralization factor (<98%)
-      ) revert Errors.InvalidData();
-      stableMintParams = _p;
-      emit StableMintParamsUpdated(_p);
-    }
   }
 
   /**
@@ -545,7 +400,7 @@ contract RiskModel is AsPermissioned {
   function _liquidityValueRegressor(
     uint256 _tvl,
     RiskParams.Liquidity memory _params
-  ) public view returns (uint256) {
+  ) public pure returns (uint256) {
     return (_liquidityRatioRegressor(_tvl, _params) * _tvl) / 1e18;
   }
 
@@ -704,7 +559,8 @@ contract RiskModel is AsPermissioned {
   function targetAllocation(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
-    return targetAllocationRatio(_strategy) * strategyTvlUsd(_strategy) / 1e18;
+    return
+      (targetAllocationRatio(_strategy) * strategyTvlUsd(_strategy)) / 1e18;
   }
 
   /**
@@ -831,5 +687,161 @@ contract RiskModel is AsPermissioned {
         allocationParams.targetLiquidity,
         true
       );
+  }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                             METHODS                            ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Internal function to update the score of a strategy
+   * @param _strategy Strategy
+   * @param _performance Performance score
+   * @param _safety Safety score
+   * @param _scalability Scalability score
+   * @param _liquidity Liquidity score
+   */
+  function _updateScore(
+    IStrategyV5 _strategy,
+    uint16 _performance,
+    uint16 _safety,
+    uint16 _scalability,
+    uint16 _liquidity
+  ) internal {
+    RiskParams.StrategyScore memory _score = AsRisk.computeStrategyScore(
+      AsArrays.toArray16(_performance, _safety, _scalability, _liquidity),
+      allocationParams.scoring.mean
+    );
+    scoreByStrategy[_strategy] = _score;
+    emit StrategyScoreUpdated(_strategy, _score);
+  }
+
+  /**
+   * @notice Internal function to update the score of a strategy using score data
+   * @param _strategy Strategy
+   * @param _scoreData Score data
+   */
+  function _updateScore(
+    IStrategyV5 _strategy,
+    bytes calldata _scoreData
+  ) internal {
+    (uint16 _perf, uint16 _safety, uint16 _scalability, uint16 _liquidity) = abi
+      .decode(_scoreData, (uint16, uint16, uint16, uint16));
+    _updateScore(_strategy, _perf, _safety, _scalability, _liquidity);
+  }
+
+  /**
+   * @notice Updates the score of a strategy
+   * @param _strategy Strategy
+   * @param _scoreData Score data
+   */
+  function updateScore(
+    IStrategyV5 _strategy,
+    bytes calldata _scoreData
+  ) external onlyManager whenNotPaused {
+    _updateScore(_strategy, _scoreData);
+  }
+
+  /**
+   * @notice Updates the scores of multiple strategies
+   * @param _strategies Array of strategies
+   * @param _scoreData Array of score data
+   */
+  function updateScores(
+    IStrategyV5[] memory _strategies,
+    bytes[] calldata _scoreData
+  ) external onlyManager whenNotPaused {
+    unchecked {
+      for (uint256 i = 0; i < _strategies.length; i++) {
+        _updateScore(_strategies[i], _scoreData[i]);
+      }
+    }
+  }
+
+  /**
+   * @notice Updates the strategy parameters
+   * @param _p New strategy parameters
+   */
+  function updateStrategyParams(
+    RiskParams.Strategy memory _p
+  ) external onlyAdmin {
+    unchecked {
+      if (
+        // strategy defaults sanitization
+        !_p.defaultSeedUsd.within(10e18, 100_000e18) || // liquidity seeding (>$10, <$100k)
+        !_p.defaultDepositCapUsd.within(0, 1_000_000e18) || // deposit cap (>$100, <$1m)
+        !_p.defaultMaxLeverage.within32(2_00, 200_00) || // max leverage to not brick any strats (>2:1, <200:1)
+        !_p.defaultMaxSlippage.within32(6, 5_00) || // slippage range (>0.06%, <5%)
+        !_p.minUpkeepInterval.within64(1800, 604_800) // forced upkeep interval (>30min, <7days)
+      ) revert Errors.InvalidData();
+      strategyParams = _p;
+      emit StrategyParamsUpdated(_p);
+    }
+  }
+
+  /**
+   * @notice Updates the allocation parameters for the risk model
+   * @param _p New allocation parameters
+   */
+  function updateAllocationParams(
+    RiskParams.Allocation memory _p
+  ) external onlyAdmin {
+    unchecked {
+      if (
+        // scoring methodology sanitization
+        (_p.scoring.mean != AverageType.ARITHMETIC &&
+          _p.scoring.mean != AverageType.GEOMETRIC &&
+          _p.scoring.mean != AverageType.HARMONIC) ||
+        !_p.scoring.exponent.within32(7000, 2_5000) || // score exponent (>0.7, <2.5)
+        // diversification bias sanitization
+        !_p.diversification.minRatio.within32(0, 2_000) || // min allocation (<20%)
+        !_p.diversification.minMaxRatio.within32(10_00, 60_00) || // min max allocation (>10%,<60%)
+        !_p.diversification.exponent.within32(2000, 2_0000) || // max allocation exponent (.2>, <2)
+        // trailing profits/rewards harvesting sanitization
+        !_p.harvestTrigger.factor.within32(1000, 100_0000) || // harvest tvl factor (>.1, <100)
+        !_p.harvestTrigger.exponent.within32(3000, 8500) || // harvest tvl exponent (>.3, <.85)
+        // target liquidity (netting gravity center) sanitization
+        !_p.targetLiquidity.minRatio.within32(300, 2_500) || // target liquidity ratio (>3%, <25%)
+        !_p.targetLiquidity.factor.within32(100, 100_000) || // target liquidity tvl factor (>.01, <1000)
+        !_p.targetLiquidity.exponent.within32(500, 7000) || // target liquidity tvl exponent (>.05, <.7)
+        // liquidity upper band (allocation) sanitization
+        !_p.allocationTrigger.minRatio.within32(25, 1000) || // allocation trigger tvl factor (>.25%, <10%)
+        !_p.allocationTrigger.factor.within32(100, 1500) || // allocation trigger tvl factor (>.01, <.15)
+        !_p.allocationTrigger.exponent.within32(500, 1_0000) || // allocation trigger tvl exponent (>.0005, <1)
+        // liquidation lower band (soft-liquidation) sanitization
+        !_p.liquidationTrigger.minRatio.within32(25, 1000) || // liquidation trigger tvl factor (>.25%, <10%)
+        !_p.liquidationTrigger.factor.within32(100, 1500) || // liquidation trigger tvl factor (>.01, <.15)
+        !_p.liquidationTrigger.exponent.within32(500, 1_0000) || // liquidation trigger tvl exponent (>.0005, <1)
+        // liquidation 2nd lower band (hard-liquidation) sanitization
+        !_p.panicTrigger.minRatio.within32(30, 2_000) || // panic trigger tvl factor (>.05%, <20%)
+        !_p.panicTrigger.factor.within32(120, 1700) || // panic trigger tvl factor (>.012, <.17)
+        !_p.panicTrigger.exponent.within32(6, 1_0000) || // panic trigger tvl exponent (>.0006, <1)
+        // hard-liquidation vs soft-liquidation sanitization
+        _p.liquidationTrigger.minRatio <= _p.panicTrigger.minRatio ||
+        _p.liquidationTrigger.factor <= _p.panicTrigger.factor ||
+        _p.liquidationTrigger.exponent <= _p.panicTrigger.exponent
+      ) revert Errors.InvalidData();
+      allocationParams = _p;
+      emit AllocationParamsUpdated(_p);
+    }
+  }
+
+  /**
+   * @notice Updates the stable mint parameters for the risk model
+   * @param _p New stable mint parameters
+   */
+  function updateStableMintParams(
+    RiskParams.StableMint memory _p
+  ) external onlyAdmin {
+    unchecked {
+      if (
+        !_p.compositeCollateral.defaultLtv.within32(0, 9800) || // collateralization factor (<98%)
+        !_p.primitiveCollateral.defaultLtv.within32(0, 9800) || // collateralization factor (<98%)
+        !_p.compositeCollateral.maxLtv.within32(0, 9800) || // max collateralization factor (<98%)
+        !_p.primitiveCollateral.maxLtv.within32(0, 9800) // max collateralization factor (<98%)
+      ) revert Errors.InvalidData();
+      stableMintParams = _p;
+      emit StableMintParamsUpdated(_p);
+    }
   }
 }
