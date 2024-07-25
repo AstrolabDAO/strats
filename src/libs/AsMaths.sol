@@ -929,37 +929,54 @@ library AsMaths {
   }
 
   function toWad32(uint32 bps) internal pure returns (uint256) {
-    return uint256(bps) * WAD / BP_BASIS;
+    unchecked {
+      return uint256(bps) * WAD / BP_BASIS;
+    }
   }
 
   function toWad(uint256 bps) internal pure returns (uint256) {
-    return bps * WAD / BP_BASIS;
+    unchecked {
+      return bps * WAD / BP_BASIS;
+    }
   }
 
   function toBps(uint256 wad) internal pure returns (uint256) {
-    return wad * BP_BASIS / WAD;
+    unchecked {
+      return wad * BP_BASIS / WAD;
+    }
   }
 
   function rayToBps(uint256 ray) internal pure returns (uint256) {
-    return ray * BP_BASIS / RAY;
+    unchecked {
+      return ray * BP_BASIS / RAY;
+    }
   }
 
   function bpsToRay(uint256 bps) internal pure returns (uint256) {
-    return bps * RAY / BP_BASIS;
+    unchecked {
+      return bps * RAY / BP_BASIS;
+    }
   }
 
   /**
-   * @dev Equivalent to `x` to the power of `y` denominated in `WAD`
+   * @notice Equivalent to `x` to the power of `y` denominated in `WAD` with `x` in `WAD`
    * because `x ** y = (e ** ln(x)) ** y = e ** (ln(x) * y)`
    * Note: This function is an approximation
    */
   function powWad(int256 x, int256 y) internal pure returns (int256) {
-    // Using `ln(x)` means `x` must be greater than 0
-    return expWad((lnWad(x) * y) / int256(WAD));
+    if (y == 0) return int256(WAD);
+    if (x == 0) return 0;
+    if (x == int256(WAD) || y == int256(WAD)) return x;
+    unchecked {
+      bool isNegative = x < 0 && y % 2 * int256(WAD) == int256(WAD);
+      x = x < 0 ? -x : x;
+      x = expWad((lnWad(x) * y) / int256(WAD)); // reuse x to store result
+      return isNegative ? -x : x;
+    }
   }
 
   /**
-   * @dev Returns `exp(x)`, denominated in `WAD`
+   * @notice Returns `exp(x)`, denominated in `WAD`
    * Credit to Remco Bloemen under MIT license: https://2π.com/22/exp-ln
    * Note: This function is an approximation. Monotonically increasing
    */
@@ -1032,7 +1049,7 @@ library AsMaths {
   }
 
   /**
-   * @dev Returns `ln(x)`, denominated in `WAD`
+   * @notice Returns `ln(x)`, denominated in `WAD`
    * Credit to Remco Bloemen under MIT license: https://2π.com/22/exp-ln
    * Note: This function is an approximation. Monotonically increasing
    */
@@ -1170,12 +1187,12 @@ library AsMaths {
   /// @notice Returns the nth root of `x`, denominated in `WAD`, rounded down
   function nrtWad(uint256 x, uint256 n) internal pure returns (uint256) {
     require(n != 0 && x >= 0);
-    
+
     if (x == 0) return 0;
     if (x == WAD || n == 1) return x;
 
     unchecked {
-      return uint256(powWad(int256(x), int256(WAD * WAD / n))); // x^(1/n) approximation
+      return uint256(powWad(int256(x), int256(WAD / n))); // x^(1/n) approximation
     }
   }
 

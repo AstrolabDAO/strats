@@ -28,7 +28,10 @@ contract RiskModel is AsPermissioned {
   ║                             EVENTS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  event StrategyScoreUpdated(IStrategyV5 indexed strategy, RiskParams.StrategyScore score);
+  event StrategyScoreUpdated(
+    IStrategyV5 indexed strategy,
+    RiskParams.StrategyScore score
+  );
   event StrategyParamsUpdated(RiskParams.Strategy params);
   event AllocationParamsUpdated(RiskParams.Allocation params);
   event StableMintParamsUpdated(RiskParams.StableMint params);
@@ -50,16 +53,94 @@ contract RiskModel is AsPermissioned {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
+  /**
+   * @notice Constructor to initialize the RiskModel contract
+   * @param _accessController Address of the access controller
+   */
   constructor(address _accessController) AsPermissioned(_accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
   ║                             VIEWS                              ║
   ╚═══════════════════════════════════════════════════════════════*/
 
+  /**
+   * @notice Retrieves a composite strategy's primitives
+   * @param _strategy Composite strategy
+   * @return _primitives Array of primitive strategies
+   * @return _boundary Maximum number of primitives to use
+   */
+  function primitives(
+    IStrategyV5 _strategy
+  ) public view returns (IStrategyV5[] memory _primitives, uint256 _boundary) {
+    _primitives = new IStrategyV5[](8);
+    unchecked {
+      for (uint256 i = 0; i < 8; i++) {
+        if (address(_strategy.inputs(i)) == address(0)) {
+          _boundary = i;
+          break;
+        }
+        _primitives[i] = IStrategyV5(address(_strategy.inputs(i)));
+      }
+    }
+  }
+
+  /**
+   * @notice Returns the composite scores (C-Score) for a set of strategies
+   * @param _primitives Array of strategies
+   * @param _boundary Maximum number of primitives to use
+   * @return cScores Composite scores for each strategy
+   */
+  function primitiveCScores(
+    IStrategyV5[] memory _primitives,
+    uint256 _boundary
+  ) public view returns (uint16[] memory cScores) {
+    cScores = new uint16[](_boundary);
+    unchecked {
+      for (uint256 i = 0; i < _boundary; i++) {
+        cScores[i] = scoreByStrategy[_primitives[i]].composite;
+      }
+    }
+  }
+
+  /**
+   * @notice Returns the composite scores (C-Score) for a composite strategy's primitives
+   * @param _composite Composite strategy
+   * @return Array of composite scores for each primitive strategy
+   */
+  function primitiveCScores(
+    IStrategyV5 _composite
+  ) public view returns (uint16[] memory) {
+    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(_composite);
+    return primitiveCScores(_primitives, _boundary);
+  }
+
+  /**
+   * @notice Returns the composite score (C-Score) for a composite strategy
+   * Underlying primitives C-Scores are averaged using the composite strategy's allocation params
+   * @param _composite Composite strategy
+   * @return Composite score for the composite strategy
+   */
+  function compositeCScore(
+    IStrategyV5 _composite
+  ) public view returns (uint16) {
+    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(_composite);
+    return AsRisk.cScore(primitiveCScores(_primitives, _boundary), _boundary, allocationParams.scoring.mean);
+  }
+
+  /**
+   * @notice Returns the deposit cap of a strategy
+   * @param _strategy Strategy
+   * @return Deposit cap in the strategy's asset
+   */
   function depositCap(IStrategyV5 _strategy) public view returns (uint256) {
     return _strategy.maxTotalAssets();
   }
 
+  /**
+   * @notice Returns the deposit cap of a strategy in USD
+   * @param _strategy Strategy
+   * @return Deposit cap in USD
+   */
   function depositCapUsd(IStrategyV5 _strategy) public view returns (uint256) {
     return
       _strategy.oracle().toUsd(
@@ -68,10 +149,20 @@ contract RiskModel is AsPermissioned {
       );
   }
 
+  /**
+   * @notice Returns the total value locked (TVL) of a strategy
+   * @param _strategy Strategy
+   * @return TVL in the strategy's asset
+   */
   function strategyTvl(IStrategyV5 _strategy) public view returns (uint256) {
     return _strategy.totalAssets();
   }
 
+  /**
+   * @notice Returns the total value locked (TVL) of a strategy in USD
+   * @param _strategy Strategy
+   * @return TVL in USD
+   */
   function strategyTvlUsd(IStrategyV5 _strategy) public view returns (uint256) {
     return
       _strategy.oracle().toUsd(
@@ -80,10 +171,55 @@ contract RiskModel is AsPermissioned {
       );
   }
 
+  /**
+   * @notice Returns the liquidity of a strategy in USD
+   * @param _strategy Strategy
+   * @return Liquidity in USD
+   */
+  function liquidityUsd(IStrategyV5 _strategy) public view returns (uint256) {
+    return
+      _strategy.oracle().toUsd(
+        address(_strategy.asset()),
+        _strategy.available()
+      );
+  }
+
+  /**
+   * @notice Returns the liquidity ratio of a strategy
+   * @param _strategy Strategy
+   * @return Liquidity ratio
+   */
+  function liquidityRatio(IStrategyV5 _strategy) public view returns (uint256) {
+    return (_strategy.available() * 1e18) / _strategy.totalAssets(); // cash e18
+  }
+
+  /**
+   * @notice Returns the liquidation request in USD for a strategy
+   * @param _strategy Strategy
+   * @return Liquidation request in USD
+   */
+  function liquidationRequestUsd(
+    IStrategyV5 _strategy
+  ) public view returns (uint256) {
+    return
+      _strategy.oracle().toUsd(
+        address(_strategy.asset()),
+        _strategy.totalPendingWithdrawRequest()
+      );
+  }
+
+  /**
+   * @notice Calculates the target composite allocation for a set of strategies
+   * @param _strategies Array of strategies
+   * @param _boundary Maximum number of strategies to use
+   * @param _amount Total amount to be allocated
+   * @return Target composite allocation for each strategy
+   */
   function targetCompositeAllocation(
     IStrategyV5[] memory _strategies,
+    uint256 _boundary,
     uint256 _amount
-  ) external view returns (uint256[] memory) {
+  ) public view returns (uint256[] memory) {
     uint16[] memory scores = new uint16[](_strategies.length);
     unchecked {
       for (uint256 i = 0; i < _strategies.length; i++) {
@@ -94,53 +230,68 @@ contract RiskModel is AsPermissioned {
       AsRisk.targetCompositeAllocation(
         scores,
         _amount,
-        maxAllocationRatio(_strategies.length),
+        maxAllocationRatio(_boundary),
         allocationParams.scoring.exponent
       );
   }
 
-  function compositeScores(
-    IStrategyV5[] memory _strategies
-  ) public view returns (uint16[] memory) {
-    uint16[] memory scores = new uint16[](_strategies.length);
-    unchecked {
-      for (uint256 i = 0; i < _strategies.length; i++) {
-        scores[i] = scoreByStrategy[_strategies[i]].composite;
-      }
-    }
-    return scores;
+  /**
+   * @notice Calculates the target composite allocation for a composite strategy
+   * @param _strategy Composite strategy
+   * @param _amount Total amount to be allocated
+   * @return Target composite allocation for each strategy
+   */
+  function targetCompositeAllocation(
+    IStrategyV5 _strategy,
+    uint256 _amount
+  ) external view returns (uint256[] memory) {
+    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(_strategy);
+    return targetCompositeAllocation(_primitives, _boundary, _amount);
   }
 
+  /**
+   * @notice Calculates the excess allocation for a set of strategies
+   * @param _strategies Array of strategies
+   * @param _amount Total amount to be allocated
+   * @param _owner Owner of the assets
+   * @return Excess allocation for each strategy
+   */
   function excessAllocation(
     IStrategyV5[] memory _strategies,
     uint256 _amount,
     address _owner
   ) public view returns (int256[] memory) {
+    uint256 boundary = _strategies.length;
     uint256[] memory targets = AsRisk.targetCompositeAllocation(
-      compositeScores(_strategies),
+      primitiveCScores(_strategies, boundary),
       _amount,
-      maxAllocationRatio(_strategies.length),
+      maxAllocationRatio(boundary),
       allocationParams.scoring.exponent
     );
-    int256[] memory excess = new int256[](_strategies.length);
+    int256[] memory excess = new int256[](boundary);
     unchecked {
-      for (uint256 i = 0; i < _strategies.length; i++) {
-        excess[i] = int256(_strategies[i].assetsOf(_owner)) - int256(targets[i]);
+      for (uint256 i = 0; i < boundary; i++) {
+        excess[i] =
+          int256(_strategies[i].assetsOf(_owner)) -
+          int256(targets[i]);
       }
     }
     return excess;
   }
 
+  /**
+   * @notice Previews the allocation for a set of strategies
+   * @param _strategies Array of strategies
+   * @param _amount Total amount to be allocated
+   * @param _owner Owner of the assets
+   * @return Allocation for each strategy
+   */
   function previewAllocate(
     IStrategyV5[] memory _strategies,
     uint256 _amount,
     address _owner
   ) external view returns (uint256[] memory) {
-    int256[] memory excess = excessAllocation(
-      _strategies,
-      _amount,
-      _owner
-    );
+    int256[] memory excess = excessAllocation(_strategies, _amount, _owner);
     uint256[] memory allocation = new uint256[](_strategies.length);
     unchecked {
       for (uint256 i = 0; i < _strategies.length; i++) {
@@ -154,26 +305,48 @@ contract RiskModel is AsPermissioned {
   ║                             METHODS                            ║
   ╚═══════════════════════════════════════════════════════════════*/
 
+  /**
+   * @notice Internal function to update the score of a strategy
+   * @param _strategy Strategy
+   * @param _performance Performance score
+   * @param _safety Safety score
+   * @param _scalability Scalability score
+   * @param _liquidity Liquidity score
+   */
   function _updateScore(
     IStrategyV5 _strategy,
     uint16 _performance,
+    uint16 _safety,
     uint16 _scalability,
     uint16 _liquidity
   ) internal {
     RiskParams.StrategyScore memory _score = AsRisk.computeStrategyScore(
-      [_performance, _scalability, _liquidity]);
+      AsArrays.toArray16(_performance, _safety, _scalability, _liquidity),
+      allocationParams.scoring.mean
+    );
     scoreByStrategy[_strategy] = _score;
     emit StrategyScoreUpdated(_strategy, _score);
   }
 
-  function _updateScore(IStrategyV5 _strategy, bytes calldata _scoreData) internal {
-    (uint16 _perf, uint16 _scalability, uint16 _liquidity) = abi.decode(
-      _scoreData,
-      (uint16, uint16, uint16)
-    );
-    _updateScore(_strategy, _perf, _scalability, _liquidity);
+  /**
+   * @notice Internal function to update the score of a strategy using score data
+   * @param _strategy Strategy
+   * @param _scoreData Score data
+   */
+  function _updateScore(
+    IStrategyV5 _strategy,
+    bytes calldata _scoreData
+  ) internal {
+    (uint16 _perf, uint16 _safety, uint16 _scalability, uint16 _liquidity) = abi
+      .decode(_scoreData, (uint16, uint16, uint16, uint16));
+    _updateScore(_strategy, _perf, _safety, _scalability, _liquidity);
   }
 
+  /**
+   * @notice Updates the score of a strategy
+   * @param _strategy Strategy
+   * @param _scoreData Score data
+   */
   function updateScore(
     IStrategyV5 _strategy,
     bytes calldata _scoreData
@@ -181,6 +354,11 @@ contract RiskModel is AsPermissioned {
     _updateScore(_strategy, _scoreData);
   }
 
+  /**
+   * @notice Updates the scores of multiple strategies
+   * @param _strategies Array of strategies
+   * @param _scoreData Array of score data
+   */
   function updateScores(
     IStrategyV5[] memory _strategies,
     bytes[] calldata _scoreData
@@ -192,6 +370,10 @@ contract RiskModel is AsPermissioned {
     }
   }
 
+  /**
+   * @notice Updates the strategy parameters
+   * @param _p New strategy parameters
+   */
   function updateStrategyParams(
     RiskParams.Strategy memory _p
   ) external onlyAdmin {
@@ -211,7 +393,7 @@ contract RiskModel is AsPermissioned {
 
   /**
    * @notice Updates the allocation parameters for the risk model
-   * @param _p The new allocation parameters
+   * @param _p New allocation parameters
    */
   function updateAllocationParams(
     RiskParams.Allocation memory _p
@@ -235,17 +417,17 @@ contract RiskModel is AsPermissioned {
         !_p.targetLiquidity.factor.within32(100, 100_000) || // target liquidity tvl factor (>.01, <1000)
         !_p.targetLiquidity.exponent.within32(500, 7000) || // target liquidity tvl exponent (>.05, <.7)
         // liquidity upper band (allocation) sanitization
-        !_p.allocationTrigger.minRatio.within32(250, 10_000) || // allocation trigger tvl factor (>.25%, <10%)
+        !_p.allocationTrigger.minRatio.within32(25, 1000) || // allocation trigger tvl factor (>.25%, <10%)
         !_p.allocationTrigger.factor.within32(100, 1500) || // allocation trigger tvl factor (>.01, <.15)
         !_p.allocationTrigger.exponent.within32(500, 1_0000) || // allocation trigger tvl exponent (>.0005, <1)
         // liquidation lower band (soft-liquidation) sanitization
-        !_p.liquidationTrigger.minRatio.within32(250, 1000) || // liquidation trigger tvl factor (>.25%, <10%)
+        !_p.liquidationTrigger.minRatio.within32(25, 1000) || // liquidation trigger tvl factor (>.25%, <10%)
         !_p.liquidationTrigger.factor.within32(100, 1500) || // liquidation trigger tvl factor (>.01, <.15)
         !_p.liquidationTrigger.exponent.within32(500, 1_0000) || // liquidation trigger tvl exponent (>.0005, <1)
         // liquidation 2nd lower band (hard-liquidation) sanitization
-        !_p.panicTrigger.minRatio.within32(500, 2_000) || // panic trigger tvl factor (>.05%, <10%)
-        !_p.panicTrigger.factor.within32(1200, 1700) || // panic trigger tvl factor (>.012, <.17)
-        !_p.panicTrigger.exponent.within32(6000, 1_0000) || // panic trigger tvl exponent (>.0006, <1)
+        !_p.panicTrigger.minRatio.within32(30, 2_000) || // panic trigger tvl factor (>.05%, <20%)
+        !_p.panicTrigger.factor.within32(120, 1700) || // panic trigger tvl factor (>.012, <.17)
+        !_p.panicTrigger.exponent.within32(6, 1_0000) || // panic trigger tvl exponent (>.0006, <1)
         // hard-liquidation vs soft-liquidation sanitization
         _p.liquidationTrigger.minRatio <= _p.panicTrigger.minRatio ||
         _p.liquidationTrigger.factor <= _p.panicTrigger.factor ||
@@ -258,7 +440,7 @@ contract RiskModel is AsPermissioned {
 
   /**
    * @notice Updates the stable mint parameters for the risk model
-   * @param _p The new stable mint parameters
+   * @param _p New stable mint parameters
    */
   function updateStableMintParams(
     RiskParams.StableMint memory _p
@@ -277,8 +459,8 @@ contract RiskModel is AsPermissioned {
 
   /**
    * @notice Calculates the maximum allocation ratio for a given number of strategies
-   * @param _strategyCount The number of strategies
-   * @return The maximum allocation ratio
+   * @param _strategyCount Number of strategies
+   * @return Maximum allocation ratio
    */
   function maxAllocationRatio(
     uint256 _strategyCount
@@ -295,8 +477,8 @@ contract RiskModel is AsPermissioned {
 
   /**
    * @notice Calculates the minimum harvest to cost ratio for a given strategy
-   * @param _strategy The strategy
-   * @return The minimum harvest to cost ratio
+   * @param _strategy Strategy
+   * @return Minimum harvest to cost ratio
    */
   function minHarvestToCostRatio(
     IStrategyV5 _strategy
@@ -313,9 +495,9 @@ contract RiskModel is AsPermissioned {
 
   /**
    * @notice Determines whether a strategy should harvest rewards
-   * @param _strategy The strategy
-   * @param _pendingRewards The pending rewards
-   * @param _costEstimate The cost estimate
+   * @param _strategy Strategy
+   * @param _pendingRewards Pending rewards
+   * @param _costEstimate Cost estimate
    * @return Whether the strategy should harvest rewards
    */
   function shouldHarvest(
@@ -334,141 +516,320 @@ contract RiskModel is AsPermissioned {
   }
 
   /**
+   * @notice Calculates the liquidity ratio regressor for a given TVL and parameters
+   * @param _tvl Total value locked
+   * @param _params Liquidity parameters
+   * @return Liquidity ratio regressor
+   */
+  function _liquidityRatioRegressor(
+    uint256 _tvl,
+    RiskParams.Liquidity memory _params
+  ) public pure returns (uint256) {
+    return
+      AsRisk
+        .liquidityRatioRegressor(
+          _tvl,
+          _params.minRatio.toWad32(),
+          _params.factor.toWad32(),
+          _params.exponent.toWad32()
+        )
+        .toBps();
+  }
+
+  /**
+   * @notice Calculates the liquidity value regressor for a given TVL and parameters
+   * @param _tvl Total value locked
+   * @param _params Liquidity parameters
+   * @return Liquidity value regressor
+   */
+  function _liquidityValueRegressor(
+    uint256 _tvl,
+    RiskParams.Liquidity memory _params
+  ) public view returns (uint256) {
+    return (_liquidityRatioRegressor(_tvl, _params) * _tvl) / 1e18;
+  }
+
+  /**
+   * @notice Calculates the liquidity limit ratio
+   * @param _target Target liquidity ratio
+   * @param _offset Offset ratio
+   * @param _upper Whether it is the upper limit
+   * @return Liquidity limit ratio
+   */
+  function _liquidityLimitRatio(
+    uint256 _target,
+    uint256 _offset,
+    bool _upper
+  ) internal pure returns (uint256) {
+    unchecked {
+      if (_upper) {
+        return AsMaths.min(_offset + _target, 1e18); // upper band (allocation threshold) should never exceed 100%
+      } else {
+        _offset = AsMaths.min(_target.bp(9000), _offset); // lower band (liquidation threshold) should never be less than 20% of liquidity target
+        return _target - _offset;
+      }
+    }
+  }
+
+  /**
+   * @notice Checks if the liquidity limit is breached
+   * @param _current Current liquidity ratio
+   * @param _target Target liquidity ratio
+   * @param _offset Offset ratio
+   * @param _upper Whether it is the upper limit
+   * @return Whether the liquidity limit is breached
+   */
+  function _liquidityLimitBreached(
+    uint256 _current,
+    uint256 _target,
+    uint256 _offset,
+    bool _upper
+  ) internal pure returns (bool) {
+    uint256 band = _liquidityLimitRatio(_target, _offset, _upper);
+    return _upper ? _current >= band : _current <= band;
+  }
+
+  /**
+   * @notice Checks if the liquidity limit is breached for a strategy
+   * @param _strategy Strategy
+   * @param _offset Offset parameters
+   * @param _upperBand Whether it is the upper limit
+   * @return Whether the liquidity limit is breached
+   */
+  function _liquidityLimitBreached(
+    IStrategyV5 _strategy,
+    RiskParams.Liquidity memory _offset,
+    bool _upperBand
+  ) internal view returns (bool) {
+    uint256 tvl = strategyTvlUsd(_strategy);
+    uint256 current = liquidityRatio(_strategy); // e18
+    uint256 targetRatio = _liquidityRatioRegressor(
+      tvl,
+      allocationParams.targetLiquidity
+    ); // e18
+    uint256 offsetRatio = _liquidityRatioRegressor(tvl, _offset); // e18
+    return
+      _liquidityLimitBreached(current, targetRatio, offsetRatio, _upperBand);
+  }
+
+  /**
+   * @notice Returns the liquidity limit ratios for a given TVL
+   * @param _tvl Total value locked
+   * @return Liquidity limit ratios
+   */
+  function liquidityLimitRatios(
+    uint256 _tvl
+  ) internal view returns (uint256[4] memory) {
+    uint256 targetRatio = _liquidityRatioRegressor(
+      _tvl,
+      allocationParams.targetLiquidity
+    ); // e18
+    (uint256 aOffset, uint256 lOffset, uint256 pOffset) = (
+      _liquidityRatioRegressor(_tvl, allocationParams.allocationTrigger), // e18
+      _liquidityRatioRegressor(_tvl, allocationParams.liquidationTrigger), // e18
+      _liquidityRatioRegressor(_tvl, allocationParams.panicTrigger) // e18
+    );
+    return [
+      _liquidityLimitRatio(targetRatio, aOffset, true), // upper band (allocation)
+      targetRatio, // target liquidity ratio
+      _liquidityLimitRatio(targetRatio, lOffset, false), // lower band (liquidation)
+      _liquidityLimitRatio(targetRatio, pOffset, false) // 2nd lower band (panic)
+    ];
+  }
+
+  /**
+   * @notice Returns the liquidity limits for a given TVL
+   * @param _tvl Total value locked
+   * @return limits Liquidity limits in USD
+   */
+  function liquidityLimits(
+    uint256 _tvl
+  ) public view returns (uint256[4] memory limits) {
+    uint256[4] memory ratios = liquidityLimitRatios(_tvl);
+    unchecked {
+      limits[0] = (ratios[0] * _tvl) / 1e18;
+      limits[1] = (ratios[1] * _tvl) / 1e18;
+      limits[2] = (ratios[2] * _tvl) / 1e18;
+      limits[3] = (ratios[3] * _tvl) / 1e18;
+    }
+    return limits; // in USD e18
+  }
+
+  /**
    * @notice Calculates the target liquidity ratio for a given strategy
-   * @param _strategy The strategy
-   * @return The target liquidity ratio
+   * @param _strategy Strategy
+   * @return Target liquidity ratio in WAD
    */
   function targetLiquidityRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      AsRisk
-        .targetLiquidityRatio(
-          strategyTvlUsd(_strategy),
-          allocationParams.targetLiquidity.minRatio.toWad32(),
-          allocationParams.targetLiquidity.factor.toWad32(),
-          allocationParams.targetLiquidity.exponent.toWad32()
-        )
-        .toBps();
+      _liquidityRatioRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.targetLiquidity
+      );
+  }
+
+  /**
+   * @notice Calculates the target liquidity for a given strategy
+   * @param _strategy Strategy
+   * @return Target liquidity in USD e18
+   */
+  function targetLiquidity(
+    IStrategyV5 _strategy
+  ) public view returns (uint256) {
+    return
+      _liquidityValueRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.targetLiquidity
+      );
   }
 
   /**
    * @notice Calculates the target allocation ratio for a given strategy
-   * @param _strategy The strategy
-   * @return The target allocation ratio
+   * @param _strategy Strategy
+   * @return Target allocation ratio in WAD
    */
   function targetAllocationRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
-    return
-      AsRisk
-        .targetAllocationRatio(
-          strategyTvlUsd(_strategy),
-          allocationParams.targetLiquidity.minRatio.toWad32(),
-          allocationParams.targetLiquidity.factor.toWad32(),
-          allocationParams.targetLiquidity.exponent.toWad32()
-        )
-        .toBps();
+    return 1e18 - targetLiquidityRatio(_strategy);
   }
 
+  /**
+   * @notice Calculates the target allocation for a given strategy
+   * @param _strategy Strategy
+   * @return Target allocation in USD e18
+   */
   function targetAllocation(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
-    return targetAllocationRatio(_strategy) * strategyTvlUsd(_strategy);
+    return targetAllocationRatio(_strategy) * strategyTvlUsd(_strategy) / 1e18;
   }
 
   /**
    * @notice Calculates the liquidation trigger ratio for a given strategy
-   * @param _strategy The strategy
-   * @return The liquidation trigger ratio
+   * @param _strategy Strategy
+   * @return Liquidation trigger ratio in WAD
    */
   function liquidationTriggerRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      AsRisk
-        .liquidationTriggerRatio(
-          strategyTvlUsd(_strategy),
-          allocationParams.liquidationTrigger.minRatio.toWad32(),
-          allocationParams.liquidationTrigger.factor.toWad32(),
-          allocationParams.liquidationTrigger.exponent.toWad32()
-        )
-        .toBps();
+      _liquidityRatioRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.liquidationTrigger
+      );
   }
 
   /**
    * @notice Calculates the liquidation trigger for a given strategy
-   * @param _strategy The strategy
-   * @return The liquidation trigger
+   * @param _strategy Strategy
+   * @return Liquidation trigger in USD e18
    */
   function liquidationTrigger(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      AsRisk
-        .liquidationTrigger(
-          strategyTvlUsd(_strategy),
-          allocationParams.liquidationTrigger.minRatio.toWad32(),
-          allocationParams.liquidationTrigger.factor.toWad32(),
-          allocationParams.liquidationTrigger.exponent.toWad32()
-        )
-        .toBps();
+      _liquidityValueRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.liquidationTrigger
+      );
+  }
+
+  /**
+   * @notice Determines whether a strategy should be liquidated
+   * @param _strategy Strategy
+   * @return Whether the strategy should be liquidated
+   */
+  function shouldLiquidate(IStrategyV5 _strategy) public view returns (bool) {
+    return
+      _liquidityLimitBreached(
+        _strategy,
+        allocationParams.liquidationTrigger,
+        false
+      );
   }
 
   /**
    * @notice Calculates the panic trigger ratio for a given strategy
-   * @param _strategy The strategy
-   * @return The panic trigger ratio
+   * @param _strategy Strategy
+   * @return Panic trigger ratio in WAD
    */
   function panicTriggerRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      AsRisk
-        .panicTriggerRatio(
-          strategyTvlUsd(_strategy),
-          allocationParams.panicTrigger.minRatio.toWad32(),
-          allocationParams.panicTrigger.factor.toWad32(),
-          allocationParams.panicTrigger.exponent.toWad32()
-        )
-        .toBps();
+      _liquidityRatioRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.panicTrigger
+      );
+  }
+
+  /**
+   * @notice Calculates the panic trigger for a given strategy
+   * @param _strategy Strategy
+   * @return Panic trigger in USD e18
+   */
+  function panicTrigger(IStrategyV5 _strategy) public view returns (uint256) {
+    return
+      _liquidityValueRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.panicTrigger
+      );
+  }
+
+  /**
+   * @notice Determines whether a strategy should enter panic mode
+   * @param _strategy Strategy
+   * @return Whether the strategy should enter panic mode
+   */
+  function shouldPanic(IStrategyV5 _strategy) public view returns (bool) {
+    return
+      _liquidityLimitBreached(_strategy, allocationParams.panicTrigger, false);
   }
 
   /**
    * @notice Calculates the allocation trigger ratio for a given strategy
-   * @param _strategy The strategy
-   * @return The allocation trigger ratio in basis points (bps)
+   * @param _strategy Strategy
+   * @return Allocation trigger ratio in WAD
    */
   function allocationTriggerRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      AsRisk
-        .allocationTriggerRatio(
-          strategyTvlUsd(_strategy),
-          allocationParams.allocationTrigger.minRatio.toWad32(),
-          allocationParams.allocationTrigger.factor.toWad32(),
-          allocationParams.allocationTrigger.exponent.toWad32()
-        )
-        .toBps();
+      _liquidityRatioRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.allocationTrigger
+      );
   }
 
   /**
    * @notice Calculates the allocation trigger for a given strategy
-   * @param _strategy The strategy
-   * @return The allocation trigger in basis points (bps)
+   * @param _strategy Strategy
+   * @return Allocation trigger in USD e18
    */
   function allocationTrigger(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      AsRisk
-        .allocationTrigger(
-          strategyTvlUsd(_strategy),
-          allocationParams.allocationTrigger.minRatio.toWad32(),
-          allocationParams.allocationTrigger.factor.toWad32(),
-          allocationParams.allocationTrigger.exponent.toWad32()
-        )
-        .toBps();
+      _liquidityValueRegressor(
+        strategyTvlUsd(_strategy),
+        allocationParams.allocationTrigger
+      );
+  }
+
+  /**
+   * @notice Determines whether a strategy should allocate more funds
+   * @param _strategy Strategy
+   * @return Whether the strategy should allocate more funds
+   */
+  function shouldAllocate(IStrategyV5 _strategy) public view returns (bool) {
+    return
+      _liquidityLimitBreached(
+        _strategy,
+        allocationParams.targetLiquidity,
+        true
+      );
   }
 }

@@ -45,8 +45,8 @@ library AsIterableSet {
   /**
    * @dev Retrieves an element by its index in the iterable set
    * @param s Target iterable set
-   * @param i The index of the element
-   * @return The element at the specified index
+   * @param i Index of the element
+   * @return Element at the specified index
    */
   function getAt(Set storage s, uint256 i) internal view returns (bytes32) {
     require(i < s.data.length);
@@ -56,8 +56,8 @@ library AsIterableSet {
   /**
    * @dev Retrieves an element by its index in the iterable set
    * @param s Target iterable set
-   * @param i The index of the element
-   * @return The element at the specified index
+   * @param i Index of the element
+   * @return Element at the specified index
    */
   function get(Set storage s, bytes32 i) internal view returns (bytes32) {
     return getAt(s, s.index[i] - 1);
@@ -66,7 +66,7 @@ library AsIterableSet {
   /**
    * @dev Checks if the iterable set contains a specific element
    * @param s Target iterable set
-   * @param o The element to check for
+   * @param o Element to check for
    * @return True if the element is in the set, false otherwise
    */
   function has(Set storage s, bytes32 o) internal view returns (bool) {
@@ -76,7 +76,7 @@ library AsIterableSet {
   /**
    * @dev Returns the number of elements in the iterable set
    * @param s Target iterable set
-   * @return The size of the set
+   * @return Size of the set
    */
   function size(Set storage s) internal view returns (uint256) {
     return s.data.length;
@@ -141,7 +141,7 @@ library AsIterableSet {
   /**
    * @dev Adds an element to the end of the iterable set
    * @param s Target iterable set
-   * @param o The element to be added
+   * @param o Element to be added
    */
   function push(Set storage s, bytes32 o) internal {
     require(s.index[o] == 0); // prevent duplicates
@@ -151,8 +151,8 @@ library AsIterableSet {
 
   /**
    * @dev Pushes an element of type `uint256` to the set
-   * @param s The set to push the element to
-   * @param o The element to push
+   * @param s Set to push the element to
+   * @param o Element to push
    */
   function push(Set storage s, uint256 o) internal {
     push(s, bytes32(o));
@@ -160,8 +160,8 @@ library AsIterableSet {
 
   /**
    * @dev Pushes an element of type `address` to the set
-   * @param s The set to push the element to
-   * @param o The element to push
+   * @param s Set to push the element to
+   * @param o Element to push
    */
   function push(Set storage s, address o) internal {
     push(s, o.toBytes32());
@@ -170,7 +170,7 @@ library AsIterableSet {
   /**
    * @dev Removes the last element from the iterable set and returns it
    * @param s Target iterable set
-   * @return The last element of the set
+   * @return Last element of the set
    */
   function pop(Set storage s) internal returns (bytes32) {
     if (s.data.length == 0) {
@@ -207,7 +207,7 @@ library AsIterableSet {
   /**
    * @dev Adds an element to the beginning of the iterable set
    * @param s Target iterable set
-   * @param o The element to be added
+   * @param o Element to be added
    */
   function unshift(Set storage s, bytes32 o) internal {
     require(s.index[o] == 0); // prevent duplicates
@@ -225,8 +225,8 @@ library AsIterableSet {
   /**
    * @dev Inserts an element at a specific index in the iterable set
    * @param s Target iterable set
-   * @param i The index at which to insert
-   * @param o The element to be inserted
+   * @param i Index at which to insert
+   * @param o Element to be inserted
    */
   function insert(Set storage s, uint256 i, bytes32 o) internal {
     require(s.index[o] == 0); // prevent duplicates
@@ -254,7 +254,7 @@ library AsIterableSet {
   /**
    * @dev Removes an element at a specific index in the iterable set
    * @param s Target iterable set
-   * @param i The index of the element to be deleted
+   * @param i Index of the element to be deleted
    */
   function removeAt(Set storage s, uint256 i) internal {
     if (i >= s.data.length) {
@@ -281,7 +281,7 @@ library AsIterableSet {
   /**
    * @dev Removes a raw element from the iterable set
    * @param s Target iterable set
-   * @param o The element to be deleted
+   * @param o Element to be deleted
    */
   function remove(Set storage s, bytes32 o) internal {
     uint32 i = s.index[o];
@@ -292,8 +292,8 @@ library AsIterableSet {
 
   /**
    * @dev Removes an uint256 from the set
-   * @param s The set to remove the element from
-   * @param o The element to be removed
+   * @param s Set to remove the element from
+   * @param o Element to be removed
    */
   function remove(Set storage s, uint256 o) internal {
     remove(s, bytes32(o));
@@ -301,8 +301,8 @@ library AsIterableSet {
 
   /**
    * @dev Removes an address from the set
-   * @param s The set to remove the element from
-   * @param o The element to be removed
+   * @param s Set to remove the element from
+   * @param o Element to be removed
    */
   function remove(Set storage s, address o) internal {
     remove(s, o.toBytes32());

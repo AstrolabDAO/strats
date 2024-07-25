@@ -150,7 +150,7 @@ contract Erc4626VaultTest is TestEnvArb {
     Fees memory _fees,
     uint256 _minLiquidity
   ) public returns (uint256, uint256) {
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
     return (strat.totalAssets(), usdc.balanceOf(bob));
   }
 

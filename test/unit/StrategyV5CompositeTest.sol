@@ -3,15 +3,15 @@ pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {Fees, Erc20Metadata, CoreAddresses, StrategyParams} from "../../src/abstract/AsTypes.sol";
+import "../../src/abstract/AsTypes.sol";
+import "../../src/interfaces/IStrategyV5.sol";
+import "./TestEnvArb.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
-import {StrategyV5} from "../../src/abstract/StrategyV5.sol";
-import {StrategyV5Simulator} from "../../src/implementations/StrategyV5Simulator.sol";
-import {TestEnvArb} from "./TestEnvArb.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {StrategyV5Simulator, StrategyV5CompositeSimulator} from "./StrategyV5Simulator.sol";
 
-contract StrategyV5CompositeTest is TestEnvArb {
+contract IStrategyV5CompositeTest is TestEnvArb {
   using AsMaths for uint256;
   using AsArrays for uint256[8];
   using AsArrays for uint16;
@@ -34,7 +34,7 @@ contract StrategyV5CompositeTest is TestEnvArb {
       oracle: address(oracle)
     });
 
-    StrategyV5[] memory primitives = new StrategyV5[](N_PRIMITIVES);
+    IStrategyV5[] memory primitives = new IStrategyV5[](N_PRIMITIVES);
     for (uint256 i = 0; i < N_PRIMITIVES; i++) {
       Erc20Metadata memory erc20Meta = Erc20Metadata({
         // use i as unique strategy suffix identifier
@@ -47,16 +47,18 @@ contract StrategyV5CompositeTest is TestEnvArb {
         coreAddresses: coreAddresses,
         fees: _fees,
         inputs: USDC.toArray(), // [USDC]
-        inputWeights: uint16(100_00).toArray16(), // 100% weight on USDC
+        inputWeights: uint16(90_00).toArray16(), // 90% weight on USDC, 10% cash
         lpTokens: USDCe.toArray(),
         rewardTokens: USDCe.toArray(),
         extension: new bytes(0)
       });
 
       // deploy and initialize primitive strategy
-      primitives[i] = new StrategyV5Simulator(address(accessController));
+      primitives[i] = IStrategyV5(
+        address(new StrategyV5Simulator(address(accessController), vm))
+      );
       vm.prank(admin);
-      StrategyV5(primitives[i]).init(primitiveParams);
+      IStrategyV5(primitives[i]).init(primitiveParams);
     }
 
     // initialize the strategy
@@ -76,7 +78,7 @@ contract StrategyV5CompositeTest is TestEnvArb {
       inputWeights: uint16(50_00).toArray16(50_00), // [50%, 50%]
       lpTokens: address(primitives[0]).toArray(address(primitives[1])), // [Primitive0, Primitive1]
       rewardTokens: USDC.toArray(),
-      extension: new bytes(1) // empty bytes are required in order for StrategyV5Composite.setParams() to be called
+      extension: new bytes(1) // empty bytes are required in order for IStrategyV5Composite.setParams() to be called
     });
 
     // initialize (admin only)

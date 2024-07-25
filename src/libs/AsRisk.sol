@@ -4,26 +4,24 @@ pragma solidity 0.8.25;
 import "./AsMaths.sol";
 import "./AsArrays.sol";
 import "../abstract/AsTypes.sol";
+import {console} from "forge-std/console.sol";
 
-// Risk params used by RiskModel
+/**
+ *             _             _       _
+ *    __ _ ___| |_ _ __ ___ | | __ _| |__
+ *   /  ` / __|  _| '__/   \| |/  ` | '  \
+ *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
+ *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
+ *
+ * @title RiskParams+AsRisk Libraries - Astrolab's Risk management library
+ * @author Astrolab DAO
+ * @notice RiskParams defined all risk parameters used internally by RiskModel
+ * @notice AsRisk provides the core risk-related logic used by RiskModel and by the Botnet
+ */
 library RiskParams {
-
-  // strategy risk parameters
-  struct StrategyScore {
-    uint16 performance; // similar to a sharpe but factors-in ops risk ((profit + sse)/(ops risk + market risk))
-    uint16 scalability;
-    uint16 liquidity;
-    uint16 composite;
-  }
-
-  struct Strategy {
-    // strategy defaults
-    uint256 defaultSeedUsd; // default seed for new strategy deployments in USD `WAD`
-    uint256 defaultDepositCapUsd; // default deposit cap in denomincated in USD `WAD`
-    uint32 defaultMaxSlippage; // used for loans, swaps, stakes... in bps
-    uint32 defaultMaxLeverage; // 1x every 100 eg. 5_00 = 5:1 leverage
-    uint64 minUpkeepInterval; // in sec, eg. 86_400 = 1 day
-  }
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              TYPES                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
 
   // liquidity (requirements & triggers)
   struct Liquidity {
@@ -52,7 +50,26 @@ library RiskParams {
     bool isolated; // if false, cross-collateralization is enabled (eg. acETH can be used to mint asUSD, acUSD to mint asETH, at increased risk of liquidation)
   }
 
-  // NB: to understand all the below risk params, refer to the risk model docs or directly to AsRisk.sol
+  // strategy risk parameters
+  // NB: updating these is critical and requires a cScore() update
+  struct StrategyScore {
+    uint16 performance; // profit * sse
+    uint16 safety; // ops risk (audits/track record/governance/team/off-chain risks) + market risk (underlyings volatility/liquidity)
+    uint16 scalability;
+    uint16 liquidity;
+    uint16 composite;
+  }
+
+  // strategy initialization defaults
+  struct Strategy {
+    uint256 defaultSeedUsd; // default seed for new strategy deployments in USD `WAD`
+    uint256 defaultDepositCapUsd; // default deposit cap in denomincated in USD `WAD`
+    uint32 defaultMaxSlippage; // used for loans, swaps, stakes... in bps
+    uint32 defaultMaxLeverage; // 1x every 100 eg. 5_00 = 5:1 leverage
+    uint64 minUpkeepInterval; // in sec, eg. 86_400 = 1 day
+  }
+
+  // allocation model (refer to the risk model docs or directly to AsRisk.sol)
   struct Allocation {
     Scoring scoring; // scoring methodology
     Diversification diversification; // diversification (minima & bias)
@@ -69,8 +86,98 @@ library RiskParams {
     Collateralization compositeCollateral;
     Collateralization primitiveCollateral;
   }
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                            CONSTANTS                           ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /*═══════════════════════════════════════════════════════════════╗
+  ║                              VIEWS                             ║
+  ╚═══════════════════════════════════════════════════════════════*/
+
+  /**
+   * @notice Returns the default strategy parameters
+   * @return A Strategy structure with default values
+   */
+  function defaultStrategy() internal pure returns (Strategy memory) {
+    return
+      Strategy({
+        defaultSeedUsd: 10e18,
+        defaultDepositCapUsd: 2_000_000e18,
+        defaultMaxSlippage: 200, // 2% (bps)
+        defaultMaxLeverage: 500, // 5:1 (base 100)
+        minUpkeepInterval: 604_800 // 7 days (sec)
+      });
+  }
+
+  /**
+   * @notice Returns the default allocation parameters
+   * @return An Allocation structure with default values
+   */
+  function defaultAllocation() internal pure returns (Allocation memory) {
+    return
+      Allocation({
+        scoring: Scoring({mean: AverageType.GEOMETRIC, exponent: 1.8614e4}),
+        diversification: Diversification({
+          minRatio: 0, // 0% (bps) min to LVP
+          minMaxRatio: 25_00, // 25% (bps) min to MVP
+          exponent: 3000 // 30% (bps)
+        }),
+        harvestTrigger: Liquidity({
+          minRatio: 0, // unused by harvest liquidity regressor
+          factor: 5500, // .55
+          exponent: 4000 // .4
+        }),
+        targetLiquidity: Liquidity({
+          minRatio: 700, // 7%
+          factor: 500, // .05
+          exponent: 3500 // .35
+        }),
+        allocationTrigger: Liquidity({
+          minRatio: 50, // .5%
+          factor: 1000, // .1
+          exponent: 4000 // .4
+        }),
+        liquidationTrigger: Liquidity({
+          minRatio: 50, // .5%
+          factor: 1000, // .1
+          exponent: 4500 // .45
+        }),
+        panicTrigger: Liquidity({
+          minRatio: 120, // .012
+          factor: 1000, // .1
+          exponent: 4000 // .4
+        })
+      });
+  }
+
+  /**
+   * @notice Returns the default collateralization parameters
+   * @return A Collateralization structure with default values
+   */
+  function defaultCollateralization()
+    internal
+    pure
+    returns (Collateralization memory)
+  {
+    return
+      Collateralization({defaultLtv: 90_00, maxLtv: 98_00, isolated: true});
+  }
+
+  /**
+   * @notice Returns the default stable mint parameters
+   * @return A StableMint structure with default values
+   */
+  function defaultStableMint() internal pure returns (StableMint memory) {
+    return
+      StableMint({
+        compositeCollateral: defaultCollateralization(),
+        primitiveCollateral: defaultCollateralization()
+      });
+  }
 }
 
+// actual risk library
 library AsRisk {
   using AsMaths for uint256;
   using AsMaths for int256;
@@ -91,86 +198,119 @@ library AsRisk {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @notice Computes the composite score from an array of scores
+   * @notice Computes the composite score (C-Score) from an array of scores
    * @dev Uses the specified average type to compute the composite score
    * @param _scores An array of 3 scores: [performance, scalability, liquidity]
    * @param _averageType AverageType
    * @return Composite score as a uint16 value
    */
-  function compositeScore(
-    uint16[3] memory _scores,
+  function cScore(
+    uint16[] memory _scores,
+    uint256 _boundary,
     AverageType _averageType
   ) internal pure returns (uint16) {
+    // geometrically merge performance and risk scores (risk-adjusted performance)
     unchecked {
+      uint256 n = AsMaths.min(_scores.length, _boundary);
       if (_averageType == AverageType.GEOMETRIC) {
         uint256 product = 1;
-        uint256 length = _scores.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < n; i++) {
           product *= _scores[i]; // max == 10_000 ** 3, safe
         }
-        return uint16(AsMaths.cbrt(uint256(product))); // nth root of the product
+        return uint16((uint256(product) * 1e18).nrtWad(n) / 1e18); // nth root of the product
       } else if (_averageType == AverageType.ARITHMETIC) {
-        return
-          uint16(
-            (uint256(_scores[0]) + uint256(_scores[1]) + uint256(_scores[2])) /
-              _scores.length
-          );
+        uint16 sum = 0;
+        for (uint256 i = 0; i < n; i++) {
+          sum += _scores[i];
+        }
+        return uint16(sum / n);
       } else if (_averageType == AverageType.HARMONIC) {
         uint256 sum = 0;
-        uint256 length = _scores.length;
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i = 0; i < n; i++) {
           sum += 1e18 / uint256(_scores[i]);
         }
-        return uint16(length / sum);
+        return uint16((n * 1e18) / sum);
       } else {
         revert Errors.NonImplemented();
       }
     }
   }
 
-  function compositeScore(
+  /**
+   * @notice Computes the composite score (C-Score) from an array of scores using the default average type (GEOMETRIC)
+   * @param _scores An array of scores
+   * @param _boundary Maximum number of scores to use
+   * @return Composite score as a uint16 value
+   */
+  function cScore(
+    uint16[] memory _scores,
+    uint256 _boundary
+  ) internal pure returns (uint16) {
+    return cScore(_scores, _boundary, AverageType.GEOMETRIC);
+  }
+
+  function cScore(
     RiskParams.StrategyScore memory _score,
     AverageType _averageType
   ) internal pure returns (uint16) {
     return
-      compositeScore(
-        [_score.performance, _score.scalability, _score.liquidity],
+      cScore(
+        AsArrays.toArray16(
+          _score.performance,
+          _score.safety,
+          _score.scalability,
+          _score.liquidity
+        ),
+        4,
         _averageType
       );
   }
 
-  function compositeScore(
-    uint16[3] memory _scores
-  ) internal pure returns (uint16) {
-    return compositeScore(_scores, AverageType.GEOMETRIC);
-  }
-
-  function compositeScore(
+  function cScore(
     RiskParams.StrategyScore memory _score
   ) internal pure returns (uint16) {
-    return compositeScore(_score, AverageType.GEOMETRIC);
+    return cScore(_score, AverageType.GEOMETRIC);
+  }
+
+  function cScore(
+    uint16[] memory _scores
+  ) internal pure returns (uint16) {
+    return cScore(_scores, _scores.length, AverageType.GEOMETRIC);
+  }
+
+  function cScore(
+    uint16[] memory _scores,
+    AverageType _averageType
+  ) internal pure returns (uint16) {
+    return cScore(_scores, _scores.length, _averageType);
   }
 
   /**
    * @notice Computes a StrategyScore structure from an array of scores
-   * @param _scores An array of 3 scores: [performance, scalability, liquidity]
+   * @param _scores An array of 4 scores: [performance, safety, scalability, liquidity]
    * @return A StrategyScore structure with calculated value score
    */
   function computeStrategyScore(
-    uint16[3] memory _scores
+    uint16[] memory _scores,
+    AverageType _averageType
   ) internal pure returns (RiskParams.StrategyScore memory) {
+    uint256 n = _scores.length;
+    if (n < 4) {
+      revert Errors.InvalidData();
+    }
     unchecked {
-      for (uint256 i = 0; i < _scores.length; i++) {
+      for (uint256 i = 0; i < n; i++) {
         if (_scores[i] > MAX_SCORE) {
-          revert Errors.InvalidData();
+          revert Errors.InvalidData(); // scores should be within [0, 100]
         }
       }
     }
     RiskParams.StrategyScore memory score = RiskParams.StrategyScore({
       performance: _scores[0],
-      scalability: _scores[1],
-      liquidity: _scores[2],
-      composite: compositeScore(_scores)
+      safety: _scores[1],
+      scalability: _scores[2],
+      liquidity: _scores[3],
+      composite: cScore(_scores, 4, _averageType)
     });
     return score;
   }
@@ -181,7 +321,7 @@ library AsRisk {
    * @param _amount Total amount to be allocated
    * @param _maxAllocRatio Maximum allocation ratio per strategy in `WAD` eg. 5e17 == 50%
    * @param _scoreExponent Exponent used to adjust allocation based on scores
-   * @return Calculated allocation for each strategy
+   * @return weightedScores Calculated allocation for each strategy
    */
   function targetCompositeAllocation(
     uint16[] memory _scores,
@@ -192,87 +332,83 @@ library AsRisk {
     if (_maxAllocRatio > AsMaths.BP_BASIS) {
       revert Errors.InvalidData();
     }
+    (uint256 totalWeightedScore, uint256 i, uint256 j) = (0, 0, 0);
+    uint256[] memory weightedScores = new uint256[](_scores.length);
 
-    uint256[] memory weightedScores;
-    uint256 totalWeightedScore = 0;
+    unchecked {
+      // alculate initial weighted scores
+      for (j = 0; j < _scores.length; j++) {
+        weightedScores[j] = uint256(
+          int256(uint256(_scores[j]) * 1e18).powWad(int256(_scoreExponent))
+        );
+        totalWeightedScore += weightedScores[j];
+      }
 
-    for (uint256 i = 0; i < _scores.length; i++) {
-      // inflate/deflate the allocation of high scores based on scoreExponent
-      weightedScores[i] = uint256(
-        int256(uint256(_scores[i]) * 1e18).powWad(int256(_scoreExponent))
-      );
-      totalWeightedScore += weightedScores[i];
+      bool needsRebalancing = true;
+
+      while (needsRebalancing && i < 10) {
+        needsRebalancing = false;
+        uint256 excessWeight = 0;
+        uint256 remainingWeight = 0;
+
+        // Check for weights exceeding maxAllocRatio and calculate excess
+        for (j = 0; j < weightedScores.length; j++) {
+          uint256 ratio = (weightedScores[j] * AsMaths.BP_BASIS) /
+            totalWeightedScore;
+          if (ratio > _maxAllocRatio) {
+            uint256 cappedWeight = (_maxAllocRatio * totalWeightedScore) /
+              AsMaths.BP_BASIS;
+            excessWeight += weightedScores[j] - cappedWeight;
+            totalWeightedScore -= weightedScores[j] - cappedWeight;
+            weightedScores[j] = cappedWeight;
+            needsRebalancing = true;
+          } else {
+            remainingWeight += weightedScores[j];
+          }
+        }
+
+        // redistribute excess weight
+        if (excessWeight > 0 && remainingWeight > 0) {
+          for (j = 0; j < weightedScores.length; j++) {
+            uint256 ratio = (weightedScores[i] * AsMaths.BP_BASIS) /
+              totalWeightedScore;
+            if (ratio <= _maxAllocRatio) {
+              uint256 additionalWeight = (excessWeight * weightedScores[j]) /
+                remainingWeight;
+              weightedScores[j] += additionalWeight;
+              totalWeightedScore += additionalWeight;
+            }
+          }
+        }
+
+        i++;
+      }
+
+      // calculate allocations from weighted scores
+      uint256[] memory allocations = new uint256[](_scores.length);
+      for (i = 0; i < _scores.length; i++) {
+        allocations[i] = (_amount * weightedScores[i]) / totalWeightedScore;
+      }
+
+      return allocations;
     }
-
-    return
-      distributeCompositeAllocation(
-        weightedScores,
-        _amount,
-        (_maxAllocRatio * _amount) / AsMaths.BP_BASIS,
-        totalWeightedScore,
-        new uint256[](_scores.length)
-      );
   }
 
   /**
-   * @notice Distributes the allocation based on weighted scores
-   * @param _weightedScores Weighted scores for each strategy
-   * @param _amount Total amount to be allocated
-   * @param _maxAlloc Maximum allocation per strategy
-   * @param _totalWeightedScore Total of all weighted scores
-   * @param _allocations Current allocations
-   * @return Updated allocations for each strategy
+   * @notice Calculates the maximum allocation ratio for a single strategy in a composite/basket/index
+   * @param _strategyCount Number of strategies in the composite/basket/index
+   * @param _minMaxAlloc Minimum maximum allocation ratio (floor, eg. .25 * 1e18 == 25% max minimum on the basket MVP, lowers the diversification bias)
+   * @param _exponent Exponent applied to the number of strategies (diversification bias)
+   * @return Calculated maximum allocation ratio in `WAD` (1e18 == 100%)
    */
-  function distributeCompositeAllocation(
-    uint256[] memory _weightedScores,
-    uint256 _amount,
-    uint256 _maxAlloc,
-    uint256 _totalWeightedScore,
-    uint256[] memory _allocations
-  ) internal pure returns (uint256[] memory) {
-    unchecked {
-      if (_totalWeightedScore == 0) {
-        for (uint256 i = 0; i < _weightedScores.length; i++) {
-          _totalWeightedScore += _weightedScores[i]; // we don't use AsArrays.sum() to cast and not overflow
-        }
-      }
-
-      for (uint256 i = 0; i < _weightedScores.length; i++) {
-        _allocations[i] += (_weightedScores[i] * _amount) / _totalWeightedScore;
-      }
-
-      uint256 excess = 0;
-      for (uint256 i = 0; i < _allocations.length; i++) {
-        if (_allocations[i] > _maxAlloc) {
-          excess += _allocations[i] - _maxAlloc;
-          _allocations[i] = _maxAlloc;
-        }
-      }
-
-      if (excess <= 0) {
-        return _allocations;
-      }
-
-      // Reallocate excess liquidity
-      uint256 totalWeightBelowMax = 0;
-      for (uint256 i = 0; i < _allocations.length; i++) {
-        if (_allocations[i] < _maxAlloc) {
-          totalWeightBelowMax += _weightedScores[i];
-        }
-      }
-
-      if (totalWeightBelowMax == 0) {
-        return _allocations;
-      }
-      return
-        distributeCompositeAllocation(
-          _weightedScores,
-          excess,
-          _maxAlloc,
-          totalWeightBelowMax,
-          _allocations
-        );
-    }
+  function maxAllocationRatio(
+    uint256 _strategyCount,
+    uint256 _minMaxAlloc,
+    uint256 _exponent
+  ) internal pure returns (uint256) {
+    return
+      _minMaxAlloc +
+      uint256(int256(int256(_strategyCount) * -int256(_exponent)).expWad());
   }
 
   /**
@@ -287,7 +423,9 @@ library AsRisk {
     uint256 _tvlFactor,
     uint256 _tvlExponent
   ) internal pure returns (uint256) {
-    return _tvlFactor * uint256(int256(_tvl).powWad(int256(_tvlExponent)));
+    return
+      (_tvlFactor * uint256(int256(_tvl).powWad(int256(_tvlExponent)))) /
+      1e18;
   }
 
   /**
@@ -312,95 +450,43 @@ library AsRisk {
   }
 
   /**
-   * @notice Calculates the target liquidity ratio for a vault
+   * @notice This function is the basis for our allocation and liquidation triggers
+   * This regressor exhibits a non-linear relationship between TVL and the calculated trigger ratio
+   * with behavior reminiscent of exponential decay
+   *
+   * Properties:
+   * - Monotonic+Asymptotic: As TVL increases, the ratio decreases towards _minRatio (given positive _tvlFactor and _tvlExponent)
+   * - Bounded: The ratio will always be between _minRatio and 1 (1e18)
+   *
    * @param _tvl Total value locked in the vault
-   * @param _minRatio Minimum liquidity (cash) ratio eg. .075 * 1e18
-   * @param _tvlFactor Factor applied to TVL in `WAD` eg. .03 * 1e18
-   * @param _tvlExponent Exponent applied to TVL in `WAD` eg. .3 * 1e18
-   * @return Calculated target liquidity ratio in `WAD` (1e18 == 100%)
-   */
-  function targetLiquidityRatio(
-    uint256 _tvl,
-    uint256 _minRatio,
-    uint256 _tvlFactor,
-    uint256 _tvlExponent
-  ) internal pure returns (uint256) {
-    return
-      _minRatio +
-      ((1e18 - _minRatio) *
-        uint256(
-          int256(1e18 + _tvl * _tvlFactor).powWad(-int256(_tvlExponent))
-        )) /
-      1e18;
-  }
-
-  /**
-   * @notice Calculates the target allocation ratio for a vault
-   * @param _tvl Total value locked in the vault
-   * @param _minRatio Minimum ratio
+   * @param _minRatio Minimum ratio in `WAD`
    * @param _tvlFactor Factor applied to TVL in `WAD`
    * @param _tvlExponent Exponent applied to TVL in `WAD`
-   * @return Calculated target allocation ratio in `WAD` (1e18 == 100%)
+   * @return Calculated regressor value in `WAD`
    */
-  function targetAllocationRatio(
+  function liquidityRatioRegressor(
     uint256 _tvl,
     uint256 _minRatio,
     uint256 _tvlFactor,
     uint256 _tvlExponent
   ) internal pure returns (uint256) {
-    return
-      1e18 - targetLiquidityRatio(_tvl, _minRatio, _tvlFactor, _tvlExponent);
+    unchecked {
+      uint256 base = 1e18 + (_tvl * _tvlFactor) / 1e18; // (1 + tvl * tvlFactor) in WAD
+      uint256 power = uint256(int256(base).powWad(-int256(_tvlExponent)));
+      return _minRatio + ((1e18 - _minRatio) * power) / 1e18;
+    }
   }
 
   /**
-   * @notice Calculates the maximum allocation ratio for a single strategy in a composite/basket/index
-   * @param _strategyCount Number of strategies in the composite/basket/index
-   * @param _minMaxAlloc Minimum maximum allocation ratio (floor, eg. .25 * 1e18 == 25% max minimum on the basket MVP, lowers the diversification bias)
-   * @param _exponent Exponent applied to the number of strategies (diversification bias)
-   * @return Calculated maximum allocation ratio in `WAD` (1e18 == 100%)
-   */
-  function maxAllocationRatio(
-    uint256 _strategyCount,
-    uint256 _minMaxAlloc,
-    uint256 _exponent
-  ) internal pure returns (uint256) {
-    return
-      _minMaxAlloc +
-      uint256(int256(int256(_strategyCount) * -int256(_exponent)).expWad());
-  }
-
-  /**
-   * @notice Calculates the liquidation trigger ratio for a vault
+   * @notice Calculates the liquidity regressor value based on the given parameters
+   * @dev This function uses the liquidity regressor ratio to compute the value
    * @param _tvl Total value locked in the vault
-   * @param _minRatio Minimum ratio in `WAD` (eg. .005 * 1e18 == 0.5%)
-   * @param _tvlFactor Factor applied to TVL in `WAD` (eg. .1 * 1e18 == 10%)
-   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .45 * 1e18 == 45%)
-   * @return Calculated liquidation trigger ratio in `WAD`
+   * @param _minRatio Minimum ratio in `WAD`
+   * @param _tvlFactor Factor applied to TVL in `WAD`
+   * @param _tvlExponent Exponent applied to TVL in `WAD`
+   * @return Calculated liquidity regressor value in `WAD`
    */
-  function liquidationTriggerRatio(
-    uint256 _tvl,
-    uint256 _minRatio,
-    uint256 _tvlFactor,
-    uint256 _tvlExponent
-  ) internal pure returns (uint256) {
-    return
-      _minRatio +
-      ((1e18 - _minRatio) *
-        uint256(
-          int256(1e18 + _tvl * _tvlFactor).powWad(-int256(_tvlExponent))
-        )) /
-      1e18;
-  }
-
-  /**
-   * @notice Calculates the liquidation trigger for a vault
-   * @param _tvl Total value locked in the vault
-   * @param _minRatio Minimum ratio in `WAD` (eg. .005 * 1e18 == 0.5%)
-   * @param _tvlFactor Factor applied to TVL in `WAD` (eg. .1 * 1e18 == 10%)
-   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .45 * 1e18 == 45%)
-   * @return Calculated liquidation trigger in `WAD`
-   */
-  function liquidationTrigger(
+  function liquidityValueRegressor(
     uint256 _tvl,
     uint256 _minRatio,
     uint256 _tvlFactor,
@@ -408,81 +494,49 @@ library AsRisk {
   ) internal pure returns (uint256) {
     return
       (_tvl *
-        liquidationTriggerRatio(_tvl, _minRatio, _tvlFactor, _tvlExponent)) /
+        liquidityRatioRegressor(_tvl, _minRatio, _tvlFactor, _tvlExponent)) /
       1e18;
   }
 
   /**
-   * @notice Calculates the panic liquidation trigger ratio for a vault
-   * @param _tvl Total value locked in the vault
-   * @param _minRatio Minimum ratio in `WAD` (eg. .006 * 1e18 == 0.6%)
-   * @param _tvlFactor Factor applied to TVL in `WAD` (eg. .1 * 1e18 == 10%)
-   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .4 * 1e18 == 40%)
-   * @return Calculated panic liquidation trigger ratio in `WAD`
-   */
-  function panicTriggerRatio(
-    uint256 _tvl,
-    uint256 _minRatio,
-    uint256 _tvlFactor,
-    uint256 _tvlExponent
-  ) internal pure returns (uint256) {
-    return
-      2 * liquidationTriggerRatio(_tvl, _minRatio, _tvlFactor, _tvlExponent);
-  }
-
-  /**
-   * @notice Calculates the panic liquidation trigger for a vault
-   * @param _tvl Total value locked in the vault
-   * @param _minRatio Minimum ratio in `WAD` (eg. .006 * 1e18 == 0.6%)
-   * @param _tvlFactor Factor applied to TVL in `WAD` (eg. .1 * 1e18 == 10%)
-   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .4 * 1e18 == 40%)
-   * @return Calculated panic liquidation trigger in `WAD`
-   */
-  function panicTrigger(
-    uint256 _tvl,
-    uint256 _minRatio,
-    uint256 _tvlFactor,
-    uint256 _tvlExponent
-  ) internal pure returns (uint256) {
-    return
-      (_tvl * panicTriggerRatio(_tvl, _minRatio, _tvlFactor, _tvlExponent)) /
-      1e18;
-  }
-
-  /**
-   * @notice Calculates the allocation trigger ratio for a vault
+   * @notice Determines whether the liquidity is above the regressor
+   * @param _excessLiquidity Current excess liquidity vs target
    * @param _tvl Total value locked in the vault
    * @param _minRatio Minimum ratio in `WAD` (eg. .005 * 1e18 == 0.5%)
    * @param _tvlFactor Factor applied to TVL in `WAD` (eg. .1 * 1e18 == 10%)
-   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .47 * 1e18 == 47%)
-   * @return Calculated allocation trigger ratio in `WAD` (1e18 == 100%)
+   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .45 * 1e18 == 45%)
+   * @return True if the liquidity is above the regressor, false otherwise
    */
-  function allocationTriggerRatio(
+  function aboveLiquidityRegressor(
+    uint256 _excessLiquidity,
     uint256 _tvl,
     uint256 _minRatio,
     uint256 _tvlFactor,
     uint256 _tvlExponent
-  ) internal pure returns (uint256) {
-    return liquidationTriggerRatio(_tvl, _minRatio, _tvlFactor, _tvlExponent);
+  ) internal pure returns (bool) {
+    return
+      _excessLiquidity >=
+      liquidityValueRegressor(_tvl, _minRatio, _tvlFactor, _tvlExponent);
   }
 
   /**
-   * @notice Calculates the allocation trigger for a vault
+   * @notice Determines whether the liquidity is below the regressor
+   * @param _excessLiquidity Current liquidity in the vault
    * @param _tvl Total value locked in the vault
    * @param _minRatio Minimum ratio in `WAD` (eg. .005 * 1e18 == 0.5%)
    * @param _tvlFactor Factor applied to TVL in `WAD` (eg. .1 * 1e18 == 10%)
-   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .47 * 1e18 == 47%)
-   * @return Calculated allocation trigger in `WAD`
+   * @param _tvlExponent Exponent applied to TVL in `WAD` (eg. .45 * 1e18 == 45%)
+   * @return True if the liquidity is below the regressor, false otherwise
    */
-  function allocationTrigger(
+  function belowLiquidityRegressor(
+    uint256 _excessLiquidity,
     uint256 _tvl,
     uint256 _minRatio,
     uint256 _tvlFactor,
     uint256 _tvlExponent
-  ) internal pure returns (uint256) {
+  ) internal pure returns (bool) {
     return
-      (_tvl *
-        allocationTriggerRatio(_tvl, _minRatio, _tvlFactor, _tvlExponent)) /
-      1e18;
+      _excessLiquidity <=
+      liquidityValueRegressor(_tvl, _minRatio, _tvlFactor, _tvlExponent);
   }
 }

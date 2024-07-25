@@ -12,14 +12,14 @@ contract AsRescuableTest is TestEnvArb {
     uint256 _value,
     ERC20 _token
   ) public returns (uint256) {
-    deployStrat(zeroFees, 100e6);
+    strat = deployStrat(zeroFees, 100e6);
     vm.prank(rich);
     _token.transfer(address(strat), _value);
     return (_token.balanceOf(address(strat)));
   }
 
   function setRescuableNative(uint256 _value) public returns (uint256) {
-    deployStrat(zeroFees, 100e6);
+    strat = deployStrat(zeroFees, 100e6);
     payable(address(strat)).transfer(_value);
     return address(strat).balance;
   }

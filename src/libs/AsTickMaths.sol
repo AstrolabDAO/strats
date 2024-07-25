@@ -12,22 +12,22 @@ library AsTickMath {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
-   * @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
+   * @notice Minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
    */
   int24 internal constant _MIN_TICK = -887272;
 
   /**
-   * @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
+   * @notice Maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
    */
   int24 internal constant _MAX_TICK = -_MIN_TICK;
 
   /**
-   * @dev The minimum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(_MIN_TICK)
+   * @notice Minimum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(_MIN_TICK)
    */
   uint160 internal constant _MIN_SQRT_RATIO = 4295128739;
 
   /**
-   * @dev The maximum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(_MAX_TICK)
+   * @notice Maximum value that can be returned from #getSqrtRatioAtTick. Equivalent to getSqrtRatioAtTick(_MAX_TICK)
    */
   uint160 internal constant _MAX_SQRT_RATIO =
     1461446703485210103287273052203988822378723970342;
@@ -39,7 +39,7 @@ library AsTickMath {
   /**
    * @notice Calculates sqrt(1.0001^tick) * 2^96
    * @dev Throws if |tick| > max tick
-   * @param tick The input tick for the above formula
+   * @param tick Input tick for the above formula
    * @return sqrtPriceX96 A Fixed point Q64.96 number representing the sqrt of the ratio of the two assets (token1/token0)
    * at the given tick
    */
@@ -120,8 +120,8 @@ library AsTickMath {
    * @notice Calculates the greatest tick value such that getRatioAtTick(tick) <= ratio
    * @dev Throws in case sqrtPriceX96 < _MIN_SQRT_RATIO, as _MIN_SQRT_RATIO is the lowest value getRatioAtTick may
    * ever return
-   * @param sqrtPriceX96 The sqrt ratio for which to compute the tick as a Q64.96
-   * @return tick The greatest tick for which the ratio is less than or equal to the input ratio
+   * @param sqrtPriceX96 Sqrt ratio for which to compute the tick as a Q64.96
+   * @return tick Greatest tick for which the ratio is less than or equal to the input ratio
    */
   function getTickAtSqrtRatio(uint160 sqrtPriceX96) internal pure returns (int24 tick) {
     // second inequality must be < because the price can never reach the price at the max tick

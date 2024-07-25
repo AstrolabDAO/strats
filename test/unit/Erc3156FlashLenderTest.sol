@@ -53,7 +53,7 @@ contract Erc3156FlashLenderTest is TestEnvArb {
   function usdcFlashLoan(Fees memory _fees, uint256 _minLiquidity) public {
     console.log("--- flash loan test ---");
     uint256 toBorrow = 1000e6;
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
 
     vm.startPrank(admin);
     usdc.approve(address(strat), type(uint256).max);

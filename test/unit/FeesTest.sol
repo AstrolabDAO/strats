@@ -21,7 +21,7 @@ contract FeesTest is TestEnvArb {
     uint256 toDeposit = 1000e6;
 
     // deposit
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
     vm.prank(bob);
     usdc.approve(address(strat), type(uint256).max);
     uint256 balanceBefore = usdc.balanceOf(bob);
@@ -48,7 +48,7 @@ contract FeesTest is TestEnvArb {
     checkSumOfAssets(assetsBefore + depositCollectedFee);
 
     // mint
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
     vm.prank(bob);
     usdc.approve(address(strat), type(uint256).max);
     uint256 toMint = strat.convertToShares(toDeposit, true);
@@ -83,7 +83,7 @@ contract FeesTest is TestEnvArb {
     uint256 toWithdraw = 1000e6;
 
     // withdraw
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
     vm.prank(bob);
     usdc.approve(address(strat), type(uint256).max);
     vm.prank(bob);
@@ -115,7 +115,7 @@ contract FeesTest is TestEnvArb {
     checkSumOfAssets(assetsBefore + withdrawCollectedFee); // tx fees are non inflationary, total assets increase along with the minted shares
 
     // redeem
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
     vm.prank(bob);
     usdc.approve(address(strat), type(uint256).max);
     vm.prank(bob);
@@ -156,7 +156,7 @@ contract FeesTest is TestEnvArb {
     console.log("--- management fees test ---");
     uint256 toDeposit = 1000e6;
 
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
     vm.startPrank(bob);
     // deposit
     usdc.approve(address(strat), type(uint256).max);
@@ -184,7 +184,7 @@ contract FeesTest is TestEnvArb {
   // Test performance fee by simulating strategy performance
   function performanceFees(Fees memory _fees, uint256 _minLiquidity) public {
     console.log("--- performance fees test ---");
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
     uint256 profitCooldown = 1 seconds;
 
     // set profit cooldown to 1 second
@@ -221,7 +221,7 @@ contract FeesTest is TestEnvArb {
   function flashLoanFees(Fees memory _fees, uint256 _minLiquidity) public {
     console.log("--- flash loan fees test ---");
     uint256 toBorrow = 1000e6;
-    deployStrat(_fees, _minLiquidity);
+    strat = deployStrat(_fees, _minLiquidity);
 
     uint256 theoreticalFlashFee = toBorrow.mulDiv(strat.fees().flash, AsMaths.BP_BASIS);
     uint256 theoreticalFlashFeeShares = strat.convertToShares(theoreticalFlashFee);

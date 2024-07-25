@@ -155,6 +155,11 @@ library AsArrays {
     (arr[0], arr[1]) = (a, b);
   }
 
+  function toArray16(uint16 a, uint16 b, uint16 c, uint16 d) internal pure returns (uint16[] memory arr) {
+    arr = new uint16[](4);
+    (arr[0], arr[1], arr[2], arr[3]) = (a, b, c, d);
+  }
+
   function toArray(uint256 a) internal pure returns (uint256[] memory arr) {
     arr = new uint256[](1);
     arr[0] = a;

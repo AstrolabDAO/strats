@@ -2,19 +2,11 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
-import {
-  StrategyParams,
-  Fees,
-  CoreAddresses,
-  Erc20Metadata,
-  Errors,
-  Roles
-} from "../../src/abstract/AsTypes.sol";
-import {AsArrays} from "../../src/libs/AsArrays.sol";
-import {AsMaths} from "../../src/libs/AsMaths.sol";
-import {ERC20} from "../../src/abstract/ERC20.sol";
+import "../../src/abstract/AsTypes.sol";
 import {ChainlinkProvider} from "../../src/abstract/ChainlinkProvider.sol";
 import {TestEnv} from "./TestEnv.sol";
+import {AsArrays} from "../../src/libs/AsArrays.sol";
+import {ERC20} from "../../src/abstract/ERC20.sol";
 
 abstract contract TestEnvArb is TestEnv {
   using AsArrays for address;
@@ -58,9 +50,9 @@ abstract contract TestEnvArb is TestEnv {
     oracle.update(
       abi.encode(
         ChainlinkProvider.Params({
-          assets: USDC.toArray(), // [USDC]
-          feeds: USDC_FEED.toBytes32Array(), // Chainlink USDC
-          validities: uint256(3600 * 24).toArray() // Chainlink quote validity
+          assets: USDC.toArray(WETH), // [USDC, WETH]
+          feeds: USDC_FEED.toBytes32Array(ETH_FEED), // Chainlink USDC, ETH
+          validities: uint256(3600 * 24).toArray(3600 * 24) // Chainlink quote validity
         })
       )
     );
@@ -74,6 +66,7 @@ abstract contract TestEnvArb is TestEnv {
       symbol: "apDUMMY-USD",
       decimals: 12
     });
+
     // startegy core addresses
     CoreAddresses memory coreAddresses = CoreAddresses({
       wgas: WETH,

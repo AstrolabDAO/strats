@@ -19,17 +19,16 @@ interface IStrategyV5 is IStrategyV5Agent, IAsProxy {
   function updateAgent(address _agent) external;
   function preview(uint256 _amount, bool _investing) external returns (uint256[8] memory amounts);
   function previewSwapAddons(uint256[] calldata _amounts) external returns (address[] memory from, address[] memory to, uint256[] memory amounts);
-  function invest(bytes[] calldata _params) external returns (uint256[8] memory amounts);
+  function invest(
+    uint256[8] calldata _amounts,
+    bytes[] calldata _params
+  ) external returns (uint256 totalInvested);
   function liquidate(
     uint256[8] calldata _amounts,
     uint256 _minLiquidity,
     bool _panic,
     bytes[] calldata _params
   ) external returns (uint256 totalRecovered);
-  function invest(
-    uint256[8] calldata _amounts,
-    bytes[] calldata _params
-  ) external returns (uint256 totalInvested);
   function liquidateRequest(uint256 _amount) external returns (uint256);
   function claimRewards() external returns (uint256[] memory);
   function harvest(bytes[] calldata _params) external returns (uint256 assetsReceived);

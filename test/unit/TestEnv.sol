@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
 import {StrategyParams, Fees, CoreAddresses, Erc20Metadata, Errors, Roles} from "../../src/abstract/AsTypes.sol";
-import {StrategyV5Simulator, StrategyV5CompositeSimulator} from "../../src/implementations/StrategyV5Simulator.sol";
+import {StrategyV5Simulator, StrategyV5CompositeSimulator} from "./StrategyV5Simulator.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
 import {AccessController} from "../../src/abstract/AccessController.sol";
@@ -28,6 +28,7 @@ abstract contract TestEnv is Test {
   address alice = users[1];
   address charlie = users[2];
   Fees zeroFees = Fees({perf: 0, mgmt: 0, entry: 0, exit: 0, flash: 0});
+  bytes[] emptyBytesArray = new bytes[](8); // assembly { mstore(emptyBytesArray, 0) } // Stores 32 bytes of zeros at the start of emptyBytesArray
 
   AccessController accessController;
   IStrategyV5 strat;
@@ -88,11 +89,14 @@ abstract contract TestEnv is Test {
     vm.stopPrank();
   }
 
+  function _setUp() internal virtual {}
+
   // refuel accounts before each test
   function setUp() public {
     if (refuel) {
       fundAll(1e4 ether);
     }
+    _setUp();
   }
 
   function previewCollectFees() public returns (uint256 feesCollected) {
@@ -144,30 +148,31 @@ abstract contract TestEnv is Test {
 
   function init(Fees memory _fees) public virtual;
 
-  function deployStrat(Fees memory _fees, uint256 _minLiquidit) public {
-    deployStrat(_fees, _minLiquidit, false);
+  function deployStrat(Fees memory _fees, uint256 _minLiquidit) public returns (IStrategyV5) {
+    return deployStrat(_fees, _minLiquidit, false);
   }
 
   function deployStrat(
     Fees memory _fees,
     uint256 _minLiquidity,
     bool _isComposite
-  ) public {
-    strat = IStrategyV5(
-        _isComposite
-          ? address(new StrategyV5CompositeSimulator(address(accessController)))
-          : address(new StrategyV5Simulator(address(accessController)))
-      );
-    init(_fees);
+  ) public returns (IStrategyV5) {
+    IStrategyV5 s = IStrategyV5(
+      _isComposite
+        ? address(new StrategyV5CompositeSimulator(address(accessController), vm))
+        : address(new StrategyV5Simulator(address(accessController), vm))
+    );
+    init(_fees); // overriden in TestArbEnv, TestBaseEnv...
     vm.prank(admin);
-    strat.setExemption(admin, true); // exempt admin from fees
+    s.setExemption(admin, true); // exempt admin from fees
     vm.prank(admin);
-    strat.setExemption(manager, true); // exempt manager from fees
-    require(strat.exemptionList(admin), "Admin should be exempt from fees");
-    require(strat.exemptionList(manager), "Manager should be exempt from fees");
+    s.setExemption(manager, true); // exempt manager from fees
+    require(s.exemptionList(admin), "Admin should be exempt from fees");
+    require(s.exemptionList(manager), "Manager should be exempt from fees");
 
     seedLiquidity(_minLiquidity);
     logState("deployed new dummy strat");
+    return s;
   }
 
   function grantRoles() public {

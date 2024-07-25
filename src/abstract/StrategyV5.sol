@@ -651,7 +651,7 @@ abstract contract StrategyV5 is
   /**
    * @notice Calculates the total pending redemption requests in shares
    * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption in underlying assets
-   * @return The total amount of pending redemption requests
+   * @return Total amount of pending redemption requests
    */
   function _totalPendingAssetsRequest() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
@@ -663,7 +663,7 @@ abstract contract StrategyV5 is
   /**
    * @notice Calculates the total pending redemption requests in shares
    * @dev Returns the difference between _req.totalRedemption and _req.totalClaimableRedemption in shares
-   * @return The total amount of pending redemption requests
+   * @return Total amount of pending redemption requests
    */
   function _totalPendingRedemptionRequest() internal returns (uint256) {
     (bool success, bytes memory res) = _baseStorageExt().agent.delegatecall(
