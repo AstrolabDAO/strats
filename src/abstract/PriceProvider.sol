@@ -67,11 +67,11 @@ abstract contract PriceProvider is AsPermissioned {
   }
 
   function toUsdBp(address _asset, uint256 _amount) public view returns (uint256) {
-    return toUsdBp(_asset) * _amount;
+    return toUsdBp(_asset) * _amount / (10 ** _decimalsByAsset[_asset]);
   }
 
   function fromUsdBp(address _asset, uint256 _amount) public view returns (uint256) {
-    return fromUsdBp(_asset) * _amount;
+    return fromUsdBp(_asset) * _amount / WEI_PER_USD;
   }
 
   /**
@@ -110,8 +110,7 @@ abstract contract PriceProvider is AsPermissioned {
     if (_quote == _base) {
       return _amount;
     }
-    return fromUsd(_quote, toUsdBp(_base, _amount))
-      / (10 ** (USD_DECIMALS + _decimalsByAsset[_base]) * AsMaths.BP_BASIS);
+    return fromUsd(_quote, toUsd(_base, _amount));
   }
 
   /**
@@ -121,7 +120,7 @@ abstract contract PriceProvider is AsPermissioned {
    * @return Exchange rate in `_quote` bps
    */
   function exchangeRateBp(address _base, address _quote) public view returns (uint256) {
-    return convert(_base, 10 ** _decimalsByAsset[_quote] * AsMaths.BP_BASIS, _quote);
+    return convert(_base, 10 ** _decimalsByAsset[_base] * AsMaths.BP_BASIS, _quote);
   }
 
   /**
@@ -131,7 +130,7 @@ abstract contract PriceProvider is AsPermissioned {
    * @return Exchange rate in `_quote` wei
    */
   function exchangeRate(address _base, address _quote) public view returns (uint256) {
-    return convert(_base, 10 ** _decimalsByAsset[_quote], _quote);
+    return convert(_base, 10 ** _decimalsByAsset[_base], _quote);
   }
 
   /*═══════════════════════════════════════════════════════════════╗

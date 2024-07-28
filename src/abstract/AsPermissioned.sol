@@ -38,6 +38,9 @@ abstract contract AsPermissioned {
   ╚═══════════════════════════════════════════════════════════════*/
 
   constructor(address _accessController) {
+    if (_accessController == address(0)) {
+      revert Errors.AddressZero();
+    }
     (bool success,) = _accessController.staticcall(
       abi.encodeWithSelector(IAccessController.isAdmin.selector, msg.sender)
     );

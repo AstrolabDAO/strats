@@ -164,7 +164,9 @@ abstract contract TestEnv is Test {
     uint256 _minLiquidity,
     bool _isComposite
   ) public returns (IStrategyV5) {
-    if (address(agent) == address(0)) {
+    console.log("deployStrat, agent:", address(agent), "accessController:", address(accessController));
+    if (address(agent) == address(0) || address(accessController) == address(0)) {
+      console.log("deploying dependencies");
       deployDependencies();
     }
     IStrategyV5 s = IStrategyV5(
@@ -195,13 +197,15 @@ abstract contract TestEnv is Test {
     );
     accessController.grantRole(Roles.MANAGER, manager); // needs acceptance
     vm.stopPrank();
-    vm.warp(block.timestamp + accessController.ROLE_ACCEPTANCE_TIMELOCK()); // fast forward time to acceptance window
+    uint256 initialTime = block.timestamp;
+    vm.warp(initialTime + accessController.ROLE_ACCEPTANCE_TIMELOCK()); // fast forward time to acceptance window
     vm.prank(manager);
     accessController.acceptRole(Roles.MANAGER); // accept role
     require(
       accessController.hasRole(Roles.MANAGER, manager),
       "Manager should have MANAGER role"
     );
+    vm.warp(initialTime); // reset time
   }
 
   function seedLiquidity(IStrategyV5 _strat, uint256 _minLiquidity) public {

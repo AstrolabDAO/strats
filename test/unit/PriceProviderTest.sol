@@ -86,15 +86,25 @@ contract PriceProviderTest is Test {
   }
 
   function getPrices() public {
-    console.log("USDC/USD (bps) %e vs %e", chainlink.toUsd(USDC), pyth.toUsd(USDC)); // usd 1e18 wei per usdc
-    console.log("WETH/USD (bps) %e vs %e", chainlink.toUsd(WETH), pyth.toUsd(WETH)); // usd 1e18 wei per weth
-    console.log("WBTC/USD (bps) %e vs %e", chainlink.toUsd(WBTC), pyth.toUsd(WBTC)); // usd 1e18 wei per wbtc
+    // vm.warp(block.timestamp - 5 minutes);
+    console.log("USDC/USD (e18) %e vs %e", chainlink.toUsd(USDC), pyth.toUsd(USDC)); // usd 1e18 wei per usdc
+    console.log("WETH/USD (e18) %e vs %e", chainlink.toUsd(WETH), pyth.toUsd(WETH)); // usd 1e18 wei per weth
+    console.log("WBTC/USD (e18) %e vs %e", chainlink.toUsd(WBTC), pyth.toUsd(WBTC)); // usd 1e18 wei per wbtc
 
-    console.log("USD/WETH (bps) %e vs %e", chainlink.fromUsd(WETH, 3800e18), pyth.fromUsd(WETH, 3800e18)); // weth wei per usd
-    console.log("USD/WBTC (bps) %e vs %e", chainlink.fromUsd(WBTC, 68000e18), pyth.fromUsd(WBTC, 68000e18)); // wbtc wei per usd
+    console.log("1000 USDC in USD (e18) %e vs %e", chainlink.toUsd(USDC, 1000e18), pyth.toUsd(USDC, 1000e18));
+    console.log("100 WETH in USD (e18) %e vs %e", chainlink.toUsd(WETH, 100e18), pyth.toUsd(WETH, 100e18));
+    console.log("10 WBTC in USD (e18) %e vs %e", chainlink.toUsd(WBTC, 10e18), pyth.toUsd(WBTC, 10e18));
 
-    console.log("WBTC/WETH (bps) %e vs %e", chainlink.exchangeRate(WBTC, WETH), pyth.exchangeRate(WBTC, WETH)); // weth wei per wbtc
-    console.log("WETH/WBTC (bps) %e vs %e", chainlink.exchangeRate(WETH, WBTC), pyth.exchangeRate(WETH, WBTC)); // wbtc wei per weth
+    console.log("USD/USDC (e6) %e vs %e", chainlink.fromUsd(USDC), pyth.fromUsd(USDC)); // weth wei per usd
+    console.log("USD/WETH (e18) %e vs %e", chainlink.fromUsd(WETH), pyth.fromUsd(WETH)); // weth wei per usd
+    console.log("USD/WBTC (e8) %e vs %e", chainlink.fromUsd(WBTC), pyth.fromUsd(WBTC)); // wbtc wei per usd
+
+    console.log("1000 USD in USDC (e6) %e vs %e", chainlink.fromUsd(USDC, 1000e18), pyth.fromUsd(USDC, 1000e18)); // weth wei per usd
+    console.log("3800 USD in WETH (e18) %e vs %e", chainlink.fromUsd(WETH, 3800e18), pyth.fromUsd(WETH, 3800e18)); // weth wei per usd
+    console.log("68000 USD in WBTC (e8) %e vs %e", chainlink.fromUsd(WBTC, 68000e18), pyth.fromUsd(WBTC, 68000e18)); // wbtc wei per usd
+
+    console.log("WBTC/WETH (1 BTC in ETH, e18) %e vs %e", chainlink.exchangeRate(WBTC, WETH), pyth.exchangeRate(WBTC, WETH)); // weth wei per wbtc
+    console.log("WETH/WBTC (1 ETH in BTC, e10) %e vs %e", chainlink.exchangeRate(WETH, WBTC), pyth.exchangeRate(WETH, WBTC)); // wbtc wei per weth
   }
 
   function testAll() public {

@@ -235,6 +235,16 @@ library AsArrays {
     (arr[0], arr[1], arr[2]) = (a, b, c);
   }
 
+  function toArray(bytes memory a) internal pure returns (bytes[] memory arr) {
+    arr = new bytes[](1);
+    arr[0] = a;
+  }
+
+  function toArray(bytes memory a, bytes memory b) internal pure returns (bytes[] memory arr) {
+    arr = new bytes[](2);
+    (arr[0], arr[1]) = (a, b);
+  }
+
   function dynamic(uint256[8] memory fixedArray)
     internal
     pure

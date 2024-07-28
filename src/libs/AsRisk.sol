@@ -103,8 +103,8 @@ library RiskParams {
       Strategy({
         defaultSeedUsd: 10e18,
         defaultDepositCapUsd: 2_000_000e18,
-        defaultMaxSlippage: 200, // 2% (bps)
-        defaultMaxLeverage: 500, // 5:1 (base 100)
+        defaultMaxLeverage: 200_00, // 200:1 (base 100)
+        defaultMaxSlippage: 100, // 1% (bps)
         minUpkeepInterval: 604_800 // 7 days (sec)
       });
   }
@@ -197,6 +197,60 @@ library AsRisk {
   ╚═══════════════════════════════════════════════════════════════*/
 
   /**
+   * @notice Decodes the packed score data
+   * @param _scoreData Packed score data
+   * @return _perf Decoded uint16 perf score
+   * @return _safety Decoded uint16 safety score
+   * @return _scalability Decoded uint16 scalability score
+   * @return _liquidity Decoded uint16 liquidity score
+   */
+  function decodePackedScores(
+    bytes calldata _scoreData
+  )
+    internal
+    view
+    returns (
+      uint16 _perf,
+      uint16 _safety,
+      uint16 _scalability,
+      uint16 _liquidity
+    )
+  {
+    if (_scoreData.length != 8) {
+      // 8 bytes == 64 bits
+      revert Errors.InvalidData();
+    }
+    assembly {
+      // Load the first 32 bytes of _scoreData
+      let data := calldataload(add(_scoreData.offset, 0))
+
+      // Extract each uint16 value from the packed data
+      _perf := shr(240, data) // 240 bits = 30 bytes = 60 nibbles
+      _safety := shr(
+        224,
+        and(
+          data,
+          0x0000FFFF00000000000000000000000000000000000000000000000000000000
+        )
+      )
+      _scalability := shr(
+        208,
+        and(
+          data,
+          0x00000000FFFF0000000000000000000000000000000000000000000000000000
+        )
+      )
+      _liquidity := shr(
+        192,
+        and(
+          data,
+          0x000000000000FFFF000000000000000000000000000000000000000000000000
+        )
+      )
+    }
+  }
+
+  /**
    * @notice Computes the composite score (C-Score) from an array of scores
    * @dev Uses the specified average type to compute the composite score
    * @param _scores An array of 3 scores: [performance, scalability, liquidity]
@@ -271,9 +325,7 @@ library AsRisk {
     return cScore(_score, AverageType.GEOMETRIC);
   }
 
-  function cScore(
-    uint16[] memory _scores
-  ) internal pure returns (uint16) {
+  function cScore(uint16[] memory _scores) internal pure returns (uint16) {
     return cScore(_scores, _scores.length, AverageType.GEOMETRIC);
   }
 
@@ -423,8 +475,7 @@ library AsRisk {
     uint256 _tvlExponent
   ) internal pure returns (uint256) {
     return
-      (_tvlFactor * uint256(int256(_tvl).powWad(int256(_tvlExponent)))) /
-      1e18;
+      (_tvlFactor * uint256(int256(_tvl).powWad(int256(_tvlExponent)))) / 1e18;
   }
 
   /**

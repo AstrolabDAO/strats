@@ -53,7 +53,7 @@ abstract contract TestEnvArb is TestEnv {
         ChainlinkProvider.Params({
           assets: USDC.toArray(WETH), // [USDC, WETH]
           feeds: USDC_FEED.toBytes32Array(ETH_FEED), // Chainlink USDC, ETH
-          validities: uint256(3600 * 24).toArray(3600 * 24) // Chainlink quote validity
+          validities: uint256(3600 * 48).toArray(3600 * 48) // Chainlink quote validity
         })
       )
     );

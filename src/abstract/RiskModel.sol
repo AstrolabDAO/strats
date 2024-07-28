@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
+import "forge-std/console.sol";
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsRisk.sol";
@@ -351,8 +352,8 @@ contract RiskModel is AsManageable {
   /**
    * @notice Determines whether a strategy should harvest rewards
    * @param _strategy Strategy
-   * @param _pendingRewards Pending rewards
-   * @param _costEstimate Cost estimate
+   * @param _pendingRewards Pending rewards in USD
+   * @param _costEstimate Cost estimate in USD
    * @return Whether the strategy should harvest rewards
    */
   function shouldHarvest(
@@ -364,7 +365,7 @@ contract RiskModel is AsManageable {
       AsRisk.shouldHarvest(
         _pendingRewards,
         _costEstimate,
-        strategyTvl(_strategy),
+        strategyTvlUsd(_strategy),
         allocationParams.harvestTrigger.factor.toWad32(),
         allocationParams.harvestTrigger.exponent.toWad32()
       );
@@ -374,13 +375,13 @@ contract RiskModel is AsManageable {
    * @notice Calculates the liquidity ratio regressor for a given TVL and parameters
    * @param _tvl Total value locked
    * @param _params Liquidity parameters
-   * @return Liquidity ratio regressor
+   * @return ratio Liquidity ratio regressor
    */
   function _liquidityRatioRegressor(
     uint256 _tvl,
     RiskParams.Liquidity memory _params
-  ) public pure returns (uint256) {
-    return
+  ) internal view returns (uint256 ratio) {
+    ratio =
       AsRisk
         .liquidityRatioRegressor(
           _tvl,
@@ -389,19 +390,21 @@ contract RiskModel is AsManageable {
           _params.exponent.toWad32()
         )
         .toBps();
+    console.log("tvl: %s, ratio: %s", _tvl, ratio);
   }
 
   /**
    * @notice Calculates the liquidity value regressor for a given TVL and parameters
    * @param _tvl Total value locked
    * @param _params Liquidity parameters
-   * @return Liquidity value regressor
+   * @return liquidity Liquidity value regressor
    */
   function _liquidityValueRegressor(
     uint256 _tvl,
     RiskParams.Liquidity memory _params
-  ) public pure returns (uint256) {
-    return (_liquidityRatioRegressor(_tvl, _params) * _tvl) / 1e18;
+  ) internal view returns (uint256 liquidity) {
+    liquidity = (_liquidityRatioRegressor(_tvl, _params) * _tvl) / 1e18;
+    console.log("tvl: %s, ratio: %s, liquidity: %s", _tvl, _liquidityRatioRegressor(_tvl, _params), liquidity);
   }
 
   /**
@@ -409,20 +412,21 @@ contract RiskModel is AsManageable {
    * @param _target Target liquidity ratio
    * @param _offset Offset ratio
    * @param _upper Whether it is the upper limit
-   * @return Liquidity limit ratio
+   * @return ratio Liquidity limit ratio
    */
   function _liquidityLimitRatio(
     uint256 _target,
     uint256 _offset,
     bool _upper
-  ) internal pure returns (uint256) {
+  ) internal view returns (uint256 ratio) {
     unchecked {
       if (_upper) {
-        return AsMaths.min(_offset + _target, 1e18); // upper band (allocation threshold) should never exceed 100%
+        ratio = AsMaths.min(_offset + _target, 1e18); // upper band (allocation threshold) should never exceed 100%
       } else {
         _offset = AsMaths.min(_target.bp(9000), _offset); // lower band (liquidation threshold) should never be less than 20% of liquidity target
-        return _target - _offset;
+        ratio = _target - _offset;
       }
+      console.log("target: %s, offset: %s, ratio: %s", _target, _offset, ratio);
     }
   }
 
@@ -439,7 +443,7 @@ contract RiskModel is AsManageable {
     uint256 _target,
     uint256 _offset,
     bool _upper
-  ) internal pure returns (bool) {
+  ) internal view returns (bool) {
     uint256 band = _liquidityLimitRatio(_target, _offset, _upper);
     return _upper ? _current >= band : _current <= band;
   }
@@ -725,8 +729,8 @@ contract RiskModel is AsManageable {
     IStrategyV5 _strategy,
     bytes calldata _scoreData
   ) internal {
-    (uint16 _perf, uint16 _safety, uint16 _scalability, uint16 _liquidity) = abi
-      .decode(_scoreData, (uint16, uint16, uint16, uint16));
+    (uint16 _perf, uint16 _safety, uint16 _scalability, uint16 _liquidity) =
+      AsRisk.decodePackedScores(_scoreData);
     _updateScore(_strategy, _perf, _safety, _scalability, _liquidity);
   }
 
@@ -769,7 +773,7 @@ contract RiskModel is AsManageable {
       if (
         // strategy defaults sanitization
         !_p.defaultSeedUsd.within(10e18, 100_000e18) || // liquidity seeding (>$10, <$100k)
-        !_p.defaultDepositCapUsd.within(0, 1_000_000e18) || // deposit cap (>$100, <$1m)
+        !_p.defaultDepositCapUsd.within(0, 10_000_000e18) || // deposit cap (>$100, <$10m)
         !_p.defaultMaxLeverage.within32(2_00, 200_00) || // max leverage to not brick any strats (>2:1, <200:1)
         !_p.defaultMaxSlippage.within32(6, 5_00) || // slippage range (>0.06%, <5%)
         !_p.minUpkeepInterval.within64(1800, 604_800) // forced upkeep interval (>30min, <7days)
@@ -792,7 +796,7 @@ contract RiskModel is AsManageable {
         (_p.scoring.mean != AverageType.ARITHMETIC &&
           _p.scoring.mean != AverageType.GEOMETRIC &&
           _p.scoring.mean != AverageType.HARMONIC) ||
-        !_p.scoring.exponent.within32(7000, 2_5000) || // score exponent (>0.7, <2.5)
+        !_p.scoring.exponent.within32(0.7e4, 2.5e4) || // score exponent (>0.7, <2.5)
         // diversification bias sanitization
         !_p.diversification.minRatio.within32(0, 2_000) || // min allocation (<20%)
         !_p.diversification.minMaxRatio.within32(10_00, 60_00) || // min max allocation (>10%,<60%)
@@ -816,10 +820,10 @@ contract RiskModel is AsManageable {
         !_p.panicTrigger.minRatio.within32(30, 2_000) || // panic trigger tvl factor (>.05%, <20%)
         !_p.panicTrigger.factor.within32(120, 1700) || // panic trigger tvl factor (>.012, <.17)
         !_p.panicTrigger.exponent.within32(6, 1_0000) || // panic trigger tvl exponent (>.0006, <1)
-        // hard-liquidation vs soft-liquidation sanitization
-        _p.liquidationTrigger.minRatio <= _p.panicTrigger.minRatio ||
-        _p.liquidationTrigger.factor <= _p.panicTrigger.factor ||
-        _p.liquidationTrigger.exponent <= _p.panicTrigger.exponent
+        // hard-liquidation vs soft-liquidation sanitization (hard trigger should converge slower than soft to never cross)
+        _p.liquidationTrigger.minRatio > _p.panicTrigger.minRatio ||
+        _p.liquidationTrigger.factor < _p.panicTrigger.factor ||
+        _p.liquidationTrigger.exponent < _p.panicTrigger.exponent
       ) revert Errors.InvalidData();
       allocationParams = _p;
       emit AllocationParamsUpdated(_p);

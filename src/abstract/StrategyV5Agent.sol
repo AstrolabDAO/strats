@@ -396,6 +396,8 @@ contract StrategyV5Agent is StrategyV5Abstract, As4626, AsFlashLender {
 
   /**
    * @return Total assets denominated in underlying, including claimable redemptions
+   * @dev rewardsAvailable() is not added here since it is denominated in each of the rewards
+   * and not directly convertible to underlying assets
    */
   function totalAssets() public view virtual override returns (uint256) {
     return availableClaimable() + _invested();

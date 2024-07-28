@@ -71,7 +71,7 @@ contract PythProvider is PriceProvider {
       revert Errors.MissingOracle();
     }
 
-    PythStructs.Price memory price = _pyth.getPrice(feed);
+    PythStructs.Price memory price = _pyth.getPriceUnsafe(feed);
     uint256 validity = validityByAsset[_asset];
 
     if (
