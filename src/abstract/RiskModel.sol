@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "forge-std/console.sol";
 import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsRisk.sol";
@@ -169,11 +168,11 @@ contract RiskModel is AsManageable {
   }
 
   /**
-   * @notice Returns the total value locked (TVL) of a strategy in USD
+   * @notice Returns the total value locked (TVL) of a strategy in USD e18
    * @param _strategy Strategy
    * @return TVL in USD
    */
-  function strategyTvlUsd(IStrategyV5 _strategy) public view returns (uint256) {
+  function tvlUsd(IStrategyV5 _strategy) public view returns (uint256) {
     return
       _strategy.oracle().toUsd(
         address(_strategy.asset()),
@@ -182,7 +181,21 @@ contract RiskModel is AsManageable {
   }
 
   /**
-   * @notice Returns the liquidity of a strategy in USD
+   * @notice Returns the position value of an owner in a strategy in USD e18
+   * @param _strategy Strategy
+   * @param _owner Owner of the assets
+   * @return Position value in USD
+   */
+  function positionUsd(IStrategyV5 _strategy, address _owner) public view returns (uint256) {
+    return
+      _strategy.oracle().toUsd(
+        address(_strategy.asset()),
+        _strategy.assetsOf(_owner)
+      );
+  }
+
+  /**
+   * @notice Returns the liquidity of a strategy in USD e18
    * @param _strategy Strategy
    * @return Liquidity in USD
    */
@@ -204,7 +217,7 @@ contract RiskModel is AsManageable {
   }
 
   /**
-   * @notice Returns the liquidation request in USD for a strategy
+   * @notice Returns the liquidation request in USD e18 for a strategy
    * @param _strategy Strategy
    * @return Liquidation request in USD
    */
@@ -219,30 +232,86 @@ contract RiskModel is AsManageable {
   }
 
   /**
+   * @notice Calculates the target composition ratios for a set of scores
+   * @param _scores Array of scores
+   * @return Calculated target composition ratios
+   */
+  function targetCompositionRatios(
+    uint16[] memory _scores
+  ) public view returns (uint256[] memory) {
+    return AsRisk.targetCompositionRatios(
+      _scores,
+      maxAllocationRatio(_scores.length),
+      allocationParams.scoring.exponent.toWad32()
+    );
+  }
+
+  /**
+   * @notice Calculates the target composition ratios for a set of strategies
+   * @param _strategies Array of strategies
+   * @return Calculated target composition ratios
+   */
+  function targetCompositionRatios(
+    IStrategyV5[] memory _strategies,
+    uint256 _boundary
+  ) public view returns (uint256[] memory) {
+    return AsRisk.targetCompositionRatios(
+      primitiveCScores(_strategies, _boundary),
+      maxAllocationRatio(_boundary),
+      allocationParams.scoring.exponent.toWad32()
+    );
+  }
+
+  /**
+   * @notice Calculates the target composition ratios for a composite strategy
+   * @param _strategy Composite strategy
+   * @return Calculated target composition ratios
+   */
+  function targetCompositionRatios(
+    IStrategyV5 _strategy
+  ) public view returns (uint256[] memory) {
+    (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(
+      _strategy
+    );
+    return targetCompositionRatios(_primitives, _boundary);
+  }
+
+  /**
+   * @notice Calculates the target composition for a set of scores
+   * @param _scores Array of scores
+   * @param _amount Total amount to be allocated
+   * @return Calculated target composition
+   */
+  function targetComposition(
+    uint16[] memory _scores,
+    uint256 _amount
+  ) public view returns (uint256[] memory) {
+    return AsRisk.targetComposition(
+      _scores,
+      _amount,
+      maxAllocationRatio(_scores.length),
+      allocationParams.scoring.exponent.toWad32()
+    );
+  }
+
+  /**
    * @notice Calculates the target composite allocation for a set of strategies
    * @param _strategies Array of strategies
    * @param _boundary Maximum number of strategies to use
    * @param _amount Total amount to be allocated
    * @return Target composite allocation for each strategy
    */
-  function targetCompositeAllocation(
+  function targetComposition(
     IStrategyV5[] memory _strategies,
     uint256 _boundary,
     uint256 _amount
   ) public view returns (uint256[] memory) {
-    uint16[] memory scores = new uint16[](_strategies.length);
-    unchecked {
-      for (uint256 i = 0; i < _strategies.length; i++) {
-        scores[i] = scoreByStrategy[_strategies[i]].composite;
-      }
-    }
-    return
-      AsRisk.targetCompositeAllocation(
-        scores,
-        _amount,
-        maxAllocationRatio(_boundary),
-        allocationParams.scoring.exponent
-      );
+    return AsRisk.targetComposition(
+      primitiveCScores(_strategies, _boundary),
+      _amount,
+      maxAllocationRatio(_boundary),
+      allocationParams.scoring.exponent.toWad32()
+    );
   }
 
   /**
@@ -251,14 +320,14 @@ contract RiskModel is AsManageable {
    * @param _amount Total amount to be allocated
    * @return Target composite allocation for each strategy
    */
-  function targetCompositeAllocation(
+  function targetComposition(
     IStrategyV5 _strategy,
     uint256 _amount
   ) external view returns (uint256[] memory) {
     (IStrategyV5[] memory _primitives, uint256 _boundary) = primitives(
       _strategy
     );
-    return targetCompositeAllocation(_primitives, _boundary, _amount);
+    return targetComposition(_primitives, _boundary, _amount);
   }
 
   /**
@@ -274,17 +343,16 @@ contract RiskModel is AsManageable {
     address _owner
   ) public view returns (int256[] memory) {
     uint256 boundary = _strategies.length;
-    uint256[] memory targets = AsRisk.targetCompositeAllocation(
+    uint256[] memory targets = AsRisk.targetComposition(
       primitiveCScores(_strategies, boundary),
       _amount,
       maxAllocationRatio(boundary),
-      allocationParams.scoring.exponent
-    );
+      allocationParams.scoring.exponent.toWad32()
+    ); // USD e18 denominated
     int256[] memory excess = new int256[](boundary);
     unchecked {
       for (uint256 i = 0; i < boundary; i++) {
-        excess[i] =
-          int256(_strategies[i].assetsOf(_owner)) -
+        excess[i] = int256(positionUsd(_strategies[i], _owner)) -
           int256(targets[i]);
       }
     }
@@ -316,7 +384,7 @@ contract RiskModel is AsManageable {
   /**
    * @notice Calculates the maximum allocation ratio for a given number of strategies
    * @param _strategyCount Number of strategies
-   * @return Maximum allocation ratio
+   * @return Maximum allocation ratio in `WAD`
    */
   function maxAllocationRatio(
     uint256 _strategyCount
@@ -327,8 +395,7 @@ contract RiskModel is AsManageable {
           _strategyCount,
           allocationParams.diversification.minMaxRatio.toWad32(),
           allocationParams.diversification.exponent.toWad32()
-        )
-        .toBps();
+        );
   }
 
   /**
@@ -342,11 +409,10 @@ contract RiskModel is AsManageable {
     return
       AsRisk
         .minHarvestToCostRatio(
-          strategyTvlUsd(_strategy),
+          tvlUsd(_strategy),
           allocationParams.harvestTrigger.factor.toWad(),
           allocationParams.harvestTrigger.exponent.toWad()
-        )
-        .toBps();
+        );
   }
 
   /**
@@ -365,7 +431,7 @@ contract RiskModel is AsManageable {
       AsRisk.shouldHarvest(
         _pendingRewards,
         _costEstimate,
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.harvestTrigger.factor.toWad32(),
         allocationParams.harvestTrigger.exponent.toWad32()
       );
@@ -373,68 +439,64 @@ contract RiskModel is AsManageable {
 
   /**
    * @notice Calculates the liquidity ratio regressor for a given TVL and parameters
-   * @param _tvl Total value locked
+   * @param _tvl Total value locked in USD e18
    * @param _params Liquidity parameters
-   * @return ratio Liquidity ratio regressor
+   * @return Liquidity ratio regressor in `WAD`
    */
   function _liquidityRatioRegressor(
     uint256 _tvl,
     RiskParams.Liquidity memory _params
-  ) internal view returns (uint256 ratio) {
-    ratio =
+  ) internal pure returns (uint256) {
+    return
       AsRisk
         .liquidityRatioRegressor(
           _tvl,
           _params.minRatio.toWad32(),
           _params.factor.toWad32(),
           _params.exponent.toWad32()
-        )
-        .toBps();
-    console.log("tvl: %s, ratio: %s", _tvl, ratio);
+        );
   }
 
   /**
    * @notice Calculates the liquidity value regressor for a given TVL and parameters
-   * @param _tvl Total value locked
+   * @param _tvl Total value locked in USD e18
    * @param _params Liquidity parameters
-   * @return liquidity Liquidity value regressor
+   * @return Liquidity value regressor in USD e18
    */
   function _liquidityValueRegressor(
     uint256 _tvl,
     RiskParams.Liquidity memory _params
-  ) internal view returns (uint256 liquidity) {
-    liquidity = (_liquidityRatioRegressor(_tvl, _params) * _tvl) / 1e18;
-    console.log("tvl: %s, ratio: %s, liquidity: %s", _tvl, _liquidityRatioRegressor(_tvl, _params), liquidity);
+  ) internal pure returns (uint256) {
+    return (_liquidityRatioRegressor(_tvl, _params) * _tvl) / 1e18;
   }
 
   /**
-   * @notice Calculates the liquidity limit ratio
-   * @param _target Target liquidity ratio
-   * @param _offset Offset ratio
+   * @notice Calculates the liquidity limit ratio in `WAD`
+   * @param _target Target liquidity ratio in `WAD`
+   * @param _offset Offset ratio in `WAD`
    * @param _upper Whether it is the upper limit
-   * @return ratio Liquidity limit ratio
+   * @return Liquidity limit ratio in `WAD`
    */
   function _liquidityLimitRatio(
     uint256 _target,
     uint256 _offset,
     bool _upper
-  ) internal view returns (uint256 ratio) {
+  ) internal pure returns (uint256) {
     unchecked {
       if (_upper) {
-        ratio = AsMaths.min(_offset + _target, 1e18); // upper band (allocation threshold) should never exceed 100%
+        return AsMaths.min(_offset + _target, 1e18); // upper band (allocation threshold) should never exceed 100%
       } else {
         _offset = AsMaths.min(_target.bp(9000), _offset); // lower band (liquidation threshold) should never be less than 20% of liquidity target
-        ratio = _target - _offset;
+        return _target - _offset;
       }
-      console.log("target: %s, offset: %s, ratio: %s", _target, _offset, ratio);
     }
   }
 
   /**
    * @notice Checks if the liquidity limit is breached
-   * @param _current Current liquidity ratio
-   * @param _target Target liquidity ratio
-   * @param _offset Offset ratio
+   * @param _current Current liquidity ratio in `WAD`
+   * @param _target Target liquidity ratio in `WAD`
+   * @param _offset Offset ratio in `WAD`
    * @param _upper Whether it is the upper limit
    * @return Whether the liquidity limit is breached
    */
@@ -443,7 +505,7 @@ contract RiskModel is AsManageable {
     uint256 _target,
     uint256 _offset,
     bool _upper
-  ) internal view returns (bool) {
+  ) internal pure returns (bool) {
     uint256 band = _liquidityLimitRatio(_target, _offset, _upper);
     return _upper ? _current >= band : _current <= band;
   }
@@ -460,7 +522,7 @@ contract RiskModel is AsManageable {
     RiskParams.Liquidity memory _offset,
     bool _upperBand
   ) internal view returns (bool) {
-    uint256 tvl = strategyTvlUsd(_strategy);
+    uint256 tvl = tvlUsd(_strategy);
     uint256 current = liquidityRatio(_strategy); // e18
     uint256 targetRatio = _liquidityRatioRegressor(
       tvl,
@@ -473,12 +535,12 @@ contract RiskModel is AsManageable {
 
   /**
    * @notice Returns the liquidity limit ratios for a given TVL
-   * @param _tvl Total value locked
-   * @return Liquidity limit ratios
+   * @param _tvl Total value locked in USD e18
+   * @return Liquidity limit ratios in `WAD`
    */
   function liquidityLimitRatios(
     uint256 _tvl
-  ) internal view returns (uint256[4] memory) {
+  ) public view returns (uint256[4] memory) {
     uint256 targetRatio = _liquidityRatioRegressor(
       _tvl,
       allocationParams.targetLiquidity
@@ -498,8 +560,8 @@ contract RiskModel is AsManageable {
 
   /**
    * @notice Returns the liquidity limits for a given TVL
-   * @param _tvl Total value locked
-   * @return limits Liquidity limits in USD
+   * @param _tvl Total value locked in USD e18
+   * @return limits Liquidity limits in USD e18
    */
   function liquidityLimits(
     uint256 _tvl
@@ -517,14 +579,14 @@ contract RiskModel is AsManageable {
   /**
    * @notice Calculates the target liquidity ratio for a given strategy
    * @param _strategy Strategy
-   * @return Target liquidity ratio in WAD
+   * @return Target liquidity ratio in `WAD`
    */
   function targetLiquidityRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
       _liquidityRatioRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.targetLiquidity
       );
   }
@@ -539,7 +601,7 @@ contract RiskModel is AsManageable {
   ) public view returns (uint256) {
     return
       _liquidityValueRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.targetLiquidity
       );
   }
@@ -547,7 +609,7 @@ contract RiskModel is AsManageable {
   /**
    * @notice Calculates the target allocation ratio for a given strategy
    * @param _strategy Strategy
-   * @return Target allocation ratio in WAD
+   * @return Target allocation ratio in `WAD`
    */
   function targetAllocationRatio(
     IStrategyV5 _strategy
@@ -564,20 +626,20 @@ contract RiskModel is AsManageable {
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      (targetAllocationRatio(_strategy) * strategyTvlUsd(_strategy)) / 1e18;
+      (targetAllocationRatio(_strategy) * tvlUsd(_strategy)) / 1e18;
   }
 
   /**
    * @notice Calculates the liquidation trigger ratio for a given strategy
    * @param _strategy Strategy
-   * @return Liquidation trigger ratio in WAD
+   * @return Liquidation trigger ratio in `WAD`
    */
   function liquidationTriggerRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
       _liquidityRatioRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.liquidationTrigger
       );
   }
@@ -592,7 +654,7 @@ contract RiskModel is AsManageable {
   ) public view returns (uint256) {
     return
       _liquidityValueRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.liquidationTrigger
       );
   }
@@ -614,14 +676,14 @@ contract RiskModel is AsManageable {
   /**
    * @notice Calculates the panic trigger ratio for a given strategy
    * @param _strategy Strategy
-   * @return Panic trigger ratio in WAD
+   * @return Panic trigger ratio in `WAD`
    */
   function panicTriggerRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
       _liquidityRatioRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.panicTrigger
       );
   }
@@ -634,7 +696,7 @@ contract RiskModel is AsManageable {
   function panicTrigger(IStrategyV5 _strategy) public view returns (uint256) {
     return
       _liquidityValueRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.panicTrigger
       );
   }
@@ -652,14 +714,14 @@ contract RiskModel is AsManageable {
   /**
    * @notice Calculates the allocation trigger ratio for a given strategy
    * @param _strategy Strategy
-   * @return Allocation trigger ratio in WAD
+   * @return Allocation trigger ratio in `WAD`
    */
   function allocationTriggerRatio(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
       _liquidityRatioRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.allocationTrigger
       );
   }
@@ -674,7 +736,7 @@ contract RiskModel is AsManageable {
   ) public view returns (uint256) {
     return
       _liquidityValueRegressor(
-        strategyTvlUsd(_strategy),
+        tvlUsd(_strategy),
         allocationParams.allocationTrigger
       );
   }

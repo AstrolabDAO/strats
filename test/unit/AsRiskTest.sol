@@ -33,7 +33,7 @@ contract AsRiskTest is Test {
     assertApproxEqAbs(AsRisk.cScore(score, AverageType.GEOMETRIC), 54, 1); // Allow for small rounding differences
   }
 
-  function testTargetCompositeAllocation() public {
+  function testTargetComposition() public {
     uint16[] memory scores = new uint16[](3);
     (scores[0], scores[1], scores[2]) = (30, 60, 90);
     (uint256 amount, uint256 maxAllocRatio, uint256 scoreExponent) = (
@@ -42,7 +42,7 @@ contract AsRiskTest is Test {
       1.8614e18
     );
 
-    uint256[] memory allocations = AsRisk.targetCompositeAllocation(
+    uint256[] memory allocations = AsRisk.targetComposition(
       scores,
       amount,
       maxAllocRatio,
@@ -55,7 +55,7 @@ contract AsRiskTest is Test {
 
     (scores[0], scores[1], scores[2]) = (40, 50, 60);
 
-    allocations = AsRisk.targetCompositeAllocation(
+    allocations = AsRisk.targetComposition(
       scores,
       amount,
       maxAllocRatio,
@@ -68,7 +68,7 @@ contract AsRiskTest is Test {
 
     scoreExponent = 2e18;
 
-    allocations = AsRisk.targetCompositeAllocation(
+    allocations = AsRisk.targetComposition(
       scores,
       amount,
       maxAllocRatio,
@@ -79,7 +79,7 @@ contract AsRiskTest is Test {
     assertApproxEqRel(allocations[2], 467.53246753 ether, 1e15);
 
     maxAllocRatio = 0.4e4; // 40%
-    allocations = AsRisk.targetCompositeAllocation(
+    allocations = AsRisk.targetComposition(
       scores,
       amount,
       maxAllocRatio,

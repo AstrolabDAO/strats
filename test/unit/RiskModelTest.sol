@@ -7,7 +7,7 @@ import "../../src/abstract/RiskModel.sol";
 import "../../src/abstract/AsTypes.sol";
 
 contract RiskModelTest is TestEnvArb {
-  using AsMaths for uint256;
+  using AsMaths for *;
   using AsArrays for *;
 
   RiskModel public riskModel;
@@ -18,7 +18,7 @@ contract RiskModelTest is TestEnvArb {
   IStrategyV5 public highTvlLowLiq;
   IStrategyV5 public highTvlHighLiq;
   bytes score1 = abi.encodePacked(uint16(80), uint16(30), uint16(90), uint16(40));
-  bytes score2 = abi.encodePacked(uint16(50), uint16(50), uint16(50), uint16(50));
+  bytes score2 = abi.encodePacked(uint16(40), uint16(40), uint16(40), uint16(40));
 
   constructor() TestEnvArb(true, true) {}
 
@@ -27,10 +27,10 @@ contract RiskModelTest is TestEnvArb {
     // create and set up strategies
     lowTvlVeryLowLiq = newStrat(100_000e6, 2_000e6); // $100k TVL, $2k liquidity
     lowTvlLowLiq = newStrat(100_000e6, 9_000e6); // $100k TVL, $9k liquidity
-    lowTvlHighLiq = newStrat(100_000e6, 20_000e6); // $100k TVL, $20k liquidity
+    lowTvlHighLiq = newStrat(100_000e6, 40_000e6); // $100k TVL, $40k liquidity
     highTvlVeryLowLiq = newStrat(500_000e6, 10e6); // $500k TVL, $10k liquidity
-    highTvlLowLiq = newStrat(500_000e6, 30_000e6); // $500k TVL, $30k liquidity
-    highTvlHighLiq = newStrat(500_000e6, 100_000e6); // $500k TVL, $100k liquidity
+    highTvlLowLiq = newStrat(500_000e6, 40_000e6); // $500k TVL, $30k liquidity
+    highTvlHighLiq = newStrat(500_000e6, 200_000e6); // $500k TVL, $200k liquidity
 
     // accessController only exists after the first newStrat is called
     riskModel = new RiskModel(address(accessController)); // Assuming the test contract is the access controller
@@ -40,6 +40,7 @@ contract RiskModelTest is TestEnvArb {
     riskModel.updateScore(lowTvlVeryLowLiq, score1);
     riskModel.updateScore(lowTvlLowLiq, score1);
     riskModel.updateScore(lowTvlHighLiq, score2);
+    riskModel.updateScore(highTvlVeryLowLiq, score1);
     riskModel.updateScore(highTvlLowLiq, score1);
     riskModel.updateScore(highTvlHighLiq, score2);
     vm.stopPrank();
@@ -75,11 +76,11 @@ contract RiskModelTest is TestEnvArb {
     RiskParams.StrategyScore memory score;
     (score.performance, score.safety, score.scalability, score.liquidity, score.composite) =
       riskModel.scoreByStrategy(lowTvlLowLiq);
-    assertEq(score.performance, 50);
-    assertEq(score.safety, 50);
-    assertEq(score.scalability, 50);
-    assertEq(score.liquidity, 50);
-    assertApproxEqAbs(score.composite, 50, 1); // geometric mean of 50, 50, 50, 50
+    assertEq(score.performance, 40);
+    assertEq(score.safety, 40);
+    assertEq(score.scalability, 40);
+    assertEq(score.liquidity, 40);
+    assertApproxEqAbs(score.composite, 40, 1); // geometric mean of 40, 40, 40, 40
   
     vm.prank(manager);
     riskModel.updateScore(lowTvlLowLiq, score1);
@@ -93,20 +94,27 @@ contract RiskModelTest is TestEnvArb {
   }
 
   function testShouldHarvest() public {
-    // default pending rewards (10% from Strateg)
-    assertTrue(riskModel.shouldHarvest(
-      lowTvlLowLiq,
-      lowTvlLowLiq.rewardsAvailable()[0], // USDC <> USD conversion accepted
-      1e6 // $2 total harvest cost (eg. gas+slippage)
-    ));
+    IStrategyV5 strat = lowTvlVeryLowLiq;
+    // default pending rewards (10% from Strategy)
+    (uint256 cost, bool shouldHarvest, uint256 rewards) = (1e6, false, strat.rewardsAvailable()[0]);
+    console.log("before harvest");
+    shouldHarvest = riskModel.shouldHarvest(
+      strat,
+      rewards, // USDC <> USD conversion accepted
+      cost // $1 total harvest cost (eg. gas+slippage)
+    );
+    console.log("rewards available: %e, harvest cost: %e", rewards, cost);
+    console.log("-> shouldHarvest: %s", shouldHarvest);
+    assertEq(shouldHarvest, true);
     vm.prank(keeper);
-    lowTvlVeryLowLiq.harvest(bytes("").toArray()); // to accomodate _swapRewards()
+    strat.harvest(bytes("").toArray()); // to accomodate _swapRewards()
     // no reward should remain on the strategy
-    assertFalse(riskModel.shouldHarvest(
-      lowTvlVeryLowLiq,
-      lowTvlVeryLowLiq.rewardsAvailable()[0],
-      1e6 // $2 total harvest cost (eg. gas+slippage)
-    ));
+    console.log("after harvest");
+    rewards = strat.rewardsAvailable()[0];
+    console.log("rewards available: %e, harvest cost: %e", rewards, cost);
+    shouldHarvest = riskModel.shouldHarvest(strat, rewards, cost);
+    console.log("-> shouldHarvest: %s", shouldHarvest);
+    assertEq(shouldHarvest, false);
   }
 
   function testShouldPanic() public {
@@ -136,22 +144,31 @@ contract RiskModelTest is TestEnvArb {
     assertFalse(riskModel.shouldLiquidate(highTvlHighLiq));
   }
 
-  function testTargetCompositeAllocation() public {
-    // consider a basket of 2 strategies
-    IStrategyV5[] memory strategies = new IStrategyV5[](2);
-    strategies[0] = lowTvlHighLiq;
-    strategies[1] = highTvlHighLiq;
-    uint256 amount = 10_000e6; // $10k more allocated to the basket
+  function testTargetComposition() public {
 
-    uint256[] memory allocations = riskModel.targetCompositeAllocation(
+    IStrategyV5[] memory strategies = new IStrategyV5[](4);
+    strategies[0] = lowTvlHighLiq; // score 1
+    strategies[1] = highTvlHighLiq; // new score++
+    strategies[2] = lowTvlLowLiq; // score 1
+    strategies[3] = highTvlLowLiq; // score 2
+
+    // inflate score of highTvlHighLiq to test the non-linear allocation increase
+    vm.prank(admin);
+    riskModel.updateScore(highTvlHighLiq, abi.encodePacked(uint16(95), uint16(90), uint16(80), uint16(90)));
+
+    uint256 amount = 10_000e18; // $10k allocated to the basket
+
+    uint256[] memory allocations = riskModel.targetComposition(
       strategies,
       strategies.length,
       amount
     );
 
-    assertEq(allocations.length, strategies.length);
+    for (uint256 i = 0; i < allocations.length; i++) {
+      console.log("allocation[%s]: %e", i, allocations[i]);
+    }
 
-    console.log("allocations:", allocations[0], allocations[1]);
+    assertEq(allocations.length, strategies.length);
 
     uint256 totalAllocation = 0;
     for (uint256 i = 0; i < allocations.length; i++) {
@@ -162,44 +179,121 @@ contract RiskModelTest is TestEnvArb {
   }
 
   function testExcessAllocation() public {
+
     // consider a basket of 2 strategies
-    IStrategyV5[] memory strategies = new IStrategyV5[](2);
-    strategies[0] = lowTvlHighLiq;
-    strategies[1] = highTvlHighLiq;
-    uint256 addon = 10_000e6; // $10k more allocated to the basket
+    IStrategyV5[] memory strategies = new IStrategyV5[](4);
+    strategies[0] = lowTvlHighLiq; // score 1
+    strategies[1] = highTvlHighLiq; // new score++
+    strategies[2] = lowTvlLowLiq; // score 1
+    strategies[3] = highTvlLowLiq; // score 2
+
+    // inflate score of highTvlHighLiq to test the non-linear allocation increase
+    vm.prank(admin);
+    riskModel.updateScore(highTvlHighLiq, abi.encodePacked(uint16(95), uint16(90), uint16(80), uint16(90)));
+
+    uint256 amount = 10_000e18; // $10k deposited on the basket
 
     int256[] memory excess = riskModel.excessAllocation(
       strategies,
-      addon,
-      bob // bob owns the basket (usually a composite strategy would be used)
+      amount,
+      alice // alice owns the basket (eg. composite strategy)
     );
 
     assertEq(excess.length, strategies.length);
 
-    // Check that the sum of positive excesses roughly equals the sum of negative excesses
+    // check that the sum of positive excesses roughly equals the sum of negative excesses
     int256 positiveSum = 0;
     int256 negativeSum = 0;
+    uint256 totalPriorPositionUsd = 0;
+
+    // calculate the total prior position value in USD and log the excesses
     for (uint256 i = 0; i < excess.length; i++) {
+      uint256 priorPositionUsd = uint256(riskModel.positionUsd(strategies[i], alice));
+      console.log("positionUsd[%s]: %e", i, priorPositionUsd);
+      totalPriorPositionUsd += priorPositionUsd;
       if (excess[i] > 0) {
-        console.log("excess[", i, "]:", uint256(excess[i]));
+        console.log("excess[%s]: %e", i, uint256(excess[i]));
         positiveSum += excess[i];
       } else {
-        console.log("excess[", i, "]: -", uint256(-excess[i]));
+        console.log("excess[%s]: -%e", i, uint256(-excess[i]));
         negativeSum += excess[i];
       }
     }
 
-    assertApproxEqAbs(positiveSum, -negativeSum + int256(addon), 1e6); // $1 rounding error
+    console.log("totalPriorPositionUsd: %e", totalPriorPositionUsd);
+    console.log("positiveSum: %e", uint256(positiveSum));
+    console.log("negativeSum: %e", uint256(-negativeSum));
+    assertApproxEqAbs(uint256(positiveSum) + uint256(-negativeSum) - totalPriorPositionUsd, amount, 1e6); // $1 rounding error
+
+    // deposit/withdraw from the strategies in order to match the excesses
+    for (uint256 i = 0; i < excess.length; i++) {
+      vm.startPrank(alice);
+      if (excess[i] > 0) {
+        // positive excess == withdraw required (reduce exposure/position size)
+        console.log("withdrawing %e from %s", uint256(excess[i]), strategies[i].symbol());
+        strategies[i].withdraw(
+          oracle.fromUsd(address(strategies[i].asset()), uint256(excess[i])),
+          alice, // receiver
+          alice // owner
+        );
+      } else {
+        uint256 amountUsdc = oracle.fromUsd(address(strategies[i].asset()), uint256(-excess[i]));
+        // negative excess == deposit required (increase exposure/position size)
+        console.log("depositing %e usd -> %e USDC to %s", uint256(-excess[i]), amountUsdc, strategies[i].symbol());
+        IERC20Metadata(strategies[i].asset()).approve(address(strategies[i]), amountUsdc);
+        strategies[i].deposit(
+          amountUsdc,
+          alice // receiver
+        );
+      }
+    }
+    excess = riskModel.excessAllocation(
+      strategies,
+      amount,
+      alice // alice owns the basket (eg. composite strategy)
+    );
+
+    for (uint256 i = 0; i < excess.length; i++) {
+      console.log("new excess[%s]: %e", i, uint256(excess[i]));
+      console.log("new positionUsd[%s]: %e", i, uint256(riskModel.positionUsd(strategies[i], alice)));
+    }
+    // all excesses should now be zero
+    assertEq(excess.length, strategies.length);
+    for (uint256 i = 0; i < excess.length; i++) {
+      uint256 absExcess = uint256(excess[i].abs());
+      assertApproxEqAbs(absExcess, 0, 50e18); // $50 tolerance
+    }
+    vm.stopPrank();
+  }
+
+  function testLiquidityLimitRatios() public {
+    // tvls in USD e18
+    uint256[8] memory tvls = [uint256(100e18), uint256(1000e18), uint256(10_000e18), uint256(100_000e18), uint256(1_000_000e18), uint256(10_000_000e18), uint256(100_000_000e18), uint256(1_000_000_000e18)];
+    uint256[4] memory limits;
+    for (uint256 i = 0; i < tvls.length; i++) {
+      console.log("limit ratios for tvl: %e", tvls[i]);
+      limits = riskModel.liquidityLimitRatios(tvls[i]);
+      for (uint256 j = 0; j < limits.length; j++) {
+        console.log("-> limit[%s]: %e", j, limits[j]);
+      }
+      assertLt(limits[0], 1e18); // allocation trigger (upper band) < 100%
+      assertGt(limits[0], limits[1]); // allocation trigger (upper band) > liquidity target
+      assertGt(limits[1], limits[2]); // liquidity target (gravity center) > liquidation level (lower band)
+      assertGt(limits[2], limits[3]); // liquidation level (lower band) > panic level (2nd lower band)
+    }
   }
 
   function testLiquidityLimits() public {
-    uint256[8] memory tvls = [uint256(100e6), uint256(1000e6), uint256(10_000e6), uint256(100_000e6), uint256(1_000_000e6), uint256(10_000_000e6), uint256(100_000_000e6), uint256(1_000_000_000e6)];
+    // tvls in USD e18
+    uint256[8] memory tvls = [uint256(100e18), uint256(1000e18), uint256(10_000e18), uint256(100_000e18), uint256(1_000_000e18), uint256(10_000_000e18), uint256(100_000_000e18), uint256(1_000_000_000e18)];
     uint256[4] memory limits;
     for (uint256 i = 0; i < tvls.length; i++) {
+      console.log("limits for tvl: %e", tvls[i]);
       limits = riskModel.liquidityLimits(tvls[i]);
       for (uint256 j = 0; j < limits.length; j++) {
-        console.log("limit[", j, "]:", limits[j]);
+        console.log("-> limit[%s]: %e", j, limits[j]);
       }
+      assertLt(limits[0], tvls[i]); // allocation trigger (upper band) < tvl
       assertGt(limits[0], limits[1]); // allocation trigger (upper band) > liquidity target
       assertGt(limits[1], limits[2]); // liquidity target (gravity center) > liquidation level (lower band)
       assertGt(limits[2], limits[3]); // liquidation level (lower band) > panic level (2nd lower band)
@@ -214,7 +308,7 @@ contract RiskModelTest is TestEnvArb {
       defaultMaxLeverage: 4_00,
       minUpkeepInterval: 7200
     });
-    vm.prank(address(admin));
+    vm.prank(admin);
     riskModel.updateStrategyParams(_in);
     RiskParams.Strategy memory _out;
     (
@@ -231,7 +325,7 @@ contract RiskModelTest is TestEnvArb {
     assertEq(_out.minUpkeepInterval, _in.minUpkeepInterval);
   }
 
-  function testInvalidParamsUpdate() public {
+  function testParamsUpdateInvalid() public {
     RiskParams.Strategy memory invalidParams = RiskParams.Strategy({
       defaultSeedUsd: 1e18, // Too low
       defaultDepositCapUsd: 2000000e18, // Too high
@@ -240,8 +334,8 @@ contract RiskModelTest is TestEnvArb {
       minUpkeepInterval: 100 // Too low
     });
 
-    vm.prank(address(this));
     vm.expectRevert(Errors.InvalidData.selector);
+    vm.prank(admin);
     riskModel.updateStrategyParams(invalidParams);
   }
 }

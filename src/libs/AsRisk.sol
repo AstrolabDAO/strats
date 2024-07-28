@@ -367,31 +367,30 @@ library AsRisk {
   }
 
   /**
-   * @notice Calculates the target allocation for a strategy based on strategy scores
-   * @param _scores Scores for each strategy
-   * @param _amount Total amount to be allocated
+   * @notice Calculates the target allocation ratios for strategies based on strategy scores
+   * @param _scores Scores for each strategy (max 100)
    * @param _maxAllocRatio Maximum allocation ratio per strategy in `WAD` eg. 5e17 == 50%
-   * @param _scoreExponent Exponent used to adjust allocation based on scores
-   * @return weightedScores Calculated allocation for each strategy
+   * @param _scoreExponent Exponent used to convert scores into weights (diversification bias), in `WAD` e.g., 1.8614 * 1e18
+   * @return Calculated allocation ratios for each strategy in WAD (base e18)
    */
-  function targetCompositeAllocation(
+  function targetCompositionRatios(
     uint16[] memory _scores,
-    uint256 _amount,
     uint256 _maxAllocRatio,
     uint256 _scoreExponent // used to convert scores into weights (diversification bias), in `WAD` e.g., 1.8614 * 1e18
-  ) internal pure returns (uint256[] memory) {
-    if (_maxAllocRatio > AsMaths.BP_BASIS) {
+  ) internal view returns (uint256[] memory) {
+    if (_maxAllocRatio > 1e18) {
       revert Errors.InvalidData();
     }
     (uint256 totalWeightedScore, uint256 i, uint256 j) = (0, 0, 0);
     uint256[] memory weightedScores = new uint256[](_scores.length);
 
     unchecked {
-      // alculate initial weighted scores
+      // calculate initial weighted scores
       for (j = 0; j < _scores.length; j++) {
-        weightedScores[j] = uint256(
-          int256(uint256(_scores[j]) * 1e18).powWad(int256(_scoreExponent))
-        );
+        weightedScores[j] =
+          uint256(
+            int256(uint256(_scores[j]) * 1e18).powWad(int256(_scoreExponent))
+          ) - 1e18;
         totalWeightedScore += weightedScores[j];
       }
 
@@ -402,13 +401,11 @@ library AsRisk {
         uint256 excessWeight = 0;
         uint256 remainingWeight = 0;
 
-        // Check for weights exceeding maxAllocRatio and calculate excess
+        // check for weights exceeding maxAllocRatio and calculate excess
         for (j = 0; j < weightedScores.length; j++) {
-          uint256 ratio = (weightedScores[j] * AsMaths.BP_BASIS) /
-            totalWeightedScore;
+          uint256 ratio = (weightedScores[j] * 1e18) / totalWeightedScore;
           if (ratio > _maxAllocRatio) {
-            uint256 cappedWeight = (_maxAllocRatio * totalWeightedScore) /
-              AsMaths.BP_BASIS;
+            uint256 cappedWeight = (_maxAllocRatio * totalWeightedScore) / 1e18;
             excessWeight += weightedScores[j] - cappedWeight;
             totalWeightedScore -= weightedScores[j] - cappedWeight;
             weightedScores[j] = cappedWeight;
@@ -421,8 +418,7 @@ library AsRisk {
         // redistribute excess weight
         if (excessWeight > 0 && remainingWeight > 0) {
           for (j = 0; j < weightedScores.length; j++) {
-            uint256 ratio = (weightedScores[i] * AsMaths.BP_BASIS) /
-              totalWeightedScore;
+            uint256 ratio = (weightedScores[j] * 1e18) / totalWeightedScore;
             if (ratio <= _maxAllocRatio) {
               uint256 additionalWeight = (excessWeight * weightedScores[j]) /
                 remainingWeight;
@@ -435,14 +431,42 @@ library AsRisk {
         i++;
       }
 
-      // calculate allocations from weighted scores
-      uint256[] memory allocations = new uint256[](_scores.length);
+      // calculate ratios from weighted scores
+      uint256[] memory ratios = new uint256[](_scores.length);
       for (i = 0; i < _scores.length; i++) {
-        allocations[i] = (_amount * weightedScores[i]) / totalWeightedScore;
+        ratios[i] = (weightedScores[i] * 1e18) / totalWeightedScore;
       }
 
-      return allocations;
+      return ratios;
     }
+  }
+
+  /**
+   * @notice Calculates the target allocation for a strategy based on strategy scores
+   * @param _scores Scores for each strategy (max 100)
+   * @param _amount Total amount to be allocated
+   * @param _maxAllocRatio Maximum allocation ratio per strategy in `WAD` eg. 5e17 == 50%
+   * @param _scoreExponent Exponent used to adjust allocation based on scores
+   * @return Calculated allocation for each strategy
+   */
+  function targetComposition(
+    uint16[] memory _scores,
+    uint256 _amount,
+    uint256 _maxAllocRatio,
+    uint256 _scoreExponent
+  ) internal view returns (uint256[] memory) {
+    uint256[] memory ratios = targetCompositionRatios(
+      _scores,
+      _maxAllocRatio,
+      _scoreExponent
+    );
+    uint256[] memory allocations = new uint256[](_scores.length);
+
+    for (uint256 i = 0; i < _scores.length; i++) {
+      allocations[i] = (_amount * ratios[i]) / 1e18;
+    }
+
+    return allocations;
   }
 
   /**
@@ -521,7 +545,7 @@ library AsRisk {
     uint256 _tvlExponent
   ) internal pure returns (uint256) {
     unchecked {
-      uint256 base = 1e18 + (_tvl * _tvlFactor) / 1e18; // (1 + tvl * tvlFactor) in WAD
+      uint256 base = 1e18 + (_tvl * _tvlFactor) / 1e18; // (1 + tvl * tvlFactor) in `WAD`
       uint256 power = uint256(int256(base).powWad(-int256(_tvlExponent)));
       return _minRatio + ((1e18 - _minRatio) * power) / 1e18;
     }

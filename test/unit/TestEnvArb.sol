@@ -85,8 +85,8 @@ abstract contract TestEnvArb is TestEnv {
       fees: _fees,
       inputs: USDC.toArray(), // [USDC]
       inputWeights: uint16(100_00).toArray16(), // 100% weight on USDC
-      lpTokens: USDCe.toArray(),
-      rewardTokens: USDCe.toArray(),
+      lpTokens: USDC.toArray(),
+      rewardTokens: USDC.toArray(),
       extension: new bytes(0)
     });
 
