@@ -1,30 +1,30 @@
 import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../src/implementations/Venus/addresses";
+import addresses from "../../src/implementations/Lodestar/addresses";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { suite } from "./StrategyV5.test";
 import { IFlow, testFlow } from "./flows";
 import { setupStrat } from "./flows/StrategyV5";
 
 const baseDesc: IStrategyDesc = {
-  name: `Astrolab Primitive: Venus Arbitrage USD`,
-  symbol: `apUSD-XVS-A`,
+  name: `Astrolab Primitive: Lodestar Arbitrage USD`,
+  symbol: `apUSD-LODE-A`,
   asset: "USDC",
   version: 1,
-  contract: "VenusArbitrage",
+  contract: "LodestarArbitrage",
   seedLiquidityUsd: 10,
 } as IStrategyDesc;
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["USDT", "FDUSD"], inputWeights: [9200, 0] }, // 90% allocation, 10% cash
+  56: { ...baseDesc, inputs: ["USDT", "USDCe"], inputWeights: [9200, 0] }, // 90% allocation, 10% cash
 };
 
 const desc = descByChainId[network.config.chainId!];
 
 describe(`test.${desc.name}`, () => {
   const addr = addresses[network.config.chainId!];
-  const protocolAddr = addr.Venus;
+  const protocolAddr = addr.Lodestar;
   let env: IStrategyDeploymentEnv;
 
   beforeEach(async () => {});
@@ -50,7 +50,7 @@ describe(`test.${desc.name}`, () => {
         inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         lpTokens: desc.inputs.map((input) => protocolAddr[`v${input}`]), // LP tokens
-        rewardTokens: protocolAddr.rewardTokens, // XVS
+        rewardTokens: protocolAddr.rewardTokens, // LODE+ARB
         extension: abiEncode(["address","address","uint16"], [
           protocolAddr.Unitroller,
           addr.Aave.poolProvider,

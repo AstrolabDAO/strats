@@ -14,7 +14,7 @@ async function main() {
     args: [addr.AccessController],
     // libraries: { AsRisk: addr.AsRisk },
     // overrides: { gasLimit: 5_800_000 }, // required for gnosis-chain (wrong rpc estimate)
-    // address: addr.RiskModel, // use if already deployed (eg. to verify)
+    address: addr.RiskModel, // use if already deployed (eg. to verify)
   });
 }
 
