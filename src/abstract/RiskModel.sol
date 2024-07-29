@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import "../libs/AsMaths.sol";
 import "../libs/AsRisk.sol";
 import "./AsManageable.sol";
@@ -32,6 +31,10 @@ contract RiskModel is AsManageable {
     IStrategyV5 indexed strategy,
     RiskParams.StrategyScore score
   );
+  event CollateralizationUpdated(
+    IStrategyV5 indexed strategy,
+    RiskParams.Collateralization collateralization
+  );
   event StrategyParamsUpdated(RiskParams.Strategy params);
   event AllocationParamsUpdated(RiskParams.Allocation params);
   event StableMintParamsUpdated(RiskParams.StableMint params);
@@ -45,6 +48,7 @@ contract RiskModel is AsManageable {
   ╚═══════════════════════════════════════════════════════════════*/
 
   mapping(IStrategyV5 => RiskParams.StrategyScore) public scoreByStrategy;
+  mapping(IStrategyV5 => RiskParams.Collateralization) public collateralizationByStrategy;
   RiskParams.Strategy public strategyParams;
   RiskParams.StableMint public stableMintParams;
   RiskParams.Allocation public allocationParams;
@@ -53,10 +57,6 @@ contract RiskModel is AsManageable {
   ║                         INITIALIZATION                         ║
   ╚═══════════════════════════════════════════════════════════════*/
 
-  /**
-   * @notice Constructor to initialize the RiskModel contract
-   * @param _accessController Address of the access controller
-   */
   constructor(address _accessController) AsManageable(_accessController) {}
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -186,7 +186,10 @@ contract RiskModel is AsManageable {
    * @param _owner Owner of the assets
    * @return Position value in USD
    */
-  function positionUsd(IStrategyV5 _strategy, address _owner) public view returns (uint256) {
+  function positionUsd(
+    IStrategyV5 _strategy,
+    address _owner
+  ) public view returns (uint256) {
     return
       _strategy.oracle().toUsd(
         address(_strategy.asset()),
@@ -239,11 +242,12 @@ contract RiskModel is AsManageable {
   function targetCompositionRatios(
     uint16[] memory _scores
   ) public view returns (uint256[] memory) {
-    return AsRisk.targetCompositionRatios(
-      _scores,
-      maxAllocationRatio(_scores.length),
-      allocationParams.scoring.exponent.toWad32()
-    );
+    return
+      AsRisk.targetCompositionRatios(
+        _scores,
+        maxAllocationRatio(_scores.length),
+        allocationParams.scoring.exponent.toWad32()
+      );
   }
 
   /**
@@ -255,11 +259,12 @@ contract RiskModel is AsManageable {
     IStrategyV5[] memory _strategies,
     uint256 _boundary
   ) public view returns (uint256[] memory) {
-    return AsRisk.targetCompositionRatios(
-      primitiveCScores(_strategies, _boundary),
-      maxAllocationRatio(_boundary),
-      allocationParams.scoring.exponent.toWad32()
-    );
+    return
+      AsRisk.targetCompositionRatios(
+        primitiveCScores(_strategies, _boundary),
+        maxAllocationRatio(_boundary),
+        allocationParams.scoring.exponent.toWad32()
+      );
   }
 
   /**
@@ -286,12 +291,13 @@ contract RiskModel is AsManageable {
     uint16[] memory _scores,
     uint256 _amount
   ) public view returns (uint256[] memory) {
-    return AsRisk.targetComposition(
-      _scores,
-      _amount,
-      maxAllocationRatio(_scores.length),
-      allocationParams.scoring.exponent.toWad32()
-    );
+    return
+      AsRisk.targetComposition(
+        _scores,
+        _amount,
+        maxAllocationRatio(_scores.length),
+        allocationParams.scoring.exponent.toWad32()
+      );
   }
 
   /**
@@ -306,12 +312,13 @@ contract RiskModel is AsManageable {
     uint256 _boundary,
     uint256 _amount
   ) public view returns (uint256[] memory) {
-    return AsRisk.targetComposition(
-      primitiveCScores(_strategies, _boundary),
-      _amount,
-      maxAllocationRatio(_boundary),
-      allocationParams.scoring.exponent.toWad32()
-    );
+    return
+      AsRisk.targetComposition(
+        primitiveCScores(_strategies, _boundary),
+        _amount,
+        maxAllocationRatio(_boundary),
+        allocationParams.scoring.exponent.toWad32()
+      );
   }
 
   /**
@@ -352,7 +359,8 @@ contract RiskModel is AsManageable {
     int256[] memory excess = new int256[](boundary);
     unchecked {
       for (uint256 i = 0; i < boundary; i++) {
-        excess[i] = int256(positionUsd(_strategies[i], _owner)) -
+        excess[i] =
+          int256(positionUsd(_strategies[i], _owner)) -
           int256(targets[i]);
       }
     }
@@ -390,12 +398,11 @@ contract RiskModel is AsManageable {
     uint256 _strategyCount
   ) public view returns (uint256) {
     return
-      AsRisk
-        .maxAllocationRatio(
-          _strategyCount,
-          allocationParams.diversification.minMaxRatio.toWad32(),
-          allocationParams.diversification.exponent.toWad32()
-        );
+      AsRisk.maxAllocationRatio(
+        _strategyCount,
+        allocationParams.diversification.minMaxRatio.toWad32(),
+        allocationParams.diversification.exponent.toWad32()
+      );
   }
 
   /**
@@ -407,12 +414,11 @@ contract RiskModel is AsManageable {
     IStrategyV5 _strategy
   ) public view returns (uint256) {
     return
-      AsRisk
-        .minHarvestToCostRatio(
-          tvlUsd(_strategy),
-          allocationParams.harvestTrigger.factor.toWad(),
-          allocationParams.harvestTrigger.exponent.toWad()
-        );
+      AsRisk.minHarvestToCostRatio(
+        tvlUsd(_strategy),
+        allocationParams.harvestTrigger.factor.toWad(),
+        allocationParams.harvestTrigger.exponent.toWad()
+      );
   }
 
   /**
@@ -448,13 +454,12 @@ contract RiskModel is AsManageable {
     RiskParams.Liquidity memory _params
   ) internal pure returns (uint256) {
     return
-      AsRisk
-        .liquidityRatioRegressor(
-          _tvl,
-          _params.minRatio.toWad32(),
-          _params.factor.toWad32(),
-          _params.exponent.toWad32()
-        );
+      AsRisk.liquidityRatioRegressor(
+        _tvl,
+        _params.minRatio.toWad32(),
+        _params.factor.toWad32(),
+        _params.exponent.toWad32()
+      );
   }
 
   /**
@@ -625,8 +630,7 @@ contract RiskModel is AsManageable {
   function targetAllocation(
     IStrategyV5 _strategy
   ) public view returns (uint256) {
-    return
-      (targetAllocationRatio(_strategy) * tvlUsd(_strategy)) / 1e18;
+    return (targetAllocationRatio(_strategy) * tvlUsd(_strategy)) / 1e18;
   }
 
   /**
@@ -791,8 +795,12 @@ contract RiskModel is AsManageable {
     IStrategyV5 _strategy,
     bytes calldata _scoreData
   ) internal {
-    (uint16 _perf, uint16 _safety, uint16 _scalability, uint16 _liquidity) =
-      AsRisk.decodePackedScores(_scoreData);
+    (
+      uint16 _perf,
+      uint16 _safety,
+      uint16 _scalability,
+      uint16 _liquidity
+    ) = AsRisk.decodePackedScores(_scoreData);
     _updateScore(_strategy, _perf, _safety, _scalability, _liquidity);
   }
 
@@ -822,6 +830,23 @@ contract RiskModel is AsManageable {
         _updateScore(_strategies[i], _scoreData[i]);
       }
     }
+  }
+
+  /**
+   * @notice Updates the collateralization of a strategy
+   * @param _strategy Strategy
+   * @param _p New collateralization
+   */
+  function updateCollateralization(
+    IStrategyV5 _strategy,
+    RiskParams.Collateralization memory _p
+  ) external onlyAdmin {
+    if (
+      _p.maxLtv < _p.defaultLtv ||
+      _p.maxLtv > stableMintParams.compositeCollateral.maxLtv
+    ) revert Errors.InvalidData();
+    collateralizationByStrategy[_strategy] = _p;
+    emit CollateralizationUpdated(_strategy, _p);
   }
 
   /**

@@ -18,6 +18,7 @@ import "../abstract/AsTypes.sol";
  * @notice AsRisk provides the core risk-related logic used by RiskModel and by the Botnet
  */
 library RiskParams {
+
   /*═══════════════════════════════════════════════════════════════╗
   ║                              TYPES                             ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -208,7 +209,7 @@ library AsRisk {
     bytes calldata _scoreData
   )
     internal
-    view
+    pure
     returns (
       uint16 _perf,
       uint16 _safety,
@@ -377,7 +378,7 @@ library AsRisk {
     uint16[] memory _scores,
     uint256 _maxAllocRatio,
     uint256 _scoreExponent // used to convert scores into weights (diversification bias), in `WAD` e.g., 1.8614 * 1e18
-  ) internal view returns (uint256[] memory) {
+  ) internal pure returns (uint256[] memory) {
     if (_maxAllocRatio > 1e18) {
       revert Errors.InvalidData();
     }
