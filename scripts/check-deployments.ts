@@ -14,6 +14,7 @@ const contracts = [
   // "RedstoneProvider",
   "AsAccounting",
   "StrategyV5Agent",
+  "RiskModel",
   // "apUSDC-ETH",
   // "apUSD-BASE",
   // "apUSD-ARB",

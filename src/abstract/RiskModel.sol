@@ -754,7 +754,7 @@ contract RiskModel is AsManageable {
     return
       _liquidityLimitBreached(
         _strategy,
-        allocationParams.targetLiquidity,
+        allocationParams.allocationTrigger,
         true
       );
   }

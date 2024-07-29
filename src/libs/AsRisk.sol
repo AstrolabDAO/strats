@@ -455,7 +455,7 @@ library AsRisk {
     uint256 _amount,
     uint256 _maxAllocRatio,
     uint256 _scoreExponent
-  ) internal view returns (uint256[] memory) {
+  ) internal pure returns (uint256[] memory) {
     uint256[] memory ratios = targetCompositionRatios(
       _scores,
       _maxAllocRatio,
