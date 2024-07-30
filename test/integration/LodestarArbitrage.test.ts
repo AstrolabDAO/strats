@@ -8,7 +8,7 @@ import { setupStrat } from "./flows/StrategyV5";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive: Lodestar Arbitrage USD`,
-  symbol: `apUSD-LODE-A`,
+  symbol: `apUSD-LODE-A-2`,
   asset: "USDC",
   version: 1,
   contract: "LodestarArbitrage",
@@ -17,7 +17,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["USDT", "USDCe"], inputWeights: [9200, 0] }, // 90% allocation, 10% cash
+  42161: { ...baseDesc, inputs: ["USDT", "USDCe"], inputWeights: [9200, 0] }, // 90% allocation, 10% cash
 };
 
 const desc = descByChainId[network.config.chainId!];

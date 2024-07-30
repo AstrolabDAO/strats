@@ -1,4 +1,4 @@
-import { addresses } from "@astrolabs/hardhat";
+import addresses from "../Aave/addresses";
 import merge from "lodash/merge";
 
 // cf. https://docs.sonne.finance/protocol/contract-addresses

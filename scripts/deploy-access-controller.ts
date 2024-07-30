@@ -13,7 +13,7 @@ async function main() {
     create3Salt: salts.AccessController, // used only if not already deployed
     args: [addr.Deployer],
     // overrides: { gasLimit: 1_200_000 }, // required for gnosis-chain (wrong rpc estimate)
-    address: addr.AccessController, // use if already deployed (eg. to verify)
+    // address: addr.AccessController, // use if already deployed (eg. to verify)
   });
 }
 

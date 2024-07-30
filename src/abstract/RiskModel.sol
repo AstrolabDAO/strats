@@ -13,7 +13,7 @@ import "../interfaces/IStrategyV5.sol";
  *  |  O  \__ \ |_| | |  O  | |  O  |  O  |
  *   \__,_|___/.__|_|  \___/|_|\__,_|_.__/  ©️ 2024
  *
- * @title RiskModel Abstract - Astrolab DAO risk framework
+ * @title RiskModel - Astrolab DAO risk framework
  * @author Astrolab DAO
  * @notice Dictates how strategies are evaluated, allocated to, and rebalanced
  */

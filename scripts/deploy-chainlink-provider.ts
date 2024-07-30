@@ -66,7 +66,7 @@ async function main() {
         [
           knownAddresses,
           knownFeeds,
-          knownAddresses.map((feed) => 3600 * 48), // chainlink default validity (1 day) * 2
+          knownAddresses.map((feed) => 3600 * 48), // chainlink default validity (2 days)
         ],
       ],
     ),
