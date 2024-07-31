@@ -552,8 +552,8 @@ export async function invest(
   const [amounts, swapData] = await preInvest(env!, _amount);
   await logState(env, "Before Invest");
   const receipt = await strat
-    // .invest(amounts, swapData, getOverrides(env))
-    .safe("invest(uint256[8],bytes[])", [amounts, swapData], getOverrides(env))
+    .invest(amounts, swapData, getOverrides(env))
+    // .safe("invest(uint256[8],bytes[])", [amounts, swapData], getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Invest", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -817,8 +817,8 @@ export async function liquidate(
   const [amounts, swapData] = await preLiquidate(env, _amount);
   await logState(env, "Before Liquidate");
   const receipt = await strat
-    .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
-    // .liquidate(amounts, 1, false, swapData, getOverrides(env))
+    // .safe("liquidate", [amounts, 1, false, swapData], getOverrides(env))
+    .liquidate(amounts, 1, false, swapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
 
   await logState(env, "After Liquidate", 1_000);
@@ -895,7 +895,8 @@ export async function harvest(
   await logState(env, "Before Harvest");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("harvest", [harvestSwapData], getOverrides(env))
+    // .safe("harvest", [harvestSwapData], getOverrides(env))
+    .harvest(harvestSwapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Harvest", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);
@@ -929,11 +930,8 @@ export async function compound(
   await logState(env, "Before Compound");
   // only exec if static call is successful
   const receipt = await strat
-    .safe(
-      "compound",
-      [investAmounts, harvestSwapData, investSwapData],
-      getOverrides(env),
-    )
+    // .safe("compound", [investAmounts, harvestSwapData, investSwapData], getOverrides(env))
+    .compound(investAmounts, harvestSwapData, investSwapData, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After Compound", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0);

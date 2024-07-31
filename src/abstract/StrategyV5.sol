@@ -860,15 +860,14 @@ abstract contract StrategyV5 is
           spent = _amounts[i];
         }
 
-        uint256 staked = inputs[i].balanceOf(address(this));
+        uint256 stakeOut = _investedInput(i);
+        uint256 stakeIn = inputs[i].balanceOf(address(this));
         _stake(i, toStake, _params);
-        staked -= inputs[i].balanceOf(address(this));
+        stakeOut = _investedInput(i) - stakeOut; // new stakes in input[i]
+        stakeIn = stakeIn - inputs[i].balanceOf(address(this));
 
-        if (
-          staked <
-          _inputToStake(toStake, i).subBp(_4626StorageExt().maxSlippageBps)
-        ) {
-          revert Errors.AmountTooLow(staked);
+        if (stakeOut < stakeIn.subBp(_4626StorageExt().maxSlippageBps)) {
+          revert Errors.AmountTooLow(stakeOut);
         }
 
         totalInvested += spent;

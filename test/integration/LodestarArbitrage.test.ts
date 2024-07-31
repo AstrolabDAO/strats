@@ -17,7 +17,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  42161: { ...baseDesc, inputs: ["USDT", "USDCe"], inputWeights: [9200, 0] }, // 90% allocation, 10% cash
+  42161: { ...baseDesc, inputs: ["USDC", "USDCe"], inputWeights: [9200, 0] }, // 90% allocation, 10% cash
 };
 
 const desc = descByChainId[network.config.chainId!];
@@ -49,7 +49,7 @@ describe(`test.${desc.name}`, () => {
         fees: {} as Fees, // fees (use default)
         inputs: desc.inputs.map((i) => addr.tokens[i]), // inputs
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
-        lpTokens: desc.inputs.map((input) => protocolAddr[`v${input}`]), // LP tokens
+        lpTokens: desc.inputs.map((input) => protocolAddr[`l${input}`]), // LP tokens
         rewardTokens: protocolAddr.rewardTokens, // LODE+ARB
         extension: abiEncode(["address","address","uint16"], [
           protocolAddr.Unitroller,

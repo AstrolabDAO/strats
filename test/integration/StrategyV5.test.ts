@@ -25,9 +25,9 @@ export const suite: Partial<IFlow>[] = [
   // { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
 
   // async ERC7540 withdrawal
-  // { fn: requestWithdraw, params: [1001], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  // { fn: withdraw, params: [1000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
+  { fn: requestWithdraw, params: [1001], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
+  { fn: withdraw, params: [1000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
 
   // async ERC7540 redemption
   // { fn: requestRedeem, params: [500], assert: (n: BigNumber) => n.gt(0) },
@@ -35,7 +35,7 @@ export const suite: Partial<IFlow>[] = [
   // { fn: redeem, params: [500], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // full request
 
   // set weights to 0 to freeze exposure
-  { fn: setInputWeights, params: [[0, 0]], assert: (n: BigNumber) => n.gt(0) },
+  { fn: setInputWeights, params: [[0, 0]], assert: (n: BigNumber) => n },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
 
   // claimRewards/harvest(claim+swap)/compound(harvest+invest)

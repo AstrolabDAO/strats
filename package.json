@@ -179,7 +179,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-import": "^2.29.0",
     "ethcall": "4.8.13",
-    "hardhat": "^2.19.1",
+    "hardhat": "^2.22.7",
     "hardhat-contract-sizer": "^2.10.0",
     "hardhat-storage-layout": "^0.1.7",
     "mocha": "^10.2.0",

@@ -68,6 +68,7 @@ contract LodestarArbitrage is StrategyV5 {
   ) internal view returns (uint256) {
     unchecked {
       return
+        // convert supply amount (in inputs[0]) to debt (in inputs[1])
         oracle().convert(address(inputs[0]), _cash, address(inputs[1])).mulDiv(
           params.leverage - (_loanOnly ? 0 : 100),
           params.leverage
@@ -88,6 +89,23 @@ contract LodestarArbitrage is StrategyV5 {
     }
   }
 
+  function _redemptionForLoan(uint256 _loan) internal view returns (uint256) {
+    unchecked {
+      return
+        AsMaths.min(
+          lpTokens[0].balanceOf(address(this)),
+          _inputToStake(_supplyForDebt(_loan, false).addBp(
+            _4626StorageExt().maxSlippageBps
+          ), 0)
+        );
+    }
+  }
+
+  function _outstandingDebt() internal view returns (uint256) {
+    return
+      ILToken(address(lpTokens[1])).borrowBalanceStored(address(this));
+  }
+
   function _supply0() internal view returns (uint256) {
     return _stakeToInput(lpTokens[0].balanceOf(address(this)), 0);
   }
@@ -96,9 +114,7 @@ contract LodestarArbitrage is StrategyV5 {
     unchecked {
       // compute theoretical debt for the current input0 supply + addon
       return
-        int256(
-          ILToken(address(lpTokens[1])).borrowBalanceStored(address(this))
-        ) - int256(_debtForSupply(_supply, false)); // actual - target
+        int256(_outstandingDebt()) - int256(_debtForSupply(_supply, false)); // actual - target
     }
   }
 
@@ -119,13 +135,16 @@ contract LodestarArbitrage is StrategyV5 {
   function _repaymentNeed(
     int256 _previewAmount0
   ) internal view returns (uint256) {
+    uint256 supply = _supply0();
     unchecked {
       return
-        uint256(
-          AsMaths.max(
-            _excessDebt(
-              uint256(int256(_supply0()) - _leveraged(_previewAmount0))
-            ),
+        inputWeights[0] == 0
+          ? supply.addBp(_4626StorageExt().maxSlippageBps)
+          : uint256(
+            AsMaths.max(
+              _excessDebt(
+                uint256(int256(supply) - _leveraged(_previewAmount0))
+              ),
             0
           )
         );
@@ -148,7 +167,7 @@ contract LodestarArbitrage is StrategyV5 {
     if (_investing) {
       from[0] = address(inputs[1]); // eg. FDUSD
       to[0] = address(inputs[0]); // eg. USDC
-      amounts[0] = _debtNeed(int256(_previewAmounts[0])); // borrow target
+      amounts[0] = _debtNeed(int256(_previewAmounts[0])) - 100; // borrow target - 100 wei error margin
       if (address(inputs[0]) != address(asset)) {
         amounts[0] = amounts[0].subBp(_4626StorageExt().maxSlippageBps);
       }
@@ -224,7 +243,7 @@ contract LodestarArbitrage is StrategyV5 {
           ILToken(address(lpTokens[0])).mint(dust - _due);
         } else {
           // if the swap proceeds are less than the due amount, redeem some supply
-          ILToken(address(lpTokens[0])).redeemUnderlying(_due - dust);
+          ILToken(address(lpTokens[0])).redeem(oracle().convert(address(inputs[1]), _due - dust, address(inputs[0])));
         }
       }
     }
@@ -265,36 +284,54 @@ contract LodestarArbitrage is StrategyV5 {
     uint256 _due,
     bytes memory _addonParams
   ) internal {
+
     // repay debt
-    ILToken(address(lpTokens[1])).repayBorrow(_loan);
+    ILToken(address(lpTokens[1])).repayBorrow(
+      AsMaths.min(
+        _loan,
+        _outstandingDebt()
+      )
+    );
 
     // deleverage
-    uint256 toRedeem;
-    unchecked {
-      toRedeem = _supplyForDebt(_loan, false).addBp(
-        _4626StorageExt().maxSlippageBps
-      );
-      _liquidatedAmount0 = _liquidatedAmount0.addBp(5); // .05% addon to absorb price changes since previewSwapAddons()
-      ILToken(address(lpTokens[0])).redeemUnderlying(toRedeem); // could also redeem(_inputToStake)
-    }
+    uint256 redeemed = inputs[0].balanceOf(address(this));
+    ILToken(address(lpTokens[0])).redeem(_redemptionForLoan(_loan));
+    redeemed = inputs[0].balanceOf(address(this)) - redeemed;
 
     // swap enough to pay the flashloan back
     (uint256 received, ) = swapper.decodeAndSwap({
       _input: address(inputs[0]),
       _output: address(inputs[1]),
-      _amount: toRedeem, // toSwap + _liquidated is sent, the Swapper will send back the difference
+      _amount: inputs[0].balanceOf(address(this)), // toSwap + _liquidated + cash is sent, the Swapper will send back the difference
       _params: _addonParams
     });
 
     unchecked {
       // if asset != input[1], use dust to repay a bit more debt
       if (received > _due && address(asset) != address(inputs[1])) {
-        ILToken(address(lpTokens[1])).repayBorrow(received - _due);
+        uint256 outstandingDebt = _outstandingDebt();
+        if (outstandingDebt > 0) {
+          uint256 repayment = AsMaths.min(received - _due, outstandingDebt);
+          ILToken(address(lpTokens[1])).repayBorrow(
+            repayment
+          );
+          received -= repayment;
+        }
+        // if we still have input[1] left, provide it as collateral (used by further borrows)
+        if (received > _due) {
+          ILToken(address(lpTokens[1])).mint(
+            received - _due
+          );
+        }
       }
       uint256 inputBalance = inputs[0].balanceOf(address(this));
+      _liquidatedAmount0 = _liquidatedAmount0.addBp(5); // .05% addon to absorb price changes since previewSwapAddons()
       if (inputBalance < _liquidatedAmount0) {
-        ILToken(address(lpTokens[0])).redeemUnderlying(
-          _liquidatedAmount0 - inputBalance
+        ILToken(address(lpTokens[0])).redeem(
+          AsMaths.min(
+            _inputToStake(oracle().convert(address(inputs[1]), _liquidatedAmount0 - inputBalance, address(inputs[0])), 0),
+            lpTokens[0].balanceOf(address(this))
+          )
         );
       }
     }
@@ -390,16 +427,9 @@ contract LodestarArbitrage is StrategyV5 {
       return 0; // no need to unstake input[1] tokens (eg. FDUSD)
     }
     return
-      _stakeToInput(
-        lpTokens[0].balanceOf(address(this)), // cash in input[1]
-        0
-      ).subMax0(
-          oracle().convert(
-            address(inputs[1]),
-            ILToken(address(lpTokens[1])).borrowBalanceStored(address(this)), // debt in input[1]
-            address(inputs[0])
-          )
-        );
+      _supply0().subMax0(
+        oracle().convert(address(inputs[1]), _outstandingDebt(), address(inputs[0]))
+      );
   }
 
   function rewardsAvailable()
