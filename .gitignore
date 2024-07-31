@@ -31,7 +31,7 @@ coverage
         VERSION torage (https://gruntjs.com/creating-plugins#storing-task-files)
 .grunt
 
-# Bower dependency directory (https://bower.io/)
+# Bower endency directory (https://bower.io/)
 bower_components
 
 # node-waf configuration
@@ -40,7 +40,7 @@ bower_components
 # Compiled binary addons (https://nodejs.org/api/addons.html)
 build/Release
 
-# Dependency directories
+# endency directories
 node_modules/
 jspm_packages/
 artifacts/
@@ -96,6 +96,7 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
+deployments
 
 # Gatsby files
 .cache/

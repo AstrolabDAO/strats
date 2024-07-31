@@ -8,7 +8,7 @@ import { setupStrat } from "./flows/StrategyV5";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive Thena USD`,
-  symbol: `apTHE.USD`,
+  symbol: `apUSD-THE-O`,
   asset: "USDC",
   version: 1,
   contract: "ThenaAmm",
@@ -17,8 +17,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["ETH", "BNB"], inputWeights: [9000, 0] }, // 90% allocation, 10% cash
-//  56: { ...baseDesc, inputs: ["BTCB", "BNB"], inputWeights: [9000, 0] }, // 90% allocation, 10% cash
+  56: { ...baseDesc, inputs: ["USDT", "USDC"], inputWeights: [9200, 0] }, // 92% allocation, 8% cash
 };
 
 const desc = descByChainId[network.config.chainId!];
@@ -54,11 +53,11 @@ describe(`test.${desc.name}`, () => {
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         lpTokens: hypervisors, // lpTokens
         rewardTokens: protocolAddr.rewardTokens, // THE/WBNB
-        extension: abiEncode(["address,address,address[]"], [[
+        extension: abiEncode(["address","address","address[]"], [
           protocolAddr.uniProxy,
           protocolAddr.voterV3Proxy,
           gauges,
-        ]]),
+        ]),
       },
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsAccounting"], // libraries to link and verify with the strategy
