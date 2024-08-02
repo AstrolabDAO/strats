@@ -3,20 +3,24 @@ pragma solidity 0.8.22;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AsRescuable} from "../../src/abstract/AsRescuable.sol";
+import {StrategyV5Simulator} from "../../src/implementations/StrategyV5Simulator.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";
 
 contract AsRescuableTest is TestEnvArb {
   constructor() TestEnvArb(true, true) {}
 
   function setRescuable(uint256 _value, IERC20 _token) public returns (uint256) {
-    deployAsRescuable();
+    AsRescuable asRescuable = AsRescuable(address(new StrategyV5Simulator(address(accessController))));
+
     vm.prank(rich);
     _token.transfer(address(asRescuable), _value);
     return (_token.balanceOf(address(asRescuable)));
   }
 
   function setRescuableNative(uint256 _value) public returns (uint256) {
-    deployAsRescuable();
+    AsRescuable asRescuable = AsRescuable(address(new StrategyV5Simulator(address(accessController))));
+
     payable(address(asRescuable)).transfer(_value);
     return address(asRescuable).balance;
   }

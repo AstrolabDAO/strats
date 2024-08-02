@@ -3,10 +3,16 @@ pragma solidity 0.8.22;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {Fees, Erc20Metadata, CoreAddresses, StrategyParams} from "../../src/abstract/AsTypes.sol";
+import {
+  Fees,
+  Erc20Metadata,
+  CoreAddresses,
+  StrategyParams
+} from "../../src/abstract/AsTypes.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
 import {StrategyV5} from "../../src/abstract/StrategyV5.sol";
+
 import {StrategyV5Simulator} from "../../src/implementations/StrategyV5Simulator.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -23,7 +29,6 @@ contract StrategyV5CompositeTest is TestEnvArb {
   constructor() TestEnvArb(true, true) {}
 
   function init(Fees memory _fees) public override {
-
     // strategy core addresses
     CoreAddresses memory coreAddresses = CoreAddresses({
       wgas: WETH,
@@ -171,7 +176,7 @@ contract StrategyV5CompositeTest is TestEnvArb {
     if (success) {
       revert("Shares transfer should fail");
     } else {
-      // console.log("Transfer failed as expected");
+      console.log("Transfer failed as expected");
     }
     strat.cancelRedeemRequest(bob, bob);
     strat.transfer(alice, toRedeem);
@@ -191,6 +196,8 @@ contract StrategyV5CompositeTest is TestEnvArb {
   function testAll() public {
     deployDependencies();
     Fees memory zeroFees = Fees({perf: 0, mgmt: 0, entry: 0, exit: 0, flash: 0});
+    Fees memory nonZeroFees = Fees({perf: 100, mgmt: 50, entry: 10, exit: 10, flash: 0});
+
     uint256 assetsBefore;
     uint256 bobBalanceBefore;
 
@@ -198,6 +205,14 @@ contract StrategyV5CompositeTest is TestEnvArb {
     (assetsBefore, bobBalanceBefore) = resetStrat(zeroFees, 1000e6);
     deposit(1000e6);
     withdraw(1000e6);
+
+    // withdrawing more than deposited should fail
+    (assetsBefore, bobBalanceBefore) = resetStrat(zeroFees, 1000e6);
+    deposit(1000e6);
+    vm.startPrank(bob);
+    vm.expectRevert();
+    strat.withdraw(2000e6, bob, bob);
+    vm.stopPrank();
 
     // deposit+redeem
     (assetsBefore, bobBalanceBefore) = resetStrat(zeroFees, 1000e6);
@@ -213,5 +228,34 @@ contract StrategyV5CompositeTest is TestEnvArb {
     (assetsBefore, bobBalanceBefore) = resetStrat(zeroFees, 1000e6);
     deposit(1000e6);
     requestedSharesReservation(1000e6);
+
+    // deposit with fees
+    resetStrat(nonZeroFees, 1000e6);
+    vm.startPrank(bob);
+    usdc.approve(address(strat), type(uint256).max);
+    strat.deposit(1000e6, bob);
+    vm.stopPrank();
+    uint256 expectedAssetsAfterFees = 1000e6 - (1000e6 * nonZeroFees.entry / 10000);
+    require(
+      strat.assetsOf(bob) == expectedAssetsAfterFees, "Assets after deposit fee mismatch"
+    );
+
+    // withdraw with fees
+    uint256 balanceBefore = usdc.balanceOf(bob);
+    vm.prank(bob);
+    strat.requestWithdraw(expectedAssetsAfterFees, bob, bob, ""); // non standard as no guarantee of price (uses requestRedeem)
+    uint256[8] memory liquidateAmounts = strat.previewLiquidate(0);
+    bytes[] memory swapData = new bytes[](1);
+    vm.prank(keeper);
+    strat.liquidate(liquidateAmounts, 0, false, swapData); // free the redemption requests
+    vm.prank(bob);
+    strat.withdraw(expectedAssetsAfterFees, bob, bob);
+    uint256 expectedBalanceAfterWithdraw =
+      expectedAssetsAfterFees - (expectedAssetsAfterFees * nonZeroFees.exit / 10000);
+    console.log(usdc.balanceOf(bob), expectedBalanceAfterWithdraw);
+    require(
+      usdc.balanceOf(bob) - balanceBefore == expectedBalanceAfterWithdraw,
+      "Balance after withdraw fee mismatch"
+    );
   }
 }

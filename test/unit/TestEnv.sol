@@ -6,6 +6,7 @@ import {StrategyParams, Fees, CoreAddresses, Erc20Metadata, Errors, Roles} from 
 import {StrategyV5Simulator, StrategyV5CompositeSimulator} from "../../src/implementations/StrategyV5Simulator.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
+import {AsRescuable} from "../../src/abstract/AsRescuable.sol";
 import {AccessController} from "../../src/abstract/AccessController.sol";
 import {ChainlinkProvider} from "../../src/abstract/ChainlinkProvider.sol";
 import {StrategyV5} from "../../src/abstract/StrategyV5.sol";
