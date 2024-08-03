@@ -108,15 +108,17 @@ contract ThenaAmm is StrategyV5 {
     }
   }
 
-  function _token0Ratio(uint256 _index) internal view returns (uint256) {
+  function _token0Ratio(uint256 _index, bool _base100) public view returns (uint256) {
     _index = _poolIndex(_index);
     unchecked {
-      return
+      uint256 debased =
         (1e18 * _weiPerAsset) /
         _inputToAsset(
           _pairedRequirement(_assetToInput(1e18, _index), _index),
-          _index
-        ); // input[0]/input[1] ratio in 1e18 weight
+          _index + 1 // paired input requirement to asset
+        ); // input[0]/input[1] ratio in 1e18 weight (eg. 1.35e18/1e18)
+
+      return _base100 ? (1e18 - (1e36 / (debased + 1e18))) : debased; // if rebased, the sum of weights is 1e18
     }
   }
 
@@ -163,29 +165,27 @@ contract ThenaAmm is StrategyV5 {
     });
   }
 
-  function _getPrice(
-    IAlgebraPool pool,
-    address base,
-    address quote,
-    uint8 baseDecimals,
-    uint8 quoteDecimals
-  ) internal view returns (uint256) {
-    (uint160 sqrtPriceX96, , , , , , ) = pool.globalState();
+  function _poolPrice(
+    IAlgebraPool _pool,
+    address _base,
+    address _quote,
+    uint8 _baseDecimals,
+    uint8 _quoteDecimals
+  ) public view returns (uint256) {
+    (uint160 sqrtPriceX96, , , , , , ) = _pool.globalState();
     unchecked {
-      uint256 priceX96 = base == pool.token0()
-        ? uint256(sqrtPriceX96)
-        : (2 ** 192) / uint256(sqrtPriceX96); // invert if base is token1
-      return
-        (priceX96 ** 2 * 10 ** baseDecimals) / (2 ** 192 * 10 ** quoteDecimals);
+      return _base == _pool.token0() ?
+        (uint256(sqrtPriceX96) ** 2) / (2 ** 192 / uint256(10 ** _quoteDecimals))
+        : (2 ** 192) / (uint256(sqrtPriceX96) ** 2 / uint256(10 ** _baseDecimals));
     }
   }
 
-  function _getPrice(
+  function _poolPrice(
     uint256 _indexBase,
     uint256 _indexQuote
-  ) internal view returns (uint256) {
+  ) public view returns (uint256) {
     return
-      _getPrice(
+      _poolPrice(
         _pools[_indexBase],
         address(inputs[_indexBase]),
         address(inputs[_indexQuote]),
@@ -209,7 +209,7 @@ contract ThenaAmm is StrategyV5 {
       if (!oracle.hasFeed(quote)) {
         revert Errors.MissingOracle(); // neither pool token has a price feed, cannot convert
       }
-      uint256 quoteAmount = _amount * _getPrice(_index, quoteIndex);
+      uint256 quoteAmount = _amount * _poolPrice(_index, quoteIndex) / (10 ** _inputDecimals[_index]);
       return oracle.convert(quote, quoteAmount, address(asset));
       // }
     }
@@ -227,10 +227,10 @@ contract ThenaAmm is StrategyV5 {
       uint256 quoteIndex = _quoteIndex(_index);
       address quote = address(inputs[quoteIndex]);
       if (!oracle.hasFeed(quote)) {
-        revert Errors.MissingOracle(); // neither pool token has a price feed, cannot convert
+        revert Errors.MissingOracle(); // neither of the pooled tokens has a price feed, cannot convert
       }
-      uint256 quoteAmount = oracle.convert(address(asset), _amount, quote);
-      return quoteAmount / _getPrice(_index, quoteIndex);
+      uint256 quoteAmount = oracle.convert(address(asset), _amount, quote); // convert to the known side of the pair
+      return quoteAmount * _poolPrice(_index, quoteIndex) / (10 ** _inputDecimals[quoteIndex]); // convert to the other side using the pool own price
     }
   }
 
@@ -256,10 +256,9 @@ contract ThenaAmm is StrategyV5 {
         : oracle.convert(quote, amount0, base) + amount1;
     } else {
       // fallback to pool price
-      uint256 priceRatio = _getPrice(_index, quoteIndex);
       posBaseValue = baseIsToken0
-        ? amount0 + (amount1 * priceRatio) / 1e18
-        : (amount0 * 1e18) / priceRatio + amount1;
+        ? amount0 + (amount1 * _poolPrice(_index, quoteIndex)) / (10 ** _inputDecimals[_index])
+        : (amount0 * (10 ** _inputDecimals[_index])) / _poolPrice(_index, quoteIndex) + amount1;
     }
 
     uint256 lpBasePrice = posBaseValue.mulDiv(1e18, hypervisor.totalSupply()); // hypervisors decimals == 18
@@ -309,9 +308,7 @@ contract ThenaAmm is StrategyV5 {
         return int256(_invested(_index)); // liquidation expected
       }
       uint256 legWeight = uint256(inputWeights[_poolIndex(_index)]); // == poolWeight eg. 9200
-      uint256 ratio = (
-        _index % 2 == 0 ? _token0Ratio(_index) : (1e36 / _token0Ratio(_index))
-      ) / 2; // eg. 0.5e17 (WAD)
+      uint256 ratio = _index == 0 ? _token0Ratio(_index, true) : (1e18 - _token0Ratio(_index, true)); // eg. 0.5e17 (WAD)
       legWeight = legWeight.mulDiv(ratio, 1e18); // eg. 9384 (bps)
       return allocated - int256(_total.mulDiv(legWeight, _totalWeight));
     }

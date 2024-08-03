@@ -17,7 +17,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["lisUSD", "USDT"], inputWeights: [9200, 0] }, // 92% to pool 1, 8% cash
+  56: { ...baseDesc, inputs: ["WETH", "USDT"], inputWeights: [9200, 0] }, // 92% to pool 1, 8% cash
 };
 
 const desc = descByChainId[network.config.chainId!];
