@@ -69,11 +69,11 @@ contract HopOptimizer is StrategyV5 {
     });
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     _rewardPools[_index][0].stake(_addLiquiditySingleSide(_amount, _index));
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     _rewardPools[_index][0].withdraw(_amount);
     _stableRouters[_index].removeLiquidityOneToken({
       tokenAmount: lpTokens[_index].balanceOf(address(this)),

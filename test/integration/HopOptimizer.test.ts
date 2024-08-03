@@ -57,7 +57,7 @@ describe(`test.${desc.name}`, () => {
         lpTokens: protocolAddr.map(i => i.lp), // hop lp token
         rewardTokens: Array.from(new Set(protocolAddr.map(i => i.rewardTokens).flat())), // keep unique reward token: HOP
         extension: abiEncode( // strategy specific params
-          ["address[][],address[],uint8[]"], [[
+          ["(address[][],address[],uint8[])"], [[
             protocolAddr.map(i => i.rewardPools), // hop reward pool
             protocolAddr.map(i => i.swap), // stable swap
             desc.inputs.map(i => 0), // hXXX tokenIndex in pool

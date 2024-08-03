@@ -61,12 +61,12 @@ contract StargateV1Optimizer is StrategyV5 {
     return lpTokens[_index].balanceOf(address(this));
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     // deposit+stake
     lpStaker.deposit(stakingIds[_index], _addLiquiditySingleSide(_amount, _index));
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     // unstake LP
     lpStaker.withdraw(stakingIds[_index], _amount);
     // liquidate LP

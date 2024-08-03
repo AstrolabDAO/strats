@@ -32,11 +32,11 @@ contract VenusOptimizer is StrategyV5 {
     _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     IVToken(address(lpTokens[_index])).mint(_amount);
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     IVToken(address(lpTokens[_index])).redeem(_amount);
   }
 

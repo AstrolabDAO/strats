@@ -230,12 +230,21 @@ export async function logState(
     const [invested, rewardsAvailable, previewInvest, previewLiquidate] = await Promise.all([
       strat["invested()"](),
       strat.callStatic.claimRewards?.() ?? strat.rewardsAvailable?.(),
-      strat.callStatic.preview(0, true),
-      strat.callStatic.preview(0, false),
+      strat.callStatic.preview(0, true), // _previewInvest()
+      strat.callStatic.preview(0, false), // _previewLiquidate()
     ]);
-    const totalInvested: BigNumber[] = await env.multicallProvider!.all(
-      inputs.map((input, index) => strat.multi.invested(index)),
-    );
+
+    const tmp = await env.multicallProvider!.all([
+      ...inputs.map((input, index) => strat.multi.invested(index)),
+      ...inputs.map((input, index) => input.multi.balanceOf(strat.address)),
+      ...lpTokens.map((lpToken, index) => lpToken.multi.balanceOf(strat.address))
+    ]);
+
+    const [totalInvested, inputStratBalances, lpTokenStratBalances] = [
+      tmp.slice(0, inputs.length),
+      tmp.slice(inputs.length, inputs.length * 2),
+      tmp.slice(inputs.length * 2, inputs.length * 3),
+    ];
 
     console.log(
       `State ${step ?? ""}:
@@ -264,7 +273,7 @@ export async function logState(
         .map(
           (input, index) =>
             `      -${input.sym}: ${<any>(
-              asset.toAmount(totalInvested[index])
+              asset.toAmount(<BigNumber>totalInvested[index])
             )} (${totalInvested[index]}wei)`,
         )
         .join("\n")}
@@ -307,6 +316,8 @@ export async function logState(
     stratAssetBalance(): ${asset.toAmount(
           stratAssetBalance,
         )} (${stratAssetBalance}wei)
+    inputStratBalances: [${inputStratBalances.map(b => asset.toAmount(<BigNumber>b)).join(", ")}]
+    lpTokenStratBalances: [${lpTokenStratBalances.map(b => asset.toAmount(<BigNumber>b)).join(", ")}]
     deployerBalances(shares, asset): [${strat.toAmount(
           deployerSharesBalance,
         )},${asset.toAmount(deployerAssetBalance)}]

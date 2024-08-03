@@ -33,7 +33,8 @@ export async function setMinLiquidity(
     console.log(
       `Setting minLiquidity to ${seedAmount} ${to} wei (${usdAmount} USDC)`,
     );
-    await strat.safe("setMinLiquidity", [seedAmount], getOverrides(env))
+    // await strat.safe("setMinLiquidity", [seedAmount], getOverrides(env))
+    await strat.setMinLiquidity(seedAmount, getOverrides(env))
       .then((tx: TransactionResponse) => tx.wait());
     console.log(
       `Liquidity can now be seeded with ${minLiquidity}wei ${to}`,
@@ -71,7 +72,8 @@ export async function seedLiquidity(
   await logState(env, "Before SeedLiquidity");
   // only exec if static call is successful
   const receipt = await strat
-    .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
+    // .safe("seedLiquidity", [amount, MaxUint256], getOverrides(env))
+    .seedLiquidity(amount, MaxUint256, getOverrides(env))
     .then((tx: TransactionResponse) => tx.wait());
   await logState(env, "After SeedLiquidity", 1_000);
   return getTxLogData(receipt, ["uint256", "uint256"], 0); // NB: on some chains, a last (aggregate) event is emitted

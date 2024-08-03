@@ -33,7 +33,7 @@ contract AaveV3Optimizer is StrategyV5 {
     _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     IAavePool pool = IAavePool(_poolProvider.getPool());
     pool.supply({
       asset: address(inputs[_index]),
@@ -43,7 +43,7 @@ contract AaveV3Optimizer is StrategyV5 {
     });
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     IAavePool pool = IAavePool(_poolProvider.getPool());
     pool.withdraw({asset: address(inputs[_index]), amount: _amount, to: address(this)});
   }

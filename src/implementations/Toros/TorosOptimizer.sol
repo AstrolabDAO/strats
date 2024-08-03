@@ -32,7 +32,7 @@ contract TorosOptimizer is StrategyV5 {
     _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     _dHedgeSwapper.deposit({
       pool: address(lpTokens[_index]),
       depositAsset: address(inputs[_index]),
@@ -42,7 +42,7 @@ contract TorosOptimizer is StrategyV5 {
     });
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     _dHedgeSwapper.withdraw({
       pool: address(lpTokens[_index]),
       fundTokenAmount: _amount,

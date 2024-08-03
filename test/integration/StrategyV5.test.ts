@@ -25,9 +25,27 @@ export const suite: Partial<IFlow>[] = [
   // { fn: liquidate, params: [1000], assert: (n: BigNumber) => n.gt(0) }, // partial liquidate
 
   // async ERC7540 withdrawal
-  { fn: requestWithdraw, params: [1001], assert: (n: BigNumber) => n.gt(0) },
+  { fn: requestWithdraw, params: [3001], assert: (n: BigNumber) => n.gt(0) },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
-  { fn: withdraw, params: [1000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
+  { fn: withdraw, params: [3000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
+
+  // deposit+invest cycle 2
+  { fn: deposit, params: [50000], assert: (n: BigNumber) => n.gt(0) }, // deposit
+  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
+
+  // withdrawal cycle 2
+  { fn: requestWithdraw, params: [6001], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
+  { fn: withdraw, params: [6000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
+
+  // deposit+invest cycle 3
+  { fn: deposit, params: [100000], assert: (n: BigNumber) => n.gt(0) }, // deposit
+  { fn: invest, params: [], assert: (n: BigNumber) => n.gt(0) }, // invest full vault balance
+
+  // withdrawal cycle 3
+  { fn: requestWithdraw, params: [30001], assert: (n: BigNumber) => n.gt(0) },
+  { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
+  { fn: withdraw, params: [30000], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // request - slippage
 
   // async ERC7540 redemption
   // { fn: requestRedeem, params: [500], assert: (n: BigNumber) => n.gt(0) },

@@ -203,13 +203,13 @@ export const deployStrat = async (
   // NB: PriceProvider deployments + feeds initialization (eg. ChainlinkProvider.update())
   // eliminates the need for in-testing price feed setup
   // this remains here for custom dev setup
-  const baseSymbols = Array.from(
+  let baseSymbols = Array.from(
     new Set([
       ...env.deployment!.inputs.map(i => i.sym),  // initParams.inputs!,
       ...["WETH", "WBTC", "USDC", "USDT", "FRAX", "DAI"]
     ].filter((t) => !!t)),
   );
-  const baseAddresses = baseSymbols.map((sym) => env.addresses!.tokens[sym]);
+  let baseAddresses = baseSymbols.map((sym) => env.addresses!.tokens[sym]);
   const checkFeeds = async () =>
     env.multicallProvider!.all(
       baseAddresses!.map(addr => preDeployments.PriceProvider.multi.hasFeed(addr)),
@@ -217,9 +217,17 @@ export const deployStrat = async (
 
   // NB: the signer has to be the admin of `PriceProvider.accessController`, otherwise this will fail
   if ((await checkFeeds()).some((has) => !has)) {
-    const feeds = baseSymbols.map((sym) =>
-      addressToBytes32(env.oracles![`Crypto.${sym}/USD`]),
-    );
+    let feeds = baseSymbols.map((sym) => {
+      const feed = env.oracles![`Crypto.${sym}/USD`];
+      return feed ? addressToBytes32(feed) : null;
+    });
+    const indexes = feeds.map((feed, i) => (feed ? i : null));
+    [baseAddresses, baseSymbols, feeds] = [baseAddresses, baseSymbols, feeds].map(
+      (a) => a.filter((_, i) => indexes.includes(i)),
+    ) as string[][];
+    if (feeds.length != baseSymbols.length) {
+      console.warn(`{baseSymbols.length - feeds.length} feeds missing`);
+    }
     // NB: this is Chainlink's initializer, not Pyth (Pyth takes bytes32[] feeds and not addresses)
     await preDeployments.PriceProvider.update(
       abiEncode(
@@ -698,7 +706,7 @@ export async function preLiquidate(
 
   const trs = [] as Partial<ITransactionRequestWithEstimate>[];
   const swapData = [] as string[];
-  const amounts = (await strat.callStatic.preview(amount, false) as BigNumber[]);
+  let amounts = (await strat.callStatic.preview(amount, false) as BigNumber[]);
 
   // NB: no need to convert to input amounts anymore as amounts are already in input units
   // const inputSwapAmounts = await env.multicallProvider?.all(

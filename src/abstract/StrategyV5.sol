@@ -295,7 +295,10 @@ abstract contract StrategyV5 is
    * @return Amount of underlying assets equivalent to the full input balance
    */
   function _invested(uint256 _index) internal view virtual returns (uint256) {
-    return _inputToAsset(_investedInput(_index), _index);
+    unchecked {
+      uint256 staked = _inputToAsset(_investedInput(_index), _index);
+      return inputs[_index] == asset ? staked : staked + inputs[_index].balanceOf(address(this));
+    }
   }
 
   function invested(uint256 _index) external view virtual returns (uint256) {
@@ -324,13 +327,13 @@ abstract contract StrategyV5 is
 
   /**
    * @notice Calculates the excess weight for a given input (inputs[`_index`]) in basis points
-   * @param _index Index of the input
    * @param _total Sum of all invested inputs (`0 == 100% == invested()`)
+   * @param _index Index of the input
    * @return Excess input weight in basis points
    */
   function _excessWeight(
-    uint256 _index,
-    uint256 _total
+    uint256 _total,
+    uint256 _index
   ) internal view returns (int256) {
     if (_total == 0) _total = _invested();
     return
@@ -361,8 +364,8 @@ abstract contract StrategyV5 is
    * @return Excess input liquidity
    */
   function _excessLiquidity(
-    uint256 _index,
-    uint256 _total
+    uint256 _total,
+    uint256 _index
   ) internal view virtual returns (int256) {
     if (_total == 0) {
       _total = _invested();
@@ -386,7 +389,7 @@ abstract contract StrategyV5 is
     if (_total == 0) _total = _invested();
     unchecked {
       for (uint256 i = 0; i < _inputLength; i++) {
-        excessLiquidity[i] = _excessLiquidity(i, _total);
+        excessLiquidity[i] = _excessLiquidity(_total, i);
       }
     }
   }
@@ -800,29 +803,29 @@ abstract contract StrategyV5 is
 
   /**
    * @notice Stakes or provides `_amount` from `input[_index]` to `lpTokens[_index]`
-   * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
+   * @param _index Index of the input to stake
    * @param _params Swaps calldata
    */
-  function _stake(uint256 _index, uint256 _amount, bytes[] calldata _params) internal virtual {
-    _stake(_index, _amount);
+  function _stake(uint256 _amount, uint256 _index, bytes[] calldata _params) internal virtual {
+    _stake(_amount, _index);
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal virtual {
-    revert Errors.NotImplemented();
+  function _stake(uint256 _amount, uint256 _index) internal virtual {
+    revert Errors.NotImplemented(); // either this function or the above needs an override, this should never be called
   }
 
   /**
    * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
-   * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
+   * @param _index Index of the input to liquidate
    * @param _params Swaps calldata
    */
-  function _unstake(uint256 _index, uint256 _amount, bytes[] calldata _params) internal virtual {
-    _unstake(_index, _amount);
+  function _unstake(uint256 _amount, uint256 _index, bytes[] calldata _params) internal virtual {
+    _unstake(_amount, _index);
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal virtual {
+  function _unstake(uint256 _amount, uint256 _index) internal virtual {
     revert Errors.ContractNonCompliant();
   }
 
@@ -861,8 +864,9 @@ abstract contract StrategyV5 is
         }
 
         uint256 stakeOut = _investedInput(i);
-        uint256 stakeIn = inputs[i].balanceOf(address(this));
-        _stake(i, toStake, _params);
+        uint256 stakeIn = toStake == _amounts[i] ? inputs[i].balanceOf(address(this)) : toStake; // force balanceOf only if required
+
+        _stake(toStake, i, _params);
         stakeOut = _investedInput(i) - stakeOut; // new stakes in input[i]
         stakeIn = stakeIn - inputs[i].balanceOf(address(this));
 
@@ -926,7 +930,7 @@ abstract contract StrategyV5 is
         toUnstake = _inputToStake(_amounts[i], i);
         // AsMaths.min(_inputToStake(_amounts[i], i), lpTokens[i].balanceOf(address(this)));
         uint256 balanceBefore = inputs[i].balanceOf(address(this));
-        _unstake(uint8(i), toUnstake, _params);
+        _unstake(toUnstake, i, _params);
         recovered = inputs[i].balanceOf(address(this)) - balanceBefore; // `inputs[i]` recovered
         // swap the unstaked `input[i]` tokens for underlying assets if necessary
         if (inputs[i] != asset) {

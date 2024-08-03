@@ -185,8 +185,8 @@ contract LodestarArbitrage is StrategyV5 {
   }
 
   function _stake(
-    uint256 _index,
     uint256 _amount,
+    uint256 _index,
     bytes[] calldata _params
   ) internal override {
     if (_index > 0) {
@@ -237,7 +237,7 @@ contract LodestarArbitrage is StrategyV5 {
 
     uint256 dust = inputs[0].balanceOf(address(this)); // received + dust
     // deposit inputs[0] dust back into the pool
-    if (address(inputs[0]) != address(asset)) {
+    if (inputs[0] != asset) {
       unchecked {
         if (dust > _due) {
           ILToken(address(lpTokens[0])).mint(dust - _due);
@@ -250,7 +250,7 @@ contract LodestarArbitrage is StrategyV5 {
 
     // repay inputs[1] debt with dust
     dust = inputs[1].balanceOf(address(this));
-    if (address(inputs[1]) != address(asset) && dust > 0) {
+    if (inputs[1] != asset && dust > 0) {
       ILToken(address(lpTokens[1])).repayBorrow(dust);
     }
 
@@ -265,8 +265,8 @@ contract LodestarArbitrage is StrategyV5 {
   }
 
   function _unstake(
-    uint256 _index,
     uint256 _amount,
+    uint256 _index,
     bytes[] calldata _params
   ) internal override {
     if (_index > 0) {
@@ -308,7 +308,7 @@ contract LodestarArbitrage is StrategyV5 {
 
     unchecked {
       // if asset != input[1], use dust to repay a bit more debt
-      if (received > _due && address(asset) != address(inputs[1])) {
+      if (received > _due && asset != inputs[1]) {
         uint256 outstandingDebt = _outstandingDebt();
         if (outstandingDebt > 0) {
           uint256 repayment = AsMaths.min(received - _due, outstandingDebt);

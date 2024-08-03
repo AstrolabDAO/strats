@@ -86,7 +86,7 @@ contract AgaveOptimizer is StrategyV5 {
     }
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     IPool pool = IPool(_poolProvider.getLendingPool());
     pool.deposit({
       asset: address(inputs[_index]),
@@ -96,7 +96,7 @@ contract AgaveOptimizer is StrategyV5 {
     });
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     IPool pool = IPool(_poolProvider.getLendingPool());
     pool.withdraw({asset: address(inputs[_index]), amount: _amount, to: address(this)});
   }

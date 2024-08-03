@@ -38,7 +38,7 @@ contract StrategyV5Simulator is StrategyV5, Simulator {
 
   function _setParams(bytes memory _params) internal override {}
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     // use 10% of the amount to fake rewards
     (uint256 fakeStake, uint256 fakeReward) = (_amount.subBp(1000), _amount.bp(1000));
     inputs[_index].forceApprove(dummyVault, fakeStake);
@@ -47,7 +47,7 @@ contract StrategyV5Simulator is StrategyV5, Simulator {
     inputs[_index].safeTransfer(dummyRewardDistributor, fakeReward);
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     vm.prank(dummyVault);
     inputs[_index].forceApprove(address(this), _amount);
     vm.prank(dummyVault);

@@ -76,11 +76,11 @@ contract CompoundV3Optimizer is StrategyV5 {
     _setLpTokenAllowances(AsMaths.MAX_UINT256);
   }
 
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     IComet(address(lpTokens[_index])).supply(address(inputs[_index]), _amount);
   }
 
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     IComet(address(lpTokens[_index])).withdraw(address(inputs[_index]), _amount);
   }
 

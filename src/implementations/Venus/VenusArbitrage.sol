@@ -166,8 +166,8 @@ contract VenusArbitrage is StrategyV5 {
   }
 
   function _stake(
-    uint256 _index,
     uint256 _amount,
+    uint256 _index,
     bytes[] calldata _params
   ) internal override {
     if (_index > 0) {
@@ -246,8 +246,8 @@ contract VenusArbitrage is StrategyV5 {
   }
 
   function _unstake(
-    uint256 _index,
     uint256 _amount,
+    uint256 _index,
     bytes[] calldata _params
   ) internal override {
     if (_index > 0) {

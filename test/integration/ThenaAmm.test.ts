@@ -8,7 +8,7 @@ import { setupStrat } from "./flows/StrategyV5";
 
 const baseDesc: IStrategyDesc = {
   name: `Astrolab Primitive Thena USD`,
-  symbol: `apUSD-THE-O`,
+  symbol: `apUSD-THE-O-2`,
   asset: "USDC",
   version: 1,
   contract: "ThenaAmm",
@@ -17,7 +17,7 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["USDT", "USDC"], inputWeights: [9200, 0] }, // 92% allocation, 8% cash
+  56: { ...baseDesc, inputs: ["lisUSD", "USDT"], inputWeights: [9200, 0] }, // 92% to pool 1, 8% cash
 };
 
 const desc = descByChainId[network.config.chainId!];
@@ -27,7 +27,7 @@ describe(`test.${desc.name}`, () => {
   const protocolAddr = addr.Thena!;
   let env: IStrategyDeploymentEnv;
 
-  beforeEach(async () => {});
+  beforeEach(async () => { });
   after(async () => {
     // revert blockchain state to before the tests (eg. healthy balances and pool liquidity)
     if (env?.revertState) await revertNetwork(env.snapshotId);
@@ -38,7 +38,9 @@ describe(`test.${desc.name}`, () => {
       { revertState: false },
       addresses,
     )) as IStrategyDeploymentEnv;
-    const pools = <string[]>packBy(desc.inputs, 2).map((pair) => protocolAddr.algebraPools[pair.join("")]);
+    const pools = <string[]>packBy(desc.inputs, 2)
+      .map((pair) => protocolAddr.algebraPools[pair.join("")])
+      .flatMap(pool => [pool, pool]);
     const hypervisors = pools.map((pool) => protocolAddr.hypervisorByPool[pool]);
     const gauges = hypervisors.map((hypervisor) => protocolAddr.gaugeByHypervisor[hypervisor]);
     env = await setupStrat(
@@ -53,11 +55,11 @@ describe(`test.${desc.name}`, () => {
         inputWeights: desc.inputWeights, // inputWeights in bps (100% on input[0])
         lpTokens: hypervisors, // lpTokens
         rewardTokens: protocolAddr.rewardTokens, // THE/WBNB
-        extension: abiEncode(["address","address","address[]"], [
+        extension: abiEncode(["(address,address,address[])"], [[
           protocolAddr.uniProxy,
           protocolAddr.voterV3Proxy,
           gauges,
-        ]),
+      ]]),
       },
       desc.seedLiquidityUsd, // seed liquidity in USD
       ["AsAccounting"], // libraries to link and verify with the strategy

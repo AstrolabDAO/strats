@@ -120,19 +120,19 @@ contract StrategyV5Composite is StrategyV5Lock {
 
   /**
    * @notice Stakes or provides `_amount` from `input[_index]` to `lpTokens[_index]`
-   * @param _index Index of the input to stake
    * @param _amount Amount of underlying assets to allocate to `inputs[_index]`
+   * @param _index Index of the input to stake
    */
-  function _stake(uint256 _index, uint256 _amount) internal override {
+  function _stake(uint256 _amount, uint256 _index) internal override {
     _primitives[_index].deposit(_amount, address(this));
   }
 
   /**
    * @notice Unstakes or liquidates `_amount` of `lpTokens[i]` back to `input[_index]`
-   * @param _index Index of the input to liquidate
    * @param _amount Amount of underlying assets to recover from liquidating `inputs[_index]`
+   * @param _index Index of the input to liquidate
    */
-  function _unstake(uint256 _index, uint256 _amount) internal override {
+  function _unstake(uint256 _amount, uint256 _index) internal override {
     _primitives[_index].withdraw(_amount, address(this), address(this));
   }
 }
