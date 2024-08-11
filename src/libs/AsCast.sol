@@ -12,7 +12,6 @@ pragma solidity 0.8.25;
  * @author Astrolab DAO
  */
 library AsCast {
-
   /*═══════════════════════════════════════════════════════════════╗
   ║                             ERRORS                             ║
   ╚═══════════════════════════════════════════════════════════════*/
@@ -253,5 +252,24 @@ library AsCast {
    */
   function toAddress(bytes32 b) internal pure returns (address) {
     return address(toUint160(uint256(b)));
+  }
+
+  /**
+   * @notice Encodes two addresses into a single bytes32 value
+   * @dev Not collision safe, but almost (1e-16% for 1m hashes birthday paradox collision rate)
+   * @param a First address to encode
+   * @param b Second address to encode
+   * @return c Resulting bytes32 value, containing the encoded addresses
+   */
+  function hashFast(address a, address b) internal pure returns (bytes32 c) {
+    assembly {
+      // load the 20-byte representations of the addresses
+      let baseBytes := and(a, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+      let quoteBytes := and(b, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+
+      // shift the first address 12 bytes (96 bits) to the left
+      // then combine with the second address
+      c := or(shl(96, baseBytes), quoteBytes)
+    }
   }
 }

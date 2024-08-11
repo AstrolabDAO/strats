@@ -1,6 +1,6 @@
 import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../src/implementations/Moonwell/addresses";
+import addresses from "../../src/external/Moonwell/addresses";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { suite } from "./StrategyV5.test";
 import { IFlow, testFlow } from "./flows";

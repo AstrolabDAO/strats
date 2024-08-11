@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.25;
 
-import "../abstract/AsTypes.sol";
 import "../interfaces/IStrategyV5.sol";
+import "./AsTypes.sol";
 import "./AsCast.sol";
 import "./AsMaths.sol";
 

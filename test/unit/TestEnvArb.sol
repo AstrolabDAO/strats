@@ -2,12 +2,12 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
-import "../../src/abstract/AsTypes.sol";
+import "../../src/libs/AsTypes.sol";
 import {IStrategyV5} from "../../src/interfaces/IStrategyV5.sol";
-import {ChainlinkProvider} from "../../src/abstract/ChainlinkProvider.sol";
+import {ChainlinkProvider} from "../../src/oracles/ChainlinkProvider.sol";
 import {TestEnv} from "./TestEnv.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
-import {ERC20} from "../../src/abstract/ERC20.sol";
+import {ERC20} from "../../src/core/ERC20.sol";
 
 abstract contract TestEnvArb is TestEnv {
   using AsArrays for address;

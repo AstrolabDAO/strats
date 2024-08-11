@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "./AsMaths.sol";
 import "./AsArrays.sol";
-import "../abstract/AsTypes.sol";
+import "./AsTypes.sol";
 
 /**
  *             _             _       _

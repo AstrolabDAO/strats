@@ -3,9 +3,9 @@ pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../../src/abstract/StrategyV5.sol";
-import "../../src/abstract/StrategyV5Composite.sol";
-import "../../src/abstract/Simulator.sol";
+import "../../src/core/StrategyV5.sol";
+import "../../src/core/StrategyV5Composite.sol";
+import "../../src/core/Simulator.sol";
 import "../../src/libs/AsArrays.sol";
 import "../../src/libs/AsMaths.sol";
 

@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";
-import {ERC20} from "../../src/abstract/ERC20.sol";
+import {ERC20} from "../../src/core/ERC20.sol";
 
 contract AsRescuableTest is TestEnvArb {
   constructor() TestEnvArb(true, true) {}

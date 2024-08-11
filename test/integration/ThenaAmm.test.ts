@@ -1,6 +1,6 @@
 import { network, revertNetwork, abiEncode, getEnv, packBy } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../src/implementations/Thena/addresses";
+import addresses from "../../src/external/Thena/addresses";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { suite } from "./StrategyV5.test";
 import { IFlow, testFlow } from "./flows";
@@ -17,7 +17,13 @@ const baseDesc: IStrategyDesc = {
 
 // strategy description to be converted into test/deployment params
 const descByChainId: { [chainId: number]: IStrategyDesc } = {
-  56: { ...baseDesc, inputs: ["WETH", "USDT"], inputWeights: [9200, 0] }, // 92% to pool 1, 8% cash
+  56: { ...baseDesc, inputs: [
+    "USDT", "USDC",
+    "lisUSD", "USDT"
+  ], inputWeights: [
+    4600, 0, // 46% to pool 0
+    4600, 0 // 46% to pool 1
+  ] }, // 8% cash
 };
 
 const desc = descByChainId[network.config.chainId!];

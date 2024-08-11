@@ -2,11 +2,11 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
-import {Fees} from "../../src/abstract/AsTypes.sol";
+import {Fees} from "../../src/libs/AsTypes.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
 import {IStrategyV5} from "../../src/interfaces/IStrategyV5.sol";
-import {ERC20} from "../../src/abstract/ERC20.sol";
+import {ERC20} from "../../src/core/ERC20.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";
 import {Borrower} from "./Erc3156FlashLenderTest.sol";
 

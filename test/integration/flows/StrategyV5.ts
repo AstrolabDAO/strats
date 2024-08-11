@@ -45,7 +45,7 @@ import {
 } from "../../utils";
 import { collectFees, setMinLiquidity } from "./As4626";
 import { grantRoles } from "./AsManageable";
-import compoundAddresses from "../../../src/implementations/Compound/addresses";
+import compoundAddresses from "../../../src/external/Compound/addresses";
 
 export const indexes = Array.from({ length: 8 }, (_, index) => index);
 

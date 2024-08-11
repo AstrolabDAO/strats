@@ -1,6 +1,5 @@
 <div align="center">
-  <img border-radius="25px" max-height="250px" src="./banner.png" />
-  <h1>Astrolab Strategies</h1>
+  <img border-radius="25px" max-height="250px" src="./banner.png" alt="Astrolab Strategies" />
   <p>
     <strong>by <a href="https://astrolab.fi">Astrolab DAO<a></strong>
   </p>
@@ -14,7 +13,7 @@
 
 This repo holds Astrolab DAO's yield primitives and dependencies.
 
-Besides harvesting/compounding automation (cf. [Astrolab Botnet](https://github.com/AstrolabDAO/monorepo/nptnet)), some of the strategies have off-chain components (eg. cross-chain arb, statistical arb, triangular arb, carry trading etc.), which are not part of this repository, and kept closed-source as part of our Protocol secret sauce.
+Besides harvesting/compounding automation (cf. [Astrolab Botnet](https://github.com/AstrolabDAO/monorepo/nptnet)), most of [CSA](#strategy-types) and [NSA](#strategy-types) strategies have off-chain components (eg. cross-chain arb, triangular arb, carry trading), which are not part of this repository, and kept closed-source as part of our Protocol secret sauce.
 
 ## Disclaimer ⚠️
 Astrolab DAO and its core team members will not be held accountable for losses related to the deployment and use of this repository's codebase.
@@ -44,9 +43,9 @@ As per the [licence](./LICENCE) states, the code is provided as-is and is under 
     DAO's standalone access controller used for RBAC
   - [PriceProvider](./src/abstract/PriceProvider.sol) 📡
     Oracle adapter dedicated to price retrieval from Chainlink, Pyth, Redstone and more
-  - [BridgeAdapter](./) ⛓️
-    Bridge adapter dedicated to cross-chain interoperability through Axelar, LayerZero and more.
-    Powers the DAO's cross-chain composite Strategies, acUSD, acETH and acBTC (to be migrated from v1 repo)
+  - [Bridger](./) ⛓️
+    Bridge aggregator unifying cross-chain interoperability through Axelar, LayerZero, Wormhole, Chainlink CCTP.
+    Powers the DAO's cross-chain composite Strategies, acUSD, acETH and acBTC (to be migrated from v0)
   - [Swapper](https://github.com/AstrolabFinance/swapper) ♻️
     DAO's standalone liquidity aggregator
 
@@ -56,21 +55,23 @@ As per the [licence](./LICENCE) states, the code is provided as-is and is under 
   - [AsCast.sol](./src/libs/AsCast.sol)
     Safe and unsafe casting
   - [AsMaths.sol](./src/libs/AsMaths.sol)
-    Standard maths library, built from OZ's, ABDK's, PRB's, Uniswap and more
+    Standard maths library, borrowing from OZ's, ABDK's, PRB's, Uniswap's and Vectorized's
   - [AsArrays.sol](./src/libs/AsArrays.sol)
-    Array manipulation
+    Array manipulation library
   - [AsAccounting.sol](./src/libs/AsAccounting.sol)
-    Strategy accounting helpers
+    Strategy accounting library
+  - [AsRisk.sol](./src/libs/AsRisk.sol)
+    Protocol risk management library
 
 ## Testing
 Testing As4626+StrategyV5 with Hardhat (make sure to set `HARDHAT_CHAIN_ID=42161` in `.env` to run the below test to be successful):
 ```bash
-yarn test-hardhat # yarn hardhat test test/Compound/CompoundV3.test.ts --network hardhat
+yarn test-hardhat # yarn hardhat test test/Compound/CompoundV3Optimizer.test.ts --network hardhat
 ```
 
 Testing As4626+StrategyV5 with Tenderly (make sure to set `TENDERLY_CHAIN_ID=42161` and define your tenderly fork ids in `.env` for the below  test to be successful):
 ```bash
-yarn test-tenderly # yarn hardhat test test/Compound/CompoundV3.test.ts --network tenderly
+yarn test-tenderly # yarn hardhat test test/Compound/CompoundV3Optimizer.test.ts --network tenderly
 ```
 
 Foundry tests are also in the works, used for fuzzing, drafting and debugging (not integration as test suites require extensive data manipulation and http querying).
@@ -84,25 +85,100 @@ async function main() {
     name: "AsMaths", // deployment unit name
     contract: "AsMaths", // contract name
     verify: true, // automatically verify on Tenderly or relevant explorer
-    export: false, // do not export abi+deployment .son
+    export: false, // do not export abi+deployment .json
   });
 }
 ```
+<style>
+.ic {
+  width: 18px;  /* Adjust the size as needed */
+  height: 18px;
+  margin-right: 4px;
+  margin-top: 5px;
+  display: inline-block;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
 
-## Strategies 🚧
-- [AaveV3](./src/implementations/Aave/AaveV3.sol)
-- [Hop](./src/implementations/Hop/Hop.sol)
-- [Lodestar](./src/implementations/Lodestar/Lodestar.sol)
-- [Venus](./src/implementations/Venus/Venus.sol)
-- [Sonne](./src/implementations/Sonne/Sonne.sol)
-- [CompoundV3](./src/implementations/Compound/CompoundV3.sol)
-- [AaveV3](./src/implementations/Aave/AaveV3.sol)
-- [Moonwell](./src/implementations/Moonwell/Moonwell.sol)
-- [MoonwellLegacy](./src/implementations/Moonwell/MoonwellLegacy.sol)
-- [Stargate](./src/implementations/Stargate/Stargate.sol)
-- [Agave](./src/implementations/Agave/Agave.sol)
-- [Benqi](./src/implementations/Benqi/Benqi.sol)
-- and more
+.eth { background-image: url('https://cdn.astrolab.fi/assets/images/networks/ethereum.svg'); }
+.op { background-image: url('https://cdn.astrolab.fi/assets/images/networks/optimism.svg'); }
+.arb { background-image: url('https://cdn.astrolab.fi/assets/images/networks/arbitrum.svg'); }
+.base { background-image: url('https://cdn.astrolab.fi/assets/images/networks/base.svg'); }
+.poly { background-image: url('https://cdn.astrolab.fi/assets/images/networks/polygon.svg'); }
+.bnb { background-image: url('https://cdn.astrolab.fi/assets/images/networks/bnb-chain.svg'); }
+.gno { background-image: url('https://cdn.astrolab.fi/assets/images/networks/gnosis-chain.svg'); }
+.avax { background-image: url('https://cdn.astrolab.fi/assets/images/networks/avalanche.svg'); }
+.glmr { background-image: url('https://cdn.astrolab.fi/assets/images/networks/moonbeam.svg'); }
+.blast { background-image: url('https://cdn.astrolab.fi/assets/images/networks/blast.svg'); }
+.mode { background-image: url('https://cdn.astrolab.fi/assets/images/networks/mode.svg'); }
+.ftm { background-image: url('https://cdn.astrolab.fi/assets/images/networks/fantom.svg'); }
+.linea { background-image: url('https://cdn.astrolab.fi/assets/images/networks/linea.svg'); }
+.scroll { background-image: url('https://cdn.astrolab.fi/assets/images/networks/scroll.svg'); }
+.mntl { background-image: url('https://cdn.astrolab.fi/assets/images/networks/mantle.svg'); }
+.celo { background-image: url('https://cdn.astrolab.fi/assets/images/networks/celo.svg'); }
+.canto { background-image: url('https://cdn.astrolab.fi/assets/images/networks/canto.svg'); }
+.kava { background-image: url('https://cdn.astrolab.fi/assets/images/networks/kava.svg'); }
+.zksync { background-image: url('https://cdn.astrolab.fi/assets/images/networks/zksync-era.svg'); }
+.zora { background-image: url('https://cdn.astrolab.fi/assets/images/networks/zora.svg'); }
+
+</style>
+## Strategy Types
+
+| Type | Symbol | Description | Maximum Leverage | Underlyings |
+| ---- | ------ | ----------- | ---------------- | ----------- |
+| Lending | LND | Liquidity providing to highly utilized money markets or CDP issuers (eg. Maker, Frax) | 20:1 | Stables, ETH, BTC, LSDs, LRTs |
+| Spot Market Making | SMM | Liquidity providing to bridges (eg. Stargate, Connext) and spot DEXs (eg. Uniswap V2's volatile market making aka. vAMM, Curve's stable market making aka. sAMM, Uniswap V3 concentrated liquidity market making aka. CLMM) direct or delegated to ALMs (active liquidity managers, eg. Gamma for CLMM, Elixir for central limit order books aka. CLOBs) | 20:1 | Stables, ETH, BTC, LSDs, LRTs |
+| Derivatives Market Making | DMM | Liquidity providing to derivatives DEXs (eg. GMX, Hyperliquid, Gains) direct or delegated to liquidity managers (eg. Pendle, Elixir for CLOBs) | 20:1 | Stables, ETH, BTC, LSDs, LRTs |
+| Unsecured Govt Debt | UGD | Liquidity providing to government debt (eg. US treasuries) through relevant on-chain issuers (e.g. Ondo, Backed) | 10:1 | Stables |
+| Unsecured Corp Debt | UCD | Liquidity providing to corporate debt through relevant on-chain issuers (e.g. Maple, Clearpool, Goldfinch) | 10:1 | Stables |
+| Hyper Staking | HST | Augmented staking (direct or delegated eg. Lido, Rocket Pool, Ankr, Coinbase, Binance) with restaking (eg. EigenLayer) and LSD arbitrage | 20:1 | Stables, ETH, BTC, LSDs, LRTs |
+| Covered Stat Arb | CSA | Delta-neutral trading: carry trading (direct or delegated eg. Ethena), cross-DEX and cross-chain arbitrage | 500:1 | Stables, ETH, BTC, LSDs, LRTs, Alts |
+| Naked Stat Arb | NSA | High delta trading: crypto, FX, and equity derivatives (trend following, momentum, mean reversal) | 500:1 | Stables, ETH, BTC, LSDs, LRTs, Alts |
+| Insurance | INS | Liquidity providing to protocol-specific (eg. AAVE Umbrella) or multi-protocol (eg. Nexus Mutual) insurers | 10:1 | Stables, ETH, BTC, Alts |
+| Services | SER | Liquidity providing to infrastructure providers (governance, identity, gaming, betting eg. ) | 10:1 | Stables, ETH, BTC, Alts |
+| Composite | CMP | Structured product that cannot fit a single of the above categories (eg. Astrolab Composites) | 10:1 | Stables, ETH, BTC, LSDs, LRTs |
+
+## Strategies
+
+### Primitives
+| Name                     | Type  | Identifier | Status | Compatible Chains |
+| ------------------------ | ----- | ---------- | ------ | ----------------- |
+| AaveV3 Optimizer         | LND | AAVE3-O | ✔️ Tested | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div><div class="ic scroll"></div><div class="ic gno"></div> |
+| AaveV3 Arbitrage         | LND | AAVE3-A | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div><div class="ic scroll"></div><div class="ic gno"></div> |
+| Compound V3 Optimizer    | LND | COMP3-O | ✔️ Tested | <div class="ic eth"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic scroll"></div> |
+| Compound V3 Arbitrage    | LND | COMP3-A | 🚧 WIP | <div class="ic eth"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic scroll"></div> |
+| Venus Optimizer          | LND | XVS-O | ✔️ Tested | <div class="ic bnb"></div> |
+| Venus Arbitrage          | LND | XVS-A | ✔️ Tested | <div class="ic bnb"></div> |
+| Lodestar Optimizer       | LND | LODE-O | ✔️ Tested | <div class="ic arb"></div> |
+| Lodestar Arbitrage       | LND | LODE-A | ✔️ Tested | <div class="ic arb"></div> |
+| Moonwell Optimizer       | LND | WELL-O | ✔️ Tested | <div class="ic glmr"></div><div class="ic base"></div> |
+| Moonwell Arbitrage       | LND | WELL-A | 🚧 WIP | <div class="ic glmr"></div><div class="ic base"></div> |
+| Benqi Optimizer          | LND | QI-O | ✔️ Tested | <div class="ic avax"></div> |
+| Benqi Arbitrage          | LND | QI-A | 🚧 WIP | <div class="ic avax"></div> |
+| Agave Optimizer          | LND | AGVE-O | ☠️ Axed | <div class="ic gno"></div> |
+| Agave Arbitrage          | LND | AGVE-A | ☠️ Axed | <div class="ic gno"></div> |
+| Sonne Optimizer          | LND | SONNE-O | ☠️ Axed | <div class="ic op"></div><div class="ic base"></div> |
+| Sonne Arbitrage          | LND | SONNE-A | ☠️ Axed | <div class="ic op"></div><div class="ic base"></div> |
+| Stargate Optimizer       | SMM | STG-O | ✔️ Tested | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div><div class="ic linea"></div><div class="ic mntl"></div><div class="ic scroll"></div> |
+| Stargate V2 Optimizer    | SMM | STG2-O | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div><div class="ic linea"></div><div class="ic mntl"></div><div class="ic scroll"></div> |
+| Hop Optimizer            | SMM | HOP-O | ✔️ Tested | <div class="ic eth"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic gno"></div><div class="ic linea"></div> |
+| Synapse Optimizer        | SMM | SYN-O | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div></div><div class="ic blast"></div><div class="ic canto"></div> |
+| Connext Optimizer        | SMM | NEXT-O | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic linea"></div><div class="ic gno"></div><div class="ic mode"></div> |
+| Across Optimizer         | SMM | ACX-O | 🚧 WIP | <div class="ic eth"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div></div><div class="ic linea"></div><div class="ic scroll"></div><div class="ic blast"></div><div class="ic mode"></div><div class="ic zksync"></div> |
+| Uniswap V3 Optimizer     | SMM | UNI3-O | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div></div><div class="ic blast"></div></div><div class="ic zksync"></div><div class="ic zora"></div> |
+| Uniswap V4 Optimizer     | SMM | UNI4-O | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div></div><div class="ic blast"></div></div><div class="ic zksync"></div><div class="ic zora"></div> |
+| Thena Optimizer          | SMM | THE-O | ✔️ Tested | <div class="ic bnb"></div> |
+| Camelot Optimizer        | SMM | GRAIL-O | 🚧 WIP | <div class="ic arb"></div> |
+| Velodrome Optimizer      | SMM | VELO-O | 🚧 WIP | <div class="ic op"></div> |
+| Aerodrome Optimizer      | SMM | AERO-O | 🚧 WIP | <div class="ic base"></div> |
+| Toros Optimizer          | DMM | TOROS-O | 🚧 WIP | <div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div></div><div class="ic poly"></div> |
+
+### Composites
+| Name                     | Type  | Identifier | Status | Compatible Chains |
+| ------------------------ | ----- | ---------- | ------ | ----------------- |
+| Astrolab Composite USD   | CMP   | acUSD | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div><div class="ic linea"></div><div class="ic mntl"></div><div class="ic scroll"></div><div class="ic gno"></div><div class="ic blast"></div> |
+| Astrolab Composite ETH   | CMP   | acETH | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div><div class="ic linea"></div><div class="ic mntl"></div><div class="ic scroll"></div><div class="ic gno"></div><div class="ic blast"></div> |
+| Astrolab Composite BTC   | CMP   | acBTC | 🚧 WIP | <div class="ic eth"></div><div class="ic bnb"></div><div class="ic arb"></div><div class="ic op"></div><div class="ic base"></div><div class="ic poly"></div><div class="ic avax"></div><div class="ic linea"></div><div class="ic mntl"></div><div class="ic scroll"></div><div class="ic gno"></div><div class="ic blast"></div> |
 
 ## Integrated/Watched Protocols 👀
 
@@ -110,12 +186,13 @@ async function main() {
 Primitives
   - [Lido/stETH](https://github.com/lidofinance/lido-dao)
   - [RocketPool/rETH](https://github.com/rocket-pool/rocketpool)
-  - [StakeWise/rETH2](https://github.com/stakewise/contracts)
+  - [StakeWise/rETH2+osETH](https://github.com/stakewise/contracts)
   - [Stader/ETHx](https://github.com/stader-labs/ethx)
   - [Swell/swETH](https://github.com/SwellNetwork/v3-core-public)
   - [Frax/sfrxETH](https://github.com/FraxFinance/frxETH-public)
   - [Coinbase/cbETH](https://github.com/coinbase/wrapped-tokens-os)
-  - [Binance/wBETH](https://github.com/bnb-chain)
+  - [Binance/WBETH](https://github.com/bnb-chain)
+  - [Mantle/mETH](https://github.com/mantle-lsp/L2-token-contract)
 
 Derivatives
   - [Prisma](https://github.com/prisma-fi/prisma-contracts)
@@ -123,10 +200,15 @@ Derivatives
   - [Stakehouse/dETH](https://github.com/stakehouse-dev/compound-staking)
   - [Manifold/mevETH2](https://github.com/manifoldfinance/mevETH2)
   - [unshEth](https://github.com/UnshETH/merkle-distributor)
+  - [Puffer/pufETH](https://github.com/PufferFinance/pufETH)
 
 ### ReStaking
 Primitives
   - [EigenLayer](https://github.com/Layr-Labs/eigenlayer-contracts)
+  - [EtherFi/weETH](https://github.com/etherfi-protocol/smart-contracts)
+  - [Renzo/ezETH+pzETH](https://github.com/Renzo-Protocol/contracts-public)
+  - [Karak/KweETH+KmETH](https://github.com/karak-network/v1-contracts-public)
+  - [Mellow](https://github.com/mellow-finance/mellow-lrt)
   - [Stakehouse](https://github.com/stakehouse-dev/compound-staking)
 
 ### RWA
@@ -149,13 +231,12 @@ Primitives
   - [AAVE V3](https://github.com/aave/aave-v3-core)
   - [Compound V2](https://github.com/compound-finance/compound-protocol)
   - [Compound V3](https://github.com/compound-finance/compound-protocol)
-  - [JustLend](https://github.com/justlend/justlend-protocol)
   - [Spark](https://github.com/marsfoundation/sparklend)
   - [Frax](https://github.com/FraxFinance/fraxlend)
-  - [Silo](https://github.com/silo-finance/silo-core-v1)
   - [Venus](https://github.com/VenusProtocol/venus-protocol)
+  - [JustLend](https://github.com/justlend/justlend-protocol)
+  - [Silo](https://github.com/silo-finance/silo-core-v1)
   - [Radiant](https://github.com/radiant-capital)
-  - [Agave](https://github.com/Agave-DAO/protocol-v2)
   - [Lodestar](https://github.com/LodestarFinance)
   - [Abracadabra](https://github.com/Abracadabra-money/abracadabra-money-contracts)
 

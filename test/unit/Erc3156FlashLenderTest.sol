@@ -2,13 +2,13 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
-import {Fees} from "../../src/abstract/AsTypes.sol";
+import {Fees} from "../../src/libs/AsTypes.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
 import {IStrategyV5} from "../../src/interfaces/IStrategyV5.sol";
 import {IERC3156FlashBorrower} from "../../src/interfaces/IERC3156FlashBorrower.sol";
-import {AsFlashLender} from "../../src/abstract/AsFlashLender.sol";
-import {ERC20} from "../../src/abstract/ERC20.sol";
+import {AsFlashLender} from "../../src/core/AsFlashLender.sol";
+import {ERC20} from "../../src/core/ERC20.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";
 
 contract Borrower is IERC3156FlashBorrower {

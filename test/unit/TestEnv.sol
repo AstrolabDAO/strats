@@ -2,16 +2,16 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
-import {StrategyParams, Fees, CoreAddresses, Erc20Metadata, Errors, Roles} from "../../src/abstract/AsTypes.sol";
+import "../../src/libs/AsTypes.sol";
 import {StrategyV5Simulator, StrategyV5CompositeSimulator} from "./StrategyV5Simulator.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
-import {AccessController} from "../../src/abstract/AccessController.sol";
-import {ChainlinkProvider} from "../../src/abstract/ChainlinkProvider.sol";
-import {StrategyV5} from "../../src/abstract/StrategyV5.sol";
-import {StrategyV5Agent} from "../../src/abstract/StrategyV5Agent.sol";
+import {AccessController} from "../../src/access-control/AccessController.sol";
+import {ChainlinkProvider} from "../../src/oracles/ChainlinkProvider.sol";
+import {StrategyV5} from "../../src/core/StrategyV5.sol";
+import {StrategyV5Agent} from "../../src/core/StrategyV5Agent.sol";
 import {IStrategyV5} from "../../src/interfaces/IStrategyV5.sol";
-import {ERC20} from "../../src/abstract/ERC20.sol";
+import {ERC20} from "../../src/core/ERC20.sol";
 
 abstract contract TestEnv is Test {
   using AsArrays for address;

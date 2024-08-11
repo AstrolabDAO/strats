@@ -1,7 +1,7 @@
 import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../src/implementations/Stargate/addresses";
-import stakingIdsByNetwork from "../../src/implementations/Stargate/v1-staking-ids.json";
+import addresses from "../../src/external/Stargate/addresses";
+import stakingIdsByNetwork from "../../src/external/Stargate/v1/staking-ids.json";
 import { Fees, IStrategyDeploymentEnv, IStrategyDesc } from "../../src/types";
 import { suite } from "./StrategyV5.test";
 import { IFlow, testFlow } from "./flows";

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
+import "../../src/libs/AsTypes.sol";
 import "./TestEnvArb.sol";
 import "../../src/interfaces/IStrategyV5.sol";
-import "../../src/abstract/RiskModel.sol";
-import "../../src/abstract/AsTypes.sol";
+import "../../src/core/RiskModel.sol";
 
 contract RiskModelTest is TestEnvArb {
   using AsMaths for *;

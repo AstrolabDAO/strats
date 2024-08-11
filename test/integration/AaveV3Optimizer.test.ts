@@ -1,6 +1,6 @@
 import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
 import { assert } from "chai";
-import addresses from "../../src/implementations/Aave/addresses";
+import addresses from "../../src/external/Aave/addresses";
 import {
   Fees,
   IStrategyDeploymentEnv,

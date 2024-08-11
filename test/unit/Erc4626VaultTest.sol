@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
-import {Fees} from "../../src/abstract/AsTypes.sol";
+import {Fees} from "../../src/libs/AsTypes.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
 import {AsMaths} from "../../src/libs/AsMaths.sol";
 import {TestEnvArb} from "./TestEnvArb.sol";

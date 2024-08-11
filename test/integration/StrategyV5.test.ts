@@ -53,7 +53,7 @@ export const suite: Partial<IFlow>[] = [
   // { fn: redeem, params: [500], elapsedSec: day, revertState: true, assert: (n: BigNumber) => n.gt(0) }, // full request
 
   // set weights to 0 to freeze exposure
-  { fn: setInputWeights, params: [[0, 0]], assert: (n: BigNumber) => n },
+  { fn: setInputWeights, params: [[0, 0, 0, 0]], assert: (n: BigNumber) => n },
   { fn: liquidate, params: [0], assert: (n: BigNumber) => n.gt(0) },
 
   // claimRewards/harvest(claim+swap)/compound(harvest+invest)

@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { network, revertNetwork, abiEncode, getEnv } from "@astrolabs/hardhat";
-import addresses from "../../src/implementations/Benqi/addresses";
+import addresses from "../../src/external/Benqi/addresses";
 import {
   Fees,
   IStrategyDeploymentEnv,

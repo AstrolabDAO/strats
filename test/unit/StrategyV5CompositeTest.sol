@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../src/abstract/AsTypes.sol";
+import "../../src/libs/AsTypes.sol";
 import "../../src/interfaces/IStrategyV5.sol";
 import "./TestEnvArb.sol";
 import {AsArrays} from "../../src/libs/AsArrays.sol";
