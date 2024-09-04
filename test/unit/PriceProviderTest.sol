@@ -11,24 +11,24 @@ import {
   Errors,
   Roles
 } from "../../src/libs/AsTypes.sol";
-import {AsArrays} from "../../src/libs/AsArrays.sol";
-import {AccessController} from "../../src/access-control/AccessController.sol";
-import {ChainlinkProvider} from "../../src/oracles/ChainlinkProvider.sol";
-import {PythProvider} from "../../src/oracles/PythProvider.sol";
-import {AlgebraProvider} from "../../src/oracles/AlgebraProvider.sol";
-import {UniswapV3Provider} from "../../src/oracles/UniswapV3Provider.sol";
-import {ERC20} from "../../src/core/ERC20.sol";
+import "../../src/libs/AsArrays.sol";
+import "../../src/libs/AsCast.sol";
+import "../../src/access-control/AccessController.sol";
+import "../../src/oracles/ChainlinkProvider.sol";
+import "../../src/oracles/PythProvider.sol";
+import "../../src/oracles/AlgebraProvider.sol";
+import "../../src/oracles/UniswapV3Provider.sol";
+import "../../src/core/ERC20.sol";
 
 contract PriceProviderTest is Test {
-  using AsArrays for address;
-  using AsArrays for uint16;
-  using AsArrays for uint256;
-  using AsArrays for uint256[8];
+  using AsArrays for *;
+  using AsCast for *;
 
   address USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831; // asset/input[0]
   address USDCe = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8; // input[1]
   address WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1; // wgas
-  address WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f; // wgas
+  address WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
+  address PENDLE = 0x0c880f6761F1af8d9Aa9C466984b80DAb9a8c9e8;
 
   address CHAINLINK_ETH_FEED = 0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612;
   address CHAINLINK_BTC_FEED = 0x6ce185860a4963106506C203335A2910413708e9;
@@ -42,6 +42,7 @@ contract PriceProviderTest is Test {
 
   address CAMELOT_USDC_WETH_POOL = 0xB1026b8e7276e7AC75410F1fcbbe21796e8f7526;
   address CAMELOT_WBTC_WETH_POOL = 0xd845f7D4f4DeB9Ff5bCf09D140Ef13718F6f6C71;
+  address CAMELOT_PENDLE_WETH_POOL = 0xE461f84C3fE6BCDd1162Eb0Ef4284F3bB6e4CAD3;
 
   address UNISWAP_USDC_WETH_POOL = 0xC6962004f452bE9203591991D15f6b388e09E8D0;
   address UNISWAP_WBTC_WETH_POOL = 0x2f5e87C9312fa29aed5c179E456625D79015299c;
@@ -99,7 +100,7 @@ contract PriceProviderTest is Test {
     vm.prank(admin);
     camelot.update(
       abi.encode(
-        UniswapV3Provider.Params({
+        AlgebraProvider.Params({
           wgas: WETH,
           weth: WETH,
           usdc: USDC,
@@ -127,42 +128,50 @@ contract PriceProviderTest is Test {
     );
   }
 
-  function getPrices() public {
+  function testGetPrices() public {
     console.log("--- Chainlink vs Pyth ---");
     // vm.warp(block.timestamp - 5 minutes);
-    console.log("USDC/USD (e18) %e vs %e", chainlink.toUsd(USDC), pyth.toUsd(USDC)); // usd 1e18 wei per usdc
-    console.log("WETH/USD (e18) %e vs %e", chainlink.toUsd(WETH), pyth.toUsd(WETH)); // usd 1e18 wei per weth
-    console.log("WBTC/USD (e18) %e vs %e", chainlink.toUsd(WBTC), pyth.toUsd(WBTC)); // usd 1e18 wei per wbtc
+    // console.log("USDC/USD (e18) %e vs %e", chainlink.toUsd(USDC), pyth.toUsd(USDC)); // usd 1e18 wei per usdc
+    // console.log("WETH/USD (e18) %e vs %e", chainlink.toUsd(WETH), pyth.toUsd(WETH)); // usd 1e18 wei per weth
+    // console.log("WBTC/USD (e18) %e vs %e", chainlink.toUsd(WBTC), pyth.toUsd(WBTC)); // usd 1e18 wei per wbtc
 
-    console.log("1000 USDC (e6) in USD (e18) %e vs %e", chainlink.toUsd(USDC, 1000e6), pyth.toUsd(USDC, 1000e6));
-    console.log("100 WETH (e18) in USD (e18) %e vs %e", chainlink.toUsd(WETH, 100e18), pyth.toUsd(WETH, 100e18));
-    console.log("10 WBTC (e8) in USD (e18) %e vs %e", chainlink.toUsd(WBTC, 10e8), pyth.toUsd(WBTC, 10e8));
+    // console.log("1000 USDC (e6) in USD (e18) %e vs %e", chainlink.toUsd(USDC, 1000e6), pyth.toUsd(USDC, 1000e6));
+    // console.log("100 WETH (e18) in USD (e18) %e vs %e", chainlink.toUsd(WETH, 100e18), pyth.toUsd(WETH, 100e18));
+    // console.log("10 WBTC (e8) in USD (e18) %e vs %e", chainlink.toUsd(WBTC, 10e8), pyth.toUsd(WBTC, 10e8));
 
-    console.log("USD/USDC (e6) %e vs %e", chainlink.fromUsd(USDC), pyth.fromUsd(USDC)); // usdc wei per usd
-    console.log("USD/WETH (e18) %e vs %e", chainlink.fromUsd(WETH), pyth.fromUsd(WETH)); // weth wei per usd
-    console.log("USD/WBTC (e8) %e vs %e", chainlink.fromUsd(WBTC), pyth.fromUsd(WBTC)); // wbtc wei per usd
+    // console.log("USD/USDC (e6) %e vs %e", chainlink.fromUsd(USDC), pyth.fromUsd(USDC)); // usdc wei per usd
+    // console.log("USD/WETH (e18) %e vs %e", chainlink.fromUsd(WETH), pyth.fromUsd(WETH)); // weth wei per usd
+    // console.log("USD/WBTC (e8) %e vs %e", chainlink.fromUsd(WBTC), pyth.fromUsd(WBTC)); // wbtc wei per usd
 
-    console.log("1000 USD (e18) in USDC (e6) %e vs %e", chainlink.fromUsd(USDC, 1000e18), pyth.fromUsd(USDC, 1000e18)); // usdc wei per usd
-    console.log("3800 USD (e18) in WETH (e18) %e vs %e", chainlink.fromUsd(WETH, 3800e18), pyth.fromUsd(WETH, 3800e18)); // weth wei per usd
-    console.log("68000 USD (e18) in WBTC (e8) %e vs %e", chainlink.fromUsd(WBTC, 68000e18), pyth.fromUsd(WBTC, 68000e18)); // wbtc wei per usd
+    // console.log("1000 USD (e18) in USDC (e6) %e vs %e", chainlink.fromUsd(USDC, 1000e18), pyth.fromUsd(USDC, 1000e18)); // usdc wei per usd
+    // console.log("3800 USD (e18) in WETH (e18) %e vs %e", chainlink.fromUsd(WETH, 3800e18), pyth.fromUsd(WETH, 3800e18)); // weth wei per usd
+    // console.log("68000 USD (e18) in WBTC (e8) %e vs %e", chainlink.fromUsd(WBTC, 68000e18), pyth.fromUsd(WBTC, 68000e18)); // wbtc wei per usd
 
-    console.log("WBTC/WETH (1 BTC in ETH, e18) %e vs %e", chainlink.exchangeRate(WBTC, WETH), pyth.exchangeRate(WBTC, WETH)); // weth wei per wbtc
-    console.log("WETH/WBTC (1 ETH in BTC, e10) %e vs %e", chainlink.exchangeRate(WETH, WBTC), pyth.exchangeRate(WETH, WBTC)); // wbtc wei per weth
+    // console.log("WBTC/WETH (1 BTC in ETH, e18) %e vs %e", chainlink.exchangeRate(WBTC, WETH), pyth.exchangeRate(WBTC, WETH)); // weth wei per wbtc
+    // console.log("WETH/WBTC (1 ETH in BTC, e10) %e vs %e", chainlink.exchangeRate(WETH, WBTC), pyth.exchangeRate(WETH, WBTC)); // wbtc wei per weth
 
-    console.log("--- Algebra (Camelot) vs UniswapV3 ---");
+    // console.log("--- Algebra (Camelot) vs UniswapV3 ---");
 
-    console.log("3800 USDC (e6) in WETH (e18) %e vs %e", camelot.convert(USDC, 3800e6, WETH), uniswap.convert(USDC, 3800e6, WETH)); // weth wei per usd
-    console.log("68000 USDC (e6) in WBTC (e8) %e vs %e", camelot.convert(USDC, 68000e6, WBTC), uniswap.convert(USDC, 68000e6, WBTC)); // wbtc wei per usd
+    // console.log("3800 USDC (e6) in WETH (e18) %e vs %e", camelot.convert(USDC, 3800e6, WETH), uniswap.convert(USDC, 3800e6, WETH)); // weth wei per usd
+    // console.log("68000 USDC (e6) in WBTC (e8) %e vs %e", camelot.convert(USDC, 68000e6, WBTC), uniswap.convert(USDC, 68000e6, WBTC)); // wbtc wei per usd
 
-    console.log("WETH/USDC (1 ETH in USDC, e6) %e vs %e", camelot.exchangeRate(WETH, USDC), uniswap.exchangeRate(WETH, USDC)); // usdc wei per weth
-    console.log("WBTC/USDC (1 BTC in USDC, e6) %e vs %e", camelot.exchangeRate(WBTC, USDC), uniswap.exchangeRate(WBTC, USDC)); // usdc wei per wbtc
-    console.log("USDC/WETH (1 USDC in WETH, e18) %e vs %e", camelot.exchangeRate(USDC, WETH), uniswap.exchangeRate(USDC, WETH)); // weth wei per usdc
-    console.log("USDC/WBTC (1 USDC in WBTC, e8) %e vs %e", camelot.exchangeRate(USDC, WBTC), uniswap.exchangeRate(USDC, WBTC)); // wbtc wei per usdc
-    console.log("WBTC/WETH (1 BTC in ETH, e18) %e vs %e", camelot.exchangeRate(WBTC, WETH), uniswap.exchangeRate(WBTC, WETH)); // weth wei per wbtc
-    console.log("WETH/WBTC (1 ETH in BTC, e10) %e vs %e", camelot.exchangeRate(WETH, WBTC), uniswap.exchangeRate(WETH, WBTC)); // wbtc wei per weth
+    // console.log("WETH/USDC (1 ETH in USDC, e6) %e vs %e", camelot.exchangeRate(WETH, USDC), uniswap.exchangeRate(WETH, USDC)); // usdc wei per weth
+    // console.log("WBTC/USDC (1 BTC in USDC, e6) %e vs %e", camelot.exchangeRate(WBTC, USDC), uniswap.exchangeRate(WBTC, USDC)); // usdc wei per wbtc
+    // console.log("USDC/WETH (1 USDC in WETH, e18) %e vs %e", camelot.exchangeRate(USDC, WETH), uniswap.exchangeRate(USDC, WETH)); // weth wei per usdc
+    // console.log("USDC/WBTC (1 USDC in WBTC, e8) %e vs %e", camelot.exchangeRate(USDC, WBTC), uniswap.exchangeRate(USDC, WBTC)); // wbtc wei per usdc
+    // console.log("WBTC/WETH (1 BTC in ETH, e18) %e vs %e", camelot.exchangeRate(WBTC, WETH), uniswap.exchangeRate(WBTC, WETH)); // weth wei per wbtc
+    // console.log("WETH/WBTC (1 ETH in BTC, e10) %e vs %e", camelot.exchangeRate(WETH, WBTC), uniswap.exchangeRate(WETH, WBTC)); // wbtc wei per weth
   }
 
-  function testAll() public {
-    getPrices();
+  function testFallback() public {
+    console.log("--- Using Camelot as Chainlink fallback for $PENDLE ---");
+
+    vm.prank(admin);
+    camelot.setFeed(PENDLE, CAMELOT_PENDLE_WETH_POOL.toBytes32(), 1 days);
+
+    vm.prank(admin);
+    chainlink.setAlt(address(camelot));
+
+    console.log("PENDLE/USDC (1 PENDLE in USDC, e6) %e", chainlink.exchangeRate(PENDLE, USDC));
   }
 }

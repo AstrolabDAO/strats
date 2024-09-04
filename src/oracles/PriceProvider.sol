@@ -52,6 +52,13 @@ abstract contract PriceProvider is AsPermissioned {
    */
   function hasFeed(address _asset) public view virtual returns (bool);
 
+  function _decimals(address _asset) internal view returns (uint8 decimals) {
+    decimals = _decimalsByAsset[_asset];
+    if (decimals == 0) {
+      decimals = IERC20Metadata(_asset).decimals();
+    }
+  }
+
   /**
    * @notice Converts one unit of `_asset` token to USD or vice versa in bps
    * @param _asset Address of the base token
@@ -69,7 +76,7 @@ abstract contract PriceProvider is AsPermissioned {
   }
 
   function toUsdBp(address _asset, uint256 _amount) public view returns (uint256) {
-    return toUsdBp(_asset) * _amount / (10 ** _decimalsByAsset[_asset]);
+    return toUsdBp(_asset) * _amount / (10 ** _decimals(_asset));
   }
 
   function fromUsdBp(address _asset, uint256 _amount) public view returns (uint256) {
@@ -102,18 +109,23 @@ abstract contract PriceProvider is AsPermissioned {
    * @param _base Address of the base token
    * @param _quote Address of the quote token
    * @param _amount Amount of tokens to convert
-   * @return Amount of `_quote` wei equivalent to `_amount` of `_base` tokens
+   * @return quoteAmount Amount of `_quote` wei equivalent to `_amount` of `_base` tokens
    */
   function convert(
     address _base,
     uint256 _amount,
     address _quote
-  ) public view virtual returns (uint256) {
+  ) public view virtual returns (uint256 quoteAmount) {
     if (_quote == _base) {
       return _amount;
     }
-    uint256 res = fromUsd(_quote, toUsd(_base, _amount));
-    return (res == 0 && address(alt) != address(0)) ? alt.convert(_base, _amount, _quote) : res;
+    quoteAmount = fromUsd(_quote, toUsd(_base, _amount));
+    if ((quoteAmount == 0 && address(alt) != address(0))) {
+      quoteAmount = alt.convert(_base, _amount, _quote);
+    }
+    if (quoteAmount == 0) {
+      revert Errors.MissingOracle();
+    }
   }
 
   /**
@@ -123,7 +135,7 @@ abstract contract PriceProvider is AsPermissioned {
    * @return Exchange rate in `_quote` bps
    */
   function exchangeRateBp(address _base, address _quote) public view returns (uint256) {
-    return convert(_base, 10 ** _decimalsByAsset[_base] * AsMaths.BP_BASIS, _quote);
+    return convert(_base, 10 ** _decimals(_base) * AsMaths.BP_BASIS, _quote);
   }
 
   /**
@@ -133,7 +145,7 @@ abstract contract PriceProvider is AsPermissioned {
    * @return Exchange rate in `_quote` wei
    */
   function exchangeRate(address _base, address _quote) public view returns (uint256) {
-    return convert(_base, 10 ** _decimalsByAsset[_base], _quote);
+    return convert(_base, 10 ** _decimals(_base), _quote);
   }
 
   /*═══════════════════════════════════════════════════════════════╗
@@ -223,5 +235,12 @@ abstract contract PriceProvider is AsPermissioned {
       revert Errors.ContractNonCompliant();
     }
     alt = IPriceProvider(_address);
+  }
+
+  /**
+   * @notice Removes the alternative price provider
+   */
+  function removeAlt() public onlyAdmin {
+    alt = IPriceProvider(address(0));
   }
 }

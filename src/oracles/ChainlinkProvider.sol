@@ -80,7 +80,7 @@ contract ChainlinkProvider is PriceProvider {
     uint8 feedDecimals = feed.decimals();
     return _invert
       ? (
-        (10 ** (_decimalsByAsset[_asset] + feedDecimals) * AsMaths.BP_BASIS)
+        (10 ** (_decimals(_asset) + feedDecimals) * AsMaths.BP_BASIS)
           / uint256(basePrice)
       )
       : (

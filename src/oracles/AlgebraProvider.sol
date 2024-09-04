@@ -153,8 +153,8 @@ contract AlgebraProvider is PriceProvider {
     unchecked {
       price =
         _base == _pool.token0() // is the pool base same as ours or inverted
-          ? ((sqrtTwapX96 / 1e6) ** 2 / (2 ** 192 / uint256(10 ** (_decimalsByAsset[_base] + 12)))) // 1e6 downscaler to avoid overflow
-          : (2 ** 192 * 10 ** (_decimalsByAsset[_base] - 6) / ((sqrtTwapX96 / 1e3) ** 2)); // same here
+          ? ((sqrtTwapX96 / 1e6) ** 2 / (2 ** 192 / uint256(10 ** (_decimals(_base) + 12)))) // 1e6 downscaler to avoid overflow
+          : (2 ** 192 * 10 ** (_decimals(_base) - 6) / ((sqrtTwapX96 / 1e3) ** 2)); // same here
     }
   }
 
@@ -171,14 +171,14 @@ contract AlgebraProvider is PriceProvider {
    * @param _amount Amount of `_base` to convert
    * @param _proxy Proxy address
    * @param _quote Quote token
-   * @return Amount of `_quote` equivalent to `_amount` of `_base`
+   * @return res Amount of `_quote` equivalent to `_amount` of `_base`
    */
   function convertTriangular(
     address _base,
     uint256 _amount,
     address _proxy,
     address _quote
-  ) public view returns (uint256) {
+  ) public view returns (uint256 res) {
     (bytes32 pid, ) = resolvePoolId(_base, _proxy);
     if (pid != bytes32(0)) {
       (bytes32 quotePid, ) = resolvePoolId(_proxy, _quote);
@@ -191,15 +191,14 @@ contract AlgebraProvider is PriceProvider {
           descByPoolId[quotePid].pool,
           _proxy // proxy->quote pair
         );
-        return
+        res =
           (_amount *
             baseToProxyPrice /
-              10 ** _decimalsByAsset[_base]) * // denominated in proxy, downscale first to avoid overflow
+              10 ** _decimals(_base)) * // denominated in proxy, downscale first to avoid overflow
             proxyToQuotePrice /
-          10 ** _decimalsByAsset[_proxy]; // rebase to quote
+          10 ** _decimals(_proxy); // rebase to quote
       }
     }
-    return 0;
   }
 
   /**
@@ -221,7 +220,7 @@ contract AlgebraProvider is PriceProvider {
       if (pid != bytes32(0)) {
         return
           (_amount * _poolPrice(descByPoolId[pid].pool, _base)) /
-          10 ** _decimalsByAsset[_base];
+          10 ** _decimals(_base);
       }
 
       address[3] memory proxies = [weth, usdc, wgas];

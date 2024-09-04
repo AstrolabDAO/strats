@@ -76,7 +76,7 @@ contract PythProvider is PriceProvider {
     }
 
     // NB: getPriceUnsafe used for testing, prod contracts need to pull prices if unavailable
-    PythStructs.Price memory price = _pyth.getPrice(feed);
+    PythStructs.Price memory price = _pyth.getPriceUnsafe(feed);
 
     if (
       price.price < 0 || price.expo > 12 || price.expo < -12
@@ -85,7 +85,7 @@ contract PythProvider is PriceProvider {
       revert Errors.InvalidOrStaleValue(price.publishTime, price.price);
     }
 
-    uint256 assetDecimals = _decimalsByAsset[_asset];
+    uint256 assetDecimals = _decimals(_asset);
     uint256 priceValue = uint256(uint64(price.price));
     int256 expo = price.expo;
 

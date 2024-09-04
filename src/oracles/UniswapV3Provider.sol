@@ -153,8 +153,8 @@ contract UniswapV3Provider is PriceProvider {
     unchecked {
       price =
         _base == _pool.token0() // is the pool base same as ours or inverted
-          ? ((sqrtTwapX96 / 1e6) ** 2 / (2 ** 192 / uint256(10 ** (_decimalsByAsset[_base] + 12)))) // 1e6 downscaler to avoid overflow
-          : (2 ** 192 * 10 ** (_decimalsByAsset[_base] - 6) / ((sqrtTwapX96 / 1e3) ** 2)); // same here
+          ? ((sqrtTwapX96 / 1e6) ** 2 / (2 ** 192 / uint256(10 ** (_decimals(_base) + 12)))) // 1e6 downscaler to avoid overflow
+          : (2 ** 192 * 10 ** (_decimals(_base) - 6) / ((sqrtTwapX96 / 1e3) ** 2)); // same here
     }
   }
 
@@ -191,9 +191,9 @@ contract UniswapV3Provider is PriceProvider {
         return
           (_amount *
             baseToProxyPrice /
-              10 ** _decimalsByAsset[_base]) * // denominated in proxy, downscale first to avoid overflow
+              10 ** _decimals(_base)) * // denominated in proxy, downscale first to avoid overflow
             proxyToQuotePrice /
-          10 ** _decimalsByAsset[_proxy]; // rebase to quote
+          10 ** _decimals(_proxy); // rebase to quote
       }
     }
     return 0;
@@ -218,7 +218,7 @@ contract UniswapV3Provider is PriceProvider {
       if (pid != bytes32(0)) {
         return
           (_amount * _poolPrice(descByPoolId[pid].pool, _base)) /
-          10 ** _decimalsByAsset[_base];
+          10 ** _decimals(_base);
       }
 
       address[3] memory proxies = [weth, usdc, wgas];
