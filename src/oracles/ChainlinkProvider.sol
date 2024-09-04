@@ -52,7 +52,7 @@ contract ChainlinkProvider is PriceProvider {
    * @return True if the oracle has a price feed for the asset
    */
   function hasFeed(address _asset) public view override returns (bool) {
-    return address(feedByAsset[_asset]) != address(0);
+    return address(feedByAsset[_asset]) != address(0) || (address(alt) != address(0) && alt.hasFeed(_asset));
   }
 
   /**

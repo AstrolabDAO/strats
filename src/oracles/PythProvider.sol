@@ -52,7 +52,7 @@ contract PythProvider is PriceProvider {
    * @return True if the oracle has a price feed for the asset
    */
   function hasFeed(address _asset) public view override returns (bool) {
-    return feedByAsset[_asset] != bytes32(0);
+    return feedByAsset[_asset] != bytes32(0) || (address(alt) != address(0) && alt.hasFeed(_asset));
   }
 
   /**

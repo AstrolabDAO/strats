@@ -164,73 +164,16 @@ contract ThenaAmm is StrategyV5 {
     });
   }
 
-  function _poolSqrtTwapX96(
-    IAlgebraPool _pool,
-    uint32 _period // lookback period in seconds
-  ) public view returns (uint160 sqrtPriceX96) {
-    if (_period == 0) {
-      (sqrtPriceX96, , , , , , ) = _pool.globalState();
-    } else {
-      uint32[] memory secondsAgos = new uint32[](2);
-      secondsAgos[0] = _period; /// from (before)
-      secondsAgos[1] = 0; /// to (now)
-
-      (int56[] memory tickCumulatives, , , ) = _pool.getTimepoints(secondsAgos);
-
-      sqrtPriceX96 = TickMaths.getSqrtRatioAtTick(
-        int24(uint24(uint56(tickCumulatives[1] - tickCumulatives[0]) / _period))
-      );
-    }
-  }
-
-  function _poolPrice(
-    IAlgebraPool _pool,
-    address _base,
-    address _quote,
-    uint8 _baseDecimals,
-    uint8 _quoteDecimals
-  ) public view returns (uint256) {
-    uint160 sqrtPriceX96 = _poolSqrtTwapX96(_pool, 300); // 5min twap
-    unchecked {
-      return _base == _pool.token0() ?
-        (uint256(sqrtPriceX96) ** 2) / (2 ** 192 / uint256(10 ** _quoteDecimals))
-        : (2 ** 192) / (uint256(sqrtPriceX96) ** 2 / uint256(10 ** _baseDecimals));
-    }
-  }
-
-  function _poolPrice(
-    uint256 _indexBase,
-    uint256 _indexQuote
-  ) public view returns (uint256) {
-    return
-      _poolPrice(
-        _pools[_indexBase],
-        address(inputs[_indexBase]),
-        address(inputs[_indexQuote]),
-        _inputDecimals[_indexBase],
-        _inputDecimals[_indexQuote]
-      );
-  }
-
   function _inputToAsset(
     uint256 _amount,
     uint256 _index
   ) internal view override returns (uint256) {
     IPriceProvider oracle = oracle();
     address base = address(inputs[_index]);
-    if (oracle.hasFeed(base)) {
-      return oracle.convert(base, _amount, address(asset));
-    } else {
-      // unchecked {
-      uint256 quoteIndex = _quoteIndex(_index);
-      address quote = address(inputs[quoteIndex]);
-      if (!oracle.hasFeed(quote)) {
-        revert Errors.MissingOracle(); // neither pool token has a price feed, cannot convert
-      }
-      uint256 quoteAmount = _amount * _poolPrice(_index, quoteIndex) / (10 ** _inputDecimals[_index]);
-      return oracle.convert(quote, quoteAmount, address(asset));
-      // }
+    if (!oracle.hasFeed(base)) {
+      revert Errors.MissingOracle();
     }
+    return oracle.convert(base, _amount, address(asset)); // chainlink->alt pancake->price
   }
 
   function _assetToInput(
@@ -239,17 +182,10 @@ contract ThenaAmm is StrategyV5 {
   ) internal view override returns (uint256) {
     IPriceProvider oracle = oracle();
     address base = address(inputs[_index]);
-    if (oracle.hasFeed(base)) {
-      return oracle.convert(address(asset), _amount, base);
-    } else {
-      uint256 quoteIndex = _quoteIndex(_index);
-      address quote = address(inputs[quoteIndex]);
-      if (!oracle.hasFeed(quote)) {
-        revert Errors.MissingOracle(); // neither of the pooled tokens has a price feed, cannot convert
-      }
-      uint256 quoteAmount = oracle.convert(address(asset), _amount, quote); // convert to the known side of the pair
-      return quoteAmount * _poolPrice(_index, quoteIndex) / (10 ** _inputDecimals[quoteIndex]); // convert to the other side using the pool own price
+    if (!oracle.hasFeed(base)) {
+      revert Errors.MissingOracle();
     }
+    return oracle.convert(address(asset), _amount, base);
   }
 
   function _inputToStake(
@@ -281,10 +217,7 @@ contract ThenaAmm is StrategyV5 {
         ? amount0 + oracle.convert(quote, amount1, base)
         : oracle.convert(quote, amount0, base) + amount1;
     } else {
-      // fallback to pool price
-      posBaseValue = baseIsToken0
-        ? amount0 + (amount1 * _poolPrice(_index, quoteIndex)) / (10 ** _inputDecimals[_index])
-        : (amount0 * (10 ** _inputDecimals[_index])) / _poolPrice(_index, quoteIndex) + amount1;
+      revert Errors.MissingOracle();
     }
 
     uint256 lpBasePrice = posBaseValue.mulDiv(1e18, _hypervisors[_index].totalSupply()); // hypervisors decimals == 18
